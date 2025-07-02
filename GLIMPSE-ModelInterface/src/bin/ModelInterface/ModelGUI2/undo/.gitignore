@@ -1,0 +1,11 @@
+/EditQueryUndoableEdit.class
+/FilterUndoableEdit.class
+/FlipUndoableEdit.class
+/MiAbstractUndoableEdit.class
+/MiUndoableEditListener.class
+/NodeDeleteUndoableEdit.class
+/NodeEditUndoableEdit.class
+/NodeInsertUndoableEdit.class
+/QueryAddRemoveUndoableEdit.class
+/RenameScenarioUndoableEdit.class
+/TableUndoableEdit.class
