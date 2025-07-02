@@ -1,0 +1,621 @@
+base load generation : biomass=>biomass_base_conv : biomass (conv) (cooling pond) : regional biomass : EJ : base load generation : EJ : EGU
+base load generation : biomass=>biomass_base_conv : biomass (conv) (dry cooling) : regional biomass : EJ : base load generation : EJ : EGU
+base load generation : biomass=>biomass_base_conv : biomass (conv) (once through) : regional biomass : EJ : base load generation : EJ : EGU
+base load generation : biomass=>biomass_base_conv : biomass (conv) (recirculating) : regional biomass : EJ : base load generation : EJ : EGU
+base load generation : biomass=>biomass_base_conv : biomass (conv) (seawater) : regional biomass : EJ : base load generation : EJ : EGU
+base load generation : biomass=>biomass_base_conv_CCS : biomass (conv CCS) (dry cooling) : regional biomass : EJ : base load generation : EJ : EGU
+base load generation : biomass=>biomass_base_conv_CCS : biomass (conv CCS) (recirculating) : regional biomass : EJ : base load generation : EJ : EGU
+base load generation : biomass=>biomass_base_conv_CCS : biomass (conv CCS) (seawater) : regional biomass : EJ : base load generation : EJ : EGU
+base load generation : biomass=>biomass_base_IGCC : biomass (IGCC) (dry cooling) : regional biomass : EJ : base load generation : EJ : EGU
+base load generation : biomass=>biomass_base_IGCC : biomass (IGCC) (recirculating) : regional biomass : EJ : base load generation : EJ : EGU
+base load generation : biomass=>biomass_base_IGCC : biomass (IGCC) (seawater) : regional biomass : EJ : base load generation : EJ : EGU
+base load generation : biomass=>biomass_base_IGCC_CCS : biomass (IGCC CCS) (dry cooling) : regional biomass : EJ : base load generation : EJ : EGU
+base load generation : biomass=>biomass_base_IGCC_CCS : biomass (IGCC CCS) (recirculating) : regional biomass : EJ : base load generation : EJ : EGU
+base load generation : biomass=>biomass_base_IGCC_CCS : biomass (IGCC CCS) (seawater) : regional biomass : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul : coal (conv pul) (cooling pond) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul : coal (conv pul) (dry cooling) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul : coal (conv pul) (once through) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul : coal (conv pul) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul : coal (conv pul) (seawater) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1951-1955 : coal (conv pul) (cooling pond) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1951-1955 : coal (conv pul) (dry cooling) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1951-1955 : coal (conv pul) (once through) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1951-1955 : coal (conv pul) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1956-1960 : coal (conv pul) (cooling pond) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1956-1960 : coal (conv pul) (dry cooling) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1956-1960 : coal (conv pul) (once through) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1956-1960 : coal (conv pul) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1956-1960 : coal (conv pul) (seawater) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1961-1965 : coal (conv pul) (cooling pond) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1961-1965 : coal (conv pul) (dry cooling) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1961-1965 : coal (conv pul) (once through) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1961-1965 : coal (conv pul) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1961-1965 : coal (conv pul) (seawater) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1966-1970 : coal (conv pul) (cooling pond) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1966-1970 : coal (conv pul) (dry cooling) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1966-1970 : coal (conv pul) (once through) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1966-1970 : coal (conv pul) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1966-1970 : coal (conv pul) (seawater) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1971-1975 : coal (conv pul) (cooling pond) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1971-1975 : coal (conv pul) (dry cooling) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1971-1975 : coal (conv pul) (once through) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1971-1975 : coal (conv pul) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1971-1975 : coal (conv pul) (seawater) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1976-1980 : coal (conv pul) (cooling pond) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1976-1980 : coal (conv pul) (dry cooling) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1976-1980 : coal (conv pul) (once through) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1976-1980 : coal (conv pul) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1976-1980 : coal (conv pul) (seawater) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1981-1985 : coal (conv pul) (cooling pond) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1981-1985 : coal (conv pul) (dry cooling) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1981-1985 : coal (conv pul) (once through) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1981-1985 : coal (conv pul) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1981-1985 : coal (conv pul) (seawater) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1986-1990 : coal (conv pul) (cooling pond) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1986-1990 : coal (conv pul) (once through) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1986-1990 : coal (conv pul) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1986-1990 : coal (conv pul) (seawater) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1991-1995 : coal (conv pul) (cooling pond) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1991-1995 : coal (conv pul) (dry cooling) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1991-1995 : coal (conv pul) (once through) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1991-1995 : coal (conv pul) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1991-1995 : coal (conv pul) (seawater) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1996-2000 : coal (conv pul) (cooling pond) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1996-2000 : coal (conv pul) (once through) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1996-2000 : coal (conv pul) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 1996-2000 : coal (conv pul) (seawater) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 2001-2005 : coal (conv pul) (cooling pond) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 2001-2005 : coal (conv pul) (dry cooling) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 2001-2005 : coal (conv pul) (once through) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 2001-2005 : coal (conv pul) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 2006-2010 : coal (conv pul) (cooling pond) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 2006-2010 : coal (conv pul) (dry cooling) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 2006-2010 : coal (conv pul) (once through) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 2006-2010 : coal (conv pul) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 2011-2015 : coal (conv pul) (cooling pond) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 2011-2015 : coal (conv pul) (dry cooling) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 2011-2015 : coal (conv pul) (once through) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul 2011-2015 : coal (conv pul) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul before 1950 : coal (conv pul) (cooling pond) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul before 1950 : coal (conv pul) (once through) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul before 1950 : coal (conv pul) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul_CCS : coal (conv pul CCS) (dry cooling) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul_CCS : coal (conv pul CCS) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul_CCS : coal (conv pul CCS) (seawater) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul_retire_2020 : coal (conv pul) (cooling pond) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul_retire_2020 : coal (conv pul) (dry cooling) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul_retire_2020 : coal (conv pul) (once through) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul_retire_2020 : coal (conv pul) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_conv pul_retire_2020 : coal (conv pul) (seawater) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_IGCC : coal (IGCC) (dry cooling) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_IGCC : coal (IGCC) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_IGCC : coal (IGCC) (seawater) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_IGCC_CCS : coal (IGCC CCS) (dry cooling) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_IGCC_CCS : coal (IGCC CCS) (recirculating) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : coal=>coal_base_IGCC_CCS : coal (IGCC CCS) (seawater) : regional coal : EJ : base load generation : EJ : EGU
+base load generation : gas=>gas_base_CC : gas (CC) (cooling pond) : wholesale gas : EJ : base load generation : EJ : EGU
+base load generation : gas=>gas_base_CC : gas (CC) (dry cooling) : wholesale gas : EJ : base load generation : EJ : EGU
+base load generation : gas=>gas_base_CC : gas (CC) (once through) : wholesale gas : EJ : base load generation : EJ : EGU
+base load generation : gas=>gas_base_CC : gas (CC) (recirculating) : wholesale gas : EJ : base load generation : EJ : EGU
+base load generation : gas=>gas_base_CC : gas (CC) (seawater) : wholesale gas : EJ : base load generation : EJ : EGU
+base load generation : gas=>gas_base_CC_CCS : gas (CC CCS) (dry cooling) : wholesale gas : EJ : base load generation : EJ : EGU
+base load generation : gas=>gas_base_CC_CCS : gas (CC CCS) (recirculating) : wholesale gas : EJ : base load generation : EJ : EGU
+base load generation : gas=>gas_base_CC_CCS : gas (CC CCS) (seawater) : wholesale gas : EJ : base load generation : EJ : EGU
+base load generation : geothermal=>geo_base : geothermal (dry_hybrid) : geothermal : EJ : base load generation : EJ : EGU
+base load generation : geothermal=>geo_base : geothermal (recirculating) : geothermal : EJ : base load generation : EJ : EGU
+base load generation : nuclear=>nuc_base_Gen II : Gen_II_LWR (cooling pond) : nuclearFuelGenII : EJ : base load generation : EJ : EGU
+base load generation : nuclear=>nuc_base_Gen II : Gen_II_LWR (once through) : nuclearFuelGenII : EJ : base load generation : EJ : EGU
+base load generation : nuclear=>nuc_base_Gen II : Gen_II_LWR (recirculating) : nuclearFuelGenII : EJ : base load generation : EJ : EGU
+base load generation : nuclear=>nuc_base_Gen II : Gen_II_LWR (seawater) : nuclearFuelGenII : EJ : base load generation : EJ : EGU
+base load generation : nuclear=>nuc_base_Gen III : Gen_III (cooling pond) : nuclearFuelGenIII : EJ : base load generation : EJ : EGU
+base load generation : nuclear=>nuc_base_Gen III : Gen_III (recirculating) : nuclearFuelGenIII : EJ : base load generation : EJ : EGU
+base load generation : nuclear=>nuc_base_Gen III : Gen_III (seawater) : nuclearFuelGenIII : EJ : base load generation : EJ : EGU
+base load generation : refined liquids=>refined liquids_base_CC : refined liquids (CC) (dry cooling) : refined liquids industrial : EJ : base load generation : EJ : EGU
+base load generation : refined liquids=>refined liquids_base_CC : refined liquids (CC) (recirculating) : refined liquids industrial : EJ : base load generation : EJ : EGU
+base load generation : refined liquids=>refined liquids_base_CC : refined liquids (CC) (seawater) : refined liquids industrial : EJ : base load generation : EJ : EGU
+base load generation : refined liquids=>refined liquids_base_CC_CCS : refined liquids (CC CCS) (dry cooling) : refined liquids industrial : EJ : base load generation : EJ : EGU
+base load generation : refined liquids=>refined liquids_base_CC_CCS : refined liquids (CC CCS) (recirculating) : refined liquids industrial : EJ : base load generation : EJ : EGU
+base load generation : refined liquids=>refined liquids_base_CC_CCS : refined liquids (CC CCS) (seawater) : refined liquids industrial : EJ : base load generation : EJ : EGU
+base load generation : refined liquids=>refined liquids_base_steam/CT : refined liquids (steam/CT) (cooling pond) : refined liquids industrial : EJ : base load generation : EJ : EGU
+base load generation : refined liquids=>refined liquids_base_steam/CT : refined liquids (steam/CT) (dry cooling) : refined liquids industrial : EJ : base load generation : EJ : EGU
+base load generation : refined liquids=>refined liquids_base_steam/CT : refined liquids (steam/CT) (once through) : refined liquids industrial : EJ : base load generation : EJ : EGU
+base load generation : refined liquids=>refined liquids_base_steam/CT : refined liquids (steam/CT) (recirculating) : refined liquids industrial : EJ : base load generation : EJ : EGU
+base load generation : refined liquids=>refined liquids_base_steam/CT : refined liquids (steam/CT) (seawater) : refined liquids industrial : EJ : base load generation : EJ : EGU
+base load generation : solar=>CSP_base_storage : CSP_base_storage : CSP_resource : EJ : base load generation : EJ : EGU
+base load generation : solar=>PV_base_storage : PV_base_storage : PV_resource : EJ : base load generation : EJ : EGU
+base load generation : wind=>wind_base : wind_base : onshore wind resource : EJ : base load generation : EJ : EGU
+base load generation : wind=>wind_base_offshore : wind_base_offshore : offshore wind resource : EJ : base load generation : EJ : EGU
+base load generation : wind=>wind_base_storage : wind_base_storage : onshore wind resource : EJ : base load generation : EJ : EGU
+intermediate generation : biomass=>biomass_int_conv : biomass (conv) (cooling pond) : regional biomass : EJ : intermediate generation : EJ : EGU
+intermediate generation : biomass=>biomass_int_conv : biomass (conv) (dry cooling) : regional biomass : EJ : intermediate generation : EJ : EGU
+intermediate generation : biomass=>biomass_int_conv : biomass (conv) (once through) : regional biomass : EJ : intermediate generation : EJ : EGU
+intermediate generation : biomass=>biomass_int_conv : biomass (conv) (recirculating) : regional biomass : EJ : intermediate generation : EJ : EGU
+intermediate generation : biomass=>biomass_int_conv : biomass (conv) (seawater) : regional biomass : EJ : intermediate generation : EJ : EGU
+intermediate generation : biomass=>biomass_int_conv_CCS : biomass (conv CCS) (dry cooling) : regional biomass : EJ : intermediate generation : EJ : EGU
+intermediate generation : biomass=>biomass_int_conv_CCS : biomass (conv CCS) (recirculating) : regional biomass : EJ : intermediate generation : EJ : EGU
+intermediate generation : biomass=>biomass_int_conv_CCS : biomass (conv CCS) (seawater) : regional biomass : EJ : intermediate generation : EJ : EGU
+intermediate generation : biomass=>biomass_int_IGCC : biomass (IGCC) (dry cooling) : regional biomass : EJ : intermediate generation : EJ : EGU
+intermediate generation : biomass=>biomass_int_IGCC : biomass (IGCC) (recirculating) : regional biomass : EJ : intermediate generation : EJ : EGU
+intermediate generation : biomass=>biomass_int_IGCC : biomass (IGCC) (seawater) : regional biomass : EJ : intermediate generation : EJ : EGU
+intermediate generation : biomass=>biomass_int_IGCC_CCS : biomass (IGCC CCS) (dry cooling) : regional biomass : EJ : intermediate generation : EJ : EGU
+intermediate generation : biomass=>biomass_int_IGCC_CCS : biomass (IGCC CCS) (recirculating) : regional biomass : EJ : intermediate generation : EJ : EGU
+intermediate generation : biomass=>biomass_int_IGCC_CCS : biomass (IGCC CCS) (seawater) : regional biomass : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul : coal (conv pul) (cooling pond) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul : coal (conv pul) (dry cooling) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul : coal (conv pul) (once through) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul : coal (conv pul) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul : coal (conv pul) (seawater) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1951-1955 : coal (conv pul) (cooling pond) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1951-1955 : coal (conv pul) (dry cooling) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1951-1955 : coal (conv pul) (once through) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1951-1955 : coal (conv pul) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1956-1960 : coal (conv pul) (cooling pond) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1956-1960 : coal (conv pul) (dry cooling) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1956-1960 : coal (conv pul) (once through) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1956-1960 : coal (conv pul) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1956-1960 : coal (conv pul) (seawater) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1961-1965 : coal (conv pul) (cooling pond) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1961-1965 : coal (conv pul) (dry cooling) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1961-1965 : coal (conv pul) (once through) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1961-1965 : coal (conv pul) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1961-1965 : coal (conv pul) (seawater) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1966-1970 : coal (conv pul) (cooling pond) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1966-1970 : coal (conv pul) (dry cooling) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1966-1970 : coal (conv pul) (once through) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1966-1970 : coal (conv pul) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1966-1970 : coal (conv pul) (seawater) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1971-1975 : coal (conv pul) (cooling pond) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1971-1975 : coal (conv pul) (dry cooling) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1971-1975 : coal (conv pul) (once through) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1971-1975 : coal (conv pul) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1971-1975 : coal (conv pul) (seawater) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1976-1980 : coal (conv pul) (cooling pond) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1976-1980 : coal (conv pul) (dry cooling) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1976-1980 : coal (conv pul) (once through) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1976-1980 : coal (conv pul) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1976-1980 : coal (conv pul) (seawater) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1981-1985 : coal (conv pul) (cooling pond) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1981-1985 : coal (conv pul) (dry cooling) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1981-1985 : coal (conv pul) (once through) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1981-1985 : coal (conv pul) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1981-1985 : coal (conv pul) (seawater) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1986-1990 : coal (conv pul) (cooling pond) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1986-1990 : coal (conv pul) (once through) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1986-1990 : coal (conv pul) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1986-1990 : coal (conv pul) (seawater) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1991-1995 : coal (conv pul) (cooling pond) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1991-1995 : coal (conv pul) (dry cooling) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1991-1995 : coal (conv pul) (once through) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1991-1995 : coal (conv pul) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1991-1995 : coal (conv pul) (seawater) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1996-2000 : coal (conv pul) (cooling pond) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1996-2000 : coal (conv pul) (once through) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1996-2000 : coal (conv pul) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 1996-2000 : coal (conv pul) (seawater) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 2001-2005 : coal (conv pul) (cooling pond) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 2001-2005 : coal (conv pul) (dry cooling) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 2001-2005 : coal (conv pul) (once through) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 2001-2005 : coal (conv pul) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 2006-2010 : coal (conv pul) (cooling pond) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 2006-2010 : coal (conv pul) (dry cooling) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 2006-2010 : coal (conv pul) (once through) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 2006-2010 : coal (conv pul) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 2011-2015 : coal (conv pul) (cooling pond) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 2011-2015 : coal (conv pul) (dry cooling) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 2011-2015 : coal (conv pul) (once through) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul 2011-2015 : coal (conv pul) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul before 1950 : coal (conv pul) (cooling pond) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul before 1950 : coal (conv pul) (once through) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul before 1950 : coal (conv pul) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul_CCS : coal (conv pul CCS) (dry cooling) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul_CCS : coal (conv pul CCS) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul_CCS : coal (conv pul CCS) (seawater) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul_retire_2020 : coal (conv pul) (cooling pond) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul_retire_2020 : coal (conv pul) (dry cooling) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul_retire_2020 : coal (conv pul) (once through) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul_retire_2020 : coal (conv pul) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_conv pul_retire_2020 : coal (conv pul) (seawater) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_IGCC : coal (IGCC) (dry cooling) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_IGCC : coal (IGCC) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_IGCC : coal (IGCC) (seawater) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_IGCC_CCS : coal (IGCC CCS) (dry cooling) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_IGCC_CCS : coal (IGCC CCS) (recirculating) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : coal=>coal_int_IGCC_CCS : coal (IGCC CCS) (seawater) : regional coal : EJ : intermediate generation : EJ : EGU
+intermediate generation : gas=>gas_int_CC : gas (CC) (cooling pond) : wholesale gas : EJ : intermediate generation : EJ : EGU
+intermediate generation : gas=>gas_int_CC : gas (CC) (dry cooling) : wholesale gas : EJ : intermediate generation : EJ : EGU
+intermediate generation : gas=>gas_int_CC : gas (CC) (once through) : wholesale gas : EJ : intermediate generation : EJ : EGU
+intermediate generation : gas=>gas_int_CC : gas (CC) (recirculating) : wholesale gas : EJ : intermediate generation : EJ : EGU
+intermediate generation : gas=>gas_int_CC : gas (CC) (seawater) : wholesale gas : EJ : intermediate generation : EJ : EGU
+intermediate generation : gas=>gas_int_CC_CCS : gas (CC CCS) (dry cooling) : wholesale gas : EJ : intermediate generation : EJ : EGU
+intermediate generation : gas=>gas_int_CC_CCS : gas (CC CCS) (recirculating) : wholesale gas : EJ : intermediate generation : EJ : EGU
+intermediate generation : gas=>gas_int_CC_CCS : gas (CC CCS) (seawater) : wholesale gas : EJ : intermediate generation : EJ : EGU
+intermediate generation : refined liquids=>refined liquids_int_CC : refined liquids (CC) (dry cooling) : refined liquids industrial : EJ : intermediate generation : EJ : EGU
+intermediate generation : refined liquids=>refined liquids_int_CC : refined liquids (CC) (recirculating) : refined liquids industrial : EJ : intermediate generation : EJ : EGU
+intermediate generation : refined liquids=>refined liquids_int_CC : refined liquids (CC) (seawater) : refined liquids industrial : EJ : intermediate generation : EJ : EGU
+intermediate generation : refined liquids=>refined liquids_int_CC_CCS : refined liquids (CC CCS) (dry cooling) : refined liquids industrial : EJ : intermediate generation : EJ : EGU
+intermediate generation : refined liquids=>refined liquids_int_CC_CCS : refined liquids (CC CCS) (recirculating) : refined liquids industrial : EJ : intermediate generation : EJ : EGU
+intermediate generation : refined liquids=>refined liquids_int_CC_CCS : refined liquids (CC CCS) (seawater) : refined liquids industrial : EJ : intermediate generation : EJ : EGU
+intermediate generation : refined liquids=>refined liquids_int_steam/CT : refined liquids (steam/CT) (cooling pond) : refined liquids industrial : EJ : intermediate generation : EJ : EGU
+intermediate generation : refined liquids=>refined liquids_int_steam/CT : refined liquids (steam/CT) (dry cooling) : refined liquids industrial : EJ : intermediate generation : EJ : EGU
+intermediate generation : refined liquids=>refined liquids_int_steam/CT : refined liquids (steam/CT) (once through) : refined liquids industrial : EJ : intermediate generation : EJ : EGU
+intermediate generation : refined liquids=>refined liquids_int_steam/CT : refined liquids (steam/CT) (recirculating) : refined liquids industrial : EJ : intermediate generation : EJ : EGU
+intermediate generation : refined liquids=>refined liquids_int_steam/CT : refined liquids (steam/CT) (seawater) : refined liquids industrial : EJ : intermediate generation : EJ : EGU
+intermediate generation : solar=>CSP_int : CSP_int (dry_hybrid) : CSP_resource : EJ : intermediate generation : EJ : EGU
+intermediate generation : solar=>CSP_int : CSP_int (recirculating) : CSP_resource : EJ : intermediate generation : EJ : EGU
+intermediate generation : solar=>PV_int : PV_int : PV_resource : EJ : intermediate generation : EJ : EGU
+intermediate generation : wind=>wind_int : wind_int : onshore wind resource : EJ : intermediate generation : EJ : EGU
+peak generation : coal=>coal_peak_conv pul : coal (conv pul) (cooling pond) : regional coal : EJ : peak generation : EJ : EGU
+peak generation : coal=>coal_peak_conv pul : coal (conv pul) (dry cooling) : regional coal : EJ : peak generation : EJ : EGU
+peak generation : coal=>coal_peak_conv pul : coal (conv pul) (once through) : regional coal : EJ : peak generation : EJ : EGU
+peak generation : coal=>coal_peak_conv pul : coal (conv pul) (recirculating) : regional coal : EJ : peak generation : EJ : EGU
+peak generation : coal=>coal_peak_conv pul : coal (conv pul) (seawater) : regional coal : EJ : peak generation : EJ : EGU
+peak generation : coal=>coal_peak_conv pul_retire_2020 : coal (conv pul) (cooling pond) : regional coal : EJ : peak generation : EJ : EGU
+peak generation : coal=>coal_peak_conv pul_retire_2020 : coal (conv pul) (dry cooling) : regional coal : EJ : peak generation : EJ : EGU
+peak generation : coal=>coal_peak_conv pul_retire_2020 : coal (conv pul) (once through) : regional coal : EJ : peak generation : EJ : EGU
+peak generation : coal=>coal_peak_conv pul_retire_2020 : coal (conv pul) (recirculating) : regional coal : EJ : peak generation : EJ : EGU
+peak generation : coal=>coal_peak_conv pul_retire_2020 : coal (conv pul) (seawater) : regional coal : EJ : peak generation : EJ : EGU
+peak generation : gas=>gas_peak_CC : gas (CC) (cooling pond) : wholesale gas : EJ : peak generation : EJ : EGU
+peak generation : gas=>gas_peak_CC : gas (CC) (dry cooling) : wholesale gas : EJ : peak generation : EJ : EGU
+peak generation : gas=>gas_peak_CC : gas (CC) (once through) : wholesale gas : EJ : peak generation : EJ : EGU
+peak generation : gas=>gas_peak_CC : gas (CC) (recirculating) : wholesale gas : EJ : peak generation : EJ : EGU
+peak generation : gas=>gas_peak_CC : gas (CC) (seawater) : wholesale gas : EJ : peak generation : EJ : EGU
+peak generation : gas=>gas_peak_CC_CCS : gas (CC CCS) (dry cooling) : wholesale gas : EJ : peak generation : EJ : EGU
+peak generation : gas=>gas_peak_CC_CCS : gas (CC CCS) (recirculating) : wholesale gas : EJ : peak generation : EJ : EGU
+peak generation : gas=>gas_peak_CC_CCS : gas (CC CCS) (seawater) : wholesale gas : EJ : peak generation : EJ : EGU
+peak generation : gas=>gas_peak_steam/CT : gas (steam/CT) (cooling pond) : wholesale gas : EJ : peak generation : EJ : EGU
+peak generation : gas=>gas_peak_steam/CT : gas (steam/CT) (dry cooling) : wholesale gas : EJ : peak generation : EJ : EGU
+peak generation : gas=>gas_peak_steam/CT : gas (steam/CT) (once through) : wholesale gas : EJ : peak generation : EJ : EGU
+peak generation : gas=>gas_peak_steam/CT : gas (steam/CT) (recirculating) : wholesale gas : EJ : peak generation : EJ : EGU
+peak generation : gas=>gas_peak_steam/CT : gas (steam/CT) (seawater) : wholesale gas : EJ : peak generation : EJ : EGU
+peak generation : grid_storage=>battery : grid_storage : off peak electricity : EJ : peak generation : EJ : EGU
+peak generation : refined liquids=>refined liquids_peak_CC : refined liquids (CC) (dry cooling) : refined liquids industrial : EJ : peak generation : EJ : EGU
+peak generation : refined liquids=>refined liquids_peak_CC : refined liquids (CC) (recirculating) : refined liquids industrial : EJ : peak generation : EJ : EGU
+peak generation : refined liquids=>refined liquids_peak_CC : refined liquids (CC) (seawater) : refined liquids industrial : EJ : peak generation : EJ : EGU
+peak generation : refined liquids=>refined liquids_peak_CC_CCS : refined liquids (CC CCS) (dry cooling) : refined liquids industrial : EJ : peak generation : EJ : EGU
+peak generation : refined liquids=>refined liquids_peak_CC_CCS : refined liquids (CC CCS) (recirculating) : refined liquids industrial : EJ : peak generation : EJ : EGU
+peak generation : refined liquids=>refined liquids_peak_CC_CCS : refined liquids (CC CCS) (seawater) : refined liquids industrial : EJ : peak generation : EJ : EGU
+peak generation : refined liquids=>refined liquids_peak_steam/CT : refined liquids (steam/CT) (cooling pond) : refined liquids industrial : EJ : peak generation : EJ : EGU
+peak generation : refined liquids=>refined liquids_peak_steam/CT : refined liquids (steam/CT) (dry cooling) : refined liquids industrial : EJ : peak generation : EJ : EGU
+peak generation : refined liquids=>refined liquids_peak_steam/CT : refined liquids (steam/CT) (once through) : refined liquids industrial : EJ : peak generation : EJ : EGU
+peak generation : refined liquids=>refined liquids_peak_steam/CT : refined liquids (steam/CT) (recirculating) : refined liquids industrial : EJ : peak generation : EJ : EGU
+peak generation : refined liquids=>refined liquids_peak_steam/CT : refined liquids (steam/CT) (seawater) : refined liquids industrial : EJ : peak generation : EJ : EGU
+peak generation : solar=>CSP_peak : CSP_peak (dry_hybrid) : CSP_resource : EJ : peak generation : EJ : EGU
+peak generation : solar=>CSP_peak : CSP_peak (recirculating) : CSP_resource : EJ : peak generation : EJ : EGU
+peak generation : solar=>PV_peak : PV_peak : PV_resource : EJ : peak generation : EJ : EGU
+subpeak generation : coal=>coal_subpeak_conv pul : coal (conv pul) (cooling pond) : regional coal : EJ : subpeak generation : EJ : EGU
+subpeak generation : coal=>coal_subpeak_conv pul : coal (conv pul) (dry cooling) : regional coal : EJ : subpeak generation : EJ : EGU
+subpeak generation : coal=>coal_subpeak_conv pul : coal (conv pul) (once through) : regional coal : EJ : subpeak generation : EJ : EGU
+subpeak generation : coal=>coal_subpeak_conv pul : coal (conv pul) (recirculating) : regional coal : EJ : subpeak generation : EJ : EGU
+subpeak generation : coal=>coal_subpeak_conv pul : coal (conv pul) (seawater) : regional coal : EJ : subpeak generation : EJ : EGU
+subpeak generation : coal=>coal_subpeak_conv pul_retire_2020 : coal (conv pul) (cooling pond) : regional coal : EJ : subpeak generation : EJ : EGU
+subpeak generation : coal=>coal_subpeak_conv pul_retire_2020 : coal (conv pul) (dry cooling) : regional coal : EJ : subpeak generation : EJ : EGU
+subpeak generation : coal=>coal_subpeak_conv pul_retire_2020 : coal (conv pul) (once through) : regional coal : EJ : subpeak generation : EJ : EGU
+subpeak generation : coal=>coal_subpeak_conv pul_retire_2020 : coal (conv pul) (recirculating) : regional coal : EJ : subpeak generation : EJ : EGU
+subpeak generation : coal=>coal_subpeak_conv pul_retire_2020 : coal (conv pul) (seawater) : regional coal : EJ : subpeak generation : EJ : EGU
+subpeak generation : gas=>gas_subpeak_CC : gas (CC) (cooling pond) : regional gas : EJ : subpeak generation : EJ : EGU
+subpeak generation : gas=>gas_subpeak_CC : gas (CC) (dry cooling) : regional gas : EJ : subpeak generation : EJ : EGU
+subpeak generation : gas=>gas_subpeak_CC : gas (CC) (once through) : regional gas : EJ : subpeak generation : EJ : EGU
+subpeak generation : gas=>gas_subpeak_CC : gas (CC) (recirculating) : regional gas : EJ : subpeak generation : EJ : EGU
+subpeak generation : gas=>gas_subpeak_CC : gas (CC) (seawater) : regional gas : EJ : subpeak generation : EJ : EGU
+subpeak generation : gas=>gas_subpeak_CC_CCS : gas (CC CCS) (dry cooling) : regional gas : EJ : subpeak generation : EJ : EGU
+subpeak generation : gas=>gas_subpeak_CC_CCS : gas (CC CCS) (recirculating) : regional gas : EJ : subpeak generation : EJ : EGU
+subpeak generation : gas=>gas_subpeak_CC_CCS : gas (CC CCS) (seawater) : regional gas : EJ : subpeak generation : EJ : EGU
+subpeak generation : gas=>gas_subpeak_steam/CT : gas (steam/CT) (cooling pond) : regional gas : EJ : subpeak generation : EJ : EGU
+subpeak generation : gas=>gas_subpeak_steam/CT : gas (steam/CT) (dry cooling) : regional gas : EJ : subpeak generation : EJ : EGU
+subpeak generation : gas=>gas_subpeak_steam/CT : gas (steam/CT) (once through) : regional gas : EJ : subpeak generation : EJ : EGU
+subpeak generation : gas=>gas_subpeak_steam/CT : gas (steam/CT) (recirculating) : regional gas : EJ : subpeak generation : EJ : EGU
+subpeak generation : gas=>gas_subpeak_steam/CT : gas (steam/CT) (seawater) : regional gas : EJ : subpeak generation : EJ : EGU
+subpeak generation : refined liquids=>refined liquids_subpeak_CC : refined liquids (CC) (dry cooling) : refined liquids industrial : EJ : subpeak generation : EJ : EGU
+subpeak generation : refined liquids=>refined liquids_subpeak_CC : refined liquids (CC) (recirculating) : refined liquids industrial : EJ : subpeak generation : EJ : EGU
+subpeak generation : refined liquids=>refined liquids_subpeak_CC : refined liquids (CC) (seawater) : refined liquids industrial : EJ : subpeak generation : EJ : EGU
+subpeak generation : refined liquids=>refined liquids_subpeak_CC_CCS : refined liquids (CC CCS) (dry cooling) : refined liquids industrial : EJ : subpeak generation : EJ : EGU
+subpeak generation : refined liquids=>refined liquids_subpeak_CC_CCS : refined liquids (CC CCS) (recirculating) : refined liquids industrial : EJ : subpeak generation : EJ : EGU
+subpeak generation : refined liquids=>refined liquids_subpeak_CC_CCS : refined liquids (CC CCS) (seawater) : refined liquids industrial : EJ : subpeak generation : EJ : EGU
+subpeak generation : refined liquids=>refined liquids_subpeak_steam/CT : refined liquids (steam/CT) (cooling pond) : refined liquids industrial : EJ : subpeak generation : EJ : EGU
+subpeak generation : refined liquids=>refined liquids_subpeak_steam/CT : refined liquids (steam/CT) (dry cooling) : refined liquids industrial : EJ : subpeak generation : EJ : EGU
+subpeak generation : refined liquids=>refined liquids_subpeak_steam/CT : refined liquids (steam/CT) (once through) : refined liquids industrial : EJ : subpeak generation : EJ : EGU
+subpeak generation : refined liquids=>refined liquids_subpeak_steam/CT : refined liquids (steam/CT) (recirculating) : refined liquids industrial : EJ : subpeak generation : EJ : EGU
+subpeak generation : refined liquids=>refined liquids_subpeak_steam/CT : refined liquids (steam/CT) (seawater) : refined liquids industrial : EJ : subpeak generation : EJ : EGU
+subpeak generation : solar=>CSP_subpeak : CSP_subpeak (dry_hybrid) : CSP_resource : EJ : subpeak generation : EJ : EGU
+subpeak generation : solar=>CSP_subpeak : CSP_subpeak (recirculating) : CSP_resource : EJ : subpeak generation : EJ : EGU
+subpeak generation : solar=>PV_subpeak : PV_subpeak : PV_resource : EJ : subpeak generation : EJ : EGU
+subpeak generation : wind=>wind_subpeak : wind_subpeak : onshore wind resource : EJ : subpeak generation : EJ : EGU
+elect_td_bld : rooftop_pv=>rooftop_pv : rooftop_pv : distributed_solar : EJ : elect_td_bld : EJ : EGU
+backup_electricity : gas : gas (steam/CT) : wholesale gas : EJ : backup_electricity : EJ : EGU
+csp_backup : gas : CSP gas hybrid mode : wholesale gas : EJ : csp_backup : EJ : EGU
+electricity : hydro : hydro : electricity : EJ : hydro : EJ : EGU
+electricity : wind : wind : onshore wind resource : EJ : electricity : EJ : EGU
+electricity : wind : wind_storage : onshore wind resource : EJ : electricity : EJ : EGU
+electricity : wind : wind_offshore : offshore wind resource : EJ : electricity : EJ : EGU
+electricity : solar : PV : global solar resource : EJ : PV : EJ : EGU
+electricity : solar : PV_storage : global solar resource : EJ : PV_storage : EJ : EGU
+electricity : geothermal : geothermal : geothermal resource : EJ : electricity : EJ : EGU
+electricity : hydro : hydro : hydro resource : EJ : electricity : EJ : EGU
+electricity : biomass : biomass (conv) : regional biomass : EJ : electricity : EJ : EGU
+electricity : biomass : biomass (IGCC) : regional biomass : EJ : electricity : EJ : EGU
+electricity : biomass : biomass (conv CCS) : regional biomass : EJ : electricity : EJ : EGU
+electricity : biomass : biomass (IGCC CCS) : regional biomass : EJ : electricity : EJ : EGU
+electricity : nuclear : Gen_II_LWR : elec_Gen_II_LWR : EJ : electricity : EJ : EGU
+electricity : nuclear : Gen_III : elec_Gen_III : EJ : electricity : EJ : EGU
+electricity : coal : coal (conv pul) : regional coal : EJ : electricity : EJ : EGU
+electricity : coal : coal (IGCC) : regional coal : EJ : electricity : EJ : EGU
+electricity : coal : coal (conv pul CCS) : regional coal : EJ : electricity : EJ : EGU
+electricity : coal : coal (IGCC CCS) : regional coal : EJ : electricity : EJ : EGU
+electricity : gas : gas (steam/CT) : wholesale gas : EJ : electricity : EJ : EGU
+electricity : gas : gas (CC) : wholesale gas : EJ : electricity : EJ : EGU
+electricity : gas : gas (CC CCS) : wholesale gas : EJ : electricity : EJ : EGU
+electricity : refined liquids : refined liquids (steam/CT) : refined liquids enduse : EJ : electricity : EJ : EGU
+electricity : refined liquids : refined liquids (CC) : refined liquids enduse : EJ : electricity : EJ : EGU
+electricity : refined liquids : refined liquids (CC CCS) : refined liquids enduse : EJ : electricity : EJ : EGU
+other industrial energy use : biomass : biomass : delivered biomass : EJ : other industrial energy use : EJ : Industry
+other industrial energy use : biomass : biomass cogen : delivered biomass : EJ : electricity : EJ : Industry
+other industrial energy use : coal : coal : delivered coal : EJ : other industrial energy use : EJ : Industry
+other industrial energy use : coal : coal cogen : delivered coal : EJ : electricity : EJ : Industry
+other industrial energy use : district heat : district heat : district heat : EJ : other industrial energy use : EJ : Industry
+other industrial energy use : electricity : electricity : elect_td_ind : EJ : industrial energy use : EJ : Industry
+other industrial energy use : gas : gas : wholesale gas : EJ : other industrial energy use : EJ : Industry
+other industrial energy use : gas : gas cogen : wholesale gas : EJ : electricity : EJ : Industry
+other industrial energy use : hydrogen : hydrogen : H2 enduse : EJ : other industrial energy use : EJ : Industry
+other industrial energy use : hydrogen : hydrogen cogen : H2 enduse : EJ : electricity : EJ : Industry
+other industrial energy use : refined liquids : refined liquids : refined liquids industrial : EJ : other industrial energy use : EJ : Industry
+other industrial energy use : refined liquids : refined liquids cogen : refined liquids industrial : EJ : electricity : EJ : Industry
+other industrial feedstocks : coal : coal : delivered coal : EJ : other industrial feedstocks : EJ : Industry
+other industrial feedstocks : gas : gas : wholesale gas : EJ : other industrial feedstocks : EJ : Industry
+other industrial feedstocks : refined liquids : refined liquids : refined liquids industrial : EJ : other industrial feedstocks : EJ : Industry
+cement : cement : cement : elect_td_ind : EJ : cement : Mt : Industry
+cement : cement : cement : limestone : Mt : cement : Mt : Industry
+cement : cement : cement : process heat cement : EJ : cement : Mt : Industry
+cement : cement : cement CCS : elect_td_ind : EJ : cement : Mt : Industry
+cement : cement : cement CCS : limestone : Mt : cement : Mt : Industry
+cement : cement : cement CCS : process heat cement : EJ : cement : Mt : Industry
+process heat cement : biomass : biomass : delivered biomass : EJ : process heat cement : EJ : Industry
+process heat cement : coal : coal : delivered coal : EJ : process heat cement : EJ : Industry
+process heat cement : gas : gas : wholesale gas : EJ : process heat cement : EJ : Industry
+process heat cement : refined liquids : refined liquids : refined liquids industrial : EJ : process heat cement : EJ : Industry
+process heat cement : hydrogen : hydrogen : H2 industrial : EJ : process heat cement : EJ : Industry
+other industry : other industry : other industry : industrial processes : EJ : other industry : EJ : Industry
+other industry : other industry : other industry : other industrial energy use : EJ : other industry : EJ : Industry
+other industry : other industry : other industry : other industrial feedstocks : EJ : other industry : EJ : Industry
+biomass liquids : biomass liquids : BTL with hydrogen : regional biomass : EJ : biomass liquids : EJ : Industry-fuels
+biomass liquids : biomass liquids : biodiesel : regional biomassOil : EJ : biomass liquids : EJ : Industry-fuels
+biomass liquids : biomass liquids : cellulosic ethanol : regional biomass : EJ : biomass liquids : EJ : Industry-fuels
+biomass liquids : biomass liquids : cellulosic ethanol CCS level 1 : regional biomass : EJ : biomass liquids : EJ : Industry-fuels
+biomass liquids : biomass liquids : cellulosic ethanol CCS level 2 : regional biomass : EJ : biomass liquids : EJ : Industry-fuels
+biomass liquids : biomass liquids : corn ethanol : regional corn for ethanol : EJ : biomass liquids : EJ : Industry-fuels
+biomass liquids : biomass liquids : FT biofuels : regional biomass : EJ : biomass liquids : EJ : Industry-fuels
+biomass liquids : biomass liquids : FT biofuels CCS level 1 : regional biomass : EJ : biomass liquids : EJ : Industry-fuels
+biomass liquids : biomass liquids : FT biofuels CCS level 2 : regional biomass : EJ : biomass liquids : EJ : Industry-fuels
+coal to liquids : coal to liquids : coal to liquids CCS level 1 : regional coal : EJ : coal to liquids : EJ : Industry-fuels
+coal to liquids : coal to liquids : coal to liquids CCS level 2 : regional coal : EJ : coal to liquids : EJ : Industry-fuels
+gas pipeline : gas pipeline : gas pipeline : gas processing : EJ : gas pipeline : EJ : Industry-fuels
+gas processing : biomass gasification : biomass gasification : regional biomass : EJ : gas processing : EJ : Industry-fuels
+gas processing : coal gasification : coal gasification : regional coal : EJ : gas processing : EJ : Industry-fuels
+gas processing : natural gas : natural gas : regional natural gas : EJ : gas processing : EJ : Industry-fuels
+gas to liquids : gas to liquids : gas to liquids : regional natural gas : EJ : gas to liquids : EJ : Industry-fuels
+H2 central production : biomass : biomass to H2 : regional biomass : EJ : H2 central production : EJ : Industry-fuels
+H2 central production : biomass : biomass to H2 CCS : regional biomass : EJ : H2 central production : EJ : Industry-fuels
+H2 central production : coal : coal chemical CCS : regional coal : EJ : H2 central production : EJ : Industry-fuels
+H2 central production : electricity : electrolysis : elect_td_ind : EJ : H2 central production : EJ : Industry-fuels
+H2 central production : gas : natural gas steam reforming : regional natural gas : EJ : H2 central production : EJ : Industry-fuels
+H2 central production : gas : natural gas steam reforming CCS : regional natural gas : EJ : H2 central production : EJ : Industry-fuels
+H2 central production : nuclear : thermal splitting : nuclearFuelGenIII : EJ : H2 central production : EJ : Industry-fuels
+H2 central production : solar : electrolysis : PV_resource : EJ : H2 central production : EJ : Industry-fuels
+H2 central production : wind : electrolysis : onshore wind resource : EJ : H2 central production : EJ : Industry-fuels
+H2 wholesale dispensing : H2 forecourt production : electrolysis : elect_td_ind : EJ : H2 wholesale dispensing : EJ : Industry-fuels
+H2 wholesale dispensing : H2 forecourt production : natural gas steam reforming : delivered gas : EJ : H2 wholesale dispensing : EJ : Industry-fuels
+nuclearFuelGenII : enrichedUranium : enrichedUranium : uranium : Mt : nuclearFuelGenII : EJ : Industry-fuels
+nuclearFuelGenIII : enrichedUranium : enrichedUranium : uranium : Mt : nuclearFuelGenIII : EJ : Industry-fuels
+oil refining : oil refining : oil refining : regional oil : EJ : oil refining : EJ : Industry-fuels
+refining : biomass liquids : BTL with hydrogen : regional biomass : EJ : refining : EJ : Industry-fuels
+refining : biomass liquids : biodiesel : regional biomassOil : EJ : refining : EJ : Industry-fuels
+refining : biomass liquids : cellulosic ethanol : regional biomass : EJ : refining : EJ : Industry-fuels
+refining : biomass liquids : cellulosic ethanol CCS level 1 : regional biomass : EJ : refining : EJ : Industry-fuels
+refining : biomass liquids : cellulosic ethanol CCS level 2 : regional biomass : EJ : refining : EJ : Industry-fuels
+refining : biomass liquids : corn ethanol : regional corn for ethanol : EJ : refining : EJ : Industry-fuels
+refining : biomass liquids : FT biofuels : regional biomass : EJ : refining : EJ : Industry-fuels
+refining : biomass liquids : FT biofuels CCS level 1 : regional biomass : EJ : refining : EJ : Industry-fuels
+refining : biomass liquids : FT biofuels CCS level 2 : regional biomass : EJ : refining : EJ : Industry-fuels
+refining : biomass liquids : sugar cane ethanol : regional sugar for ethanol : EJ : refining : EJ : Industry-fuels
+refining : coal to liquids : coal to liquids : regional coal : EJ : refining : EJ : Industry-fuels
+refining : coal to liquids : coal to liquids CCS level 1 : regional coal : EJ : refining : EJ : Industry-fuels
+refining : coal to liquids : coal to liquids CCS level 2 : regional coal : EJ : refining : EJ : Industry-fuels
+refining : gas to liquids : gas to liquids : regional natural gas : EJ : refining : EJ : Industry-fuels
+refining : gas to liquids : gas to liquids CCS level 1 : regional natural gas : EJ : refining : EJ : Industry-fuels
+refining : gas to liquids : gas to liquids CCS level 2 : regional natural gas : EJ : refining : EJ : Industry-fuels
+refining : oil refining : oil refining : regional oil : EJ : refining : EJ : Industry-fuels
+regional natural gas : domestic natural gas : domestic natural gas : natural gas : EJ : regional natural gas : EJ : Industry-fuels
+regional natural gas : imported natural gas : imported LNG : traded LNG : EJ : regional natural gas : EJ : Industry-fuels
+regional natural gas : imported natural gas : imported pipeline gas : traded N.Amer pipeline gas : EJ : regional natural gas : EJ : Industry-fuels
+regional oil : domestic crude oil : domestic crude oil : crude oil : EJ : regional oil : EJ : Industry-fuels
+regional oil : imported crude oil : imported crude oil : traded crude oil : EJ : regional oil : EJ : Industry-fuels
+regional coal : domestic coal : domestic coal : coal : EJ : regional coal : EJ : Industry-fuels
+regional coal : imported coal : imported coal : traded coal : EJ : regional coal : EJ : Industry-fuels
+regional biomass : regional biomass : regional biomass : regional biomass : EJ : regional biomass : EJ : Industry-fuels
+regional biomass : regional biomass : regional biomass : total biomass : EJ : regional biomass : EJ : Industry-fuels
+regional biomassOil : regional biomassOil : Soybean : regional soybean : EJ : DDGS and feedcakes : Mt : Industry-fuels
+regional biomassOil : regional biomassOil : OilCrop : regional oilcrop : EJ : DDGS and feedcakes : Mt : Industry-fuels
+regional biomassOil : regional biomassOil : OilCrop : regional oilcrop : Mt : DDGS and feedcakes : Mt : Industry-fuels
+regional biomassOil : regional biomassOil : PalmFruit : regional palmfruit : Mt : regional biomassOil : EJ : Industry-fuels
+regional corn for ethanol : regional corn for ethanol : regional corn for ethanol : regional corn : EJ : DDGS and feedcakes : Mt : Industry-fuels
+regional corn for ethanol : regional corn for ethanol : regional corn for ethanol : regional corn : Mt : DDGS and feedcakes : Mt : Industry-fuels
+regional sugar for ethanol : regional sugar for ethanol : regional sugar for ethanol : regional sugarcrop : Mt : regional sugar for ethanol : EJ : Industry-fuels
+unconventional oil production : unconventional oil production : unconventional oil production : regional natural gas : EJ : unconventional oil production : EJ : Industry-fuels
+unconventional oil production : unconventional oil production : unconventional oil production : unconventional oil : EJ : unconventional oil production : EJ : Industry-fuels
+resid clothes dryers : electricity : clothes dryer : elect_td_bld : EJ : resid clothes dryers : Mt : Buildings
+resid clothes dryers : electricity : clothes dryer hi-eff : elect_td_bld : EJ : resid clothes dryers : Mt : Buildings
+resid clothes dryers : gas : clothes dryer : delivered gas : EJ : resid clothes dryers : Mt : Buildings
+resid clothes washers : electricity : clothes washer : elect_td_bld : EJ : resid clothes washers : billion cycles : Buildings
+resid clothes washers : electricity : clothes washer hi-eff : elect_td_bld : EJ : resid clothes washers : billion cycles : Buildings
+resid computers : electricity : electricity : elect_td_bld : EJ : resid computers : EJ : Buildings
+resid cooking : electricity : electric oven : elect_td_bld : EJ : resid cooking : EJ : Buildings
+resid cooking : gas : gas oven : delivered gas : EJ : resid cooking : EJ : Buildings
+resid cooking : gas : gas oven hi-eff : delivered gas : EJ : resid cooking : EJ : Buildings
+resid cooking : refined liquids : lpg oven : refined liquids enduse : EJ : resid cooking : EJ : Buildings
+resid cooking : refined liquids : lpg oven hi-eff : refined liquids enduse : EJ : resid cooking : EJ : Buildings
+resid cooling : electricity : air conditioning : elect_td_bld : EJ : resid cooling : EJ : Buildings
+resid cooling : electricity : air conditioning hi-eff : elect_td_bld : EJ : resid cooling : EJ : Buildings
+resid cooling : gas : gas : delivered gas : EJ : resid cooling : EJ : Buildings
+resid dishwashers : electricity : dishwasher : elect_td_bld : EJ : resid dishwashers : billion cycles : Buildings
+resid dishwashers : electricity : dishwasher hi-eff : elect_td_bld : EJ : resid dishwashers : billion cycles : Buildings
+resid freezers : electricity : freezer : elect_td_bld : EJ : resid freezers : EJ : Buildings
+resid freezers : electricity : freezer hi-eff : elect_td_bld : EJ : resid freezers : EJ : Buildings
+resid furnace fans : electricity : electricity : elect_td_bld : EJ : resid furnace fans : EJ : Buildings
+resid heating : biomass : wood furnace : delivered biomass : EJ : resid heating : EJ : Buildings
+resid heating : coal : coal furnace : delivered coal : EJ : resid heating : EJ : Buildings
+resid heating : electricity : electric furnace : elect_td_bld : EJ : resid heating : EJ : Buildings
+resid heating : electricity : electric heat pump : elect_td_bld : EJ : resid heating : EJ : Buildings
+resid heating : gas : gas furnace : delivered gas : EJ : resid heating : EJ : Buildings
+resid heating : gas : gas furnace hi-eff : delivered gas : EJ : resid heating : EJ : Buildings
+resid heating : refined liquids : fuel furnace : refined liquids enduse : EJ : resid heating : EJ : Buildings
+resid heating : refined liquids : fuel furnace hi-eff : refined liquids enduse : EJ : resid heating : EJ : Buildings
+resid heating : traditional biomass : traditional biomass : traditional biomass : EJ : resid heating : EJ : Buildings
+resid hot water : electricity : electric heat pump water heater : elect_td_bld : EJ : resid hot water : EJ : Buildings
+resid hot water : electricity : electric resistance water heater : elect_td_bld : EJ : resid hot water : EJ : Buildings
+resid hot water : electricity : electric resistance water heater hi-eff : elect_td_bld : EJ : resid hot water : EJ : Buildings
+resid hot water : gas : gas water heater : delivered gas : EJ : resid hot water : EJ : Buildings
+resid hot water : gas : gas water heater hi-eff : delivered gas : EJ : resid hot water : EJ : Buildings
+resid hot water : refined liquids : fuel water heater : refined liquids enduse : EJ : resid hot water : EJ : Buildings
+resid hot water : refined liquids : fuel water heater hi-eff : refined liquids enduse : EJ : resid hot water : EJ : Buildings
+resid lighting : electricity : fluorescent : elect_td_bld : EJ : resid lighting : petalumen-hours : Buildings
+resid lighting : electricity : incandescent : elect_td_bld : EJ : resid lighting : petalumen-hours : Buildings
+resid lighting : electricity : solid state : elect_td_bld : EJ : resid lighting : petalumen-hours : Buildings
+resid refrigerators : electricity : refrigerator : elect_td_bld : EJ : resid refrigerators : EJ : Buildings
+resid refrigerators : electricity : refrigerator hi-eff : elect_td_bld : EJ : resid refrigerators : EJ : Buildings
+resid televisions : electricity : electricity : elect_td_bld : EJ : resid televisions : EJ : Buildings
+resid other : electricity : electricity : elect_td_bld : EJ : resid other : EJ : Buildings
+resid other : gas : gas : delivered gas : EJ : resid other : EJ : Buildings
+resid other : refined liquids : refined liquids : refined liquids enduse : EJ : resid other : EJ : Buildings
+resid others : biomass : biomass : delivered biomass : EJ : resid others : EJ : Buildings
+resid others : coal : coal : delivered coal : EJ : resid others : EJ : Buildings
+resid others : district heat : district heat : district heat : EJ : resid others : EJ : Buildings
+resid others : electricity : electricity : elect_td_bld : EJ : resid others : EJ : Buildings
+resid others : gas : gas : delivered gas : EJ : resid others : EJ : Buildings
+resid others : refined liquids : refined liquids : refined liquids enduse : EJ : resid others : EJ : Buildings
+resid others : traditional biomass : traditional biomass : traditional biomass : EJ : resid others : EJ : Buildings
+comm cooking : electricity : electric range : elect_td_bld : EJ : comm cooking : EJ : Buildings
+comm cooking : electricity : electric range hi-eff : elect_td_bld : EJ : comm cooking : EJ : Buildings
+comm cooking : gas : gas range : delivered gas : EJ : comm cooking : EJ : Buildings
+comm cooking : gas : gas range hi-eff : delivered gas : EJ : comm cooking : EJ : Buildings
+comm cooling : electricity : air conditioning : elect_td_bld : EJ : comm cooling : EJ : Buildings
+comm cooling : electricity : air conditioning hi-eff : elect_td_bld : EJ : comm cooling : EJ : Buildings
+comm cooling : gas : gas cooling : delivered gas : EJ : comm cooling : EJ : Buildings
+comm heating : biomass : wood furnace : delivered biomass : EJ : comm heating : EJ : Buildings
+comm heating : coal : coal furnace : delivered coal : EJ : comm heating : EJ : Buildings
+comm heating : district heat : district heat : district heat : EJ : comm heating : EJ : Buildings
+comm heating : electricity : electric furnace : elect_td_bld : EJ : comm heating : EJ : Buildings
+comm heating : electricity : electric heat pump : elect_td_bld : EJ : comm heating : EJ : Buildings
+comm heating : gas : gas furnace : delivered gas : EJ : comm heating : EJ : Buildings
+comm heating : gas : gas furnace hi-eff : delivered gas : EJ : comm heating : EJ : Buildings
+comm heating : refined liquids : fuel furnace : refined liquids enduse : EJ : comm heating : EJ : Buildings
+comm hot water : electricity : electric heat pump water heater : elect_td_bld : EJ : comm hot water : EJ : Buildings
+comm hot water : electricity : electric resistance water heater : elect_td_bld : EJ : comm hot water : EJ : Buildings
+comm hot water : gas : gas water heater : delivered gas : EJ : comm hot water : EJ : Buildings
+comm hot water : gas : gas water heater hi-eff : delivered gas : EJ : comm hot water : EJ : Buildings
+comm hot water : refined liquids : fuel water heater : refined liquids enduse : EJ : comm hot water : EJ : Buildings
+comm lighting : electricity : fluorescent : elect_td_bld : EJ : comm lighting : petalumen-hours : Buildings
+comm lighting : electricity : incandescent : elect_td_bld : EJ : comm lighting : petalumen-hours : Buildings
+comm lighting : electricity : solid state : elect_td_bld : EJ : comm lighting : petalumen-hours : Buildings
+comm non-building : electricity : electricity : elect_td_bld : EJ : comm non-building : EJ : Buildings
+comm office : electricity : office equipment : elect_td_bld : EJ : comm office : EJ : Buildings
+comm refrigeration : electricity : refrigeration : elect_td_bld : EJ : comm refrigeration : EJ : Buildings
+comm refrigeration : electricity : refrigeration hi-eff : elect_td_bld : EJ : comm refrigeration : EJ : Buildings
+comm ventilation : electricity : ventilation : elect_td_bld : EJ : comm ventilation : million km3 : Buildings
+comm ventilation : electricity : ventilation hi-eff : elect_td_bld : EJ : comm ventilation : million km3 : Buildings
+comm other : electricity : electricity : elect_td_bld : EJ : comm other : EJ : Buildings
+comm other : gas : gas : delivered gas : EJ : comm other : EJ : Buildings
+comm other : refined liquids : refined liquids : refined liquids enduse : EJ : comm other : EJ : Buildings
+comm others : biomass : biomass : delivered biomass : EJ : comm others : EJ : Buildings
+comm others : coal : coal : delivered coal : EJ : comm others : EJ : Buildings
+comm others : district heat : district heat : district heat : EJ : comm others : EJ : Buildings
+comm others : electricity : electricity : elect_td_bld : EJ : comm others : EJ : Buildings
+comm others : gas : gas : delivered gas : EJ : comm others : EJ : Buildings
+comm others : refined liquids : refined liquids : refined liquids enduse : EJ : comm others : EJ : Buildings
+trn_freight_road : Heavy truck : BEV : elect_td_trn : EJ : trn_freight_road : million ton-km : Trn-Onroad
+trn_freight_road : Heavy truck : FCEV : H2 retail dispensing : EJ : trn_freight_road : million ton-km : Trn-Onroad
+trn_freight_road : Heavy truck : Hybrid Liquids : refined liquids enduse : EJ : trn_freight_road : million ton-km : Trn-Onroad
+trn_freight_road : Heavy truck : Liquids : refined liquids enduse : EJ : trn_freight_road : million ton-km : Trn-Onroad
+trn_freight_road : Heavy truck : NG : delivered gas : EJ : trn_freight_road : million ton-km : Trn-Onroad
+trn_freight_road : Medium truck : BEV : elect_td_trn : EJ : trn_freight_road : million ton-km : Trn-Onroad
+trn_freight_road : Medium truck : FCEV : H2 retail dispensing : EJ : trn_freight_road : million ton-km : Trn-Onroad
+trn_freight_road : Medium truck : Hybrid Liquids : refined liquids enduse : EJ : trn_freight_road : million ton-km : Trn-Onroad
+trn_freight_road : Medium truck : Liquids : refined liquids enduse : EJ : trn_freight_road : million ton-km : Trn-Onroad
+trn_freight_road : Medium truck : NG : delivered gas : EJ : trn_freight_road : million ton-km : Trn-Onroad
+trn_freight_road : Light truck : BEV : elect_td_trn : EJ : trn_freight_road : million ton-km : Trn-Onroad
+trn_freight_road : Light truck : FCEV : H2 retail dispensing : EJ : trn_freight_road : million ton-km : Trn-Onroad
+trn_freight_road : Light truck : Hybrid Liquids : refined liquids enduse : EJ : trn_freight_road : million ton-km : Trn-Onroad
+trn_freight_road : Light truck : Liquids : refined liquids enduse : EJ : trn_freight_road : million ton-km : Trn-Onroad
+trn_freight_road : Light truck : NG : delivered gas : EJ : trn_freight_road : million ton-km : Trn-Onroad
+trn_pass_road : Bus : BEV : elect_td_trn : EJ : trn_pass_road : million pass-km : Trn-Onroad
+trn_pass_road : Bus : FCEV : H2 retail dispensing : EJ : trn_pass_road : million pass-km : Trn-Onroad
+trn_pass_road : Bus : Hybrid Liquids : refined liquids enduse : EJ : trn_pass_road : million pass-km : Trn-Onroad
+trn_pass_road : Bus : Liquids : refined liquids enduse : EJ : trn_pass_road : million pass-km : Trn-Onroad
+trn_pass_road : Bus : NG : delivered gas : EJ : trn_pass_road : million pass-km : Trn-Onroad
+trn_pass_road_LDV : 2W and 3W : BEV : elect_td_trn : EJ : trn_pass_road_LDV : million pass-km : Trn-Onroad
+trn_pass_road_LDV : 2W and 3W : LA-BEV : elect_td_trn : EJ : trn_pass_road_LDV : million pass-km : Trn-Onroad
+trn_pass_road_LDV : 2W and 3W : Liquids : refined liquids enduse : EJ : trn_pass_road_LDV : million pass-km : Trn-Onroad
+trn_pass_road_LDV : 2W and 3W : NG : delivered gas : EJ : trn_pass_road_LDV : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Car : BEV : elect_td_trn : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Car : FCEV : H2 retail dispensing : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Car : Hybrid Liquids : refined liquids enduse : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Car : Liquids : refined liquids enduse : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Car : NG : delivered gas : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Large Car and Truck : BEV : elect_td_trn : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Large Car and Truck : FCEV : H2 retail dispensing : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Large Car and Truck : Hybrid Liquids : refined liquids enduse : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Large Car and Truck : Liquids : refined liquids enduse : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Large Car and Truck : NG : delivered gas : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Mini Car : BEV : elect_td_trn : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Mini Car : FCEV : H2 enduse : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Mini Car : Hybrid Liquids : refined liquids enduse : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Mini Car : Liquids : refined liquids enduse : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Mini Car : NG : delivered gas : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_aviation_intl : International Aviation : Liquids : refined liquids enduse : EJ : trn_aviation_intl : million pass-km : Trn-Nonroad
+trn_aviation_intl : International Aviation : BEV : elect_td_trn : EJ : trn_aviation_intl : million pass-km : Trn-Nonroad
+trn_aviation_intl : International Aviation : Hydrogen : H2 wholesale dispensing : EJ : trn_aviation_intl : million pass-km : Trn-Nonroad
+trn_freight : Domestic Ship : BEV : elect_td_trn : EJ : trn_freight : million ton-km : Trn-Nonroad
+trn_freight : Domestic Ship : FCEV : H2 wholesale dispensing : EJ : trn_freight : million ton-km : Trn-Nonroad
+trn_freight : Domestic Ship : Hybrid Liquids : refined liquids enduse : EJ : trn_freight : million ton-km : Trn-Nonroad
+trn_freight : Domestic Ship : Liquids : refined liquids enduse : EJ : trn_freight : million ton-km : Trn-Nonroad
+trn_freight : Freight Rail : BEV : elect_td_trn : EJ : trn_freight : million ton-km : Trn-Nonroad
+trn_freight : Freight Rail : coal : delivered coal : EJ : trn_freight : million ton-km : Trn-Nonroad
+trn_freight : Freight Rail : Electric : elect_td_trn : EJ : trn_freight : million ton-km : Trn-Nonroad
+trn_freight : Freight Rail : FCEV : H2 wholesale dispensing : EJ : trn_freight : million ton-km : Trn-Nonroad
+trn_freight : Freight Rail : Hybrid Liquids : refined liquids enduse : EJ : trn_freight : million ton-km : Trn-Nonroad
+trn_freight : Freight Rail : Liquids : refined liquids enduse : EJ : trn_freight : million ton-km : Trn-Nonroad
+trn_pass : Cycle : Cycle : renewable : EJ : trn_pass : million pass-km : Trn-Nonroad
+trn_pass : Domestic Aviation : Liquids : refined liquids enduse : EJ : trn_aviation_intl : million pass-km : Trn-Nonroad
+trn_pass : Domestic Aviation : BEV : elect_td_trn : EJ : trn_aviation_intl : million pass-km : Trn-Nonroad
+trn_pass : Domestic Aviation : Hydrogen : H2 wholesale dispensing : EJ : trn_aviation_intl : million pass-km : Trn-Nonroad
+trn_pass : HSR : Electric : elect_td_trn : EJ : trn_pass : million pass-km : Trn-Nonroad
+trn_pass : Passenger Rail : Electric : elect_td_trn : EJ : trn_pass : million pass-km : Trn-Nonroad
+trn_pass : Passenger Rail : Liquids : refined liquids enduse : EJ : trn_pass : million pass-km : Trn-Nonroad
+trn_pass : road : road : trn_pass_road : million pass-km : trn_pass : million pass-km : Trn-Nonroad
+trn_pass : Walk : Walk : renewable : EJ : trn_pass : million pass-km : Trn-Nonroad
+trn_shipping_intl : International Ship : Liquids : refined liquids enduse : EJ : trn_shipping_intl : million ton-km : Trn-Nonroad
+trn_shipping_intl : International Ship : BEV : elect_td_trn : EJ : trn_shipping_intl : million ton-km : Trn-Nonroad
+trn_shipping_intl : International Ship : FCEV : H2 wholesale dispensing : EJ : trn_shipping_intl : million ton-km : Trn-Nonroad
+trn_shipping_intl : International Ship : Hybrid Liquids : refined liquids enduse : EJ : trn_shipping_intl : million ton-km : Trn-Nonroad
+trn_shipping_intl : International Ship : Liquids : refined liquids enduse : EJ : trn_shipping_intl : million ton-km : Trn-Nonroad
+delivered biomass : delivered biomass : delivered biomass : regional biomass : EJ : delivered biomass : EJ : Other
+delivered coal : delivered coal : delivered coal : delivered coal : EJ : delivered coal : EJ : Other
+delivered coal : delivered coal : delivered coal : regional coal : EJ : delivered coal : EJ : Other
+delivered gas : delivered gas : delivered gas : delivered gas : EJ : delivered gas : EJ : Other
+delivered gas : delivered gas : delivered gas : gas pipeline : EJ : delivered gas : EJ : Other
+wholesale gas : wholesale gas : wholesale gas : gas pipeline : EJ : wholesale gas : EJ : Industry-fuels
+wholesale gas : wholesale gas : wholesale gas : wholesale gas : EJ : wholesale gas : EJ : Other
+district heat : biomass : biomass : delivered biomass : EJ : district heat : EJ : Other
+district heat : coal : coal : delivered coal : EJ : district heat : EJ : Other
+district heat : gas : gas : wholesale gas : EJ : district heat : EJ : Other
+district heat : refined liquids : refined liquids : refined liquids industrial : EJ : district heat : EJ : Other
+elect_td_bld : elect_td_bld : elect_td_bld : electricity domestic supply : EJ : elect_td_bld : EJ : Other
+elect_td_bld : elect_td_bld : elect_td_bld : electricity_net_ownuse : EJ : elect_td_bld : EJ : Other
+elect_td_bld : rooftop_pv : rooftop_pv : distributed_solar : EJ : elect_td_bld : EJ : Other
+elect_td_ind : elect_td_ind : elect_td_ind : electricity domestic supply : EJ : elect_td_ind : EJ : Other
+elect_td_ind : elect_td_ind : elect_td_ind : electricity_net_ownuse : EJ : elect_td_ind : EJ : Other
+elect_td_trn : elect_td_trn : elect_td_trn : electricity domestic supply : EJ : elect_td_trn : EJ : Other
+elect_td_trn : elect_td_trn : elect_td_trn : electricity_net_ownuse : EJ : elect_td_trn : EJ : Other
+electricity_net_ownuse : electricity_net_ownuse : electricity_net_ownuse : electricity : EJ : electricity_net_ownuse : EJ : Other
+refined liquids enduse : refined liquids enduse : refined liquids enduse : refined liquids enduse : EJ : refined liquids enduse : EJ : Other
+refined liquids enduse : refined liquids enduse : refined liquids enduse : refining : EJ : refined liquids enduse : EJ : Industry-fuels
+refined liquids industrial : refined liquids industrial : refined liquids industrial : refined liquids industrial : EJ : refined liquids industrial : EJ : Other
+refined liquids industrial : refined liquids industrial : refined liquids industrial : refining : EJ : refined liquids industrial : EJ : Industry-fuels

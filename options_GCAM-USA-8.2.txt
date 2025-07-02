@@ -1,0 +1,98 @@
+#Notes: It a line is blank or starts with a #, it is not parsed
+#       The glimpseDir, gCamHomeDir, and gCamGUIDir specifications filter through the rest of the options, 
+#            replacing $glimpseDir$, $gCamHomeDir$, and $gCamGUIDir$, respectively 
+#       It is important that these be specified at the top of the file
+
+#===========================================================================================
+#----Major options-----
+
+#-----set glimpseDir so GLIMPSE knows where your distribution is located-----
+glimpseDir = .
+
+#-----set gCamGUIDir so GLIMPSE knows where to find the GLIMPSE executable and related files
+gCamGUIDir = $glimpseDir$/GLIMPSE-ScenarioBuilder
+
+#-----set gCamHomeDir so GLIMPSE knows the location of your gcam installation-----
+gCamHomeDir = $glimpseDir$/GCAM-Model/gcam-v8.2
+
+#-----This is where you specify which database will be used for new GCAM results
+gCamOutputDatabase = $gCamHomeDir$/output/database
+
+#-----Specify the pathname for this options file. Used to access/edit the file from GLIMPSE
+optionsFilename = $glimpseDir$/options_GCAM-USA-8.2.txt
+
+
+#-----Template configuration file. This file is modified to create a scenario-specific configuration file
+configurationTemplate = $gCamGuiDir$/templates/configuration_GCAM-USA-8.2_template.xml
+
+#===========================================================================================
+
+
+#-----Editors that are automatically invoked when you double click on a txt or xml file
+textEditor = C:/Windows/notepad.exe
+xmlEditor = C:/Windows/notepad.exe
+#textEditor = C:/Program Files/Notepad++/notepad++.exe
+#xmlEditor = C:/Program Files/Notepad++/notepad++.exe
+
+#-----GCAM executable name and location-----
+gCamExecutable = gcam.exe
+#gCamExecutable = gcam-epa.exe
+gCamExecutableArgs = -C 
+gCamExecutableDir = $gCamHomeDir$/exe
+gCamDataDir = $gCamHomeDir$/input/gcamdata
+xmlLibrary = $gCamHomeDir$/input
+
+#-----Locations where GLIMPSE (GCAM-GUI) components and documentation are stored-----
+glimpseDocDir = $glimpseDir$/Docs
+scenarioComponentsDir = $glimpseDir$/GLIMPSE-Data/GCAM-USA-8.2/ScenarioComponents
+scenarioDir = $glimpseDir$/GLIMPSE-Data/GCAM-USA-8.2/ScenarioFolders
+gCamGUILogDir = $glimpseDir$/GLIMPSE-Data/logs
+gCamGUIJarDir = $glimpseDir$/GLIMPSE-ScenarioBuilder
+gCamGUIJar = GLIMPSE-ScenarioBuilder.jar 
+trashDir = $glimpseDir$/GLIMPSE-Data/GCAM-USA-8.2/trash
+resourceDir = $gCamGuiDir$/resources 
+
+#-----ModelInterface name and location (may need to update version)-----
+gCamPPExecutable = GLIMPSE-ModelInterface.jar
+gCamPPExecutableDir = $glimpseDir$/GLIMPSE-ModelInterface
+queryFile = $glimpseDir$/GLIMPSE-ModelInterface/config/Main_queries_GLIMPSE-8.2.xml
+
+#-----Files for tailoring GLIMPSE to a particular version of GCAM-----
+
+#list of technologies to include in the tech bound scenario component dialog
+tchBndListFile = $gCamGuiDir$/templates/tech_bnd_list_usa_8.2.txt
+
+#table with load factors for transportation technologies
+tranLoadFactorsFile = $gCamGuiDir$/resources/trn_veh_info_8.2.csv
+
+#files include specifications used in generating csv and xml files
+csvColumnFile = $gCamGuiDir$/templates/glimpseCSVColumnsForTechParam.txt
+xmlHeaderFile = $gCamGuiDir$/templates/glimpseXMLHeaders_v8.2.txt
+
+#file with preset regions
+presetRegionsFilename = $glimpseDir$/GLIMPSE-ModelInterface/config/preset_region_list.txt
+
+#file unit conversion file for ModelInterface
+unitConversionsFile = $glimpseDir$/GLIMPSE-ModelInterface/config/units_rules.csv
+
+#-----Miscl GUI setup options-----
+#Are you using GCAM-USA? If so, indicate "true". This enables state-level items in tree
+isGcamUSA = true
+
+#thresholds for warnings
+maxDatabaseSizeGB = 40
+
+#These values are inserted into the scenario-specific configuration file when it created. Comment with # to use default
+stop-period = 11
+solver = $gCamHomeDir$/input/solution/cal_broyden_config.xml
+debugRegion = CT
+debugCreate = 1
+debugRename = 0
+
+gCamOutputToSave = $gCamHomeDir$/exe/logs/main_log.txt;$gCamHomeDir$/exe/debug.xml
+#gCamOutputToSave = $gCamHomeDir$/exe/logs/main_log.txt;$gCamHomeDir$/exe/logs/calibration_log.txt;$gCamHomeDir$/exe/logs/solver_log.csv;$gCamHomeDir$/exe/debug.xml
+
+#----GUI Appearance-----
+preferredFontSize = 11
+useIcons = true
+showSplash = false

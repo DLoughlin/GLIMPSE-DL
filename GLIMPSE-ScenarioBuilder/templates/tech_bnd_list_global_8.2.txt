@@ -1,0 +1,722 @@
+electricity : biomass : biomass (conv) : elec_biomass (conv) : EJ : electricity : EJ : EGU
+electricity : biomass : biomass (IGCC) : elec_biomass (IGCC) : EJ : electricity : EJ : EGU
+electricity : coal : coal (conv pul) : elec_coal (conv pul) : EJ : electricity : EJ : EGU
+electricity : coal : coal (IGCC) : elec_coal (IGCC) : EJ : electricity : EJ : EGU
+electricity : gas : gas (CC) : elec_gas (CC) : EJ : electricity : EJ : EGU
+electricity : gas : gas (steam/CT) : elec_gas (steam/CT) : EJ : electricity : EJ : EGU
+electricity : geothermal : geothermal : elec_geothermal : EJ : electricity : EJ : EGU
+electricity : nuclear : Gen_II_LWR : elec_Gen_II_LWR : EJ : electricity : EJ : EGU
+electricity : nuclear : Gen_III : elec_Gen_III : EJ : electricity : EJ : EGU
+electricity : refined liquids : refined liquids (CC) : elec_refined liquids (CC) : EJ : electricity : EJ : EGU
+electricity : refined liquids : refined liquids (steam/CT) : elec_refined liquids (steam/CT) : EJ : electricity : EJ : EGU
+electricity : solar : CSP : elec_CSP : EJ : electricity : EJ : EGU
+electricity : solar : CSP_storage : elec_CSP_storage : EJ : electricity : EJ : EGU
+electricity : solar : PV : global solar resource : EJ : electricity : EJ : EGU
+electricity : solar : PV_storage : global solar resource : EJ : electricity : EJ : EGU
+electricity : wind : wind : onshore wind resource : EJ : electricity : EJ : EGU
+electricity : wind : wind_offshore : offshore wind resource : EJ : electricity : EJ : EGU
+electricity : wind : wind_storage : onshore wind resource : EJ : electricity : EJ : EGU
+elec_biomass (conv) : biomass (conv) : biomass (conv) (cooling pond) : regional biomass : EJ : elec_biomass (conv) : EJ : EGU-Detail
+elec_biomass (conv) : biomass (conv) : biomass (conv) (dry cooling) : regional biomass : EJ : elec_biomass (conv) : EJ : EGU-Detail
+elec_biomass (conv) : biomass (conv) : biomass (conv) (once through) : regional biomass : EJ : elec_biomass (conv) : EJ : EGU-Detail
+elec_biomass (conv) : biomass (conv) : biomass (conv) (recirculating) : regional biomass : EJ : elec_biomass (conv) : EJ : EGU-Detail
+elec_biomass (conv) : biomass (conv) : biomass (conv) (seawater) : regional biomass : EJ : elec_biomass (conv) : EJ : EGU-Detail
+elec_biomass (IGCC) : biomass (IGCC) : biomass (IGCC) (dry cooling) : regional biomass : EJ : elec_biomass (IGCC) : EJ : EGU-Detail
+elec_biomass (IGCC) : biomass (IGCC) : biomass (IGCC) (once through) : regional biomass : EJ : elec_biomass (IGCC) : EJ : EGU-Detail
+elec_biomass (IGCC) : biomass (IGCC) : biomass (IGCC) (recirculating) : regional biomass : EJ : elec_biomass (IGCC) : EJ : EGU-Detail
+elec_biomass (IGCC) : biomass (IGCC) : biomass (IGCC) (seawater) : regional biomass : EJ : elec_biomass (IGCC) : EJ : EGU-Detail
+elec_coal (conv pul) : coal (conv pul) : coal (conv pul) (cooling pond) : regional coal : EJ : elec_coal (conv pul) : EJ : EGU-Detail
+elec_coal (conv pul) : coal (conv pul) : coal (conv pul) (dry cooling) : regional coal : EJ : elec_coal (conv pul) : EJ : EGU-Detail
+elec_coal (conv pul) : coal (conv pul) : coal (conv pul) (once through) : regional coal : EJ : elec_coal (conv pul) : EJ : EGU-Detail
+elec_coal (conv pul) : coal (conv pul) : coal (conv pul) (recirculating) : regional coal : EJ : elec_coal (conv pul) : EJ : EGU-Detail
+elec_coal (conv pul) : coal (conv pul) : coal (conv pul) (seawater) : regional coal : EJ : elec_coal (conv pul) : EJ : EGU-Detail
+elec_coal (IGCC) : coal (IGCC) : coal (IGCC) (dry cooling) : regional coal : EJ : elec_coal (IGCC) : EJ : EGU-Detail
+elec_coal (IGCC) : coal (IGCC) : coal (IGCC) (once through) : regional coal : EJ : elec_coal (IGCC) : EJ : EGU-Detail
+elec_coal (IGCC) : coal (IGCC) : coal (IGCC) (recirculating) : regional coal : EJ : elec_coal (IGCC) : EJ : EGU-Detail
+elec_coal (IGCC) : coal (IGCC) : coal (IGCC) (seawater) : regional coal : EJ : elec_coal (IGCC) : EJ : EGU-Detail
+elec_CSP : CSP : CSP (dry_hybrid) : global solar resource : EJ : elec_CSP : EJ : EGU-Detail
+elec_CSP : CSP : CSP (recirculating) : global solar resource : EJ : elec_CSP : EJ : EGU-Detail
+elec_CSP_storage : CSP_storage : CSP_storage (dry_hybrid) : global solar resource : EJ : elec_CSP_storage : EJ : EGU-Detail
+elec_CSP_storage : CSP_storage : CSP_storage (recirculating) : global solar resource : EJ : elec_CSP_storage : EJ : EGU-Detail
+elec_gas (CC) : gas (CC) : gas (CC) (cooling pond) : wholesale gas : EJ : elec_gas (CC) : EJ : EGU-Detail
+elec_gas (CC) : gas (CC) : gas (CC) (dry cooling) : wholesale gas : EJ : elec_gas (CC) : EJ : EGU-Detail
+elec_gas (CC) : gas (CC) : gas (CC) (once through) : wholesale gas : EJ : elec_gas (CC) : EJ : EGU-Detail
+elec_gas (CC) : gas (CC) : gas (CC) (recirculating) : wholesale gas : EJ : elec_gas (CC) : EJ : EGU-Detail
+elec_gas (CC) : gas (CC) : gas (CC) (seawater) : wholesale gas : EJ : elec_gas (CC) : EJ : EGU-Detail
+elec_gas (steam/CT) : gas (steam/CT) : gas (steam/CT) (cooling pond) : wholesale gas : EJ : elec_gas (steam/CT) : EJ : EGU-Detail
+elec_gas (steam/CT) : gas (steam/CT) : gas (steam/CT) (dry cooling) : wholesale gas : EJ : elec_gas (steam/CT) : EJ : EGU-Detail
+elec_gas (steam/CT) : gas (steam/CT) : gas (steam/CT) (once through) : wholesale gas : EJ : elec_gas (steam/CT) : EJ : EGU-Detail
+elec_gas (steam/CT) : gas (steam/CT) : gas (steam/CT) (recirculating) : wholesale gas : EJ : elec_gas (steam/CT) : EJ : EGU-Detail
+elec_gas (steam/CT) : gas (steam/CT) : gas (steam/CT) (seawater) : wholesale gas : EJ : elec_gas (steam/CT) : EJ : EGU-Detail
+elec_Gen_II_LWR : Gen_II_LWR : Gen_II_LWR (cooling pond) : nuclearFuelGenII : EJ : elec_Gen_II_LWR : EJ : EGU-Detail
+elec_Gen_II_LWR : Gen_II_LWR : Gen_II_LWR (once through) : nuclearFuelGenII : EJ : elec_Gen_II_LWR : EJ : EGU-Detail
+elec_Gen_II_LWR : Gen_II_LWR : Gen_II_LWR (recirculating) : nuclearFuelGenII : EJ : elec_Gen_II_LWR : EJ : EGU-Detail
+elec_Gen_II_LWR : Gen_II_LWR : Gen_II_LWR (seawater) : nuclearFuelGenII : EJ : elec_Gen_II_LWR : EJ : EGU-Detail
+elec_Gen_III : Gen_III : Gen_III (cooling pond) : nuclearFuelGenIII : EJ : elec_Gen_III : EJ : EGU-Detail
+elec_Gen_III : Gen_III : Gen_III (once through) : nuclearFuelGenIII : EJ : elec_Gen_III : EJ : EGU-Detail
+elec_Gen_III : Gen_III : Gen_III (recirculating) : nuclearFuelGenIII : EJ : elec_Gen_III : EJ : EGU-Detail
+elec_Gen_III : Gen_III : Gen_III (seawater) : nuclearFuelGenIII : EJ : elec_Gen_III : EJ : EGU-Detail
+elec_geothermal : geothermal : geothermal (dry_hybrid) : geothermal : EJ : elec_geothermal : EJ : EGU-Detail
+elec_geothermal : geothermal : geothermal (recirculating) : geothermal : EJ : elec_geothermal : EJ : EGU-Detail
+elec_refined liquids (CC) : refined liquids (CC) : refined liquids (CC) (dry cooling) : oil-credits : EJ : elec_refined liquids (CC) : EJ : EGU-Detail
+elec_refined liquids (CC) : refined liquids (CC) : refined liquids (CC) (dry cooling) : refined liquids industrial : EJ : elec_refined liquids (CC) : EJ : EGU-Detail
+elec_refined liquids (CC) : refined liquids (CC) : refined liquids (CC) (once through) : oil-credits : EJ : elec_refined liquids (CC) : EJ : EGU-Detail
+elec_refined liquids (CC) : refined liquids (CC) : refined liquids (CC) (once through) : refined liquids industrial : EJ : elec_refined liquids (CC) : EJ : EGU-Detail
+elec_refined liquids (CC) : refined liquids (CC) : refined liquids (CC) (recirculating) : oil-credits : EJ : elec_refined liquids (CC) : EJ : EGU-Detail
+elec_refined liquids (CC) : refined liquids (CC) : refined liquids (CC) (recirculating) : refined liquids industrial : EJ : elec_refined liquids (CC) : EJ : EGU-Detail
+elec_refined liquids (CC) : refined liquids (CC) : refined liquids (CC) (seawater) : oil-credits : EJ : elec_refined liquids (CC) : EJ : EGU-Detail
+elec_refined liquids (CC) : refined liquids (CC) : refined liquids (CC) (seawater) : refined liquids industrial : EJ : elec_refined liquids (CC) : EJ : EGU-Detail
+elec_refined liquids (steam/CT) : refined liquids (steam/CT) : refined liquids (steam/CT) (cooling pond) : oil-credits : EJ : elec_refined liquids (steam/CT) : EJ : EGU-Detail
+elec_refined liquids (steam/CT) : refined liquids (steam/CT) : refined liquids (steam/CT) (cooling pond) : refined liquids industrial : EJ : elec_refined liquids (steam/CT) : EJ : EGU-Detail
+elec_refined liquids (steam/CT) : refined liquids (steam/CT) : refined liquids (steam/CT) (dry cooling) : oil-credits : EJ : elec_refined liquids (steam/CT) : EJ : EGU-Detail
+elec_refined liquids (steam/CT) : refined liquids (steam/CT) : refined liquids (steam/CT) (dry cooling) : refined liquids industrial : EJ : elec_refined liquids (steam/CT) : EJ : EGU-Detail
+elec_refined liquids (steam/CT) : refined liquids (steam/CT) : refined liquids (steam/CT) (once through) : oil-credits : EJ : elec_refined liquids (steam/CT) : EJ : EGU-Detail
+elec_refined liquids (steam/CT) : refined liquids (steam/CT) : refined liquids (steam/CT) (once through) : refined liquids industrial : EJ : elec_refined liquids (steam/CT) : EJ : EGU-Detail
+elec_refined liquids (steam/CT) : refined liquids (steam/CT) : refined liquids (steam/CT) (recirculating) : oil-credits : EJ : elec_refined liquids (steam/CT) : EJ : EGU-Detail
+elec_refined liquids (steam/CT) : refined liquids (steam/CT) : refined liquids (steam/CT) (recirculating) : refined liquids industrial : EJ : elec_refined liquids (steam/CT) : EJ : EGU-Detail
+elec_refined liquids (steam/CT) : refined liquids (steam/CT) : refined liquids (steam/CT) (seawater) : oil-credits : EJ : elec_refined liquids (steam/CT) : EJ : EGU-Detail
+elec_refined liquids (steam/CT) : refined liquids (steam/CT) : refined liquids (steam/CT) (seawater) : refined liquids industrial : EJ : elec_refined liquids (steam/CT) : EJ : EGU-Detail
+elect_td_bld : elect_td_bld : elect_td_bld : electricity_net_ownuse : EJ : elect_td_bld : EJ : Electricity-TD
+elect_td_bld : rooftop_pv : rooftop_pv : distributed_solar : EJ : elect_td_bld : EJ : Electricity-TD
+elect_td_ind : elect_td_ind : elect_td_ind : electricity_net_ownuse : EJ : elect_td_ind : EJ : Electricity-TD
+elect_td_trn : elect_td_trn : elect_td_trn : electricity_net_ownuse : EJ : elect_td_trn : EJ : Electricity-TD
+electricity_net_ownuse : electricity_net_ownuse : electricity_net_ownuse : electricity : EJ : electricity_net_ownuse : EJ : Electricity-TD
+refining : biomass liquids : biodiesel : regional biomassOil : EJ : refining : EJ : Industry-Fuels
+refining : biomass liquids : biodiesel : wholesale gas : EJ : refining : EJ : Industry-Fuels
+refining : biomass liquids : BTL with hydrogen : H2 industrial : EJ : refining : EJ : Industry-Fuels
+refining : biomass liquids : BTL with hydrogen : regional biomass : EJ : refining : EJ : Industry-Fuels
+refining : biomass liquids : cellulosic ethanol : regional biomass : EJ : refining : EJ : Industry-Fuels
+refining : biomass liquids : corn ethanol : elect_td_ind : EJ : refining : EJ : Industry-Fuels
+refining : biomass liquids : corn ethanol : regional corn for ethanol : EJ : refining : EJ : Industry-Fuels
+refining : biomass liquids : corn ethanol : wholesale gas : EJ : refining : EJ : Industry-Fuels
+refining : biomass liquids : FT biofuels : regional biomass : EJ : refining : EJ : Industry-Fuels
+refining : biomass liquids : sugar cane ethanol : regional sugar for ethanol : EJ : refining : EJ : Industry-Fuels
+refining : coal to liquids : coal to liquids : regional coal : EJ : refining : EJ : Industry-Fuels
+refining : gas to liquids : gas to liquids : regional natural gas : EJ : refining : EJ : Industry-Fuels
+refining : oil refining : oil refining : elect_td_ind : EJ : refining : EJ : Industry-Fuels
+refining : oil refining : oil refining : regional oil : EJ : refining : EJ : Industry-Fuels
+refining : oil refining : oil refining : wholesale gas : EJ : refining : EJ : Industry-Fuels
+H2 central production : biomass : biomass to H2 : elect_td_ind : EJ : H2 central production : EJ : Industry-Fuels
+H2 central production : biomass : biomass to H2 : regional biomass : EJ : H2 central production : EJ : Industry-Fuels
+H2 central production : biomass : biomass to H2 : regional natural gas : EJ : H2 central production : EJ : Industry-Fuels
+H2 central production : electricity : electrolysis : elect_td_ind : EJ : H2 central production : EJ : Industry-Fuels
+H2 central production : gas : natural gas steam reforming : elect_td_ind : EJ : H2 central production : EJ : Industry-Fuels
+H2 central production : gas : natural gas steam reforming : regional natural gas : EJ : H2 central production : EJ : Industry-Fuels
+H2 central production : nuclear : electrolysis : nuclearFuelGenIII : EJ : H2 central production : EJ : Industry-Fuels
+H2 central production : solar : electrolysis : global solar resource : EJ : H2 central production : EJ : Industry-Fuels
+H2 central production : wind : electrolysis : onshore wind resource : EJ : H2 central production : EJ : Industry-Fuels
+H2 industrial : H2 delivery : H2 delivery : H2 wholesale delivery : EJ : H2 industrial : EJ : Industry-Fuels
+H2 industrial : onsite production : electrolysis : elect_td_ind : EJ : H2 industrial : EJ : Industry-Fuels
+H2 liquid truck : H2 liquid truck : H2 liquid truck : elect_td_ind : EJ : H2 liquid truck : EJ : Industry-Fuels
+H2 liquid truck : H2 liquid truck : H2 liquid truck : H2 central production : EJ : H2 liquid truck : EJ : Industry-Fuels
+H2 pipeline : H2 pipeline : H2 pipeline : elect_td_ind : EJ : H2 pipeline : EJ : Industry-Fuels
+H2 pipeline : H2 pipeline : H2 pipeline : H2 central production : EJ : H2 pipeline : EJ : Industry-Fuels
+H2 retail delivery : H2 retail delivery : H2 retail delivery : H2 wholesale delivery : EJ : H2 retail delivery : EJ : Industry-Fuels
+H2 retail dispensing : H2 retail dispensing : H2 retail dispensing : H2 wholesale dispensing : EJ : H2 retail dispensing : EJ : Industry-Fuels
+H2 wholesale delivery : H2 liquid truck : H2 liquid truck : H2 liquid truck : EJ : H2 wholesale delivery : EJ : Industry-Fuels
+H2 wholesale delivery : H2 pipeline : H2 pipeline : H2 pipeline : EJ : H2 wholesale delivery : EJ : Industry-Fuels
+H2 wholesale dispensing : forecourt production : electrolysis : elect_td_trn : EJ : H2 wholesale dispensing : EJ : Industry-Fuels
+H2 wholesale dispensing : forecourt production : natural gas steam reforming : delivered gas : EJ : H2 wholesale dispensing : EJ : Industry-Fuels
+H2 wholesale dispensing : forecourt production : natural gas steam reforming : elect_td_trn : EJ : H2 wholesale dispensing : EJ : Industry-Fuels
+H2 wholesale dispensing : H2 delivery : H2 liquid truck : elect_td_trn : EJ : H2 wholesale dispensing : EJ : Industry-Fuels
+H2 wholesale dispensing : H2 delivery : H2 liquid truck : H2 liquid truck : EJ : H2 wholesale dispensing : EJ : Industry-Fuels
+H2 wholesale dispensing : H2 delivery : H2 pipeline : elect_td_trn : EJ : H2 wholesale dispensing : EJ : Industry-Fuels
+H2 wholesale dispensing : H2 delivery : H2 pipeline : H2 pipeline : EJ : H2 wholesale dispensing : EJ : Industry-Fuels
+gas pipeline : gas pipeline : gas pipeline : gas processing : EJ : gas pipeline : EJ : Industry-Fuels
+gas processing : biomass gasification : biomass gasification : regional biomass : EJ : gas processing : EJ : Industry-Fuels
+gas processing : coal gasification : coal gasification : regional coal : EJ : gas processing : EJ : Industry-Fuels
+gas processing : natural gas : natural gas : regional natural gas : EJ : gas processing : EJ : Industry-Fuels
+agricultural energy use : mobile : electricity : elect_td_ind : EJ : agricultural energy use : EJ : Trn-Nonroad
+agricultural energy use : mobile : hydrogen : H2 wholesale dispensing : EJ : agricultural energy use : EJ : Trn-Nonroad
+agricultural energy use : mobile : refined liquids : refined liquids industrial : EJ : agricultural energy use : EJ : Trn-Nonroad
+agricultural energy use : stationary : biomass : delivered biomass : EJ : agricultural energy use : EJ : Industry
+agricultural energy use : stationary : coal : delivered coal : EJ : agricultural energy use : EJ : Industry
+agricultural energy use : stationary : electricity : elect_td_ind : EJ : agricultural energy use : EJ : Industry
+agricultural energy use : stationary : gas : wholesale gas : EJ : agricultural energy use : EJ : Industry
+agricultural energy use : stationary : heat : district heat : EJ : agricultural energy use : EJ : Industry
+agricultural energy use : stationary : hydrogen : H2 wholesale delivery : EJ : agricultural energy use : EJ : Industry
+agricultural energy use : stationary : refined liquids : refined liquids industrial : EJ : agricultural energy use : EJ : Industry
+mining energy use : mobile : electricity : elect_td_ind : EJ : mining energy use : EJ : Trn-Nonroad
+mining energy use : mobile : hydrogen : H2 wholesale dispensing : EJ : mining energy use : EJ : Trn-Nonroad
+mining energy use : mobile : refined liquids : refined liquids industrial : EJ : mining energy use : EJ : Trn-Nonroad
+mining energy use : stationary : biomass : delivered biomass : EJ : mining energy use : EJ : Industry
+mining energy use : stationary : coal : delivered coal : EJ : mining energy use : EJ : Industry
+mining energy use : stationary : electricity : elect_td_ind : EJ : mining energy use : EJ : Industry
+mining energy use : stationary : gas : wholesale gas : EJ : mining energy use : EJ : Industry
+mining energy use : stationary : heat : district heat : EJ : mining energy use : EJ : Industry
+mining energy use : stationary : hydrogen : H2 wholesale delivery : EJ : mining energy use : EJ : Industry
+mining energy use : stationary : refined liquids : refined liquids industrial : EJ : mining energy use : EJ : Industry
+construction energy use : mobile : electricity : elect_td_ind : EJ : construction energy use : EJ : Trn-Nonroad
+construction energy use : mobile : hydrogen : H2 wholesale dispensing : EJ : construction energy use : EJ : Trn-Nonroad
+construction energy use : mobile : refined liquids : refined liquids industrial : EJ : construction energy use : EJ : Trn-Nonroad
+construction energy use : stationary : biomass : delivered biomass : EJ : construction energy use : EJ : Industry
+construction energy use : stationary : coal : delivered coal : EJ : construction energy use : EJ : Industry
+construction energy use : stationary : electricity : elect_td_ind : EJ : construction energy use : EJ : Industry
+construction energy use : stationary : gas : wholesale gas : EJ : construction energy use : EJ : Industry
+construction energy use : stationary : heat : district heat : EJ : construction energy use : EJ : Industry
+construction energy use : stationary : hydrogen : H2 wholesale delivery : EJ : construction energy use : EJ : Industry
+construction energy use : stationary : refined liquids : refined liquids industrial : EJ : construction energy use : EJ : Industry
+construction feedstocks : refined liquids : refined liquids : oil-credits : EJ : construction feedstocks : EJ : Industry
+construction feedstocks : refined liquids : refined liquids : refined liquids industrial : EJ : construction feedstocks : EJ : Industry
+construction : construction : construction : construction energy use : EJ : construction : EJ : Industry
+construction : construction : construction : construction feedstocks : EJ : construction : EJ : Industry
+alumina : biomass : biomass : delivered biomass : EJ : alumina : Mt : Industry
+alumina : coal : coal : delivered coal : EJ : alumina : Mt : Industry
+alumina : gas : gas : wholesale gas : EJ : alumina : Mt : Industry
+alumina : refined liquids : refined liquids : refined liquids industrial : EJ : alumina : Mt : Industry
+aluminum : electricity : electricity : elect_td_ind : EJ : aluminum : Mt : Industry
+ammonia : coal : coal : delivered coal : EJ : ammonia : Mt NH3 : Industry
+ammonia : gas : gas : wholesale gas : EJ : ammonia : Mt NH3 : Industry
+ammonia : hydrogen : hydrogen : H2 industrial : EJ : ammonia : Mt NH3 : Industry
+ammonia : hydrogen : hydrogen : wholesale gas : EJ : ammonia : Mt NH3 : Industry
+ammonia : refined liquids : refined liquids : refined liquids industrial : EJ : ammonia : Mt NH3 : Industry
+cement : cement : cement : elect_td_ind : EJ : cement : Mt : Industry
+cement : cement : cement : process heat cement : EJ : cement : Mt : Industry
+process heat cement : biomass : biomass : delivered biomass : EJ : process heat cement : EJ : Industry
+process heat cement : coal : coal : delivered coal : EJ : process heat cement : EJ : Industry
+process heat cement : gas : gas : wholesale gas : EJ : process heat cement : EJ : Industry
+process heat cement : hydrogen : hydrogen : H2 industrial : EJ : process heat cement : EJ : Industry
+process heat cement : refined liquids : refined liquids : refined liquids industrial : EJ : process heat cement : EJ : Industry
+chemical : chemical : chemical : chemical energy use : EJ : chemical : EJ : Industry
+chemical : chemical : chemical : chemical feedstocks : EJ : chemical : EJ : Industry
+chemical energy use : biomass : biomass : delivered biomass : EJ : chemical energy use : EJ : Industry
+chemical energy use : coal : coal : delivered coal : EJ : chemical energy use : EJ : Industry
+chemical energy use : electricity : electricity : elect_td_ind : EJ : chemical energy use : EJ : Industry
+chemical energy use : gas : gas : wholesale gas : EJ : chemical energy use : EJ : Industry
+chemical energy use : heat : heat : district heat : EJ : chemical energy use : EJ : Industry
+chemical energy use : refined liquids : refined liquids : refined liquids industrial : EJ : chemical energy use : EJ : Industry
+chemical feedstocks : coal : coal : delivered coal : EJ : chemical feedstocks : EJ : Industry
+chemical feedstocks : gas : gas : wholesale gas : EJ : chemical feedstocks : EJ : Industry
+chemical feedstocks : refined liquids : refined liquids : oil-credits : EJ : chemical feedstocks : EJ : Industry
+chemical feedstocks : refined liquids : refined liquids : refined liquids industrial : EJ : chemical feedstocks : EJ : Industry
+district heat : biomass : biomass : delivered biomass : EJ : district heat : EJ : Industry
+district heat : coal : coal : delivered coal : EJ : district heat : EJ : Industry
+district heat : gas : gas : wholesale gas : EJ : district heat : EJ : Industry
+district heat : refined liquids : refined liquids : refined liquids industrial : EJ : district heat : EJ : Industry
+food processing : food processing : food processing : elect_td_ind : EJ : food processing : Pcal : Industry
+food processing : food processing : food processing : process heat food processing : EJ : food processing : Pcal : Industry
+process heat food processing : biomass : biomass : delivered biomass : EJ : process heat food processing : EJ : Industry
+process heat food processing : biomass : biomass cogen : delivered biomass : EJ : electricity : EJ : Industry
+process heat food processing : coal : coal : delivered coal : EJ : process heat food processing : EJ : Industry
+process heat food processing : coal : coal cogen : delivered coal : EJ : electricity : EJ : Industry
+process heat food processing : electricity : electric heat pump : elect_td_ind : EJ : process heat food processing : EJ : Industry
+process heat food processing : electricity : electricity : elect_td_ind : EJ : process heat food processing : EJ : Industry
+process heat food processing : electricity : electricity with solar : elect_td_ind : EJ : process heat food processing : EJ : Industry
+process heat food processing : electricity : electricity with solar : global solar resource : EJ : process heat food processing : EJ : Industry
+process heat food processing : gas : gas : wholesale gas : EJ : process heat food processing : EJ : Industry
+process heat food processing : gas : gas cogen : wholesale gas : EJ : electricity : EJ : Industry
+process heat food processing : gas : gas with solar : global solar resource : EJ : process heat food processing : EJ : Industry
+process heat food processing : gas : gas with solar : wholesale gas : EJ : process heat food processing : EJ : Industry
+process heat food processing : heat : heat : district heat : EJ : process heat food processing : EJ : Industry
+process heat food processing : refined liquids : refined liquids : refined liquids industrial : EJ : process heat food processing : EJ : Industry
+process heat food processing : refined liquids : refined liquids cogen : refined liquids industrial : EJ : electricity : EJ : Industry
+iron and steel : BLASTFUR : Biomass-based : delivered biomass : EJ : iron and steel : Mt : Industry
+iron and steel : BLASTFUR : Biomass-based : elect_td_ind : EJ : iron and steel : Mt : Industry
+iron and steel : BLASTFUR : Biomass-based : refined liquids industrial : EJ : iron and steel : Mt : Industry
+iron and steel : BLASTFUR : Biomass-based : wholesale gas : EJ : iron and steel : Mt : Industry
+iron and steel : BLASTFUR : BLASTFUR : delivered coal : EJ : iron and steel : Mt : Industry
+iron and steel : BLASTFUR : BLASTFUR : elect_td_ind : EJ : iron and steel : Mt : Industry
+iron and steel : BLASTFUR : BLASTFUR : refined liquids industrial : EJ : iron and steel : Mt : Industry
+iron and steel : BLASTFUR : BLASTFUR : wholesale gas : EJ : iron and steel : Mt : Industry
+iron and steel : BLASTFUR : BLASTFUR CCS : elect_td_ind : EJ : iron and steel : Mt : Industry
+iron and steel : BLASTFUR : BLASTFUR CCS : refined liquids industrial : EJ : iron and steel : Mt : Industry
+iron and steel : BLASTFUR : BLASTFUR CCS : wholesale gas : EJ : iron and steel : Mt : Industry
+iron and steel : BLASTFUR : BLASTFUR with hydrogen : delivered coal : EJ : iron and steel : Mt : Industry
+iron and steel : BLASTFUR : BLASTFUR with hydrogen : elect_td_ind : EJ : iron and steel : Mt : Industry
+iron and steel : BLASTFUR : BLASTFUR with hydrogen : H2 industrial : EJ : iron and steel : Mt : Industry
+iron and steel : BLASTFUR : BLASTFUR with hydrogen : refined liquids industrial : EJ : iron and steel : Mt : Industry
+iron and steel : BLASTFUR : BLASTFUR with hydrogen : wholesale gas : EJ : iron and steel : Mt : Industry
+iron and steel : EAF with DRI : EAF with DRI : delivered coal : EJ : iron and steel : Mt : Industry
+iron and steel : EAF with DRI : EAF with DRI : elect_td_ind : EJ : iron and steel : Mt : Industry
+iron and steel : EAF with DRI : EAF with DRI : refined liquids industrial : EJ : iron and steel : Mt : Industry
+iron and steel : EAF with DRI : EAF with DRI : wholesale gas : EJ : iron and steel : Mt : Industry
+iron and steel : EAF with DRI : Hydrogen-based DRI : elect_td_ind : EJ : iron and steel : Mt : Industry
+iron and steel : EAF with DRI : Hydrogen-based DRI : H2 industrial : EJ : iron and steel : Mt : Industry
+iron and steel : EAF with scrap : EAF with scrap : elect_td_ind : EJ : iron and steel : Mt : Industry
+iron and steel : EAF with scrap : EAF with scrap : refined liquids industrial : EJ : iron and steel : Mt : Industry
+iron and steel : EAF with scrap : EAF with scrap : wholesale gas : EJ : iron and steel : Mt : Industry
+paper : paper : paper : elect_td_ind : EJ : paper : Mt : Industry
+paper : paper : paper : process heat paper : EJ : paper : Mt : Industry
+paper : paper : paper : waste biomass for paper : EJ : paper : Mt : Industry
+process heat paper : coal : coal : delivered coal : EJ : process heat paper : EJ : Industry
+process heat paper : electricity : electric boiler : elect_td_ind : EJ : process heat paper : EJ : Industry
+process heat paper : electricity : electric heat pump : elect_td_ind : EJ : process heat paper : EJ : Industry
+process heat paper : gas : gas : wholesale gas : EJ : process heat paper : EJ : Industry
+process heat paper : gas : gas cogen : wholesale gas : EJ : electricity : EJ : Industry
+process heat paper : heat : heat : district heat : EJ : process heat paper : EJ : Industry
+process heat paper : refined liquids : refined liquids : refined liquids industrial : EJ : process heat paper : EJ : Industry
+process heat paper : refined liquids : refined liquids cogen : refined liquids industrial : EJ : electricity : EJ : Industry
+refined liquids enduse : refined liquids enduse : refined liquids enduse : refining : EJ : refined liquids enduse : EJ : Other
+refined liquids industrial : refined liquids industrial : refined liquids industrial : refining : EJ : refined liquids industrial : EJ : Other
+other industrial energy use : biomass : biomass : delivered biomass : EJ : other industrial energy use : EJ : Industry
+other industrial energy use : biomass : biomass cogen : delivered biomass : EJ : electricity : EJ : Industry
+other industrial energy use : coal : coal : delivered coal : EJ : other industrial energy use : EJ : Industry
+other industrial energy use : coal : coal cogen : delivered coal : EJ : electricity : EJ : Industry
+other industrial energy use : district heat : district heat : district heat : EJ : other industrial energy use : EJ : Industry
+other industrial energy use : electricity : electricity : elect_td_ind : EJ : other industrial energy use : EJ : Industry
+other industrial energy use : gas : gas : wholesale gas : EJ : other industrial energy use : EJ : Industry
+other industrial energy use : gas : gas cogen : wholesale gas : EJ : electricity : EJ : Industry
+other industrial energy use : hydrogen : hydrogen : H2 industrial : EJ : other industrial energy use : EJ : Industry
+other industrial energy use : hydrogen : hydrogen cogen : H2 wholesale delivery : EJ : electricity : EJ : Industry
+other industrial energy use : refined liquids : refined liquids : refined liquids industrial : EJ : other industrial energy use : EJ : Industry
+other industrial energy use : refined liquids : refined liquids cogen : refined liquids industrial : EJ : electricity : EJ : Industry
+other industrial feedstocks : coal : coal : delivered coal : EJ : other industrial feedstocks : EJ : Industry
+other industrial feedstocks : gas : gas : wholesale gas : EJ : other industrial feedstocks : EJ : Industry
+other industrial feedstocks : refined liquids : refined liquids : oil-credits : EJ : other industrial feedstocks : EJ : Industry
+other industrial feedstocks : refined liquids : refined liquids : refined liquids industrial : EJ : other industrial feedstocks : EJ : Industry
+other industry : other industry : other industry : other industrial energy use : EJ : other industry : EJ : Industry
+other industry : other industry : other industry : other industrial feedstocks : EJ : other industry : EJ : Industry
+industrial wastewater treatment : electricity : electricity : elect_td_ind : EJ : industrial wastewater treatment : km^3 : Industry
+industrial water abstraction : electricity : electricity : elect_td_ind : EJ : industrial water abstraction : km^3 : Industry
+industrial water treatment : electricity : electricity : elect_td_ind : EJ : industrial water treatment : km^3 : Industry
+municipal wastewater treatment : electricity : electricity : elect_td_bld : EJ : municipal wastewater treatment : km^3 : Urban systems
+municipal water abstraction : electricity : electricity : elect_td_bld : EJ : municipal water abstraction : km^3 : Urban systems
+municipal water distribution : electricity : electricity : elect_td_bld : EJ : municipal water distribution : km^3 : Urban systems
+municipal water treatment : electricity : electricity : elect_td_bld : EJ : municipal water treatment : km^3 : Urban systems
+desalinated water : electricity : reverse osmosis : elect_td_ind : EJ : desalinated water : km^3 : Urban systems
+desalinated water : gas : distillation : wholesale gas : EJ : desalinated water : km^3 : Urban systems
+desalinated water : refined liquids : distillation : refined liquids industrial : EJ : desalinated water : km^3 : Urban systems
+comm cooling : electricity : electricity : elect_td_bld : EJ : comm cooling : EJ : Buildings
+comm cooling : gas : gas : delivered gas : EJ : comm cooling : EJ : Buildings
+comm heating : biomass : biomass : delivered biomass : EJ : comm heating : EJ : Buildings
+comm heating : coal : coal : delivered coal : EJ : comm heating : EJ : Buildings
+comm heating : district heat : district heat : district heat : EJ : comm heating : EJ : Buildings
+comm heating : electricity : electricity : elect_td_bld : EJ : comm heating : EJ : Buildings
+comm heating : gas : gas : delivered gas : EJ : comm heating : EJ : Buildings
+comm heating : gas : hydrogen : H2 retail delivery : EJ : comm heating : EJ : Buildings
+comm heating : refined liquids : refined liquids : refined liquids enduse : EJ : comm heating : EJ : Buildings
+comm others : biomass : biomass : delivered biomass : EJ : comm others : EJ : Buildings
+comm others : coal : coal : delivered coal : EJ : comm others : EJ : Buildings
+comm others : district heat : district heat : district heat : EJ : comm others : EJ : Buildings
+comm others : electricity : electricity : elect_td_bld : EJ : comm others : EJ : Buildings
+comm others : gas : gas : delivered gas : EJ : comm others : EJ : Buildings
+comm others : gas : hydrogen : H2 retail delivery : EJ : comm others : EJ : Buildings
+comm others : refined liquids : refined liquids : refined liquids enduse : EJ : comm others : EJ : Buildings
+resid cooling modern_d1 : electricity : electricity : elect_td_bld : EJ : resid cooling modern_d1 : EJ : Buildings
+resid cooling modern_d1 : gas : gas : delivered gas : EJ : resid cooling modern_d1 : EJ : Buildings
+resid cooling modern_d10 : electricity : electricity : elect_td_bld : EJ : resid cooling modern_d10 : EJ : Buildings
+resid cooling modern_d10 : gas : gas : delivered gas : EJ : resid cooling modern_d10 : EJ : Buildings
+resid cooling modern_d2 : electricity : electricity : elect_td_bld : EJ : resid cooling modern_d2 : EJ : Buildings
+resid cooling modern_d2 : gas : gas : delivered gas : EJ : resid cooling modern_d2 : EJ : Buildings
+resid cooling modern_d3 : electricity : electricity : elect_td_bld : EJ : resid cooling modern_d3 : EJ : Buildings
+resid cooling modern_d3 : gas : gas : delivered gas : EJ : resid cooling modern_d3 : EJ : Buildings
+resid cooling modern_d4 : electricity : electricity : elect_td_bld : EJ : resid cooling modern_d4 : EJ : Buildings
+resid cooling modern_d4 : gas : gas : delivered gas : EJ : resid cooling modern_d4 : EJ : Buildings
+resid cooling modern_d5 : electricity : electricity : elect_td_bld : EJ : resid cooling modern_d5 : EJ : Buildings
+resid cooling modern_d5 : gas : gas : delivered gas : EJ : resid cooling modern_d5 : EJ : Buildings
+resid cooling modern_d6 : electricity : electricity : elect_td_bld : EJ : resid cooling modern_d6 : EJ : Buildings
+resid cooling modern_d6 : gas : gas : delivered gas : EJ : resid cooling modern_d6 : EJ : Buildings
+resid cooling modern_d7 : electricity : electricity : elect_td_bld : EJ : resid cooling modern_d7 : EJ : Buildings
+resid cooling modern_d7 : gas : gas : delivered gas : EJ : resid cooling modern_d7 : EJ : Buildings
+resid cooling modern_d8 : electricity : electricity : elect_td_bld : EJ : resid cooling modern_d8 : EJ : Buildings
+resid cooling modern_d8 : gas : gas : delivered gas : EJ : resid cooling modern_d8 : EJ : Buildings
+resid cooling modern_d9 : electricity : electricity : elect_td_bld : EJ : resid cooling modern_d9 : EJ : Buildings
+resid cooling modern_d9 : gas : gas : delivered gas : EJ : resid cooling modern_d9 : EJ : Buildings
+resid heating coal_d1 : coal : coal : delivered coal : EJ : resid heating coal_d1 : EJ : Buildings
+resid heating coal_d10 : coal : coal : delivered coal : EJ : resid heating coal_d10 : EJ : Buildings
+resid heating coal_d2 : coal : coal : delivered coal : EJ : resid heating coal_d2 : EJ : Buildings
+resid heating coal_d3 : coal : coal : delivered coal : EJ : resid heating coal_d3 : EJ : Buildings
+resid heating coal_d4 : coal : coal : delivered coal : EJ : resid heating coal_d4 : EJ : Buildings
+resid heating coal_d5 : coal : coal : delivered coal : EJ : resid heating coal_d5 : EJ : Buildings
+resid heating coal_d6 : coal : coal : delivered coal : EJ : resid heating coal_d6 : EJ : Buildings
+resid heating coal_d7 : coal : coal : delivered coal : EJ : resid heating coal_d7 : EJ : Buildings
+resid heating coal_d8 : coal : coal : delivered coal : EJ : resid heating coal_d8 : EJ : Buildings
+resid heating coal_d9 : coal : coal : delivered coal : EJ : resid heating coal_d9 : EJ : Buildings
+resid heating modern_d1 : biomass : biomass : delivered biomass : EJ : resid heating modern_d1 : EJ : Buildings
+resid heating modern_d1 : district heat : district heat : district heat : EJ : resid heating modern_d1 : EJ : Buildings
+resid heating modern_d1 : electricity : electricity : elect_td_bld : EJ : resid heating modern_d1 : EJ : Buildings
+resid heating modern_d1 : gas : gas : delivered gas : EJ : resid heating modern_d1 : EJ : Buildings
+resid heating modern_d1 : gas : hydrogen : H2 retail delivery : EJ : resid heating modern_d1 : EJ : Buildings
+resid heating modern_d1 : refined liquids : refined liquids : refined liquids enduse : EJ : resid heating modern_d1 : EJ : Buildings
+resid heating modern_d10 : biomass : biomass : delivered biomass : EJ : resid heating modern_d10 : EJ : Buildings
+resid heating modern_d10 : district heat : district heat : district heat : EJ : resid heating modern_d10 : EJ : Buildings
+resid heating modern_d10 : electricity : electricity : elect_td_bld : EJ : resid heating modern_d10 : EJ : Buildings
+resid heating modern_d10 : gas : gas : delivered gas : EJ : resid heating modern_d10 : EJ : Buildings
+resid heating modern_d10 : gas : hydrogen : H2 retail delivery : EJ : resid heating modern_d10 : EJ : Buildings
+resid heating modern_d10 : refined liquids : refined liquids : refined liquids enduse : EJ : resid heating modern_d10 : EJ : Buildings
+resid heating modern_d2 : biomass : biomass : delivered biomass : EJ : resid heating modern_d2 : EJ : Buildings
+resid heating modern_d2 : district heat : district heat : district heat : EJ : resid heating modern_d2 : EJ : Buildings
+resid heating modern_d2 : electricity : electricity : elect_td_bld : EJ : resid heating modern_d2 : EJ : Buildings
+resid heating modern_d2 : gas : gas : delivered gas : EJ : resid heating modern_d2 : EJ : Buildings
+resid heating modern_d2 : gas : hydrogen : H2 retail delivery : EJ : resid heating modern_d2 : EJ : Buildings
+resid heating modern_d2 : refined liquids : refined liquids : refined liquids enduse : EJ : resid heating modern_d2 : EJ : Buildings
+resid heating modern_d3 : biomass : biomass : delivered biomass : EJ : resid heating modern_d3 : EJ : Buildings
+resid heating modern_d3 : district heat : district heat : district heat : EJ : resid heating modern_d3 : EJ : Buildings
+resid heating modern_d3 : electricity : electricity : elect_td_bld : EJ : resid heating modern_d3 : EJ : Buildings
+resid heating modern_d3 : gas : gas : delivered gas : EJ : resid heating modern_d3 : EJ : Buildings
+resid heating modern_d3 : gas : hydrogen : H2 retail delivery : EJ : resid heating modern_d3 : EJ : Buildings
+resid heating modern_d3 : refined liquids : refined liquids : refined liquids enduse : EJ : resid heating modern_d3 : EJ : Buildings
+resid heating modern_d4 : biomass : biomass : delivered biomass : EJ : resid heating modern_d4 : EJ : Buildings
+resid heating modern_d4 : district heat : district heat : district heat : EJ : resid heating modern_d4 : EJ : Buildings
+resid heating modern_d4 : electricity : electricity : elect_td_bld : EJ : resid heating modern_d4 : EJ : Buildings
+resid heating modern_d4 : gas : gas : delivered gas : EJ : resid heating modern_d4 : EJ : Buildings
+resid heating modern_d4 : gas : hydrogen : H2 retail delivery : EJ : resid heating modern_d4 : EJ : Buildings
+resid heating modern_d4 : refined liquids : refined liquids : refined liquids enduse : EJ : resid heating modern_d4 : EJ : Buildings
+resid heating modern_d5 : biomass : biomass : delivered biomass : EJ : resid heating modern_d5 : EJ : Buildings
+resid heating modern_d5 : district heat : district heat : district heat : EJ : resid heating modern_d5 : EJ : Buildings
+resid heating modern_d5 : electricity : electricity : elect_td_bld : EJ : resid heating modern_d5 : EJ : Buildings
+resid heating modern_d5 : gas : gas : delivered gas : EJ : resid heating modern_d5 : EJ : Buildings
+resid heating modern_d5 : gas : hydrogen : H2 retail delivery : EJ : resid heating modern_d5 : EJ : Buildings
+resid heating modern_d5 : refined liquids : refined liquids : refined liquids enduse : EJ : resid heating modern_d5 : EJ : Buildings
+resid heating modern_d6 : biomass : biomass : delivered biomass : EJ : resid heating modern_d6 : EJ : Buildings
+resid heating modern_d6 : district heat : district heat : district heat : EJ : resid heating modern_d6 : EJ : Buildings
+resid heating modern_d6 : electricity : electricity : elect_td_bld : EJ : resid heating modern_d6 : EJ : Buildings
+resid heating modern_d6 : gas : gas : delivered gas : EJ : resid heating modern_d6 : EJ : Buildings
+resid heating modern_d6 : gas : hydrogen : H2 retail delivery : EJ : resid heating modern_d6 : EJ : Buildings
+resid heating modern_d6 : refined liquids : refined liquids : refined liquids enduse : EJ : resid heating modern_d6 : EJ : Buildings
+resid heating modern_d7 : biomass : biomass : delivered biomass : EJ : resid heating modern_d7 : EJ : Buildings
+resid heating modern_d7 : district heat : district heat : district heat : EJ : resid heating modern_d7 : EJ : Buildings
+resid heating modern_d7 : electricity : electricity : elect_td_bld : EJ : resid heating modern_d7 : EJ : Buildings
+resid heating modern_d7 : gas : gas : delivered gas : EJ : resid heating modern_d7 : EJ : Buildings
+resid heating modern_d7 : gas : hydrogen : H2 retail delivery : EJ : resid heating modern_d7 : EJ : Buildings
+resid heating modern_d7 : refined liquids : refined liquids : refined liquids enduse : EJ : resid heating modern_d7 : EJ : Buildings
+resid heating modern_d8 : biomass : biomass : delivered biomass : EJ : resid heating modern_d8 : EJ : Buildings
+resid heating modern_d8 : district heat : district heat : district heat : EJ : resid heating modern_d8 : EJ : Buildings
+resid heating modern_d8 : electricity : electricity : elect_td_bld : EJ : resid heating modern_d8 : EJ : Buildings
+resid heating modern_d8 : gas : gas : delivered gas : EJ : resid heating modern_d8 : EJ : Buildings
+resid heating modern_d8 : gas : hydrogen : H2 retail delivery : EJ : resid heating modern_d8 : EJ : Buildings
+resid heating modern_d8 : refined liquids : refined liquids : refined liquids enduse : EJ : resid heating modern_d8 : EJ : Buildings
+resid heating modern_d9 : biomass : biomass : delivered biomass : EJ : resid heating modern_d9 : EJ : Buildings
+resid heating modern_d9 : district heat : district heat : district heat : EJ : resid heating modern_d9 : EJ : Buildings
+resid heating modern_d9 : electricity : electricity : elect_td_bld : EJ : resid heating modern_d9 : EJ : Buildings
+resid heating modern_d9 : gas : gas : delivered gas : EJ : resid heating modern_d9 : EJ : Buildings
+resid heating modern_d9 : gas : hydrogen : H2 retail delivery : EJ : resid heating modern_d9 : EJ : Buildings
+resid heating modern_d9 : refined liquids : refined liquids : refined liquids enduse : EJ : resid heating modern_d9 : EJ : Buildings
+resid heating TradBio_d1 : traditional biomass : traditional biomass : traditional biomass : EJ : resid heating TradBio_d1 : EJ : Buildings
+resid heating TradBio_d10 : traditional biomass : traditional biomass : traditional biomass : EJ : resid heating TradBio_d10 : EJ : Buildings
+resid heating TradBio_d2 : traditional biomass : traditional biomass : traditional biomass : EJ : resid heating TradBio_d2 : EJ : Buildings
+resid heating TradBio_d3 : traditional biomass : traditional biomass : traditional biomass : EJ : resid heating TradBio_d3 : EJ : Buildings
+resid heating TradBio_d4 : traditional biomass : traditional biomass : traditional biomass : EJ : resid heating TradBio_d4 : EJ : Buildings
+resid heating TradBio_d5 : traditional biomass : traditional biomass : traditional biomass : EJ : resid heating TradBio_d5 : EJ : Buildings
+resid heating TradBio_d6 : traditional biomass : traditional biomass : traditional biomass : EJ : resid heating TradBio_d6 : EJ : Buildings
+resid heating TradBio_d7 : traditional biomass : traditional biomass : traditional biomass : EJ : resid heating TradBio_d7 : EJ : Buildings
+resid heating TradBio_d8 : traditional biomass : traditional biomass : traditional biomass : EJ : resid heating TradBio_d8 : EJ : Buildings
+resid heating TradBio_d9 : traditional biomass : traditional biomass : traditional biomass : EJ : resid heating TradBio_d9 : EJ : Buildings
+resid others coal_d1 : coal : coal : delivered coal : EJ : resid others coal_d1 : EJ : Buildings
+resid others coal_d10 : coal : coal : delivered coal : EJ : resid others coal_d10 : EJ : Buildings
+resid others coal_d2 : coal : coal : delivered coal : EJ : resid others coal_d2 : EJ : Buildings
+resid others coal_d3 : coal : coal : delivered coal : EJ : resid others coal_d3 : EJ : Buildings
+resid others coal_d4 : coal : coal : delivered coal : EJ : resid others coal_d4 : EJ : Buildings
+resid others coal_d5 : coal : coal : delivered coal : EJ : resid others coal_d5 : EJ : Buildings
+resid others coal_d6 : coal : coal : delivered coal : EJ : resid others coal_d6 : EJ : Buildings
+resid others coal_d7 : coal : coal : delivered coal : EJ : resid others coal_d7 : EJ : Buildings
+resid others coal_d8 : coal : coal : delivered coal : EJ : resid others coal_d8 : EJ : Buildings
+resid others coal_d9 : coal : coal : delivered coal : EJ : resid others coal_d9 : EJ : Buildings
+resid others modern_d1 : biomass : biomass : delivered biomass : EJ : resid others modern_d1 : EJ : Buildings
+resid others modern_d1 : district heat : district heat : district heat : EJ : resid others modern_d1 : EJ : Buildings
+resid others modern_d1 : electricity : electricity : elect_td_bld : EJ : resid others modern_d1 : EJ : Buildings
+resid others modern_d1 : gas : gas : delivered gas : EJ : resid others modern_d1 : EJ : Buildings
+resid others modern_d1 : gas : hydrogen : H2 retail delivery : EJ : resid others modern_d1 : EJ : Buildings
+resid others modern_d1 : refined liquids : refined liquids : refined liquids enduse : EJ : resid others modern_d1 : EJ : Buildings
+resid others modern_d10 : biomass : biomass : delivered biomass : EJ : resid others modern_d10 : EJ : Buildings
+resid others modern_d10 : district heat : district heat : district heat : EJ : resid others modern_d10 : EJ : Buildings
+resid others modern_d10 : electricity : electricity : elect_td_bld : EJ : resid others modern_d10 : EJ : Buildings
+resid others modern_d10 : gas : gas : delivered gas : EJ : resid others modern_d10 : EJ : Buildings
+resid others modern_d10 : gas : hydrogen : H2 retail delivery : EJ : resid others modern_d10 : EJ : Buildings
+resid others modern_d10 : refined liquids : refined liquids : refined liquids enduse : EJ : resid others modern_d10 : EJ : Buildings
+resid others modern_d2 : biomass : biomass : delivered biomass : EJ : resid others modern_d2 : EJ : Buildings
+resid others modern_d2 : district heat : district heat : district heat : EJ : resid others modern_d2 : EJ : Buildings
+resid others modern_d2 : electricity : electricity : elect_td_bld : EJ : resid others modern_d2 : EJ : Buildings
+resid others modern_d2 : gas : gas : delivered gas : EJ : resid others modern_d2 : EJ : Buildings
+resid others modern_d2 : gas : hydrogen : H2 retail delivery : EJ : resid others modern_d2 : EJ : Buildings
+resid others modern_d2 : refined liquids : refined liquids : refined liquids enduse : EJ : resid others modern_d2 : EJ : Buildings
+resid others modern_d3 : biomass : biomass : delivered biomass : EJ : resid others modern_d3 : EJ : Buildings
+resid others modern_d3 : district heat : district heat : district heat : EJ : resid others modern_d3 : EJ : Buildings
+resid others modern_d3 : electricity : electricity : elect_td_bld : EJ : resid others modern_d3 : EJ : Buildings
+resid others modern_d3 : gas : gas : delivered gas : EJ : resid others modern_d3 : EJ : Buildings
+resid others modern_d3 : gas : hydrogen : H2 retail delivery : EJ : resid others modern_d3 : EJ : Buildings
+resid others modern_d3 : refined liquids : refined liquids : refined liquids enduse : EJ : resid others modern_d3 : EJ : Buildings
+resid others modern_d4 : biomass : biomass : delivered biomass : EJ : resid others modern_d4 : EJ : Buildings
+resid others modern_d4 : district heat : district heat : district heat : EJ : resid others modern_d4 : EJ : Buildings
+resid others modern_d4 : electricity : electricity : elect_td_bld : EJ : resid others modern_d4 : EJ : Buildings
+resid others modern_d4 : gas : gas : delivered gas : EJ : resid others modern_d4 : EJ : Buildings
+resid others modern_d4 : gas : hydrogen : H2 retail delivery : EJ : resid others modern_d4 : EJ : Buildings
+resid others modern_d4 : refined liquids : refined liquids : refined liquids enduse : EJ : resid others modern_d4 : EJ : Buildings
+resid others modern_d5 : biomass : biomass : delivered biomass : EJ : resid others modern_d5 : EJ : Buildings
+resid others modern_d5 : district heat : district heat : district heat : EJ : resid others modern_d5 : EJ : Buildings
+resid others modern_d5 : electricity : electricity : elect_td_bld : EJ : resid others modern_d5 : EJ : Buildings
+resid others modern_d5 : gas : gas : delivered gas : EJ : resid others modern_d5 : EJ : Buildings
+resid others modern_d5 : gas : hydrogen : H2 retail delivery : EJ : resid others modern_d5 : EJ : Buildings
+resid others modern_d5 : refined liquids : refined liquids : refined liquids enduse : EJ : resid others modern_d5 : EJ : Buildings
+resid others modern_d6 : biomass : biomass : delivered biomass : EJ : resid others modern_d6 : EJ : Buildings
+resid others modern_d6 : district heat : district heat : district heat : EJ : resid others modern_d6 : EJ : Buildings
+resid others modern_d6 : electricity : electricity : elect_td_bld : EJ : resid others modern_d6 : EJ : Buildings
+resid others modern_d6 : gas : gas : delivered gas : EJ : resid others modern_d6 : EJ : Buildings
+resid others modern_d6 : gas : hydrogen : H2 retail delivery : EJ : resid others modern_d6 : EJ : Buildings
+resid others modern_d6 : refined liquids : refined liquids : refined liquids enduse : EJ : resid others modern_d6 : EJ : Buildings
+resid others modern_d7 : biomass : biomass : delivered biomass : EJ : resid others modern_d7 : EJ : Buildings
+resid others modern_d7 : district heat : district heat : district heat : EJ : resid others modern_d7 : EJ : Buildings
+resid others modern_d7 : electricity : electricity : elect_td_bld : EJ : resid others modern_d7 : EJ : Buildings
+resid others modern_d7 : gas : gas : delivered gas : EJ : resid others modern_d7 : EJ : Buildings
+resid others modern_d7 : gas : hydrogen : H2 retail delivery : EJ : resid others modern_d7 : EJ : Buildings
+resid others modern_d7 : refined liquids : refined liquids : refined liquids enduse : EJ : resid others modern_d7 : EJ : Buildings
+resid others modern_d8 : biomass : biomass : delivered biomass : EJ : resid others modern_d8 : EJ : Buildings
+resid others modern_d8 : district heat : district heat : district heat : EJ : resid others modern_d8 : EJ : Buildings
+resid others modern_d8 : electricity : electricity : elect_td_bld : EJ : resid others modern_d8 : EJ : Buildings
+resid others modern_d8 : gas : gas : delivered gas : EJ : resid others modern_d8 : EJ : Buildings
+resid others modern_d8 : gas : hydrogen : H2 retail delivery : EJ : resid others modern_d8 : EJ : Buildings
+resid others modern_d8 : refined liquids : refined liquids : refined liquids enduse : EJ : resid others modern_d8 : EJ : Buildings
+resid others modern_d9 : biomass : biomass : delivered biomass : EJ : resid others modern_d9 : EJ : Buildings
+resid others modern_d9 : district heat : district heat : district heat : EJ : resid others modern_d9 : EJ : Buildings
+resid others modern_d9 : electricity : electricity : elect_td_bld : EJ : resid others modern_d9 : EJ : Buildings
+resid others modern_d9 : gas : gas : delivered gas : EJ : resid others modern_d9 : EJ : Buildings
+resid others modern_d9 : gas : hydrogen : H2 retail delivery : EJ : resid others modern_d9 : EJ : Buildings
+resid others modern_d9 : refined liquids : refined liquids : refined liquids enduse : EJ : resid others modern_d9 : EJ : Buildings
+resid others TradBio_d1 : traditional biomass : traditional biomass : traditional biomass : EJ : resid others TradBio_d1 : EJ : Buildings
+resid others TradBio_d10 : traditional biomass : traditional biomass : traditional biomass : EJ : resid others TradBio_d10 : EJ : Buildings
+resid others TradBio_d2 : traditional biomass : traditional biomass : traditional biomass : EJ : resid others TradBio_d2 : EJ : Buildings
+resid others TradBio_d3 : traditional biomass : traditional biomass : traditional biomass : EJ : resid others TradBio_d3 : EJ : Buildings
+resid others TradBio_d4 : traditional biomass : traditional biomass : traditional biomass : EJ : resid others TradBio_d4 : EJ : Buildings
+resid others TradBio_d5 : traditional biomass : traditional biomass : traditional biomass : EJ : resid others TradBio_d5 : EJ : Buildings
+resid others TradBio_d6 : traditional biomass : traditional biomass : traditional biomass : EJ : resid others TradBio_d6 : EJ : Buildings
+resid others TradBio_d7 : traditional biomass : traditional biomass : traditional biomass : EJ : resid others TradBio_d7 : EJ : Buildings
+resid others TradBio_d8 : traditional biomass : traditional biomass : traditional biomass : EJ : resid others TradBio_d8 : EJ : Buildings
+resid others TradBio_d9 : traditional biomass : traditional biomass : traditional biomass : EJ : resid others TradBio_d9 : EJ : Buildings
+trn_aviation_intl : International Aviation : BEV : elect_td_trn : EJ : trn_aviation_intl : million pass-km : Trn-ALM
+trn_aviation_intl : International Aviation : Hydrogen : H2 wholesale dispensing : EJ : trn_aviation_intl : million pass-km : Trn-ALM
+trn_aviation_intl : International Aviation : Liquids : refined liquids enduse : EJ : trn_aviation_intl : million pass-km : Trn-ALM
+trn_freight : Domestic Ship : BEV : elect_td_trn : EJ : trn_freight : million ton-km : Trn-ALM
+trn_freight : Domestic Ship : FCEV : H2 wholesale dispensing : EJ : trn_freight : million ton-km : Trn-ALM
+trn_freight : Domestic Ship : Hybrid Liquids : refined liquids enduse : EJ : trn_freight : million ton-km : Trn-ALM
+trn_freight : Domestic Ship : Liquids : refined liquids enduse : EJ : trn_freight : million ton-km : Trn-ALM
+trn_freight : Freight Rail : BEV : elect_td_trn : EJ : trn_freight : million ton-km : Trn-ALM
+trn_freight : Freight Rail : Coal : delivered coal : EJ : trn_freight : million ton-km : Trn-ALM
+trn_freight : Freight Rail : Electric : elect_td_trn : EJ : trn_freight : million ton-km : Trn-ALM
+trn_freight : Freight Rail : FCEV : H2 wholesale dispensing : EJ : trn_freight : million ton-km : Trn-ALM
+trn_freight : Freight Rail : Hybrid Liquids : refined liquids enduse : EJ : trn_freight : million ton-km : Trn-ALM
+trn_freight : Freight Rail : Liquids : refined liquids enduse : EJ : trn_freight : million ton-km : Trn-ALM
+trn_freight_road : Heavy truck : BEV : elect_td_trn : EJ : trn_freight_road : million ton-km : Trn-ALM
+trn_freight_road : Heavy truck : FCEV : H2 retail dispensing : EJ : trn_freight_road : million ton-km : Trn-ALM
+trn_freight_road : Heavy truck : Hybrid Liquids : refined liquids enduse : EJ : trn_freight_road : million ton-km : Trn-ALM
+trn_freight_road : Heavy truck : Liquids : refined liquids enduse : EJ : trn_freight_road : million ton-km : Trn-ALM
+trn_freight_road : Light truck : BEV : elect_td_trn : EJ : trn_freight_road : million ton-km : Trn-ALM
+trn_freight_road : Light truck : FCEV : H2 retail dispensing : EJ : trn_freight_road : million ton-km : Trn-ALM
+trn_freight_road : Light truck : Hybrid Liquids : refined liquids enduse : EJ : trn_freight_road : million ton-km : Trn-ALM
+trn_freight_road : Light truck : Liquids : refined liquids enduse : EJ : trn_freight_road : million ton-km : Trn-ALM
+trn_freight_road : Light truck : NG : delivered gas : EJ : trn_freight_road : million ton-km : Trn-ALM
+trn_freight_road : Medium truck : BEV : elect_td_trn : EJ : trn_freight_road : million ton-km : Trn-ALM
+trn_freight_road : Medium truck : FCEV : H2 retail dispensing : EJ : trn_freight_road : million ton-km : Trn-ALM
+trn_freight_road : Medium truck : Hybrid Liquids : refined liquids enduse : EJ : trn_freight_road : million ton-km : Trn-ALM
+trn_freight_road : Medium truck : Liquids : refined liquids enduse : EJ : trn_freight_road : million ton-km : Trn-ALM
+trn_pass : Cycle : Cycle : renewable : EJ : trn_pass : million pass-km : Trn-Onroad
+trn_pass : Domestic Aviation : BEV : elect_td_trn : EJ : trn_pass : million pass-km : Trn-ALM
+trn_pass : Domestic Aviation : Hydrogen : H2 wholesale dispensing : EJ : trn_pass : million pass-km : Trn-ALM
+trn_pass : Domestic Aviation : Liquids : refined liquids enduse : EJ : trn_pass : million pass-km : Trn-ALM
+trn_pass : HSR : Electric : elect_td_trn : EJ : trn_pass : million pass-km : Trn-ALM
+trn_pass : Passenger Rail : Electric : elect_td_trn : EJ : trn_pass : million pass-km : Trn-ALM
+trn_pass : Passenger Rail : Liquids : refined liquids enduse : EJ : trn_pass : million pass-km : Trn-ALM
+trn_pass : Walk : Walk : renewable : EJ : trn_pass : million pass-km : Trn-Onroad
+trn_pass_road : Bus : BEV : elect_td_trn : EJ : trn_pass_road : million pass-km : Trn-Onroad
+trn_pass_road : Bus : FCEV : H2 retail dispensing : EJ : trn_pass_road : million pass-km : Trn-Onroad
+trn_pass_road : Bus : Hybrid Liquids : refined liquids enduse : EJ : trn_pass_road : million pass-km : Trn-Onroad
+trn_pass_road : Bus : Liquids : refined liquids enduse : EJ : trn_pass_road : million pass-km : Trn-Onroad
+trn_pass_road : Bus : NG : delivered gas : EJ : trn_pass_road : million pass-km : Trn-Onroad
+trn_pass_road_LDV : 2W and 3W : BEV : elect_td_trn : EJ : trn_pass_road_LDV : million pass-km : Trn-Onroad
+trn_pass_road_LDV : 2W and 3W : LA-BEV : elect_td_trn : EJ : trn_pass_road_LDV : million pass-km : Trn-Onroad
+trn_pass_road_LDV : 2W and 3W : Liquids : refined liquids enduse : EJ : trn_pass_road_LDV : million pass-km : Trn-Onroad
+trn_pass_road_LDV : 2W and 3W : NG : delivered gas : EJ : trn_pass_road_LDV : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Car : BEV : elect_td_trn : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Car : FCEV : H2 retail dispensing : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Car : Hybrid Liquids : refined liquids enduse : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Car : Liquids : refined liquids enduse : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Car : NG : delivered gas : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Large Car and Truck : BEV : elect_td_trn : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Large Car and Truck : FCEV : H2 retail dispensing : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Large Car and Truck : Hybrid Liquids : refined liquids enduse : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Large Car and Truck : Liquids : refined liquids enduse : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Large Car and Truck : NG : delivered gas : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Mini Car : BEV : elect_td_trn : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Mini Car : FCEV : H2 retail dispensing : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Mini Car : Hybrid Liquids : refined liquids enduse : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Mini Car : Liquids : refined liquids enduse : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_pass_road_LDV_4W : Mini Car : NG : delivered gas : EJ : trn_pass_road_LDV_4W : million pass-km : Trn-Onroad
+trn_shipping_intl : International Ship : BEV : elect_td_trn : EJ : trn_shipping_intl : million ton-km : Trn-ALM
+trn_shipping_intl : International Ship : FCEV : H2 wholesale dispensing : EJ : trn_shipping_intl : million ton-km : Trn-ALM
+trn_shipping_intl : International Ship : Hybrid Liquids : refined liquids enduse : EJ : trn_shipping_intl : million ton-km : Trn-ALM
+trn_shipping_intl : International Ship : Liquids : refined liquids enduse : EJ : trn_shipping_intl : million ton-km : Trn-ALM
+total biomass : domestic biomass : domestic biomass : biomass : EJ : total biomass : EJ : Other
+total biomass : imported biomass : imported biomass : traded biomass : EJ : total biomass : EJ : Other
+delivered biomass : delivered biomass : delivered biomass : regional biomass : EJ : delivered biomass : EJ : Other
+delivered coal : delivered coal : delivered coal : regional coal : EJ : delivered coal : EJ : Other
+delivered gas : delivered gas : delivered gas : gas pipeline : EJ : delivered gas : EJ : Other
+regional biomass : regional biomass : regional biomass : total biomass : EJ : regional biomass : EJ : Other
+regional coal : domestic coal : domestic coal : coal : EJ : regional coal : EJ : Other
+regional coal : imported coal : imported coal : traded coal : EJ : regional coal : EJ : Other
+regional natural gas : domestic natural gas : domestic natural gas,depth=1 : natural gas : EJ : regional natural gas : EJ : Other
+regional natural gas : imported natural gas : imported LNG,depth=1 : traded LNG : EJ : regional natural gas : EJ : Other
+regional natural gas : imported natural gas : imported pipeline gas,depth=1 : traded Afr_MidE pipeline gas : EJ : regional natural gas : EJ : Other
+regional natural gas : imported natural gas : imported pipeline gas,depth=1 : traded EUR pipeline gas : EJ : regional natural gas : EJ : Other
+regional natural gas : imported natural gas : imported pipeline gas,depth=1 : traded LA pipeline gas : EJ : regional natural gas : EJ : Other
+regional natural gas : imported natural gas : imported pipeline gas,depth=1 : traded N.Amer pipeline gas : EJ : regional natural gas : EJ : Other
+regional natural gas : imported natural gas : imported pipeline gas,depth=1 : traded PAC pipeline gas : EJ : regional natural gas : EJ : Other
+regional natural gas : imported natural gas : imported pipeline gas,depth=1 : traded RUS pipeline gas : EJ : regional natural gas : EJ : Other
+regional oil : domestic crude oil : domestic crude oil : crude oil : EJ : regional oil : EJ : Other
+regional oil : imported crude oil : imported crude oil : traded oil : EJ : regional oil : EJ : Other
+regional woodpulp for energy : regional woodpulp for energy : regional woodpulp for energy : woodpulp_energy : EJ : regional woodpulp for energy : EJ : Other
+traded Afr_MidE pipeline gas : Africa_Northern traded Afr_MidE pipeline gas : Africa_Northern traded Afr_MidE pipeline gas : natural gas : EJ : traded Afr_MidE pipeline gas : EJ : Trade
+traded Afr_MidE pipeline gas : Africa_Southern traded Afr_MidE pipeline gas : Africa_Southern traded Afr_MidE pipeline gas : natural gas : EJ : traded Afr_MidE pipeline gas : EJ : Trade
+traded Afr_MidE pipeline gas : Africa_Western traded Afr_MidE pipeline gas : Africa_Western traded Afr_MidE pipeline gas : natural gas : EJ : traded Afr_MidE pipeline gas : EJ : Trade
+traded Afr_MidE pipeline gas : Middle East traded Afr_MidE pipeline gas : Middle East traded Afr_MidE pipeline gas : natural gas : EJ : traded Afr_MidE pipeline gas : EJ : Trade
+traded Afr_MidE pipeline gas : South Africa traded Afr_MidE pipeline gas : South Africa traded Afr_MidE pipeline gas : natural gas : EJ : traded Afr_MidE pipeline gas : EJ : Trade
+traded Afr_MidE pipeline gas : statistical differences : statistical differences : gas trade statistical differences : EJ : traded Afr_MidE pipeline gas : EJ : Trade
+traded biomass : Africa_Eastern traded biomass : Africa_Eastern traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Africa_Northern traded biomass : Africa_Northern traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Africa_Southern traded biomass : Africa_Southern traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Africa_Western traded biomass : Africa_Western traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Argentina traded biomass : Argentina traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Australia_NZ traded biomass : Australia_NZ traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Brazil traded biomass : Brazil traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Canada traded biomass : Canada traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Central America and Caribbean traded biomass : Central America and Caribbean traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Central Asia traded biomass : Central Asia traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : China traded biomass : China traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Colombia traded biomass : Colombia traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : EU-12 traded biomass : EU-12 traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : EU-15 traded biomass : EU-15 traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Europe_Non_EU traded biomass : Europe_Non_EU traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : European Free Trade Association traded biomass : European Free Trade Association traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : India traded biomass : India traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Indonesia traded biomass : Indonesia traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Japan traded biomass : Japan traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Mexico traded biomass : Mexico traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Middle East traded biomass : Middle East traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Pakistan traded biomass : Pakistan traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Russia traded biomass : Russia traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : South Africa traded biomass : South Africa traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : South America_Northern traded biomass : South America_Northern traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : South America_Southern traded biomass : South America_Southern traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : South Asia traded biomass : South Asia traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : South Korea traded biomass : South Korea traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Southeast Asia traded biomass : Southeast Asia traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Taiwan traded biomass : Taiwan traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : Ukraine traded biomass : Ukraine traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded biomass : USA traded biomass : USA traded biomass : biomass : EJ : traded biomass : EJ : Trade
+traded coal : Africa_Eastern traded coal : Africa_Eastern traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Africa_Northern traded coal : Africa_Northern traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Africa_Southern traded coal : Africa_Southern traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Africa_Western traded coal : Africa_Western traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Argentina traded coal : Argentina traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Australia_NZ traded coal : Australia_NZ traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Brazil traded coal : Brazil traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Canada traded coal : Canada traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Central America and Caribbean traded coal : Central America and Caribbean traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Central Asia traded coal : Central Asia traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : China traded coal : China traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Colombia traded coal : Colombia traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : EU-12 traded coal : EU-12 traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : EU-15 traded coal : EU-15 traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Europe_Non_EU traded coal : Europe_Non_EU traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : European Free Trade Association traded coal : European Free Trade Association traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : India traded coal : India traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Indonesia traded coal : Indonesia traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Japan traded coal : Japan traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Mexico traded coal : Mexico traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Middle East traded coal : Middle East traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Pakistan traded coal : Pakistan traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Russia traded coal : Russia traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : South Africa traded coal : South Africa traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : South America_Northern traded coal : South America_Northern traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : South America_Southern traded coal : South America_Southern traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : South Asia traded coal : South Asia traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : South Korea traded coal : South Korea traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Southeast Asia traded coal : Southeast Asia traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : Ukraine traded coal : Ukraine traded coal : coal : EJ : traded coal : EJ : Trade
+traded coal : USA traded coal : USA traded coal : coal : EJ : traded coal : EJ : Trade
+traded EUR pipeline gas : EU-12 traded EUR pipeline gas : EU-12 traded EUR pipeline gas : natural gas : EJ : traded EUR pipeline gas : EJ : Trade
+traded EUR pipeline gas : EU-15 traded EUR pipeline gas : EU-15 traded EUR pipeline gas : natural gas : EJ : traded EUR pipeline gas : EJ : Trade
+traded EUR pipeline gas : Europe_Non_EU traded EUR pipeline gas : Europe_Non_EU traded EUR pipeline gas : natural gas : EJ : traded EUR pipeline gas : EJ : Trade
+traded EUR pipeline gas : European Free Trade Association traded EUR pipeline gas : European Free Trade Association traded EUR pipeline gas : natural gas : EJ : traded EUR pipeline gas : EJ : Trade
+traded EUR pipeline gas : statistical differences : statistical differences : gas trade statistical differences : EJ : traded EUR pipeline gas : EJ : Trade
+traded LA pipeline gas : Argentina traded LA pipeline gas : Argentina traded LA pipeline gas : natural gas : EJ : traded LA pipeline gas : EJ : Trade
+traded LA pipeline gas : Central America and Caribbean traded LA pipeline gas : Central America and Caribbean traded LA pipeline gas : natural gas : EJ : traded LA pipeline gas : EJ : Trade
+traded LA pipeline gas : Colombia traded LA pipeline gas : Colombia traded LA pipeline gas : natural gas : EJ : traded LA pipeline gas : EJ : Trade
+traded LA pipeline gas : South America_Northern traded LA pipeline gas : South America_Northern traded LA pipeline gas : natural gas : EJ : traded LA pipeline gas : EJ : Trade
+traded LA pipeline gas : South America_Southern traded LA pipeline gas : South America_Southern traded LA pipeline gas : natural gas : EJ : traded LA pipeline gas : EJ : Trade
+traded LA pipeline gas : statistical differences : statistical differences : gas trade statistical differences : EJ : traded LA pipeline gas : EJ : Trade
+traded LNG : Africa_Eastern traded LNG : Africa_Eastern traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Africa_Northern traded LNG : Africa_Northern traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Africa_Southern traded LNG : Africa_Southern traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Africa_Western traded LNG : Africa_Western traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Argentina traded LNG : Argentina traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Australia_NZ traded LNG : Australia_NZ traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Brazil traded LNG : Brazil traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Canada traded LNG : Canada traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Central America and Caribbean traded LNG : Central America and Caribbean traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Central Asia traded LNG : Central Asia traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : China traded LNG : China traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Colombia traded LNG : Colombia traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : EU-12 traded LNG : EU-12 traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : EU-15 traded LNG : EU-15 traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Europe_Non_EU traded LNG : Europe_Non_EU traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : European Free Trade Association traded LNG : European Free Trade Association traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : India traded LNG : India traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Indonesia traded LNG : Indonesia traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Japan traded LNG : Japan traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Mexico traded LNG : Mexico traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Middle East traded LNG : Middle East traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Pakistan traded LNG : Pakistan traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Russia traded LNG : Russia traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : South Africa traded LNG : South Africa traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : South America_Northern traded LNG : South America_Northern traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : South America_Southern traded LNG : South America_Southern traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : South Asia traded LNG : South Asia traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : South Korea traded LNG : South Korea traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Southeast Asia traded LNG : Southeast Asia traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : statistical differences : statistical differences : gas trade statistical differences : EJ : traded LNG : EJ : Trade
+traded LNG : Taiwan traded LNG : Taiwan traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : Ukraine traded LNG : Ukraine traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded LNG : USA traded LNG : USA traded LNG : natural gas : EJ : traded LNG : EJ : Trade
+traded N.Amer pipeline gas : Canada traded N.Amer pipeline gas : Canada traded N.Amer pipeline gas : natural gas : EJ : traded N.Amer pipeline gas : EJ : Trade
+traded N.Amer pipeline gas : Mexico traded N.Amer pipeline gas : Mexico traded N.Amer pipeline gas : natural gas : EJ : traded N.Amer pipeline gas : EJ : Trade
+traded N.Amer pipeline gas : statistical differences : statistical differences : gas trade statistical differences : EJ : traded N.Amer pipeline gas : EJ : Trade
+traded N.Amer pipeline gas : USA traded N.Amer pipeline gas : USA traded N.Amer pipeline gas : natural gas : EJ : traded N.Amer pipeline gas : EJ : Trade
+traded oil : Africa_Eastern traded oil : Africa_Eastern traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Africa_Northern traded oil : Africa_Northern traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Africa_Southern traded oil : Africa_Southern traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Africa_Western traded oil : Africa_Western traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Argentina traded oil : Argentina traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Australia_NZ traded oil : Australia_NZ traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Brazil traded oil : Brazil traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Canada traded oil : Canada traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Central America and Caribbean traded oil : Central America and Caribbean traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Central Asia traded oil : Central Asia traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : China traded oil : China traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Colombia traded oil : Colombia traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : EU-12 traded oil : EU-12 traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : EU-15 traded oil : EU-15 traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Europe_Non_EU traded oil : Europe_Non_EU traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : European Free Trade Association traded oil : European Free Trade Association traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : India traded oil : India traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Indonesia traded oil : Indonesia traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Japan traded oil : Japan traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Mexico traded oil : Mexico traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Middle East traded oil : Middle East traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Pakistan traded oil : Pakistan traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Russia traded oil : Russia traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : South Africa traded oil : South Africa traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : South America_Northern traded oil : South America_Northern traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : South America_Southern traded oil : South America_Southern traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : South Asia traded oil : South Asia traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : South Korea traded oil : South Korea traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Southeast Asia traded oil : Southeast Asia traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Taiwan traded oil : Taiwan traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : Ukraine traded oil : Ukraine traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded oil : USA traded oil : USA traded oil : crude oil : EJ : traded oil : EJ : Trade
+traded PAC pipeline gas : Australia_NZ traded PAC pipeline gas : Australia_NZ traded PAC pipeline gas : natural gas : EJ : traded PAC pipeline gas : EJ : Trade
+traded PAC pipeline gas : China traded PAC pipeline gas : China traded PAC pipeline gas : natural gas : EJ : traded PAC pipeline gas : EJ : Trade
+traded PAC pipeline gas : India traded PAC pipeline gas : India traded PAC pipeline gas : natural gas : EJ : traded PAC pipeline gas : EJ : Trade
+traded PAC pipeline gas : Indonesia traded PAC pipeline gas : Indonesia traded PAC pipeline gas : natural gas : EJ : traded PAC pipeline gas : EJ : Trade
+traded PAC pipeline gas : Japan traded PAC pipeline gas : Japan traded PAC pipeline gas : natural gas : EJ : traded PAC pipeline gas : EJ : Trade
+traded PAC pipeline gas : Pakistan traded PAC pipeline gas : Pakistan traded PAC pipeline gas : natural gas : EJ : traded PAC pipeline gas : EJ : Trade
+traded PAC pipeline gas : South Korea traded PAC pipeline gas : South Korea traded PAC pipeline gas : natural gas : EJ : traded PAC pipeline gas : EJ : Trade
+traded PAC pipeline gas : Southeast Asia traded PAC pipeline gas : Southeast Asia traded PAC pipeline gas : natural gas : EJ : traded PAC pipeline gas : EJ : Trade
+traded PAC pipeline gas : statistical differences : statistical differences : gas trade statistical differences : EJ : traded PAC pipeline gas : EJ : Trade
+traded PAC pipeline gas : Taiwan traded PAC pipeline gas : Taiwan traded PAC pipeline gas : natural gas : EJ : traded PAC pipeline gas : EJ : Trade
+traded RUS pipeline gas : Central Asia traded RUS pipeline gas : Central Asia traded RUS pipeline gas : natural gas : EJ : traded RUS pipeline gas : EJ : Trade
+traded RUS pipeline gas : Russia traded RUS pipeline gas : Russia traded RUS pipeline gas : natural gas : EJ : traded RUS pipeline gas : EJ : Trade
+traded RUS pipeline gas : Ukraine traded RUS pipeline gas : Ukraine traded RUS pipeline gas : natural gas : EJ : traded RUS pipeline gas : EJ : Trade
+waste biomass for paper : biomass : biomass : regional woodpulp for energy : EJ : waste biomass for paper : EJ : Other
+waste biomass for paper : biomass : biomass CCS : regional woodpulp for energy : EJ : waste biomass for paper : EJ : Other
+waste biomass for paper : biomass : biomass cogen : regional woodpulp for energy : EJ : electricity : EJ : Other
+wholesale gas : wholesale gas : wholesale gas : gas pipeline : EJ : wholesale gas : EJ : Other
+
