@@ -7702,6 +7702,122 @@
 					<comments>Outputs from each technology. Useful for tracking fuel and material flows.</comments>
 				</supplyDemandQuery>
 			</queryGroup>
+			<queryGroup name="for use with the GCAM-USA to CMAQ-DESID spreadsheet">
+			<emissionsQueryBuilder title="10.47 All emissions by tech">
+				<axis1 name="GHG">GHG</axis1>
+				<axis2 name="Year">emissions</axis2>
+				<xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[(@type = 'sector') ]/*[@type = 'subsector']//*[@type = 'technology']/
+					*[@type = 'GHG' and ((@name='CO2') or (@name='CO2_FUG') or (@name='NOx') or (@name='NOx_AGR') or (@name='NOx_AWB') or (@name='NH3') or (@name='NH3_AGR') or (@name='NH3_AWB') or 
+					  (@name='SO2') or (@name='SO2_AGR') or (@name='SO2_AWB') or (@name='SO2_1') or (@name='SO2_1_AGR') or (@name='SO2_1_AWB') or 
+					  (@name='SO2_2') or (@name='SO2_2_AGR') or (@name='SO2_2_AWB') or (@name='SO2_3') or (@name='SO2_3_AGR') or (@name='SO2_3_AWB') or
+					  (@name='NMVOC') or (@name='NMVOC_AGR') or (@name='NMVOC_AWB') or
+					  (@name='CO') or (@name='CO_AGR') or (@name='CO_AWB') or (@name='PM2.5') or (@name='BC') or (@name='OC') or (@name='CH4'))]/emissions/node()</xPath>
+				<comments>All tracked emission species by technology.</comments>
+				<labelRewriteList append-values="false">
+					<level name="GHG">
+						<rewrite from="CO2_FUG" to="CO2"/>
+						<rewrite from="CO2_FUG" to="CO2"/>
+						<rewrite from="SO2_1" to="SO2"/>
+						<rewrite from="SO2_1_AWB" to="SO2"/>
+						<rewrite from="SO2_1_AGR" to="SO2"/>
+						<rewrite from="SO2_3" to="SO2"/>
+						<rewrite from="SO2_3_AGR" to="SO2"/>
+						<rewrite from="SO2_3_AWB" to="SO2"/>
+						<rewrite from="CO2_ELEC" to=""/>
+						<rewrite from="CO2_ELEC2" to=""/>
+						<rewrite from="BC_AWB" to="BC"/>
+						<rewrite from="OC_AWB" to="OC"/>
+						<rewrite from="CH4_AWB" to="CH4"/>
+						<rewrite from="N2O_AWB" to="N2O"/>
+						<rewrite from="NOx_AWB" to="NOx"/>
+						<rewrite from="NMVOC_AWB" to="NMVOC"/>
+						<rewrite from="CO_AWB" to="CO"/>
+						<rewrite from="NH3_AWB" to="NH3"/>
+						<rewrite from="H2_AWB" to="H2"/>
+						<rewrite from="BC_AGR" to="BC"/>
+						<rewrite from="OC_AGR" to="OC"/>
+						<rewrite from="CH4_AGR" to="CH4"/>
+						<rewrite from="N2O_AGR" to="N2O"/>
+						<rewrite from="NOx_AGR" to="NOx"/>
+						<rewrite from="NMVOC_AGR" to="NMVOC"/>
+						<rewrite from="CO_AGR" to="CO"/>
+						<rewrite from="NH3_AGR" to="NH3"/>
+						<rewrite from="H2_AGR" to="H2"/>
+					</level>
+					<level name="sector">
+						<rewrite from="base load generation" to="electric utility"/>
+						<rewrite from="intermediate generation" to="electric utility"/>
+						<rewrite from="peak generation" to="electric utility"/>
+						<rewrite from="subpeak generation" to="electric utility"/>
+						<rewrite from="Beef" to="agriculture"/>
+						<rewrite from="Corn" to="agriculture"/>
+						<rewrite from="FiberCrop" to="agriculture"/>
+						<rewrite from="FodderGrass" to="agriculture"/>
+						<rewrite from="FodderHerb" to="agriculture"/>
+						<rewrite from="Fruit" to="agriculture"/>
+						<rewrite from="Legumes" to="agriculture"/>
+						<rewrite from="MiscCrop" to="agriculture"/>
+						<rewrite from="NutsSeeds" to="agriculture"/>
+						<rewrite from="OilCrop" to="agriculture"/>
+						<rewrite from="OtherGrain" to="agriculture"/>
+						<rewrite from="Pork" to="agriculture"/>
+						<rewrite from="Poultry" to="agriculture"/>
+						<rewrite from="Rice" to="agriculture"/>
+						<rewrite from="RootTuber" to="agriculture"/>
+						<rewrite from="SheepGoat" to="agriculture"/>
+						<rewrite from="Soybean" to="agriculture"/>
+						<rewrite from="SugarCrop" to="agriculture"/>
+						<rewrite from="UnmanagedLand" to="agriculture"/>						
+						<rewrite from="Vegetables" to="agriculture"/>
+						<rewrite from="Wheat" to="agriculture"/>
+					</level>
+				</labelRewriteList>
+			</emissionsQueryBuilder>
+			<emissionsQueryBuilder title="10.48 All emissions by resource production">
+				<axis1 name="GHG">GHG</axis1>
+				<axis2 name="Year">emissions</axis2>
+				<xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[@type = 'resource']//*[@type = 'GHG' and ((@name='CO2') or (@name='CO2_FUG') or (@name='NOx') or (@name='NOx_AGR') or (@name='NOx_AWB') or (@name='NH3') or (@name='NH3_AGR') or (@name='NH3_AWB') or 
+					  (@name='SO2') or (@name='SO2_AGR') or (@name='SO2_AWB') or (@name='SO2_1') or (@name='SO2_1_AGR') or (@name='SO2_1_AWB') or 
+					  (@name='SO2_2') or (@name='SO2_2_AGR') or (@name='SO2_2_AWB') or (@name='SO2_3') or (@name='SO2_3_AGR') or (@name='SO2_3_AWB') or
+					  (@name='NMVOC') or (@name='NMVOC_AGR') or (@name='NMVOC_AWB') or
+					  (@name='CO') or (@name='CO_AGR') or (@name='CO_AWB') or (@name='PM2.5') or (@name='BC') or (@name='OC') or (@name='CH4'))]/emissions/node()</xPath>
+				<comments/>
+				<labelRewriteList append-values="false">
+					<level name="GHG">
+						<rewrite from="CO2_FUG" to="CO2"/>
+						<rewrite from="CO2_FUG" to="CO2"/>
+						<rewrite from="SO2_1" to="SO2"/>
+						<rewrite from="SO2_1_AWB" to="SO2"/>
+						<rewrite from="SO2_1_AGR" to="SO2"/>
+						<rewrite from="SO2_3" to="SO2"/>
+						<rewrite from="SO2_3_AGR" to="SO2"/>
+						<rewrite from="SO2_3_AWB" to="SO2"/>
+						<rewrite from="CO2_ELEC" to=""/>
+						<rewrite from="CO2_ELEC2" to=""/>
+						<rewrite from="BC_AWB" to="BC"/>
+						<rewrite from="OC_AWB" to="OC"/>
+						<rewrite from="CH4_AWB" to="CH4"/>
+						<rewrite from="N2O_AWB" to="N2O"/>
+						<rewrite from="NOx_AWB" to="NOx"/>
+						<rewrite from="NMVOC_AWB" to="NMVOC"/>
+						<rewrite from="CO_AWB" to="CO"/>
+						<rewrite from="NH3_AWB" to="NH3"/>
+						<rewrite from="H2_AWB" to="H2"/>
+						<rewrite from="BC_AGR" to="BC"/>
+						<rewrite from="OC_AGR" to="OC"/>
+						<rewrite from="CH4_AGR" to="CH4"/>
+						<rewrite from="N2O_AGR" to="N2O"/>
+						<rewrite from="NOx_AGR" to="NOx"/>
+						<rewrite from="NMVOC_AGR" to="NMVOC"/>
+						<rewrite from="CO_AGR" to="CO"/>
+						<rewrite from="NH3_AGR" to="NH3"/>
+						<rewrite from="H2_AGR" to="H2"/>
+					</level>
+				</labelRewriteList>
+			</emissionsQueryBuilder>
+
+
+			</queryGroup>
 		</queryGroup>
 	</queryGroup>
 	<queryGroup name="Standard GCAM 8.2 queries">
