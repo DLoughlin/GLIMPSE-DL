@@ -59,12 +59,39 @@ public final class SetupMenuFile {
      */
     public void setup(Menu menuFile) {
         menuFile.getItems().addAll(
-            createMenuItem("Show Options", () -> {
+                createMenuItem("Open Options File", () -> {
+                    javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+                    fileChooser.setTitle("Open Options File");
+                    fileChooser.getExtensionFilters().add(
+                        new javafx.stage.FileChooser.ExtensionFilter("Options Files", "options*.txt")
+                    );
+                    String glimpseDir = vars.getGlimpseDir();
+                    java.io.File initialDir = null;
+                    if (glimpseDir != null && !glimpseDir.isEmpty()) {
+                        initialDir = new java.io.File(glimpseDir);
+                        if (!initialDir.exists() || !initialDir.isDirectory()) {
+                            initialDir = new java.io.File(System.getProperty("user.dir"));
+                        }
+                    } else {
+                        initialDir = new java.io.File(System.getProperty("user.dir"));
+                    }
+                    fileChooser.setInitialDirectory(initialDir);
+                    java.io.File selectedFile = fileChooser.showOpenDialog(null);
+                    if (selectedFile != null) {
+                        vars.setOptionsFilename(selectedFile.getAbsolutePath());
+                        vars.loadOptions();
+                        // Clear and reload Scenario Components and Scenarios tables
+                        Client.getPaneScenarioLibrary().clearAndRefreshScenarioTable();
+                        Client.getPaneComponentLibrary().refreshComponentLibraryTable();
+                    }
+                }),
+                new SeparatorMenuItem(),       		
+        		createMenuItem("Show Current Options", () -> {
                 ArrayList<String> optionsList = vars.getArrayListOfOptions();
                 utils.displayArrayList(optionsList, "Options");
             }),
-            createMenuItem("Edit Options", () -> files.showFileInTextEditor(vars.getOptionsFilename())),
-            createMenuItem("Reload Options", () -> {
+            createMenuItem("Edit Current Options File", () -> files.showFileInTextEditor(vars.getOptionsFilename())),
+            createMenuItem("Reload Options File", () -> {
                 vars.loadOptions();
                 utils.showInformationDialog("Information", "Caution",
                     "Existing scenarios must be re-created (+) for changes in the options file to be reflected in their configuration file.");

@@ -184,7 +184,7 @@ public class ScenarioBuilder {
 		labelSearchComponentLibrary = utils.createLabel(LABEL_SEARCH, styles.getBigButtonWidth());
 
 		HBox paneObjects = new HBox();
-		Client.paneCandidateComponents = new PaneNewScenarioComponent();
+		Client.paneComponentLibrary = new PaneNewScenarioComponent();
 
 		// Add all relevant controls to the component library pane
 		paneObjects.getChildren().addAll(
@@ -197,7 +197,7 @@ public class ScenarioBuilder {
 			utils.getSeparator(Orientation.VERTICAL, 10, false), Client.buttonRefreshComponents
 		);
 
-		vBoxComponentLibrary = new VBox(5, paneObjects, Client.paneCandidateComponents.getvBox());
+		vBoxComponentLibrary = new VBox(5, paneObjects, Client.paneComponentLibrary.getvBox());
 		vBoxComponentLibrary.setStyle(styles.getStyle1());
 	}
 
@@ -243,8 +243,8 @@ public class ScenarioBuilder {
 		sortedScenarios.comparatorProperty().bind(ScenarioTable.tableScenariosLibrary.comparatorProperty());
 		ScenarioTable.tableScenariosLibrary.setItems(sortedScenarios);
 
-		Client.paneWorkingScenarios = new PaneScenarioLibrary(Client.primaryStage);
-		Client.paneWorkingScenarios.gethBox().setStyle(styles.getFontStyle());
+		Client.paneScenarioLibrary = new PaneScenarioLibrary(Client.primaryStage);
+		Client.paneScenarioLibrary.gethBox().setStyle(styles.getFontStyle());
 
 		HBox buttonHBox = new HBox();
 		labelSearchScenarios = utils.createLabel(LABEL_SEARCH, styles.getBigButtonWidth());
@@ -266,7 +266,7 @@ public class ScenarioBuilder {
 		);
 
 		HBox bottomPane = new HBox(60, labelScenarioLibrary, buttonHBox);
-		vBoxRun = new VBox(5, bottomPane, Client.paneWorkingScenarios.gethBox());
+		vBoxRun = new VBox(5, bottomPane, Client.paneScenarioLibrary.gethBox());
 	}
 
 	/**
@@ -520,5 +520,14 @@ public class ScenarioBuilder {
 	 */
 	public VBox getvBoxRun() {
 		return vBoxRun;
+	}
+	
+	/**
+	 * Updates the run status for all scenarios by delegating to paneScenarioLibrary.
+	 */
+	public void updateTables() {
+		if (Client.paneScenarioLibrary != null) {
+			Client.paneScenarioLibrary.updateRunStatus();
+		}
 	}
 }

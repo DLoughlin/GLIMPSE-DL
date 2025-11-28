@@ -206,6 +206,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 		for (String option : MEASURE_OPTIONS) {
 			comboBoxMeasure.getItems().add(option);
 		}
+		comboBoxPollutant.getItems().add("Select One");
 		String[] pollutantOptions = vars.getPollutantList();
 		for (String option : pollutantOptions) {
 			comboBoxPollutant.getItems().add(option);

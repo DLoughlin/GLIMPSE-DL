@@ -118,8 +118,8 @@ public class Client extends Application {
 
     // region GUI Panels
     static PaneCreateScenario paneCreateScenario;
-    static PaneScenarioLibrary paneWorkingScenarios;
-    static PaneNewScenarioComponent paneCandidateComponents;
+    static PaneScenarioLibrary paneScenarioLibrary;
+    static PaneNewScenarioComponent paneComponentLibrary;
     // endregion
 
     // region GUI Buttons
@@ -248,7 +248,7 @@ public class Client extends Application {
         });
 
         // Build GUI panels and layout
-        scenarioBuilder.build();
+        getScenarioBuilder().build();
 
         // Set up the main window with menu and content
         setMainWindow(combineAllElementsIntoOnePane(), createMenuBar());
@@ -332,13 +332,13 @@ public class Client extends Application {
     private GridPane combineAllElementsIntoOnePane() {
         final GridPane mainGridPane = new GridPane();
         // Add component library, button panel, and create scenario panel
-        mainGridPane.add(scenarioBuilder.getvBoxComponentLibrary(), 0, 0);
-        mainGridPane.add(scenarioBuilder.getvBoxButton(), 1, 0);
-        mainGridPane.add(scenarioBuilder.getvBoxCreateScenario(), 3, 0);
+        mainGridPane.add(getScenarioBuilder().getvBoxComponentLibrary(), 0, 0);
+        mainGridPane.add(getScenarioBuilder().getvBoxButton(), 1, 0);
+        mainGridPane.add(getScenarioBuilder().getvBoxCreateScenario(), 3, 0);
 
         // Add run panel at the bottom, spanning all columns
         final HBox stack = new HBox(20);
-        stack.getChildren().addAll(scenarioBuilder.getvBoxRun());
+        stack.getChildren().addAll(getScenarioBuilder().getvBoxRun());
         stack.prefWidthProperty().bind(primaryStage.widthProperty());
         stack.setStyle(styles.getStyle1());
         mainGridPane.add(stack, 0, 1, 4, 1);
@@ -484,12 +484,12 @@ public class Client extends Application {
      * Gets the pane for working scenarios.
      * @return PaneScenarioLibrary the working scenarios pane
      */
-    public static PaneScenarioLibrary getPaneWorkingScenarios() { return paneWorkingScenarios; }
+    public static PaneScenarioLibrary getPaneScenarioLibrary() { return paneScenarioLibrary; }
     /**
      * Gets the pane for candidate scenario components.
      * @return PaneNewScenarioComponent the candidate components pane
      */
-    public static PaneNewScenarioComponent getPaneCandidateComponents() { return paneCandidateComponents; }
+    public static PaneNewScenarioComponent getPaneComponentLibrary() { return paneComponentLibrary; }
     /**
      * Gets the right arrow button.
      * @return Button the right arrow button
@@ -646,4 +646,10 @@ public class Client extends Application {
      */
     public static ExecutionThread getgCAMPPExecutionThread() { return modelInterfaceExecutionThread; }
     // endregion
+
+	public ScenarioBuilder getScenarioBuilder() {
+		return scenarioBuilder;
+	}
+
+
 }
