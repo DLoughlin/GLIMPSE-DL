@@ -20,8 +20,7 @@ modelInterfaceDir = $glimpseDir$/GLIMPSE-ModelInterface
 
 #----Major options-----
 #This is where you specify which database will be used for new GCAM results
-gCamOutputDatabase = $gCamHomeDir$/output/database_v3a
-
+gCamOutputDatabase = $gCamHomeDir$/output/database
 #Specify the pathname for this options file. Used to access/edit the file from GLIMPSE
 optionsFilename = $glimpseDir$/options_GCAM-USA-8.2-windows.txt
 
@@ -118,7 +117,7 @@ maxDatabaseSizeGB = 38
 stop-year = 2050
 solver = $gCamHomeDir$/input/solution/cal_broyden_config.xml
 debugRegion = USA
-debugCreate = 1
+debugCreate = 0
 debugRename = 0
 
 gCamOutputToSave = $gCamHomeDir$/exe/logs/main_log.txt;$gCamHomeDir$/exe/debug.xml
