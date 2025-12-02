@@ -481,7 +481,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 							market_name, policy_name, ID);
 					return;
 				}
-			} else if (pol.startsWith(GHG)) { // case 3
+			} else if ((pol.startsWith(GHG))||(pol.startsWith("F-"))) { // case 3
 				saveScenarioComponentGHGTaxOrCap(listOfSelectedRegions, measure, pol, pol_menu, market_name,
 						policy_name);
 				return;
@@ -491,7 +491,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 				return;
 			}
 		} else if (measure.equals(TAX)) {
-			if (pol.startsWith(GHG)) { // case 9
+			if ((pol.startsWith(GHG))||(pol.startsWith("F-"))) { // case 9
 				saveScenarioComponentGHGTaxOrCap(listOfSelectedRegions, measure, pol, pol_menu, market_name,
 						policy_name);
 				return;
@@ -765,11 +765,35 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 		fileContent2 += vars.getEol();
 		fileContent2 += "region,pollutant,GHG-market,GHG-Policy,price-adjust,demand-adjust,price-unit,output-unit"
 				+ vars.getEol();
-		String[] GHGs = { "CO2","CH4","CH4_AWB","CH4_AGR","N2O","N2O_AWB","N2O_AGR","C2F6","CF4","SF6","HFC23","HFC32","HFC125","HFC134a","HFC143a","HFC152a","HFC227ea","HFC43","HFC236fa","HFC365mfc","HFC245fa" };
-		String[] price_adjust = { "1.0","6.818","6.818","6.818","81.265","81.265","81.265","3.327","2.015","6.218","4.036","0.184","0.954","0.39","1.219","0.034","0.873","0.447","2.675","0.217","0.281" };
-		String[] demand_adjust = { "3.667","25","25","25","298","298","298","12.2","7.39","22.8","14.8","0.675","3.5","1.43","4.47","0.124","3.2","1.64","9.81","0.794","1.03" };
-		String[] price_unit = { "1990$/tC","1990$/GgCH4","1990$/GgCH4","1990$/GgCH4","1990$/GgN2O","1990$/GgN2O","1990$/GgN2O","1990$/MgC2F6","1990$/MgCF4","1990$/MgSF6","1990$/MgHFC23","1990$/MgHFC32","1990$/MgHFC125","1990$/MgHFC134a","1990$/MgHFC143a","1990$/MgHFC152a","1990$/MgHFC227ea","1990$/MgHFC43","1990$/MgHFC236fa","1990$/MgHFC365mfc","1990$/MgHFC245fa" };
-		String[] output_unit = { "MtC","TgCH4","TgCH4","TgCH4","TgN2O","TgN2O","TgN2O","GgC2F6","GgCF4","GgSF6","GgHFC23","GgHFC32","GgHFC125","GgHFC134a","GgHFC143a","GgHFC152a","GgHFC227ea","GgHFC43","GgHFC236fa","GgHFC365mfc","GgHFC245faO" };
+		String[] GHGs;// = { "CO2","CH4","CH4_AWB","CH4_AGR","N2O","N2O_AWB","N2O_AGR","C2F6","CF4","SF6","HFC23","HFC32","HFC125","HFC134a","HFC143a","HFC152a","HFC227ea","HFC43","HFC236fa","HFC365mfc","HFC245fa" };
+		String[] price_adjust;// = { "1.0","6.818","6.818","6.818","81.265","81.265","81.265","3.327","2.015","6.218","4.036","0.184","0.954","0.39","1.219","0.034","0.873","0.447","2.675","0.217","0.281" };
+		String[] demand_adjust;// = { "3.667","25","25","25","298","298","298","12.2","7.39","22.8","14.8","0.675","3.5","1.43","4.47","0.124","3.2","1.64","9.81","0.794","1.03" };
+		String[] price_unit;// = { "1990$/tC","1990$/GgCH4","1990$/GgCH4","1990$/GgCH4","1990$/GgN2O","1990$/GgN2O","1990$/GgN2O","1990$/MgC2F6","1990$/MgCF4","1990$/MgSF6","1990$/MgHFC23","1990$/MgHFC32","1990$/MgHFC125","1990$/MgHFC134a","1990$/MgHFC143a","1990$/MgHFC152a","1990$/MgHFC227ea","1990$/MgHFC43","1990$/MgHFC236fa","1990$/MgHFC365mfc","1990$/MgHFC245fa" };
+		String[] output_unit;// = { "MtC","TgCH4","TgCH4","TgCH4","TgN2O","TgN2O","TgN2O","GgC2F6","GgCF4","GgSF6","GgHFC23","GgHFC32","GgHFC125","GgHFC134a","GgHFC143a","GgHFC152a","GgHFC227ea","GgHFC43","GgHFC236fa","GgHFC365mfc","GgHFC245faO" };
+
+		if (pol.startsWith("F-")) {
+			//F-gases only
+			GHGs = new String[] { "C2F6","CF4","SF6","HFC23","HFC32","HFC125","HFC134a","HFC143a","HFC152a","HFC227ea","HFC43","HFC236fa","HFC365mfc","HFC245fa" };
+			price_adjust = new String[] { "3.327","2.015","6.218","4.036","0.184","0.954","0.39","1.219","0.034","0.873","0.447","2.675","0.217","0.281" };
+			demand_adjust = new String[] { "12.2","7.39","22.8","14.8","0.675","3.5","1.43","4.47","0.124","3.2","1.64","9.81","0.794","1.03" };
+			price_unit = new String[] { "1990$/MgC2F6","1990$/MgCF4","1990$/MgSF6","1990$/MgHFC23","1990$/MgHFC32","1990$/MgHFC125","1990$/MgHFC134a","1990$/MgHFC143a","1990$/MgHFC152a","1990$/MgHFC227ea","1990$/MgHFC43","1990$/MgHFC236fa","1990$/MgHFC365mfc","1990$/MgHFC245fa" };
+			output_unit = new String[] { "GgC2F6","GgCF4","GgSF6","GgHFC23","GgHFC32","GgHFC125","GgHFC134a","GgHFC143a","GgHFC152a","GgHFC227ea","GgHFC43","GgHFC236fa","GgHFC365mfc","GgHFC245faO" };
+		} else { 
+			//GHGs only
+			GHGs = new String[] { "CO2","CH4","CH4_AWB","CH4_AGR","N2O","N2O_AWB","N2O_AGR" };
+			price_adjust = new String[] { "1.0","6.818","6.818","6.818","81.265","81.265","81.265"};
+			demand_adjust = new String[] { "3.667","25","25","25","298","298","298"};
+			price_unit = new String[] { "1990$/tC","1990$/GgCH4","1990$/GgCH4","1990$/GgCH4","1990$/GgN2O","1990$/GgN2O","1990$/GgN2O"};
+			output_unit = new String[] { "MtC","TgCH4","TgCH4","TgCH4","TgN2O","TgN2O","TgN2O"};
+			//includes both GHGs and F-gases
+//			GHGs = new String[] { "CO2","CH4","CH4_AWB","CH4_AGR","N2O","N2O_AWB","N2O_AGR","C2F6","CF4","SF6","HFC23","HFC32","HFC125","HFC134a","HFC143a","HFC152a","HFC227ea","HFC43","HFC236fa","HFC365mfc","HFC245fa" };
+//			price_adjust = new String[] { "1.0","6.818","6.818","6.818","81.265","81.265","81.265","3.327","2.015","6.218","4.036","0.184","0.954","0.39","1.219","0.034","0.873","0.447","2.675","0.217","0.281" };
+//			demand_adjust = new String[] { "3.667","25","25","25","298","298","298","12.2","7.39","22.8","14.8","0.675","3.5","1.43","4.47","0.124","3.2","1.64","9.81","0.794","1.03" };
+//			price_unit = new String[] { "1990$/tC","1990$/GgCH4","1990$/GgCH4","1990$/GgCH4","1990$/GgN2O","1990$/GgN2O","1990$/GgN2O","1990$/MgC2F6","1990$/MgCF4","1990$/MgSF6","1990$/MgHFC23","1990$/MgHFC32","1990$/MgHFC125","1990$/MgHFC134a","1990$/MgHFC143a","1990$/MgHFC152a","1990$/MgHFC227ea","1990$/MgHFC43","1990$/MgHFC236fa","1990$/MgHFC365mfc","1990$/MgHFC245fa" };
+//			output_unit = new String[] { "MtC","TgCH4","TgCH4","TgCH4","TgN2O","TgN2O","TgN2O","GgC2F6","GgCF4","GgSF6","GgHFC23","GgHFC32","GgHFC125","GgHFC134a","GgHFC143a","GgHFC152a","GgHFC227ea","GgHFC43","GgHFC236fa","GgHFC365mfc","GgHFC245faO" };
+
+		}
+		
 		if (listOfSelectedRegions != null) {
 			for (String state : listOfSelectedRegions) {
 				for (int i = 0; i < GHGs.length; i++) {

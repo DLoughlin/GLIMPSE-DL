@@ -75,7 +75,7 @@ public class GLIMPSEVariables {
     private final int DEFAULT_PERIOD_INCREMENT = 5; // Default period increment for GCAM
     private final List<String> DEFAULT_REGION_LIST = new ArrayList<>(Arrays.asList("USA", "Canada", "EU-15", "Europe_Non_EU", "European Free Trade Association", "Japan", "Australia_NZ", "Central Asia", "Russia", "China", "Middle East", "Africa_Eastern", "Africa_Northern", "Africa_Southern", "Africa_Western", "South Africa", "Brazil", "Central America and Caribbean", "Mexico", "South America_Northern", "South America_Southern", "Argentina", "Colombia", "Indonesia", "Pakistan", "South Asia", "Southeast Asia", "Taiwan", "Europe_Eastern", "EU-12", "South Korea", "India", "Ukraine"));
     private final List<String> DEFAULT_SUBREGION_LIST = new ArrayList<>(Arrays.asList("AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"));
-    private final List<String> DEFAULT_POLLUTANT_LIST = new ArrayList<>(Arrays.asList("CO2 (MTC)", "CO2 (MT CO2)","GHG (MT CO2E)", "NOx (Tg)", "SO2 (Tg)", "PM2.5 (Tg)", "CO (Tg)", "NMVOC (Tg)", "NH3 (Tg)", "CH4 (Tg)", "N2O (Tg)"));//, "BC (Tg)", "OC (Tg)","F-gases (MT CO2E)"));
+    private final List<String> DEFAULT_POLLUTANT_LIST = new ArrayList<>(Arrays.asList("CO2 (MTC)", "CO2 (MT CO2)","GHG (MT CO2E)", "NOx (Tg)", "SO2 (Tg)", "PM2.5 (Tg)", "CO (Tg)", "NMVOC (Tg)", "NH3 (Tg)", "CH4 (Tg)", "N2O (Tg)", "BC (Tg)", "OC (Tg)","F-gases (MT CO2E)"));
     private final int DEFAULT_SIMULATION_YEAR_INCREMENT = 5;
 
     

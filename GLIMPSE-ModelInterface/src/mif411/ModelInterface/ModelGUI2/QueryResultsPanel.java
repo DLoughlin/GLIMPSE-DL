@@ -288,7 +288,11 @@ public class QueryResultsPanel extends JPanel {
 
 		//need to do this before units table is built
 		if(DbViewer.enableUnitConversions) {
+			try {
 			convertUnits(qg,jTable);
+			} catch(Exception e) {
+				System.out.println("Could not convert units: "+e.toString());
+			}
 		}
 		
 		//String[] unit = getUnit(qg, (String) jTable.getValueAt(0, jTable.getColumnCount() - 1)); // @
