@@ -233,6 +233,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 						return;
 					if (checkComboBoxCategory.isDisabled())
 						return;
+					// Only allow one category to be checked at a time, or 'All'
 					if (checkComboBoxCategory.getCheckModel().getCheckedItems().size() > 1) {
 						isAdjustingCategoryChecks = true;
 						String lastChecked = null;
@@ -254,6 +255,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 						}
 						isAdjustingCategoryChecks = false;
 					}
+					// If no category is checked, default to 'All'
 					if (checkComboBoxCategory.getCheckModel().getCheckedItems().size() == 0) {
 						isAdjustingCategoryChecks = true;
 						checkComboBoxCategory.getCheckModel().check(ALL);

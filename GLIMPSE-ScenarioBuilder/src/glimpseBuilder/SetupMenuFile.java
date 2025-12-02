@@ -46,25 +46,30 @@ import javafx.scene.control.SeparatorMenuItem;
 
 /**
  * Manages the setup of the "File" menu in the GLIMPSE application.
+ * Provides methods to populate the menu with items for file operations
+ * such as opening, editing, reloading options files, importing scenarios, and exiting.
  */
 public final class SetupMenuFile {
 
+    // Singleton instances for accessing variables, utilities, and file operations
     private final GLIMPSEVariables vars = GLIMPSEVariables.getInstance();
     private final GLIMPSEUtils utils = GLIMPSEUtils.getInstance();
     private final GLIMPSEFiles files = GLIMPSEFiles.getInstance();
 
     /**
-     * Populates the "File" menu with its items.
-     * @param menuFile The menu to populate.
+     * Populates the "File" menu with its items and their associated actions.
+     * @param menuFile The Menu object to populate.
      */
     public void setup(Menu menuFile) {
         menuFile.getItems().addAll(
+                // Menu item to open an options file and reload configuration
                 createMenuItem("Open Options File", () -> {
                     javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
                     fileChooser.setTitle("Open Options File");
                     fileChooser.getExtensionFilters().add(
                         new javafx.stage.FileChooser.ExtensionFilter("Options Files", "options*.txt")
                     );
+                    // Set initial directory for file chooser
                     String glimpseDir = vars.getGlimpseDir();
                     java.io.File initialDir = null;
                     if (glimpseDir != null && !glimpseDir.isEmpty()) {
@@ -80,31 +85,39 @@ public final class SetupMenuFile {
                     if (selectedFile != null) {
                         vars.setOptionsFilename(selectedFile.getAbsolutePath());
                         vars.loadOptions();
-                        // Clear and reload Scenario Components and Scenarios tables
+                        // Refresh scenario and component tables after loading new options
                         Client.getPaneScenarioLibrary().clearAndRefreshScenarioTable();
                         Client.getPaneComponentLibrary().refreshComponentLibraryTable();
                     }
                 }),
-                new SeparatorMenuItem(),       		
-        		createMenuItem("Show Current Options", () -> {
-                ArrayList<String> optionsList = vars.getArrayListOfOptions();
-                utils.displayArrayList(optionsList, "Options");
-            }),
-            createMenuItem("Edit Current Options File", () -> files.showFileInTextEditor(vars.getOptionsFilename())),
-            createMenuItem("Reload Options File", () -> {
-                vars.loadOptions();
-                utils.showInformationDialog("Information", "Caution",
-                    "Existing scenarios must be re-created (+) for changes in the options file to be reflected in their configuration file.");
-            }),
-            new SeparatorMenuItem(),
-            createMenuItem("Import Scenario", () -> Client.buttonImportScenario.fire()),
-            new SeparatorMenuItem(),
-            createMenuItem("Exit", () -> System.exit(0))
+                new SeparatorMenuItem(),
+                // Menu item to display current options in a dialog
+                createMenuItem("Show Current Options", () -> {
+                    ArrayList<String> optionsList = vars.getArrayListOfOptions();
+                    utils.displayArrayList(optionsList, "Options");
+                }),
+                // Menu item to edit the current options file in a text editor
+                createMenuItem("Edit Current Options File", () -> files.showFileInTextEditor(vars.getOptionsFilename())),
+                // Menu item to reload the current options file
+                createMenuItem("Reload Options File", () -> {
+                    vars.loadOptions();
+                    utils.showInformationDialog("Information", "Caution",
+                        "Existing scenarios must be re-created (+) for changes in the options file to be reflected in their configuration file.");
+                }),
+                new SeparatorMenuItem(),
+                // Menu item to import a scenario using the import button
+                createMenuItem("Import Scenario", () -> Client.buttonImportScenario.fire()),
+                new SeparatorMenuItem(),
+                // Menu item to exit the application
+                createMenuItem("Exit", () -> System.exit(0))
         );
     }
 
     /**
-     * Helper to create a MenuItem with a title and an action.
+     * Helper method to create a MenuItem with a title and an action.
+     * @param title The display text for the menu item.
+     * @param action The action to perform when the menu item is selected.
+     * @return Configured MenuItem instance.
      */
     private MenuItem createMenuItem(String title, Runnable action) {
         MenuItem menuItem = new MenuItem(title);

@@ -31,7 +31,6 @@
  * Contributors include Tai Wu (USEPA), Farid Alborzi (ORISE), and Aaron Parks and 
  * Yadong Xu of ARA through the EPA Environmental Modeling and Visualization 
  * Laboratory contract.
- *
  */
 package gui;
 
@@ -74,7 +73,7 @@ import java.util.stream.Stream;
  * This class initializes and manages all primary JavaFX panes, tables, buttons, and event handlers required for scenario creation, editing, and management.
  * It follows the singleton pattern to ensure a single instance throughout the application lifecycle.
  * <p>
- * <b>Key Features:</b>
+ * <b>Main Features:</b>
  * <ul>
  *   <li>Initializes and lays out the component library, scenario creation, and scenario library panes.</li>
  *   <li>Configures and manages all major UI controls, including search fields, tables, and action buttons.</li>
@@ -87,7 +86,14 @@ import java.util.stream.Stream;
  * <b>Usage:</b> Call {@link #build()} to initialize and display the main panes and controls. Use the provided getters to access the main layout containers for embedding in the application scene.
  * <p>
  * <b>Thread Safety:</b> This class is not thread-safe and should be used only on the JavaFX Application Thread.
- *
+ * <p>
+ * <b>Integration:</b>
+ * <ul>
+ *   <li>Works with {@link Client} for main application window and event handling.</li>
+ *   <li>Uses {@link GLIMPSEVariables}, {@link GLIMPSEFiles}, {@link GLIMPSEStyles}, and {@link GLIMPSEUtils} for configuration and utility functions.</li>
+ *   <li>Integrates with table setup classes (e.g., {@link SetupTableComponentLibrary}, {@link SetupTableCreateScenario}, {@link SetupTableScenariosLibrary}).</li>
+ *   <li>Provides access to main UI panes for embedding in the application scene.</li>
+ * </ul>
  */
 public class ScenarioBuilder {
 
@@ -149,6 +155,7 @@ public class ScenarioBuilder {
 	/**
 	 * Initializes and builds all main UI panes, tables, and controls for the Scenario Builder.
 	 * This method should be called once during application startup.
+	 * Sets up all tables, buttons, panes, and resizes labels for consistent UI.
 	 */
 	public void build() {
 		vars.init(utils, vars, styles, files);
@@ -178,6 +185,7 @@ public class ScenarioBuilder {
 	/**
 	 * Builds the component library pane, including the label, search field, and action buttons.
 	 * Assembles the layout using HBox and VBox containers.
+	 * Adds all relevant controls and sets style for the pane.
 	 */
 	private void createComponentLibraryPane() {
 		labelComponentLibrary = utils.createLabel(LABEL_COMPONENT_LIBRARY, 1.7 * styles.getBigButtonWidth());
@@ -203,7 +211,7 @@ public class ScenarioBuilder {
 
 	/**
 	 * Builds the scenario creation pane, including the scenario name label and scenario creation controls.
-	 * Uses VBox for vertical layout.
+	 * Uses VBox for vertical layout and sets style for the pane.
 	 */
 	private void createCreateScenarioPane() {
 		labelScenarioName = utils.createLabel(LABEL_CREATE_SCENARIO, 2 * styles.getBigButtonWidth());
@@ -216,7 +224,7 @@ public class ScenarioBuilder {
 
 	/**
 	 * Builds the scenario library pane, including the scenario library label, search field, and action buttons.
-	 * Configures filtering and sorting for the scenario table.
+	 * Configures filtering and sorting for the scenario table and sets style for the pane.
 	 */
 	private void createScenarioLibraryPane() {
 		labelScenarioLibrary = utils.createLabel(LABEL_SCENARIO_LIBRARY, styles.getBigButtonWidth() * 1.75);
@@ -271,7 +279,7 @@ public class ScenarioBuilder {
 
 	/**
 	 * Creates and configures the arrow buttons for moving components between lists and editing scenarios.
-	 * Sets up tooltips, disables by default, and assigns event handlers.
+	 * Sets up tooltips, disables by default, and assigns event handlers for each button.
 	 */
 	private void createArrowButtons() {
 		Client.buttonLeftArrow = utils.createButton(null, styles.getBigButtonWidth(), TOOLTIP_REMOVE_SELECTED_COMPONENTS, "leftArrow7");
@@ -398,6 +406,7 @@ public class ScenarioBuilder {
 
 	/**
 	 * Resizes all main labels in the UI to fit their content and style requirements.
+	 * Uses utility method to resize each label for consistent appearance.
 	 */
 	private void resizeLabels() {
 		labelComponentLibrary = utils.resizeLabelText(labelComponentLibrary);
@@ -410,6 +419,7 @@ public class ScenarioBuilder {
 	/**
 	 * Determines the file type of a given filename by checking its extension and content.
 	 * If the file ends with .xml, returns "xml". Otherwise, scans the file for a type string or input table marker.
+	 * Returns "preset" if no type is found.
 	 *
 	 * @param filename   the file to check
 	 * @param typeString the string to search for in the file
@@ -448,6 +458,7 @@ public class ScenarioBuilder {
 	/**
 	 * Updates the enabled/disabled status of all major arrow and action buttons based on current selection state.
 	 * This method should be called after any change in selection or list contents.
+	 * Enables/disables buttons for scenario library, scenario creation, and component library as appropriate.
 	 */
 	protected void setArrowAndButtonStatus() {
 		int numSelectedScenarios = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems().size();
@@ -524,6 +535,7 @@ public class ScenarioBuilder {
 	
 	/**
 	 * Updates the run status for all scenarios by delegating to paneScenarioLibrary.
+	 * Should be called after scenario status changes to refresh the UI.
 	 */
 	public void updateTables() {
 		if (Client.paneScenarioLibrary != null) {

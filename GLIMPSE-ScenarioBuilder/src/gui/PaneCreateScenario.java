@@ -101,7 +101,9 @@ import javafx.stage.Stage;
  * <b>Usage:</b> Instantiate this pane and add it to a JavaFX stage. The pane will
  * handle all user interactions for scenario creation.
  * </p>
- *
+ * <p>
+ * <b>Thread Safety:</b> All UI operations must be performed on the JavaFX Application Thread.
+ * </p>
  */
 class PaneCreateScenario extends ScenarioBuilder {
     // UI Constants
@@ -163,6 +165,7 @@ class PaneCreateScenario extends ScenarioBuilder {
         setupButtons();
         hBoxRun.getChildren().addAll(Client.buttonCreateScenarioConfigFile, utils.getSeparator(Orientation.VERTICAL, 3, false), Client.buttonMoveComponentUp, Client.buttonMoveComponentDown);
 
+        // Set up main layout and bind width to stage
         vBox.getChildren().addAll(hBox, ComponentLibraryTable.getTableCreateScenario(), hBoxRun);
         vBox.prefWidthProperty().bind(stage.widthProperty().multiply(2.0 / 7.0));
     }
@@ -186,6 +189,7 @@ class PaneCreateScenario extends ScenarioBuilder {
             processScenarioComponentList(Client.getPrimaryStage(), false);
             Client.buttonRefreshScenarioStatus.fire();
         });
+        // Set up event handlers for button actions and table interactions
         ComponentLibraryTable.getTableCreateScenario().setOnMouseClicked(e -> setArrowAndButtonStatus());
         textFieldScenarioName.setOnKeyPressed(e -> setArrowAndButtonStatus());
     }

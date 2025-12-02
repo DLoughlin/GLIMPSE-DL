@@ -61,69 +61,76 @@ import javafx.stage.Stage;
 /**
  * TabTechBound provides the user interface and logic for creating and editing
  * technology bound policies in the GLIMPSE Scenario Builder.
+ *
  * <p>
  * <b>Main responsibilities:</b>
  * <ul>
- * <li>Allow users to select sector/category, filter and select technologies,
- * and specify constraint type</li>
- * <li>Configure policy and market names (auto/manual) and treatment (per region
- * or across regions)</li>
- * <li>Specify and populate constraint values over time</li>
- * <li>Validate, import, and export scenario component data as CSV</li>
+ *   <li>Allow users to select sector/category, filter and select technologies, and specify constraint type</li>
+ *   <li>Configure policy and market names (auto/manual) and treatment (per region or across regions)</li>
+ *   <li>Specify and populate constraint values over time</li>
+ *   <li>Validate, import, and export scenario component data as CSV</li>
  * </ul>
+ * </p>
  *
+ * <p>
  * <b>Features:</b>
  * <ul>
- * <li>Support for filtering and selecting multiple technologies</li>
- * <li>Automatic and manual naming for policy and market</li>
- * <li>Dynamic enabling/disabling of UI controls based on selections</li>
- * <li>Validation of user input and units</li>
- * <li>Progress tracking for file generation</li>
+ *   <li>Support for filtering and selecting multiple technologies</li>
+ *   <li>Automatic and manual naming for policy and market</li>
+ *   <li>Dynamic enabling/disabling of UI controls based on selections</li>
+ *   <li>Validation of user input and units</li>
+ *   <li>Progress tracking for file generation</li>
  * </ul>
+ * </p>
  *
+ * <p>
  * <b>Usage:</b>
- * 
  * <pre>
  * TabTechBound tab = new TabTechBound("Tech Bound", stage);
  * // Add to TabPane, interact via UI
  * </pre>
+ * </p>
  *
+ * <p>
  * <b>Thread Safety:</b> This class is not thread-safe and should be used only
  * on the JavaFX Application Thread.
+ * </p>
  *
+ * <p>
  * <b>Class Details:</b>
  * <ul>
- * <li>Extends {@link PolicyTab} and implements {@link Runnable}.</li>
- * <li>Handles UI setup, event listeners, and scenario file generation for
- * technology bound policies.</li>
- * <li>Supports upper, lower, and fixed bounds, and flexible treatment
- * across/within regions.</li>
- * <li>Provides methods for loading, validating, and saving scenario component
- * data.</li>
+ *   <li>Extends {@link PolicyTab} and implements {@link Runnable}.</li>
+ *   <li>Handles UI setup, event listeners, and scenario file generation for technology bound policies.</li>
+ *   <li>Supports upper, lower, and fixed bounds, and flexible treatment across/within regions.</li>
+ *   <li>Provides methods for loading, validating, and saving scenario component data.</li>
  * </ul>
+ * </p>
  *
+ * <p>
  * <b>Key Methods:</b>
  * <ul>
- * <li>{@link #TabTechBound(String, Stage)} - Constructor, sets up UI and
- * listeners.</li>
- * <li>{@link #setupUIControls()} - Initializes UI controls and listeners.</li>
- * <li>{@link #saveScenarioComponent()} - Main entry for saving scenario
- * data.</li>
- * <li>{@link #saveScenarioComponent(TreeView)} - Handles file generation for
- * tech bound policies.</li>
- * <li>{@link #getMetaDataContent(TreeView, String, String)} - Generates
- * metadata for scenario files.</li>
- * <li>{@link #loadContent(ArrayList)} - Loads scenario data from file.</li>
- * <li>{@link #qaInputs()} - Validates user input before saving.</li>
+ *   <li>{@link #TabTechBound(String, Stage)} - Constructor, sets up UI and listeners.</li>
+ *   <li>{@link #setupUIControls()} - Initializes UI controls and listeners.</li>
+ *   <li>{@link #saveScenarioComponent()} - Main entry for saving scenario data.</li>
+ *   <li>{@link #saveScenarioComponent(TreeView)} - Handles file generation for tech bound policies.</li>
+ *   <li>{@link #getMetaDataContent(TreeView, String, String)} - Generates metadata for scenario files.</li>
+ *   <li>{@link #loadContent(ArrayList)} - Loads scenario data from file.</li>
+ *   <li>{@link #qaInputs()} - Validates user input before saving.</li>
  * </ul>
+ * </p>
  *
+ * <p>
  * <b>See Also:</b>
  * <ul>
- * {@link PolicyTab} {@link DataPoint} {@link PaneForComponentDetails}
- * {@link Utils}
+ *   <li>{@link PolicyTab}</li>
+ *   <li>{@link DataPoint}</li>
+ *   <li>{@link PaneForComponentDetails}</li>
+ *   <li>{@link Utils}</li>
  * </ul>
+ * </p>
  */
 public class TabTechBound extends PolicyTab implements Runnable {
+	// === UI label and option constants ===
 	private static final String LABEL_FILTER = "Filter:";
 	private static final String LABEL_CATEGORY = "Category: ";
 	private static final String LABEL_TECHS = "Tech(s): ";
@@ -280,28 +287,28 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Called when the category ComboBox selection changes.
+	 * Called when the category ComboBox selection changes. Updates policy/market names.
 	 */
 	private void onCategorySelected() {
 		setPolicyAndMarketNames();
 	}
 
 	/**
-	 * Called when the constraint ComboBox selection changes.
+	 * Called when the constraint ComboBox selection changes. Updates policy/market names.
 	 */
 	private void onConstraintSelected() {
 		setPolicyAndMarketNames();
 	}
 
 	/**
-	 * Called when the treatment ComboBox selection changes.
+	 * Called when the treatment ComboBox selection changes. Updates policy/market names.
 	 */
 	private void onTreatmentSelected() {
 		setPolicyAndMarketNames();
 	}
 
 	/**
-	 * Called when the appliedTo ComboBox selection changes.
+	 * Called when the appliedTo ComboBox selection changes. Updates policy/market names.
 	 */
 	private void onAppliedToSelected() {
 		setPolicyAndMarketNames();
@@ -310,7 +317,6 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	/**
 	 * Sets up event handlers for UI components, including listeners for filter,
 	 * category, technology, and other controls.
-	 * <p>
 	 * Handles dynamic UI changes and triggers auto-naming and validation as needed.
 	 */
 	protected void setupEventHandlers() {
@@ -370,7 +376,6 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	/**
 	 * Populates the sector combo box based on the technology info and filter text.
 	 * Handles filtering and ensures no duplicate sectors are added.
-	 * <p>
 	 */
 	private void setupComboBoxCategory() {
 		comboBoxCategory.getItems().clear();
@@ -417,7 +422,6 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	/**
 	 * Updates the technology check combo box based on the selected sector and
 	 * filter text. Only technologies matching the filter and sector are shown.
-	 * <p>
 	 * Called when the filter or category changes.
 	 */
 	private void updateCheckComboBoxTech() {
@@ -469,7 +473,6 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	/**
 	 * Automatically sets the policy and market names based on the current
 	 * selections and auto-naming rules.
-	 * <p>
 	 * Uses selected constraint, category, treatment, and region to generate unique
 	 * names. Handles edge cases for multiple regions.
 	 */
@@ -542,7 +545,6 @@ public class TabTechBound extends PolicyTab implements Runnable {
 
 	/**
 	 * Saves the scenario component using the current region tree.
-	 * <p>
 	 * Main entry point for saving the scenario component. Calls the overloaded
 	 * saveScenarioComponent(TreeView) method.
 	 */
@@ -553,7 +555,8 @@ public class TabTechBound extends PolicyTab implements Runnable {
 
 	/**
 	 * Saves the scenario component using the provided region tree. Writes metadata
-	 * and constraint tables to temporary files.
+	 * and constraint tables to temporary files. Handles nested/non-nested techs and
+	 * transportation load factors.
 	 *
 	 * @param tree The region selection tree
 	 */
@@ -861,6 +864,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 
 	/**
 	 * Returns a string containing the metadata content for the scenario component.
+	 * Includes category, technologies, constraint, applied to, treatment, policy/market names, regions, and table data.
 	 *
 	 * @param tree   The region selection tree
 	 * @param market The market name

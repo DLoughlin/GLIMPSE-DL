@@ -31,7 +31,6 @@
  * Contributors include Tai Wu (USEPA), Farid Alborzi (ORISE), and Aaron Parks and 
  * Yadong Xu of ARA through the EPA Environmental Modeling and Visualization 
  * Laboratory contract.
- *
  */
 package gui;
 
@@ -178,12 +177,12 @@ public class Client extends Application {
     /**
      * The entry point of the application. Sets up JavaFX and launches the GUI.
      *
-     * <p>Handles command-line arguments and starts the JavaFX application lifecycle.</p>
+     * Handles command-line arguments and starts the JavaFX application lifecycle.
      *
      * @param args Command line arguments passed to the application. Supports an options file via -options flag or as a single argument.
      */
     public static void main(String[] args) {
-        // Added following line to address issue on VMs that caused JavaFX to shutdown when WM_ENDSESSION was called.
+        // Ensures JavaFX does not exit implicitly on certain VMs (e.g., when WM_ENDSESSION is called).
         Platform.setImplicitExit(false);
         launch(args);
     }
@@ -191,33 +190,27 @@ public class Client extends Application {
     /**
      * Initializes the application. Loads settings, options, and data files, and sets up utility references.
      *
-     * <p>Initializes all singleton utility classes and loads user options and data files. Also logs system information.</p>
+     * Initializes all singleton utility classes and loads user options and data files. Also logs system information.
      *
      * @throws Exception if initialization fails
      */
     @Override
     public void init() throws Exception {
         System.out.println("Loading settings and initializing.");
-
         // Initialize utility/variable objects with references to each other
         vars.init(utils, vars, styles, files);
         files.init(utils, vars, styles, files);
         utils.init(utils, vars, styles, files);
-
         // Parse command-line arguments for options file
         processArgs();
-
         // Load options into the vars singleton
         vars.loadOptions(optionsFilename);
-
         final String setup = vars.examineGLIMPSESetup();
         if (setup.length() > 0) {
             System.out.println(setup);
         }
-
         // Reset log file and log computer stats
         utils.resetLogFile(utils.getComputerStatString());
-
         // Load data files into files singleton
         files.loadFiles();
         utils.sb = this.sb;
@@ -226,16 +219,14 @@ public class Client extends Application {
     /**
      * Starts the JavaFX application and sets up the main window and GUI components.
      *
-     * <p>Initializes the main window, sets up event handlers for shutdown, builds all panels, and configures the application icon.</p>
+     * Initializes the main window, sets up event handlers for shutdown, builds all panels, and configures the application icon.
      *
      * @param primaryStage The primary stage for this application.
      */
     @Override
     public void start(Stage primaryStage) {
         System.out.println("Starting GLIMPSE Graphical User Interface...");
-
         Client.primaryStage = primaryStage;
-
         // Ensure threads are properly terminated on window close
         primaryStage.setOnCloseRequest(event -> {
             // Terminate status checkers and shutdown execution threads
@@ -246,16 +237,12 @@ public class Client extends Application {
             Client.modelInterfaceExecutionThread.shutdownNow();
             Platform.exit();
         });
-
         // Build GUI panels and layout
         getScenarioBuilder().build();
-
         // Set up the main window with menu and content
         setMainWindow(combineAllElementsIntoOnePane(), createMenuBar());
-
         // Set up execution threads for GCAM and post-processor
         setupExecutionThreads();
-
         // Set application icon
         final String iconFile = "file:" + vars.getGlimpseResourceDir() + File.separator + "GLIMPSE_icon_large.png";
         primaryStage.getIcons().add(new Image(iconFile));
@@ -265,16 +252,14 @@ public class Client extends Application {
      * Processes command-line arguments to extract the options filename if provided.
      * Supports both single argument and -options flag.
      *
-     * <p>Sets the static optionsFilename field if an options file is specified.</p>
+     * Sets the static optionsFilename field if an options file is specified.
      */
     private void processArgs() {
         final Parameters params = getParameters();
         final List<String> paramList = params.getRaw();
-
         if (paramList.isEmpty()) {
             return;
         }
-
         if (paramList.size() == 1) {
             optionsFilename = paramList.get(0);
         } else {
@@ -290,33 +275,27 @@ public class Client extends Application {
     /**
      * Creates the main menu bar for the application, including File, Edit, Tools, View, and Help menus.
      *
-     * <p>Each menu is set up using its corresponding setup class.</p>
+     * Each menu is set up using its corresponding setup class.
      *
      * @return MenuBar the constructed menu bar
      */
     private MenuBar createMenuBar() {
         final MenuBar menuBar = new MenuBar();
-
         // File menu
         final Menu menuFile = new Menu("File");
         new SetupMenuFile().setup(menuFile);
-
         // Edit menu
         final Menu menuEdit = new Menu("Edit");
         new SetupMenuEdit().setup(menuEdit);
-
         // Tools menu
         final Menu menuTools = new Menu("Tools");
         new SetupMenuTools().setup(menuTools);
-
         // View menu
         final Menu menuView = new Menu("View");
         new SetupMenuView().setup(menuView);
-
         // Help menu
         final Menu menuHelp = new Menu("Help");
         new SetupMenuHelp().setup(menuHelp);
-
         // Add all menus to the menu bar
         menuBar.getMenus().addAll(menuFile, menuEdit, menuView, menuTools, menuHelp);
         return menuBar;
@@ -325,7 +304,7 @@ public class Client extends Application {
     /**
      * Combines all main GUI elements into a single GridPane for the main window layout.
      *
-     * <p>Adds the component library, button panel, create scenario panel, and run panel to the main layout.</p>
+     * Adds the component library, button panel, create scenario panel, and run panel to the main layout.
      *
      * @return GridPane containing all main UI elements
      */
@@ -349,7 +328,7 @@ public class Client extends Application {
     /**
      * Sets up the main application window with the provided layout and menu bar.
      *
-     * <p>Configures the root layout, scene, window size, and optionally displays the splash screen.</p>
+     * Configures the root layout, scene, window size, and optionally displays the splash screen.
      *
      * @param mainGridPane The main content pane
      * @param menuBar The menu bar
@@ -377,7 +356,7 @@ public class Client extends Application {
      * Sets up the execution threads for GCAM and the model interface.
      * GCAM uses a single-threaded executor, while the model interface uses a multi-threaded executor.
      *
-     * <p>Initializes and starts the execution queues for both GCAM and post-processing.</p>
+     * Initializes and starts the execution queues for both GCAM and post-processing.
      */
     private void setupExecutionThreads() {
         // Starting separate execution queues for GCAM and post-processor.
@@ -391,7 +370,7 @@ public class Client extends Application {
     /**
      * Loads and displays the splash screen with fade-in and fade-out effects.
      *
-     * <p>Shows a splash image on startup if enabled in user options. Handles errors gracefully if the image is missing.</p>
+     * Shows a splash image on startup if enabled in user options. Handles errors gracefully if the image is missing.
      *
      * @return true if splash screen loaded successfully, false otherwise
      */
@@ -452,7 +431,7 @@ public class Client extends Application {
      * Sets the text of the status bar at the bottom of the application window.
      * If called from a background thread, wraps the update in Platform.runLater.
      *
-     * <p>Used throughout the application to provide user feedback and status updates.</p>
+     * Used throughout the application to provide user feedback and status updates.
      *
      * @param text The text to display in the status bar
      */
