@@ -76,9 +76,19 @@ public class GLIMPSEVariables {
     private final List<String> DEFAULT_REGION_LIST = new ArrayList<>(Arrays.asList("USA", "Canada", "EU-15", "Europe_Non_EU", "European Free Trade Association", "Japan", "Australia_NZ", "Central Asia", "Russia", "China", "Middle East", "Africa_Eastern", "Africa_Northern", "Africa_Southern", "Africa_Western", "South Africa", "Brazil", "Central America and Caribbean", "Mexico", "South America_Northern", "South America_Southern", "Argentina", "Colombia", "Indonesia", "Pakistan", "South Asia", "Southeast Asia", "Taiwan", "Europe_Eastern", "EU-12", "South Korea", "India", "Ukraine"));
     private final List<String> DEFAULT_SUBREGION_LIST = new ArrayList<>(Arrays.asList("AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"));
     private final List<String> DEFAULT_POLLUTANT_LIST = new ArrayList<>(Arrays.asList("CO2 (MTC)", "CO2 (MT CO2)","GHG (MT CO2E)", "NOx (Tg)", "SO2 (Tg)", "PM2.5 (Tg)", "CO (Tg)", "NMVOC (Tg)", "NH3 (Tg)", "CH4 (Tg)", "N2O (Tg)", "BC (Tg)", "OC (Tg)","F-gases (MT CO2E)"));
+    
     private final int DEFAULT_SIMULATION_YEAR_INCREMENT = 5;
 
-    
+    // GHG Defaults
+	private final List<String> DEFAULT_GHG_LIST = new ArrayList<>(Arrays.asList("CO2","CH4","CH4_AWB","CH4_AGR","N2O","N2O_AWB","N2O_AGR","C2F6","CF4","SF6","HFC23","HFC32","HFC125","HFC134a","HFC143a","HFC152a","HFC227ea","HFC43","HFC236fa","HFC365mfc","HFC245fa"));
+	private final List<String> DEFAULT_GHG_PRICE_ADJUST = new ArrayList<>(Arrays.asList("1.0","6.818","6.818","6.818","81.265","81.265","81.265","3.327","2.015","6.218","4.036","0.184","0.954","0.39","1.219","0.034","0.873","0.447","2.675","0.217","0.281"));
+	private final List<String> DEFAULT_GHG_DEMAND_ADJUST = new ArrayList<>(Arrays.asList("3.667","25","25","25","298","298","298","12.2","7.39","22.8","14.8","0.675","3.5","1.43","4.47","0.124","3.2","1.64","9.81","0.794","1.03"));
+	private final List<String> DEFAULT_GHG_PRICE_UNIT = new ArrayList<>(Arrays.asList("1990$/tC","1990$/GgCH4","1990$/GgCH4","1990$/GgCH4","1990$/GgN2O","1990$/GgN2O","1990$/GgN2O","1990$/MgC2F6","1990$/MgCF4","1990$/MgSF6","1990$/MgHFC23","1990$/MgHFC32","1990$/MgHFC125","1990$/MgHFC134a","1990$/MgHFC143a","1990$/MgHFC152a","1990$/MgHFC227ea","1990$/MgHFC43","1990$/MgHFC236fa","1990$/MgHFC365mfc","1990$/MgHFC245fa"));
+	private final List<String> DEFAULT_GHG_OUTPUT_UNIT = new ArrayList<>(Arrays.asList("MtC","TgCH4","TgCH4","TgCH4","TgN2O","TgN2O","TgN2O","GgC2F6","GgCF4","GgSF6","GgHFC23","GgHFC32","GgHFC125","GgHFC134a","GgHFC143a","GgHFC152a","GgHFC227ea","GgHFC43","GgHFC236fa","GgHFC365mfc","GgHFC245fa"));
+
+    // F-gas Defaults
+	private final List<String> DEFAULT_FGAS_LIST = new ArrayList<>(Arrays.asList("C2F6","CF4","SF6","HFC23","HFC32","HFC125","HFC134a","HFC143a","HFC152a","HFC227ea","HFC43","HFC236fa","HFC365mfc","HFC245fa"));
+	
     // --- Fields ---
     private String glimpseVersion = DEFAULT_GLIMPSE_VERSION;
     private int scenarioBuilderWidth = DEFAULT_SCENARIO_BUILDER_WIDTH;
@@ -87,6 +97,14 @@ public class GLIMPSEVariables {
     private List<Integer> allowablePolicyYears = DEFAULT_ALLOWABLE_POLICY_YEARS_LIST;
     private List<Integer> allYears = DEFAULT_ALL_YEARS_LIST;
     private List<String> pollutantList = DEFAULT_POLLUTANT_LIST;
+    
+    private List<String> ghgList = DEFAULT_GHG_LIST;
+    private List<String> fGasList = DEFAULT_FGAS_LIST;
+    private List<String> ghgPriceAdjust = DEFAULT_GHG_PRICE_ADJUST;
+    private List<String> ghgDemandAdjust = DEFAULT_GHG_DEMAND_ADJUST;
+    private List<String> ghgPriceUnit = DEFAULT_GHG_PRICE_UNIT;
+    private List<String> ghgOutputUnit = DEFAULT_GHG_OUTPUT_UNIT;
+    
     private Integer calibrationYear = DEFAULT_CALIBRATION_YEAR;
     private int periodIncrement = DEFAULT_PERIOD_INCREMENT;
     private String preferredFontSize = DEFAULT_PREFERRED_FONT_SIZE;
@@ -1417,6 +1435,7 @@ public class GLIMPSEVariables {
             break;
         case "debugrename":
             returnVal = debugRename;
+            break;
         }
         if ((returnVal==null)||(returnVal.equals(""))) System.out.println("No match for "+param);
         return returnVal;
@@ -1650,6 +1669,22 @@ public class GLIMPSEVariables {
 			break;
         case "subregionlist":
         	setSubRegionList(val);
+        	break;
+        case "ghglist":
+			setGhgListStr(val);
+			break;
+        case "ghggwplist":
+			setGhgGWPListStr(val);
+			break;
+        case "ghgunitlist":
+        	setGhgUnitListStr(val);
+        	break;
+        case "pollutantlist":
+			setPollutantList(val);
+			break;
+        default:
+			System.out.println("No match for " + param);
+			break;
         }
 
         if (param.indexOf("dir") > 0) {
@@ -2323,5 +2358,109 @@ public class GLIMPSEVariables {
 		this.subRegionList = stateList;
 	}
 
+    public List<String> getGhgList() {
+        return ghgList;
+    }
+    
+	public List<String> getFgasList() {
+		return fGasList;
+	}  
+
+    public List<String> getGhgPriceAdjust() {
+        return ghgPriceAdjust;
+    }
+ 
+    public List<String> getGhgDemandAdjust() {
+        return ghgDemandAdjust;
+    }
+    
+    public List<String> getGhgPriceUnit() {
+        return ghgPriceUnit;
+    }
+
+    public List<String> getGhgOutputUnit() {
+        return ghgOutputUnit;
+    }
+  
+    public void setGhgListStr(String emisListStr) {
+		this.ghgList = utils.getStringListFromString(emisListStr, ",");
+	}
+    
+    public void setGhgList(List<String> emisList) {
+        this.ghgList = emisList;
+    }
+
+    public void setFgasListStr(String emisListStr) {
+		this.fGasList = utils.getStringListFromString(emisListStr, ",");
+	}
+    
+    public void setFgasList(List<String> emisList) {
+    	this.fGasList = emisList;
+    }
+    
+    public void setGhgGWPListStr(String ghgGWPListStr) {
+    	setGhgDemandAdjustStr(ghgGWPListStr);
+    	String[] ghgGWPs=ghgGWPListStr.split(",");
+    	//Double[] ghgGWPValues=new Double[ghgGWPs.length];
+    	String priceAdjustStr="";
+    	String demandAdjustStr="";
+    	for (int i=0;i<ghgGWPs.length;i++) {
+    		double priceAdjVal=1.0;
+    		double demandAdjval=1.0;
+			try {
+				priceAdjVal=Double.parseDouble(ghgGWPs[i].trim())/3.667;
+			} catch(Exception e) {
+				priceAdjVal=1.0;
+			}
+			if (i>0) priceAdjustStr+=",";
+			priceAdjustStr+=String.format("%.4f",priceAdjVal);
+		}
+    	setGhgPriceAdjustStr(priceAdjustStr);
+    }
+    
+    public void setGhgUnitListStr(String ghgUnitListStr) {
+		
+    	this.setGhgOutputUnitStr(ghgUnitListStr);
+    	String[] ghgPriceUnits=ghgUnitListStr.split(",");
+
+    	String priceUnitStr="";
+		for (int i=0;i<ghgPriceUnits.length;i++) {
+			if (i>0) priceUnitStr+=",";
+			priceUnitStr+="1990$s/"+ghgPriceUnits[i].trim();
+		}
+		this.setGhgPriceUnitStr(priceUnitStr);
+    }
+    
+    public void setGhgPriceAdjustStr(String ghgPriceAdjustStr) {
+    	this.ghgPriceAdjust = utils.getStringListFromString(ghgPriceAdjustStr, ",");
+    }
+    
+    public void setGhgPriceAdjust(List<String> ghgPriceAdjust) {
+        this.ghgPriceAdjust = ghgPriceAdjust;
+    }
+    
+    public void setGhgDemandAdjustStr(String ghgDemandAdjustStr) {
+		this.ghgDemandAdjust = utils.getStringListFromString(ghgDemandAdjustStr, ",");
+	}
+
+    public void setGhgDemandAdjust(List<String> ghgDemandAdjust) {
+        this.ghgDemandAdjust = ghgDemandAdjust;
+    }
+	
+    public void setGhgPriceUnitStr(String ghgPriceUnitStr) {
+    	this.ghgPriceUnit = utils.getStringListFromString(ghgPriceUnitStr, ",");
+    }
+    
+    public void setGhgPriceUnit(List<String> ghgPriceUnit) {
+        this.ghgPriceUnit = ghgPriceUnit;
+    }
+    
+    public void setGhgOutputUnitStr(String ghgOutputUnitStr) {
+		this.ghgOutputUnit = utils.getStringListFromString(ghgOutputUnitStr, ",");
+	}
+    
+    public void setGhgOutputUnit(List<String> ghgOutputUnit) {
+        this.ghgOutputUnit = ghgOutputUnit;
+    }
 
 }

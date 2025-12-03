@@ -199,6 +199,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	 * up listeners for user interaction.
 	 */
 	private void setupUIControls() {
+		// Set up left, center, and right columns of the UI
 		setupLeftColumn();
 		setupCenterColumn();
 		setupRightColumn();
@@ -226,7 +227,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 		labelConvertFrom.setVisible(false);
 		comboBoxConvertFrom.setVisible(false);
 
-		// Listeners and actions
+		// Listener for category selection changes
 		checkComboBoxCategory.getCheckModel().getCheckedItems()
 				.addListener((javafx.collections.ListChangeListener<String>) change -> {
 					if (isAdjustingCategoryChecks)
@@ -264,6 +265,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 					setPolicyAndMarketNames();
 				});
 
+		// Listener for measure selection changes
 		setOnAction(comboBoxMeasure, e -> {
 			// Show/hide conversion controls based on measure type
 			if (comboBoxMeasure.getSelectionModel().getSelectedItem().startsWith(EMISSION_TAX)) {
@@ -275,6 +277,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 			}
 			setPolicyAndMarketNames();
 		});
+		// Listener for pollutant selection changes
 		setOnAction(comboBoxPollutant, e -> {
 			String selectedItem = comboBoxPollutant.getSelectionModel().getSelectedItem();
 			if (!SELECT_ONE.equals(selectedItem)) {
@@ -348,6 +351,12 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	 * and options. If auto-naming is enabled, updates the text fields accordingly.
 	 * Uses selected measure, pollutant, category, and region to generate unique
 	 * names. Handles edge cases for multiple categories or regions.
+	 * <p>
+	 * This method is called whenever relevant UI controls change. It ensures that
+	 * the policy and market names are unique and descriptive, reflecting the user's
+	 * selections. The logic accounts for multiple categories and regions, and
+	 * applies string replacements to ensure valid names.
+	 * </p>
 	 */
 	protected void setPolicyAndMarketNames() {
 		Platform.runLater(() -> {
@@ -357,11 +366,13 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 				String category = "--";
 				String state = "--";
 				try {
+					// Determine measure type (Tax/Cap)
 					String s = comboBoxMeasure.getValue();
 					if (s != null && s.contains("Tax"))
 						measure = "polTax";
 					if (s != null && s.contains("Cap"))
 						measure = "polCap";
+					// Determine category selection
 					int cats = checkComboBoxCategory.getCheckModel().getCheckedItems().size();
 					if (cats == 0) {
 						category = "All";
@@ -370,10 +381,12 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 					} else {
 						category = "Mult";
 					}
+					// Get pollutant name (first word)
 					s = comboBoxPollutant.getValue();
 					if (s != null && !s.equals("Select One")) {
 						pollutant = utils.splitString(s, " ")[0];
 					}
+					// Get selected regions and process for name
 					String[] listOfSelectedRegions = utils.getAllSelectedRegions(paneForCountryStateTree.getTree());
 					if (listOfSelectedRegions != null && listOfSelectedRegions.length > 0) {
 						listOfSelectedRegions = utils.removeUSADuplicate(listOfSelectedRegions);
@@ -384,6 +397,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 							state = "Reg";
 						}
 					}
+					// Compose name and apply string replacements for validity
 					String name = measure + "_" + category + "_" + pollutant + "_" + state;
 					name = name.replaceAll(" ", "_").replaceAll("-", "_").replaceAll("--", "_").replaceAll("_-_", "_").replaceAll("---", "");
 					textFieldMarketName.setText(name + "_Mkt");
@@ -398,6 +412,9 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	/**
 	 * Runnable implementation: triggers saving the scenario component. Calls
 	 * saveScenarioComponent().
+	 * <p>
+	 * This method is used to run the save operation on the JavaFX Application Thread.
+	 * </p>
 	 */
 	@Override
 	public void run() {
@@ -422,14 +439,22 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	 * Saves the scenario component using the provided region tree. Validates
 	 * inputs, generates metadata and CSV, and sets fileContent/filenameSuggestion.
 	 *
+	 * <p>
+	 * This method routes to the appropriate file generation logic based on the
+	 * selected measure and pollutant. It handles all cases for tax/cap policies,
+	 * including robust CO2 cap, GHG tax/cap, and flexible tax/cap for other pollutants.
+	 * </p>
+	 *
 	 * @param tree TreeView of selected regions
 	 */
 	private void saveScenarioComponent(TreeView<String> tree) {
+		// Validate inputs before proceeding
 		if (!qaInputs()) {
 			Thread.currentThread().destroy();
 			return;
 		}
 
+		// Get selected regions and remove duplicates
 		String[] listOfSelectedRegions = utils.getAllSelectedRegions(tree);
 		listOfSelectedRegions = utils.removeUSADuplicate(listOfSelectedRegions);
 
@@ -438,36 +463,32 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 		String market_name = textFieldMarketName.getText() + ID;
 		filenameSuggestion = textFieldPolicyName.getText().replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
 
-		//String category = null;
+		// Get selected categories
 		List<String> cats = checkComboBoxCategory.getCheckModel().getCheckedItems();
-//		if (cats.size() == 0) {
-//			category = ALL;
-//		} else if (cats.size() == 1) {
-//			category = checkComboBoxCategory.getCheckModel().getCheckedItems().get(0);
-//		}
 
 		String measure = comboBoxMeasure.getValue();
 		measure = measure.contains(CAP) ? CAP : TAX;
 
+		// Get selected pollutant
 		String pol_menu = comboBoxPollutant.getSelectionModel().getSelectedItem().trim() + " ";
 		String pol = pol_menu.substring(0, pol_menu.indexOf(" ")).trim();
 
+		// Generate metadata for file header
 		fileContent = getMetaDataContent(tree, market_name, policy_name);
 
 		// Route to appropriate file generation method based on pollutant and measure
-
-		// cases:
+		// Cases:
 		// Caps:
-		// 1. CO2 cap in MTC on all categories x
-		// 2. CO2 cap in MTCO2 on all categories x
-		// 3. GHG cap in MTCO2E on all categories x
+		// 1. CO2 cap in MTC on all categories
+		// 2. CO2 cap in MTCO2 on all categories
+		// 3. GHG cap in MTCO2E on all categories
 		// 4. CO2 cap in MTC on specific categories
 		// 5. CO2 cap in MTCO2 on specific categories
 		// 6. Non-GHG cap in Tg on all categories
 		// Taxes:
 		// 7. CO2 tax in $/MTC on all categories
 		// 8. CO2 tax in $/MTCO2 on all categories
-		// 9. GHG tax in $/MTCO2E on all categories x
+		// 9. GHG tax in $/MTCO2E on all categories
 		// 10. Non-GHG tax in $/Tg on all categories
 
 		if (measure.equals(CAP)) {
@@ -509,6 +530,10 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	/**
 	 * Special implementation for robust CO2 cap policies, generating scenario files
 	 * for complex CO2 cap scenarios.
+	 * <p>
+	 * This method generates two tables: one for the cap policy and one for the linked market scenario.
+	 * It also applies a demand adjustment factor if the units are MT CO2.
+	 * </p>
 	 *
 	 * @param listOfSelectedRegions Array of selected region names
 	 * @param pol                   Pollutant string
@@ -519,6 +544,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	private void saveScenarioComponentRobustCO2Cap(String[] listOfSelectedRegions, String pol, String pol_menu,
 			String market_name, String policy_name) {
 
+		// Add metadata and table headers for robust CO2 cap scenario
 		fileContent += INPUT_TABLE + vars.getEol();
 		fileContent += VARIABLE_ID + vars.getEol();
 		fileContent += GLIMPSE_EMISSION_CAP_PPS_P1 + vars.getEol() + vars.getEol();
@@ -532,10 +558,12 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 				}
 			}
 		}
+		// Determine demand adjustment factor based on units
 		String dmdAdj = "1";
 		if (pol_menu.contains("(MT CO2)"))
 			dmdAdj = "3.667";
 
+		// Add additional table for linked market scenario if multiple regions
 		if (listOfSelectedRegions != null && listOfSelectedRegions.length >= 1) {
 			fileContent += vars.getEol();
 			fileContent += INPUT_TABLE + vars.getEol();
@@ -556,6 +584,11 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	/**
 	 * Special implementation for flexible tax or cap policies, generating scenario
 	 * files for non-GHG/CO2 pollutants or category-specific policies.
+	 * <p>
+	 * This method handles writing multiple tables for flexible tax/cap policies, including
+	 * subspecies tables for CO2 with specific categories. It also manages temporary files
+	 * and concatenates them at the end.
+	 * </p>
 	 *
 	 * @param listOfSelectedRegions Array of selected region names
 	 * @param measure               Measure type (Tax/Cap)
@@ -569,6 +602,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	private void saveScenarioComponentFlexTaxOrCap(String[] listOfSelectedRegions, String measure,
 			List<String> categories, String pol, String pol_menu, String market_name, String policy_name, String ID) {
 
+		// Initialize temp files for writing scenario data
 		initializeTempFiles();
 		files.writeToBufferedFile(bw0, fileContent);
 		fileContent = "use temp file";
@@ -579,6 +613,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 		// If not all categories are selected, append unique ID to pollutant name for uniqueness
 		if (!categories.contains(ALL)) pol = pol + "_" + ID;
 
+		// Write table headers based on measure type
 		files.writeToBufferedFile(bw0, INPUT_TABLE + vars.getEol());
 		files.writeToBufferedFile(bw0, VARIABLE_ID + vars.getEol());
 		if (measure.equals(CAP)) {
@@ -589,6 +624,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 			files.writeToBufferedFile(bw0, "region,pollutant,market,year,tax" + vars.getEol());
 		}
 
+		// Write scenario data for each region
 		if (listOfSelectedRegions != null && listOfSelectedRegions.length > 0) {
 			String state = listOfSelectedRegions[0];
 
@@ -596,6 +632,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 				data_str = data_str.replaceAll(" ", "").trim();
 				int data_yr = Integer.parseInt(data_str.split(",")[0].trim());
 				double data_val = Double.parseDouble(data_str.split(",")[1].trim());
+				// Convert units if necessary
 				if (pol_menu.contains("(MT CO2)")) {
 					data_val = data_val / 3.667;
 					data_str = data_yr + "," + data_val;
@@ -603,6 +640,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 				files.writeToBufferedFile(bw0, state + "," + pol + "," + market_name + "," + data_str + vars.getEol());
 			}
 		}
+		// If multiple regions, write additional market linkage table
 		if (listOfSelectedRegions != null && listOfSelectedRegions.length > 1) {
 			files.writeToBufferedFile(bw0, vars.getEol());
 			files.writeToBufferedFile(bw0, INPUT_TABLE + vars.getEol());
@@ -623,7 +661,8 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 		int nonest_count = 0;
 		int nest_count = 0;
 
-		if (!categories.contains(ALL)) { // case where specific categories are selected (CO2 only)
+		// If specific categories are selected (CO2 only), write subspecies tables
+		if (!categories.contains(ALL)) {
 
 			files.writeToBufferedFile(bw1, vars.getEol());
 			files.writeToBufferedFile(bw1, INPUT_TABLE + vars.getEol());
@@ -666,8 +705,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 									String tech_r = tech_list[r][2];
 									String cat_r = tech_list[r][cols - 1];
 
-									// DHL: added PV and wind check to avoid issue where these didn't have inputs,
-									// resulting in severe error
+									// Avoid PV and wind technologies that don't have inputs
 									if ((!tech_r.contains("PV")) && (!tech_r.contains("wind"))
 											&& (!tech_r.contains("CSP"))) {
 										String cat_r_lwc = cat_r.toLowerCase();
@@ -686,10 +724,10 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 								}
 							}
 						}
-					}
-					double progress = (double) l / (listOfSelectedRegions.length - 1);
-					updateProgressBar(progress);
+						double progress = (double) l / (listOfSelectedRegions.length - 1);
+						updateProgressBar(progress);
 
+					}
 				}
 			}
 		}
@@ -712,6 +750,10 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	/**
 	 * Special implementation for GHG tax/cap policies, generating scenario files
 	 * for GHG policies.
+	 * <p>
+	 * This method generates tables for GHG tax/cap policies, including linkage tables for multiple regions
+	 * and additional tables for GHGs and F-gases. It uses lists of pollutants and units from vars.
+	 * </p>
 	 *
 	 * @param listOfSelectedRegions Array of selected region names
 	 * @param measure               Measure type (Tax/Cap)
@@ -723,6 +765,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	private void saveScenarioComponentGHGTaxOrCap(String[] listOfSelectedRegions, String measure, String pol,
 			String pol_menu, String market_name, String policy_name) {
 
+		// Add metadata and table headers for GHG tax/cap scenario
 		fileContent += INPUT_TABLE + vars.getEol();
 		fileContent += VARIABLE_ID + vars.getEol();
 
@@ -736,6 +779,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 			fileContent += "region,GHG-Policy,GHG-Market,year,tax" + vars.getEol();
 		}
 
+		// Write scenario data for each region
 		if (listOfSelectedRegions != null && listOfSelectedRegions.length > 0) {
 			String state = listOfSelectedRegions[0];
 			ArrayList<String> data = paneForComponentDetails.getDataYrValsArrayList();
@@ -744,6 +788,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 				fileContent += state + "," + policy_name + "," + market_name + "," + data_str + vars.getEol();
 			}
 		}
+		// If multiple regions, write additional market linkage table
 		if (listOfSelectedRegions != null && listOfSelectedRegions.length > 1) {
 			fileContent += vars.getEol();
 			fileContent += INPUT_TABLE + vars.getEol();
@@ -757,6 +802,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 				updateProgressBar(progress);
 			}
 		}
+		// Write additional tables for GHGs and F-gases
 		String fileContent2 = "";
 		fileContent2 += vars.getEol();
 		fileContent2 += INPUT_TABLE + vars.getEol();
@@ -765,48 +811,38 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 		fileContent2 += vars.getEol();
 		fileContent2 += "region,pollutant,GHG-market,GHG-Policy,price-adjust,demand-adjust,price-unit,output-unit"
 				+ vars.getEol();
-		String[] GHGs;// = { "CO2","CH4","CH4_AWB","CH4_AGR","N2O","N2O_AWB","N2O_AGR","C2F6","CF4","SF6","HFC23","HFC32","HFC125","HFC134a","HFC143a","HFC152a","HFC227ea","HFC43","HFC236fa","HFC365mfc","HFC245fa" };
-		String[] price_adjust;// = { "1.0","6.818","6.818","6.818","81.265","81.265","81.265","3.327","2.015","6.218","4.036","0.184","0.954","0.39","1.219","0.034","0.873","0.447","2.675","0.217","0.281" };
-		String[] demand_adjust;// = { "3.667","25","25","25","298","298","298","12.2","7.39","22.8","14.8","0.675","3.5","1.43","4.47","0.124","3.2","1.64","9.81","0.794","1.03" };
-		String[] price_unit;// = { "1990$/tC","1990$/GgCH4","1990$/GgCH4","1990$/GgCH4","1990$/GgN2O","1990$/GgN2O","1990$/GgN2O","1990$/MgC2F6","1990$/MgCF4","1990$/MgSF6","1990$/MgHFC23","1990$/MgHFC32","1990$/MgHFC125","1990$/MgHFC134a","1990$/MgHFC143a","1990$/MgHFC152a","1990$/MgHFC227ea","1990$/MgHFC43","1990$/MgHFC236fa","1990$/MgHFC365mfc","1990$/MgHFC245fa" };
-		String[] output_unit;// = { "MtC","TgCH4","TgCH4","TgCH4","TgN2O","TgN2O","TgN2O","GgC2F6","GgCF4","GgSF6","GgHFC23","GgHFC32","GgHFC125","GgHFC134a","GgHFC143a","GgHFC152a","GgHFC227ea","GgHFC43","GgHFC236fa","GgHFC365mfc","GgHFC245faO" };
 
+		List<String> pollutantList; 
+		List<String> GHGs = vars.getGhgList();;
+		List<String> price_adjust = vars.getGhgPriceAdjust();
+		List<String> demand_adjust = vars.getGhgDemandAdjust();
+		List<String> price_unit = vars.getGhgPriceUnit();
+		List<String> output_unit = vars.getGhgOutputUnit();
+		
 		if (pol.startsWith("F-")) {
-			//F-gases only
-			GHGs = new String[] { "C2F6","CF4","SF6","HFC23","HFC32","HFC125","HFC134a","HFC143a","HFC152a","HFC227ea","HFC43","HFC236fa","HFC365mfc","HFC245fa" };
-			price_adjust = new String[] { "3.327","2.015","6.218","4.036","0.184","0.954","0.39","1.219","0.034","0.873","0.447","2.675","0.217","0.281" };
-			demand_adjust = new String[] { "12.2","7.39","22.8","14.8","0.675","3.5","1.43","4.47","0.124","3.2","1.64","9.81","0.794","1.03" };
-			price_unit = new String[] { "1990$/MgC2F6","1990$/MgCF4","1990$/MgSF6","1990$/MgHFC23","1990$/MgHFC32","1990$/MgHFC125","1990$/MgHFC134a","1990$/MgHFC143a","1990$/MgHFC152a","1990$/MgHFC227ea","1990$/MgHFC43","1990$/MgHFC236fa","1990$/MgHFC365mfc","1990$/MgHFC245fa" };
-			output_unit = new String[] { "GgC2F6","GgCF4","GgSF6","GgHFC23","GgHFC32","GgHFC125","GgHFC134a","GgHFC143a","GgHFC152a","GgHFC227ea","GgHFC43","GgHFC236fa","GgHFC365mfc","GgHFC245faO" };
-		} else { 
-			//GHGs only
-			GHGs = new String[] { "CO2","CH4","CH4_AWB","CH4_AGR","N2O","N2O_AWB","N2O_AGR" };
-			price_adjust = new String[] { "1.0","6.818","6.818","6.818","81.265","81.265","81.265"};
-			demand_adjust = new String[] { "3.667","25","25","25","298","298","298"};
-			price_unit = new String[] { "1990$/tC","1990$/GgCH4","1990$/GgCH4","1990$/GgCH4","1990$/GgN2O","1990$/GgN2O","1990$/GgN2O"};
-			output_unit = new String[] { "MtC","TgCH4","TgCH4","TgCH4","TgN2O","TgN2O","TgN2O"};
-			//includes both GHGs and F-gases
-//			GHGs = new String[] { "CO2","CH4","CH4_AWB","CH4_AGR","N2O","N2O_AWB","N2O_AGR","C2F6","CF4","SF6","HFC23","HFC32","HFC125","HFC134a","HFC143a","HFC152a","HFC227ea","HFC43","HFC236fa","HFC365mfc","HFC245fa" };
-//			price_adjust = new String[] { "1.0","6.818","6.818","6.818","81.265","81.265","81.265","3.327","2.015","6.218","4.036","0.184","0.954","0.39","1.219","0.034","0.873","0.447","2.675","0.217","0.281" };
-//			demand_adjust = new String[] { "3.667","25","25","25","298","298","298","12.2","7.39","22.8","14.8","0.675","3.5","1.43","4.47","0.124","3.2","1.64","9.81","0.794","1.03" };
-//			price_unit = new String[] { "1990$/tC","1990$/GgCH4","1990$/GgCH4","1990$/GgCH4","1990$/GgN2O","1990$/GgN2O","1990$/GgN2O","1990$/MgC2F6","1990$/MgCF4","1990$/MgSF6","1990$/MgHFC23","1990$/MgHFC32","1990$/MgHFC125","1990$/MgHFC134a","1990$/MgHFC143a","1990$/MgHFC152a","1990$/MgHFC227ea","1990$/MgHFC43","1990$/MgHFC236fa","1990$/MgHFC365mfc","1990$/MgHFC245fa" };
-//			output_unit = new String[] { "MtC","TgCH4","TgCH4","TgCH4","TgN2O","TgN2O","TgN2O","GgC2F6","GgCF4","GgSF6","GgHFC23","GgHFC32","GgHFC125","GgHFC134a","GgHFC143a","GgHFC152a","GgHFC227ea","GgHFC43","GgHFC236fa","GgHFC365mfc","GgHFC245faO" };
-
+			// F-gases only
+			pollutantList = vars.getFgasList();
+		} else {
+			// Non-F-gas GHGs and F-gases
+			pollutantList = vars.getGhgList();
 		}
 		
+		// Write GHGs and F-gases data for each region
 		if (listOfSelectedRegions != null) {
 			for (String state : listOfSelectedRegions) {
-				for (int i = 0; i < GHGs.length; i++) {
-					if ((pol.equals("GHG") 
-							|| (pol.equals("F-gases")&&(GHGs[i].equals("C2F6")||GHGs[i].equals("CF4")||GHGs[i].equals("HFC125")||GHGs[i].equals("HFC134a")||GHGs[i].equals("HRC245fa")||GHGs[i].equals("SF6")))
-							|| ((pol.equals("CO2")) && (GHGs[i].equals("CO2"))))) {
-						fileContent2 += state + "," + GHGs[i] + "," + market_name + "," + policy_name + ","
-								+ price_adjust[i] + "," + demand_adjust[i] + "," + price_unit[i] + "," + output_unit[i]
+				for (int i = 0; i < GHGs.size(); i++) {
+					for (String p : pollutantList) {
+
+						if (GHGs.get(i).equals(p)) {
+							fileContent2 += state + "," + GHGs.get(i) + "," + market_name + "," + policy_name + ","
+								+ price_adjust.get(i) + "," + demand_adjust.get(i) + "," + price_unit.get(i) + "," + output_unit.get(i)
 								+ vars.getEol();
-					}
-				}
-			}
+						}
+				    }
+			   }
+		    }
 		}
+		// If multiple regions, write additional linkage table
 		if (listOfSelectedRegions != null && listOfSelectedRegions.length > 1) {
 			fileContent2 += vars.getEol();
 			fileContent2 += INPUT_TABLE + vars.getEol();
@@ -815,12 +851,10 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 			fileContent2 += vars.getEol();
 			fileContent2 += "region,pollutant,GHG-market,GHG-Policy" + vars.getEol();
 			for (int s = 1; s < listOfSelectedRegions.length; s++) {
-				for (int i = 0; i < GHGs.length; i++) {
-					if ((pol.equals("GHG")) || ((pol.equals("CO2")) && (GHGs[i].equals("CO2")))) {
-						String state = listOfSelectedRegions[s];
-						fileContent2 += state + "," + GHGs[i] + "," + market_name + "," + policy_name + vars.getEol();
-					}
-				}
+					for (String p : pollutantList) {
+							fileContent2 += listOfSelectedRegions[s] + "," + p + "," + market_name + ","
+									+ policy_name + vars.getEol();
+				    }
 				double progress = (double) s / (listOfSelectedRegions.length - 1);
 				updateProgressBar(progress);
 			}
@@ -870,6 +904,11 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	 * Loads content into the tab from a list of strings (e.g., when editing a
 	 * component). Populates measure, pollutant, sector, regions, and table data
 	 * from file content.
+	 * <p>
+	 * This method parses each line of the input content, updating the UI controls and
+	 * internal data structures accordingly. It supports loading all relevant fields for
+	 * a scenario component.
+	 * </p>
 	 *
 	 * @param content List of file lines to load
 	 */
@@ -947,6 +986,11 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	/**
 	 * Validates all required inputs before saving the scenario component. Checks
 	 * for at least one region, at least one table entry, and required selections.
+	 * <p>
+	 * This method performs a series of checks on the user's input, including region selection,
+	 * table data, measure, category, pollutant, and policy name. It displays warnings or errors
+	 * if any required input is missing or invalid.
+	 * </p>
 	 *
 	 * @return true if all inputs are valid, false otherwise
 	 */
