@@ -6438,7 +6438,7 @@ local:generate-sector-input-coefs(remove($outputNameQueue, 1), $currTree, $coefs
 					<axis1 name="GHG">GHG</axis1>
 					<axis2 name="Year">emissions</axis2>
 					<xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[@type = 'sector' (:collapse:) or @type = 'resource' (:collapse:)]//*[((@name='CO2') or (@name='CO2_FUG') or (@name='CH4') or (@name='N2O') or 
-				              (@name='CH4_AWB') or (@name='N2O_AWB') or (@name='CH4_AGR') or (@name='N2O_AGR') or (@name='C2F6') or (@name='CF4') or (@name='HFC125') or (@name='HFC134a') or (@name='HFC245fa') or (@name='SF6'))]/emissions/node()</xPath>
+				              (@name='CH4_AWB') or (@name='N2O_AWB') or (@name='CH4_AGR') or (@name='N2O_AGR') or (@name='C2F6') or (@name='CF4') or (starts-with(@name,'HFC')) )]/emissions/node()</xPath>
 					<comments>GHG emissions, converted to units of million metric tonnes (mmCOeq), by pollutant </comments>
 					<!--<labelRewriteList>
 					<level name="GHG">
@@ -8301,7 +8301,7 @@ local:generate-sector-input-coefs(remove($outputNameQueue, 1), $currTree, $coefs
 		</queryGroup>
 	</queryGroup>
 	<queryGroup name="Standard GCAM 8.2 queries">
-    <queryGroup name="energy">
+		<queryGroup name="energy">
         <queryGroup name="primary energy">
             <supplyDemandQuery title="primary energy consumption by region (avg fossil efficiency)">
                 <axis1 name="fuel">input[@name]</axis1>
@@ -12012,7 +12012,7 @@ element input {
             </queryGroup>
         </queryGroup>
     </queryGroup>
-    <queryGroup name="agriculture and land use">
+		<queryGroup name="agriculture and land use">
         <queryGroup name="land use">
             <query title="detailed land allocation">
                 <axis1 name="LandLeaf">LandLeaf[@name]</axis1>
@@ -12733,7 +12733,7 @@ element input {
             </supplyDemandQuery>
         </queryGroup>
     </queryGroup>
-    <queryGroup name="emissions">
+		<queryGroup name="emissions">
         <queryGroup name="CO2 emissions">
             <emissionsQueryBuilder title="CO2 emissions by region">
                 <axis1 name="region">region</axis1>
@@ -13202,7 +13202,7 @@ local:generate-sector-output-coefs(remove($inputNameQueue, 1), $currTree, $coefs
             </emissionsQueryBuilder>
         </queryGroup>
     </queryGroup>
-    <queryGroup name="climate">
+		<queryGroup name="climate">
         <ClimateQuery title="CO2 concentrations">
             <axis1 name="CO2-concentration">none</axis1>
             <axis2 name="Year">CO2-concentration[@year]</axis2>
@@ -13234,7 +13234,7 @@ A user can adjust the query to search for any of:
             <comments/>
         </ClimateQuery>
     </queryGroup>
-    <queryGroup name="socioeconomics">
+		<queryGroup name="socioeconomics">
         <demographicsQuery title="population by region">
             <axis1 name="region">region</axis1>
             <axis2 name="Year">populationMiniCAM</axis2>
@@ -13302,7 +13302,7 @@ A user can adjust the query to search for any of:
             <comments>Note: these are investment demands per timestep</comments>
         </supplyDemandQuery>
     </queryGroup>
-    <queryGroup name="policy">
+		<queryGroup name="policy">
         <marketQuery title="CO2 prices">
             <axis1 name="market">market</axis1>
             <axis2 name="Year">market</axis2>
@@ -13335,7 +13335,7 @@ A user can adjust the query to search for any of:
             <comments/>
         </costCurveQuery>
     </queryGroup>
-    <queryGroup name="water demands (not valid for GCAM-USA)">
+		<queryGroup name="water demands (not valid for GCAM-USA)">
         <supplyDemandQuery title="water withdrawals by region">
             <axis1 name="region">region</axis1>
             <axis2 name="Year">demand-physical[@vintage]</axis2>
@@ -13569,7 +13569,7 @@ A user can adjust the query to search for any of:
             <comments/>
         </resourceQuery>
     </queryGroup>
-    <queryGroup name="general">
+		<queryGroup name="general">
         <queryGroup name="markets and prices">
             <marketQuery title="prices of all markets">
                 <axis1 name="market">market</axis1>
@@ -13672,7 +13672,7 @@ A user can adjust the query to search for any of:
             </supplyDemandQuery>
         </queryGroup>
     </queryGroup>
-    <queryGroup name="GCAM USA">
+		<queryGroup name="GCAM USA">
         <queryGroup name="primary energy">
             <supplyDemandQuery title="primary energy consumption by region (direct equivalent)">
                 <axis1 name="fuel">input[@name]</axis1>
@@ -14555,6 +14555,5 @@ A user can adjust the query to search for any of:
             </emissionsQueryBuilder>
         </queryGroup>
     </queryGroup>
-
 	</queryGroup>
 </queries>
