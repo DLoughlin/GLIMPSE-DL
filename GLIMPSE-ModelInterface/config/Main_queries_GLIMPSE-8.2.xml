@@ -92,262 +92,7 @@
                     </level>
                 </labelRewriteList>
             </supplyDemandQuery>
-            <supplyDemandQuery title="1.2 Primary energy consumption by region (direct equivalent)(GCAM)">
-                <axis1 name="fuel">input[@name]</axis1>
-                <axis2 name="Year">demand-physical[@vintage]</axis2>
-                <xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
-                     
-               declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
-	       	 		 let $scn := $parent/ancestor::scenario,
-	       			   	  $rgn := $parent (: /ancestor::region :)
-	       			   return
-	       			   	  document { element scenario {
-	       			 	  					$scn/@*,
-	       			 						element region {
-	       			 							$rgn/@*,
-	       			 							$append
-	       			 						}
-	       			 	  				}
-	       				}
-	       	 		 (: I can get by with just the scenario and region
-	       			 let $new_node := element {local-name($parent)} {$parent/@*, $append} 	
-	       	 		 return
-	       	 		 if(local-name($parent) != 'scenario')
-	       	 		 then local:append-heirarchy($parent/parent::*, $new_node)
-	       	 		 else document { $new_node } :)
-	       	 	 }; 
-	       	 	 declare function local:generate-sector-input-coefs($outputNameQueue as xs:string*, $currTree as node(), $coefs as node()*, $is_usa as xs:boolean) as node()* {
-                 if(empty($outputNameQueue)) then $coefs
-                 else if( exists($coefs[@name = $outputNameQueue[1]]) or exists(index-of(('biomass',
-'traded oil', 'traded coal', 'traded natural gas', 'traded Afr_MidE pipeline gas', 'traded LA pipeline gas', 'traded PAC pipeline gas', 'traded N.Amer pipeline gas', 'traded RUS pipeline gas', 'traded EUR pipeline gas', 'traded LNG', 'regional corn for ethanol', 'regional biomassOil', 'regional sugar for ethanol', 'regional sugarbeet for ethanol', 'regional woodpulp for energy'),
-$outputNameQueue[1])) or not($currTree/*[@type='sector' and @name=$outputNameQueue[1]]))
-then 
-(:if(not($is_usa) and string-length($currTree/@name) = 2) then
-local:trace-inputs($outputName, $currTree/parent::*/*[@type='region' and @name='USA'], $outputs, true())
-else:)
-local:generate-sector-input-coefs(remove($outputNameQueue, 1), $currTree, $coefs, $is_usa)
-	       				else
-                    let $outputName := $outputNameQueue[1],
-                        $newOutputNameQueue := remove($outputNameQueue, 1),
-                        $useOutputs := $currTree//output-primary[@type='output' and @name=$outputName],
-                        $useInputs := for $out in $useOutputs[not(following-sibling::keyword[exists(@primary-renewable)])]
-                                      return $out/following-sibling::*[@type='input' and not(@name='oil-credits') and not(starts-with(@name, 'water_td'))],
-                        $renewOutputs := for $out in $useOutputs[following-sibling::keyword[exists(@primary-renewable)]]
-                                         return element output {
-                                             attribute name { $out/following-sibling::keyword/@primary-renewable },
-                                             $out/child::*
-                                         },
-                        $totalOutputSum := for $vintage in distinct-values($useOutputs/physical-output/@vintage)
-                                          return element output {
-                                                     attribute vintage { $vintage },
-                                                     text {
-                                                         sum($useOutputs/physical-output[@vintage=$vintage])
-                                                     }
-                                                 },
-                       $new_coefs := $coefs | element sector {
-                                            attribute name { $outputName },
-                                            for $input in distinct-values($useInputs/@name)
-                                            return element input {
-                                                       attribute name { $input },
-                                                       for $outputSum in $totalOutputSum
-                                                       let $inputSum := sum($useInputs[@name=$input]/demand-physical[@vintage=$outputSum/@vintage])
-                                                       where $inputSum > 0
-                                                       return element coef {
-                                                                  attribute vintage { $outputSum/@vintage },
-                                                                  text { $inputSum div $outputSum }
-                                                              }
-                                                    },
-                                            for $input in distinct-values($renewOutputs/@name)
-                                            return element input {
-                                                       attribute name { concat($input, ' renewable') },
-                                                       attribute is-renewable { true() },
-                                                       for $outputSum in $totalOutputSum
-                                                       let $inputSum := sum($renewOutputs[@name=$input]/physical-output[@vintage=$outputSum/@vintage])
-                                                       where $inputSum > 0
-                                                       return element coef {
-                                                                  attribute vintage { $outputSum/@vintage },
-                                                                  text { $inputSum div $outputSum }
-                                                              }
-                                                    }
-                                        }
-                        return 
-                              local:generate-sector-input-coefs(distinct-values(($newOutputNameQueue, $useInputs/@name)), $currTree, $new_coefs, $is_usa)
-		};
-        declare function local:generate-ccs-coefs($currTree as node(), $coefs as node()*) as node()* {
-            for $sector in $coefs/@name
-            let $currSector := $currTree/*[@type='sector' and @name=$sector],
-                $useInputs := $currSector//*[@type='technology' and not(contains(@name, 'CCS')) and not(child::keyword/@primary-renewable)]/*[@type='input' and not(@name='oil-credits') and not(starts-with(@name, 'water_td'))],
-                $useInputsCCS := $currSector//*[@type='technology' and contains(@name, 'CCS')]/*[@type='input' and not(@name='oil-credits') and not(starts-with(@name, 'water_td'))],
-                $totalOutputSum := for $vintage in distinct-values($useInputs/demand-physical/@vintage | $useInputsCCS/demand-physical/@vintage)
-                                          return element output {
-                                                     attribute vintage { $vintage },
-                                                     text {
-                                                         sum($currSector//output-primary/physical-output[@vintage=$vintage])
-                                                     }
-                                                 }
-            return if(exists($useInputsCCS)) then
-                element sector {
-                                            attribute name { $sector },
-                                            $coefs[@name=$sector]/input[@is-renewable],
-                                            for $input in distinct-values(($useInputs/@name, $useInputsCCS/@name))
-                                            return element input {
-                                                       attribute name { $input },
-                                                       for $outputSum in $totalOutputSum
-                                                       let $inputSum := sum($useInputs[@name=$input]/demand-physical[@vintage=$outputSum/@vintage]),
-                                                           $inputSumCCS := sum($useInputsCCS[@name=$input]/demand-physical[@vintage=$outputSum/@vintage])
-                                                       return (element coef {
-                                                                  attribute vintage { $outputSum/@vintage },
-                                                                  text { $inputSum div $outputSum }
-                                                              },
-                                                              element coef_ccs {
-                                                                  attribute vintage { $outputSum/@vintage },
-                                                                  text { $inputSumCCS div $outputSum }
-                                                              })
-                                                    }
-                                        }
-                    else
-                        $coefs[@name=$sector]
-        };
-        declare function local:apply-coefs($outputName as xs:string, $outputs as node()*, $coefs as node()*, $isCCS as xs:boolean) as node()* {
-            if(exists($coefs[@name=$outputName]) and sum($outputs) > 0.001) then
-                for $input in $coefs[@name=$outputName]/input
-                return local:apply-coefs($input/@name,
-                    for $vintage in distinct-values($outputs/@vintage)
-                    let $outputThisVintage := $outputs[@vintage=$vintage],
-                        $firstOutput := $outputThisVintage[1],
-                        $outputSum := sum($outputThisVintage),
-                        $coefThisVintage := $input/coef[@vintage=$vintage]
-                    where $coefThisVintage > 0
-	       		    return element { local-name($firstOutput) } {
-	       				$firstOutput/@*,
-                        text{ $outputSum * $coefThisVintage }
-                        }, $coefs, $isCCS)
-                    | local:apply-coefs($input/@name,
-                    for $vintage in distinct-values($outputs/@vintage)
-                    let $outputThisVintage := $outputs[@vintage=$vintage],
-                        $firstOutput := $outputThisVintage[1],
-                        $outputSum := sum($outputThisVintage),
-                        $coefThisVintage := $input/coef_ccs[@vintage=$vintage]
-                    where exists($coefThisVintage) and $coefThisVintage > 0
-	       		    return element { local-name($firstOutput) } {
-	       				$firstOutput/@*,
-                        text{ $outputSum * $coefThisVintage }
-	       			}, $coefs, true())
-            else if( sum($outputs) > 0.001) then
-                element input {
-                    attribute name { if($isCCS) then concat($outputName, ' CCS') else $outputName },
-                    attribute type { 'input' },
-                    (: $outputs :) (: TODO: not sure why this doesn't work and we need to create these explicitly :)
-                    for $o in $outputs
-                    return element demand-physical { $o/@*, text{ $o/text() } }
-                }
-            else
-                (: These are the residuals from chasing simulenaties, I've left this here
-                   for debuging purposes :)
-                element input {
-                    attribute name { $outputName },
-                    attribute type { 'input' } (:,
-                    $outputs :)
-                }
-        };
-		declare function local:run-input-by-primary($scenarios as xs:string*, $regions as xs:string*, $collection as xs:string) as node()* { 	
-			 	 unordered { 	
-			 	 let $regionsG := if(not($regions[1] = 'Global'))
-			 	 		  then $regions
-			 	 		  else distinct-values(collection($collection)/scenario/world/*[@type='region']/@name)
-			 	 return
-			 	 for $scenario in $scenarios, 	    
-			 	 $region in $regionsG 	
-			 	 let $scenario_split := tokenize($scenario, ' '), 	    
-				 $currTree := collection($collection)/scenario[@name = $scenario_split[1] and @date = $scenario_split[2]]/world/*[@type='region' and @name=$region],
-                 $currInputs := $currTree/*[@type='sector' and (@name='unconventional oil production' or exists(child::keyword/@final-energy))]//*[@type='input' and empty(index-of(('trn_pass_road', 'limestone', 'process heat cement', 'industrial energy use', 'industrial feedstocks', 'renewable', 'trn_freight_road', 'trn_pass_road_LDV', 'trn_pass_road_LDV_2W', 'trn_pass_road_LDV_4W', 'unconventional oil', 'oil-credits', 'scrap', 'alumina', 'process heat paper', 'waste biomass for paper', 'process heat food processing', 'water_td_ind_W', 'water_td_ind_C'), @name))],
-                 $coefs := local:generate-sector-input-coefs(distinct-values($currInputs/@name), $currTree, (), false()),
-                 $ccs_coefs := local:generate-ccs-coefs($currTree, $coefs)
-				 return 
-				    for $inputName in distinct-values($currInputs/@name)
-				    return local:append-heirarchy($currTree, local:apply-coefs($inputName, $currInputs[@name=$inputName]/demand-physical, $ccs_coefs, false()))//text()
-			 	 } 
-	 	 };
-		 local:run-input-by-primary((:scenarios:), (:regions:), (:collection:))
-         
-         
-                ]]></xPath>
-                <comments>WARNING: Results are slightly inflated due to improper secondary-output accounting</comments>
-                <labelRewriteList append-values="false">
-                    <level name="input">
-                        <rewrite from="water consumption CCS" to=""/>
-                        <rewrite from="traditional biomass" to="traditional biomass"/>
-                        <rewrite from="seawater CCS" to=""/>
-                        <rewrite from="traded EUR pipeline gas CCS" to="natural gas CCS"/>
-                        <rewrite from="coal CCS" to="coal CCS"/>
-                        <rewrite from="traded LNG" to="natural gas"/>
-                        <rewrite from="wind-H2 renewable" to="wind"/>
-                        <rewrite from="regional biomassOil CCS" to="biomass CCS"/>
-                        <rewrite from="traded coal" to="coal"/>
-                        <rewrite from="limestone" to=""/>
-                        <rewrite from="seawater" to=""/>
-                        <rewrite from="traded EUR pipeline gas" to="natural gas"/>
-                        <rewrite from="traded biomass CCS" to="biomass CCS"/>
-                        <rewrite from="traded PAC pipeline gas CCS" to="natural gas CCS"/>
-                        <rewrite from="geothermal-elect renewable CCS" to="geothermal"/>
-                        <rewrite from="hydro-elect renewable" to="hydro"/>
-                        <rewrite from="wind-elect renewable" to="wind"/>
-                        <rewrite from="nuclear-H2 renewable" to="nuclear"/>
-                        <rewrite from="crude oil" to="oil"/>
-                        <rewrite from="regional natural gas" to=""/>
-                        <rewrite from="traded coal CCS" to="coal CCS"/>
-                        <rewrite from="natural gas CCS" to="natural gas CCS"/>
-                        <rewrite from="traded Afr_MidE pipeline gas CCS" to="natural gas CCS"/>
-                        <rewrite from="traded biomass" to="biomass"/>
-                        <rewrite from="traded RUS pipeline gas CCS" to="natural gas CCS"/>
-                        <rewrite from="traded PAC pipeline gas" to="natural gas"/>
-                        <rewrite from="geothermal-elect" to="geothermal"/>
-                        <rewrite from="traded Afr_MidE pipeline gas" to="natural gas"/>
-                        <rewrite from="water consumption" to=""/>
-                        <rewrite from="renewable" to=""/>
-                        <rewrite from="water withdrawals CCS" to=""/>
-                        <rewrite from="coal" to="c coal"/>
-                        <rewrite from="regional woodpulp for energy CCS" to="biomass CCS"/>
-                        <rewrite from="traded natural gas CCS" to="natural gas CCS"/>
-                        <rewrite from="traded RUS pipeline gas" to="natural gas"/>
-                        <rewrite from="regional corn for ethanol" to="biomass"/>
-                        <rewrite from="geothermal-elect renewable" to="geothermal"/>
-                        <rewrite from="crude oil CCS" to="oil CCS"/>
-                        <rewrite from="regional biomassOil" to="biomass"/>
-                        <rewrite from="wind-elect renewable CCS" to="wind"/>
-                        <rewrite from="regional corn for ethanol CCS" to="biomass CCS"/>
-                        <rewrite from="traded N.Amer pipeline gas" to="natural gas"/>
-                        <rewrite from="hydro-elect renewable CCS" to="hydro"/>
-                        <rewrite from="traded LA pipeline gas CCS" to="natural gas CCS"/>
-                        <rewrite from="regional sugar for ethanol CCS" to="biomass CCS"/>
-                        <rewrite from="traded unconventional oil CCS" to="oil CCS"/>
-                        <rewrite from="elect_td_ind" to=""/>
-                        <rewrite from="biomass CCS" to="biomass CCS"/>
-                        <rewrite from="traded oil" to="oil"/>
-                        <rewrite from="traded oil CCS" to="oil CCS"/>
-                        <rewrite from="exotic-elect" to="breakthrough"/>
-                        <rewrite from="biomass" to="biomass"/>
-                        <rewrite from="nuclear-elect renewable" to="nuclear"/>
-                        <rewrite from="traded N.Amer pipeline gas CCS" to="natural gas CCS"/>
-                        <rewrite from="solar-elect renewable CCS" to="solar"/>
-                        <rewrite from="traded unconventional oil" to="oil"/>
-                        <rewrite from="regional sugar for ethanol" to="biomass"/>
-                        <rewrite from="natural gas" to="natural gas"/>
-                        <rewrite from="solar-elect renewable" to="solar"/>
-                        <rewrite from="traded natural gas" to="natural gas"/>
-                        <rewrite from="regional sugarbeet for ethanol" to="biomass"/>
-                        <rewrite from="water withdrawals" to=""/>
-                        <rewrite from="solar-H2 renewable" to="solar"/>
-                        <rewrite from="wind-elect" to="wind"/>
-                        <rewrite from="traded LNG CCS" to="natural gas CCS"/>
-                        <rewrite from="nuclear-elect renewable CCS" to="nuclear"/>
-                        <rewrite from="global solar resource" to="solar"/>
-                        <rewrite from="traded LA pipeline gas" to="natural gas"/>
-                        <rewrite from="regional woodpulp for energy" to="biomass"/>
-                    </level>
-                </labelRewriteList>
-            </supplyDemandQuery>
-            <supplyDemandQuery title="1.3 Primary energy consumption by region (avg fossil efficiency)(GCAM)">
+            <supplyDemandQuery title="1.2 Primary energy consumption by region (avg fossil efficiency)(GCAM)">
                 <axis1 name="fuel">input[@name]</axis1>
                 <axis2 name="Year">demand-physical[@vintage]</axis2>
                 <xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
@@ -496,7 +241,7 @@ local:generate-sector-input-coefs(remove($outputNameQueue, 1), $currTree, $coefs
                     </level>
                 </labelRewriteList>
             </supplyDemandQuery>
-			<supplyDemandQuery title="1.4 Final energy consumption">
+			<supplyDemandQuery title="1.3 Final energy consumption">
 				<axis1 name="region">region</axis1>
 				<axis2 name="Year">demand-physical[@vintage]</axis2>
 				<xPath buildList="true" dataName="input" group="false" sumAll="false">*[@type='sector' (:collapse:) and ((@name='building' or @name='industry' or @name='transportation') or
@@ -506,7 +251,7 @@ local:generate-sector-input-coefs(remove($outputNameQueue, 1), $currTree, $coefs
 					demand-physical[@unit='EJ']/node()</xPath>
 				<comments>Regional totals of final energy, summing all fuels and energy services. Useful in examining how demands for energy change over time. </comments>
 			</supplyDemandQuery>
-			<supplyDemandQuery title="1.5 Final energy consumption by aggregate sector">
+			<supplyDemandQuery title="1.4 Final energy consumption by aggregate sector">
 				<axis1 name="sector">sector</axis1>
 				<axis2 name="Year">demand-physical[@vintage]</axis2>
 				<xPath buildList="true" dataName="input" group="false" sumAll="false">*[@type='sector' and ((@name='building' or @name='industry' or @name='transportation') or
@@ -751,7 +496,7 @@ local:generate-sector-input-coefs(remove($outputNameQueue, 1), $currTree, $coefs
 					</level>
 				</labelRewriteList>
 			</supplyDemandQuery>
-			<supplyDemandQuery title="1.6 Final energy consumption by aggregate sector and fuel">
+			<supplyDemandQuery title="1.5 Final energy consumption by aggregate sector and fuel">
 				<axis1 name="input">input</axis1>
 				<axis2 name="Year">demand-physical[@vintage]</axis2>
 				<xPath buildList="true" dataName="input" group="false" sumAll="false">*[@type='sector' and ((@name='building' or @name='industry' or @name='transportation') or
@@ -1073,7 +818,7 @@ local:generate-sector-input-coefs(remove($outputNameQueue, 1), $currTree, $coefs
 					</level>
 				</labelRewriteList>
 			</supplyDemandQuery>
-			<supplyDemandQuery title="1.7 Final energy consumption by fuel">
+			<supplyDemandQuery title="1.6 Final energy consumption by fuel">
 				<axis1 name="input">input</axis1>
 				<axis2 name="Year">demand-physical[@vintage]</axis2>
 				<xPath buildList="true" dataName="input" group="false" sumAll="false">*[@type='sector' (:collapse:) and ((@name='building' or @name='industry' or @name='transportation') or
@@ -4538,7 +4283,33 @@ local:generate-sector-input-coefs(remove($outputNameQueue, 1), $currTree, $coefs
 					physical-output[@unit='EJ']/node()</xPath>
 					<comments>Electricity produced by cogen and combined-heat-and-power technologies. Useful when examining cogen and CHP at the technology level. </comments>
 				</supplyDemandQuery>
-				<supplyDemandQuery title="3.14 Refined liquids production by tech (GCAM-USA) ">
+				<supplyDemandQuery title="3.14 Refined liquids production by aggregated category (GCAM-USA) ">
+					<axis1 name="technology">technology</axis1>
+					<axis2 name="Year">physical-output[@vintage]</axis2>
+					<xPath buildList="true" dataName="output" group="false" sumAll="false">*[@type='sector' (:collapse:) and
+					(@name='oil refining' or @name='biomass liquids' or @name='gas to liquids' or @name='coal to liquids')]/*[@type='subsector' (:collapse:)]/
+					*[@type='technology']/output-primary[@type='output' (:collapse:) and @name!='oil-credits']/physical-output/node()</xPath>
+					<comments>Quantity of liquid fuels produced by various technologies, such as oil refining, corn and cellulosic ethanol production, biodiesel, and flow-through gasoline fuels. Useful in understanding the liquid fuel mix, including the fraction from alternative fuel sources. </comments>
+					<labelRewriteList append-values="false">
+						<level name="technology">
+							<rewrite from="corn ethanol" to="biofuels"/>
+							<rewrite from="cellulosic ethanol" to="adv. biofuels"/>
+							<rewrite from="cellulosic ethanol CCC level 1" to="adv. biofuels w/CCS"/>
+							<rewrite from="cellulosic ethanol CCS level 2" to="adv. biofuels w/CCS"/>
+							<rewrite from="biodiesel" to="biofuels"/>
+							<rewrite from="FT biofuels" to="adv. biofuels"/>
+							<rewrite from="FT biofuels CCC level 1" to="adv. biofuels w/CCS"/>
+							<rewrite from="FT biofuels CCC level 2" to="adv. biofuels w/CCS"/>
+							<rewrite from="BTL with hydrogen" to="adv. biofuels"/>
+							<rewrite from="oil refining" to="fossil"/>
+							<rewrite from="gas to liquids" to="adv. fossil"/>
+							<rewrite from="coal to liquids" to="adv. fossil"/>
+							<rewrite from="coal to liquids CCC level 1" to="adv. fossil w/CCS"/>
+							<rewrite from="coal to liquids CCC level 2" to="adv. fossil w/CCS"/>							
+						</level>
+					</labelRewriteList>
+				</supplyDemandQuery>
+				<supplyDemandQuery title="3.15 Refined liquids production by tech (GCAM-USA) ">
 					<axis1 name="technology">technology</axis1>
 					<axis2 name="Year">physical-output[@vintage]</axis2>
 					<xPath buildList="true" dataName="output" group="false" sumAll="false">*[@type='sector' (:collapse:) and
@@ -4546,7 +4317,7 @@ local:generate-sector-input-coefs(remove($outputNameQueue, 1), $currTree, $coefs
 					*[@type='technology']/output-primary[@type='output' (:collapse:) and @name!='oil-credits']/physical-output/node()</xPath>
 					<comments>Quantity of liquid fuels produced by various technologies, such as oil refining, corn and cellulosic ethanol production, biodiesel, and flow-through gasoline fuels. Useful in understanding the liquid fuel mix, including the fraction from alternative fuel sources. </comments>
 				</supplyDemandQuery>
-				<supplyDemandQuery title="3.15 Hydrogen production by tech">
+				<supplyDemandQuery title="3.16 Hydrogen production by tech">
 					<axis1 name="technology">technology</axis1>
 					<axis2 name="Year">physical-output[@vintage]</axis2>
 					<xPath buildList="true" dataName="output" group="false" sumAll="false">*[@type='sector' (:collapse:) and (@name='H2 central production' or @name='H2 forecourt production')]/
