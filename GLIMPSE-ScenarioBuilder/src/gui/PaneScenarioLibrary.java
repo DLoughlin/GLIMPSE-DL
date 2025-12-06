@@ -117,7 +117,7 @@ import javafx.stage.Stage;
  *   <li>Updates scenario status and logs system/computer status.</li>
  * </ul>
  */
-class PaneScenarioLibrary extends ScenarioBuilder {
+public class PaneScenarioLibrary extends ScenarioBuilder {
 
     // Constants for UI labels and tooltips
     private static final String DIFF_LABEL = "Diff";
@@ -573,6 +573,8 @@ class PaneScenarioLibrary extends ScenarioBuilder {
         ScenarioTable.removeFromListOfRunFiles(deleteScenariosList);
     }
 
+    
+    
     /**
      * Updates the run status for all scenarios and refreshes the table.
      * Reads log files and updates scenario status, runtime, and unsolved markets.
@@ -1169,6 +1171,15 @@ class PaneScenarioLibrary extends ScenarioBuilder {
             }
         }
         return str;
+    }
+
+    /**
+     * Clears the contents of ScenarioTable and updates the run status.
+     */
+    public void clearAndRefreshScenarioTable() {
+        ScenarioTable.listOfScenarioRuns.clear();
+        ScenarioTable.tableScenariosLibrary.getItems().clear();
+        updateRunStatus();
     }
 
 }

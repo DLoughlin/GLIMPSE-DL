@@ -1114,6 +1114,8 @@ public class GLIMPSEUtils {
 		Date d = new Date();
 		long now = d.getTime();
 		int diff_sec = (int) Math.floor((now - orig_date) / 1000.);
+		String temp="" + diff_sec;
+		String rtn_str = temp.substring(temp.length() - 6);
 
 		return "" + diff_sec;
 	}

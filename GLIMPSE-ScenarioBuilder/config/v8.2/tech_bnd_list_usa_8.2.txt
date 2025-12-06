@@ -976,6 +976,7 @@ regional natural gas : imported natural gas : imported pipeline gas : traded EUR
 wholesale gas : wholesale gas : wholesale gas : gas pipeline : EJ : regional natural gas : EJ : Energy-Carrier
 regional oil : domestic crude oil : domestic crude oil : crude oil : EJ : regional oil : EJ : Energy-Carrier
 regional oil : imported crude oil : imported crude oil : traded oil : EJ : regional oil : EJ : Energy-Carrier
+regional biomass : regional biomass : regional biomass : total biomass : EJ : regional biomass : EJ : Energy-Carrier
 regional biomassOil : regional biomassOil : Soybean : regional soybean : EJ : regional biomassOil : EJ : Energy-Carrier 
 regional biomassOil : regional biomassOil : OilCrop : regional oilcrop : EJ : regional biomassOil : EJ : Energy-Carrier 
 regional biomassOil : regional biomassOil : OilPalm : regional oilpalm : EJ : regional biomassOil : EJ : Energy-Carrier 

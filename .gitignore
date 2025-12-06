@@ -8,6 +8,7 @@
 **/database*/
 **/model_interface.properties-nope
 /amazon-corretto-8.442.06.1-windows-x64-jre/
+/amazon-corretto-8.442.06.1-windows-x64-jre/*
 **/*log.txt
 **/GCAM-Model/*
 /Contrib.zip
@@ -18,8 +19,6 @@
 **/*.bak
 **/*Restart*
 **/*restart*
-**/GCAM-Model/input/*
-**/GCAM-Model/output/*
-**/GCAM-Model/input/
-**/GCAM-Model/output/
+**/GCAM-Model/
+**/GCAM-Model/*
 

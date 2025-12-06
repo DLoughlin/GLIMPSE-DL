@@ -777,9 +777,9 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 				try {
 					String s = comboBoxAppliedTo.getValue();
 					if (s != null && s.contains("Sales"))
-						toWhich = "_Sales";
+						toWhich = "_sales";
 					if (s != null && s.contains("All"))
-						toWhich = "_All";
+						toWhich = "_stock";
 					
 					s = comboBoxTreatment.getValue();
 					if (s != null && s.contains("Each"))
@@ -806,7 +806,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 					} else {
 						state = "_Reg";
 					}
-					String name = "mktShr_" + policyType + toWhich + constraint + treatment + state ;
+					String name = "mktShr_" + policyType + constraint + treatment + toWhich + state ;
 					name = name.replaceAll("[^a-zA-Z0-9_]", "_").replaceAll("___", "__").replaceAll("__", "_");
 					textFieldMarketName.setText(name + "_Mkt");
 					textFieldPolicyName.setText(name);
@@ -1207,6 +1207,11 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 					comboBoxPolicyType.setValue(value);
 					comboBoxPolicyType.fireEvent(new ActionEvent());
 				} else if (param.equals("applied to")) {
+					if (value.contains("sales")) {
+						value = "Sales";
+					} else {
+						value = "All Stock";
+					}
 					comboBoxAppliedTo.setValue(value);
 					comboBoxAppliedTo.fireEvent(new ActionEvent());
 				} else if (param.equals("treatment")) {
@@ -1215,12 +1220,12 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 				} else if (param.equals("constraint")) {
 					comboBoxConstraint.setValue(value);
 					comboBoxConstraint.fireEvent(new ActionEvent());
-				} else if (param.equals("policy name")) {
-					textFieldPolicyName.setText(value);
-					textFieldPolicyName.fireEvent(new ActionEvent());
-				} else if (param.equals("market name")) {
-					textFieldMarketName.setText(value);
-					textFieldMarketName.fireEvent(new ActionEvent());
+//				} else if (param.equals("policy name")) {
+//					textFieldPolicyName.setText(value);
+//					textFieldPolicyName.fireEvent(new ActionEvent());
+//				} else if (param.equals("market name")) {
+//					textFieldMarketName.setText(value);
+//					textFieldMarketName.fireEvent(new ActionEvent());
 				} else if (param.equals("subset")) {
 					checkComboBoxSubset.getCheckModel().clearChecks();
 					String[] set = utils.splitString(value, ";");
@@ -1248,6 +1253,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 
 			}
 		}
+		this.setPolicyAndMarketNames();
 		this.paneForComponentDetails.updateTable();
 	}
 
