@@ -2,9 +2,11 @@
 
 # GLIMPSE Project
 
-## Overview
+NOTICES: 
+* If you would like to use GLIMPSE-CE, please see the link to the releases to the right. The releases include all necessary files and libraries, including a version of the Jave JRE that includes the JavaFX libraries used by the Scenario Builder.
+* In a recent commit, the gcam 8.2 files were removed from the GCAM-Model folder. These files are included in the downloadable releases.
 
-NOTICE: If you would like to use GLIMPSE-CE, please see the link to the releases to the right. 
+## Overview
 
 GLIMPSE (GCAM Long-term Interactive Multi-Pollutant Scenario Evaluator; https://epa.gov/glimpse) is a graphical user interface for GCAM (Global Change Analysis Model; https://github.com/JGCRI/gcam-core), and open-source human-Earth systems model. GCAM development is organized by the Joint Global Change Research Institute (JGCRI; https://www.pnnl.gov/jgcri). If you would like to be on an email list for GLIMPSE-CE updates, please email Dan Loughlin at Dan@En2MG.com.  
 
@@ -48,6 +50,8 @@ GLIMPSE-CE modifications to date have been performed by Dan Loughlin in his pers
 ### Disclaimer
 
 This code is provided on an "as is" basis and the user assumes responsibility for its use.  EPA has relinquished control of the information and no longer has responsibility to protect the integrity , confidentiality, or availability of the information.  Any reference to specific commercial products, processes, or services by service mark, trademark, manufacturer, or otherwise, does not constitute or imply their endorsement, recommendation or favoring by EPA.  The EPA seal and logo shall not be used in any manner to imply endorsement of any commercial product or activity by EPA or the United States Government.
+
+
 
 
 
