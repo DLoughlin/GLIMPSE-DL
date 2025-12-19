@@ -806,6 +806,7 @@ public class TabTechParam extends PolicyTab implements Runnable {
             ArrayList<String> csvContent = cfw.createCsvContent(colList, dataList);
             fileContent = getMetaDataContent(tree);
             fileContent += utils.createStringFromArrayList(csvContent);
+
             filenameSuggestion = getFilenameSuggestion();
         }
     }

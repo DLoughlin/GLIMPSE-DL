@@ -1,0 +1,1956 @@
+<?xml version="1.0" encoding="UTF-8"?><scenario>
+    <world>
+        <region name="CT">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.094831674</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2015">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.015742058</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.094831674</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2015">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.015742058</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="ME">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="MA">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="NH">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="RI">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2015">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.015742058</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2015">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.015742058</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="VT">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2015">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.015742058</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2015">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.015742058</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="DE">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="2015">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.015742058</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="2015">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.015742058</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="MD">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.015742058</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.015742058</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="NJ">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.105263158</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2015">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.015742058</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.105263158</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2015">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.015742058</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="NY">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.094831674</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2015">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.094831674</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2015">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="PA">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.094831674</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.094831674</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2020">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.000711238</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="FL">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="GA">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="NC">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="SC">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="VA">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="WV">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="IL">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="IN">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="IA">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="KS">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="KY">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.115220484</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.115220484</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="MI">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.115220484</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.115220484</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="MN">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="MO">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="NE">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.131341868</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.131341868</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="ND">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="OH">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.105263158</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.105263158</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="OK">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.127074443</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.127074443</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="SD">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="TN">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="WI">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.124703651</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="AL">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="AR">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.119487909</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.119487909</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="LA">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="MS">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="NM">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.137505927</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.137505927</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="TX">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.117591275</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.117591275</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="CO">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.137505927</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.137505927</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="ID">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.129445235</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.129445235</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="MT">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.137505927</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.137505927</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="UT">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.134186818</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.134186818</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="WY">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.137505927</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.137505927</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="AZ">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.125651968</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.125651968</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="CA">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.121858701</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.121858701</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="NV">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.121858701</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.121858701</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="OR">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.121858701</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.121858701</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+        <region name="WA">
+            <supplysector name="comm heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.121858701</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+            <supplysector name="resid heating" nocreate="1">
+                <subsector name="refined liquids" nocreate="1">
+                    <stub-technology name="fuel furnace" nocreate="1">
+                        <period year="1990">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.121858701</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2005">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.104314841</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                        <period year="2010">
+                            <Non-CO2 name="SO2_1">
+                                <emiss-coef>0.047415837</emiss-coef>
+                            </Non-CO2>
+                        </period>
+                    </stub-technology>
+                </subsector>
+            </supplysector>
+        </region>
+    </world>
+</scenario>

@@ -54,6 +54,7 @@ import javafx.scene.control.Separator;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TreeView;
 import javafx.scene.control.CheckBoxTreeItem.TreeModificationEvent;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
@@ -131,6 +132,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 	private final ComboBox<String> comboBoxConstraint = createComboBoxString();
 	private final Label labelTreatment = createLabel("Treatment: ", LABEL_WIDTH);
 	private final ComboBox<String> comboBoxTreatment = createComboBoxString();
+	private final HBox hBoxAutoUnique = new HBox(8);
 
 	// === Constants for Metadata ===
 	private static final String METADATA_HEADER = "########## Scenario Component Metadata ##########";
@@ -172,6 +174,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 	private void setupUIControls() {
 		// Set up initial state for auto-naming and text fields
 		checkBoxUseAutoNames.setSelected(true);
+		checkBoxUseUniqueNames.setSelected(true);
 		textFieldPolicyName.setDisable(true);
 		textFieldMarketName.setDisable(true);
 		// Populate ComboBox options
@@ -274,13 +277,15 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 	 */
 	private void setupLeftColumn() {
 		gridPaneLeft.add(utils.createLabel("Specification:"), 0, 0, 2, 1);
+		hBoxAutoUnique.getChildren().clear();
+		hBoxAutoUnique.getChildren().addAll(checkBoxUseAutoNames, checkBoxUseUniqueNames);
 		gridPaneLeft.addColumn(0, labelPolicyType, labelSubsetFilter, labelSubset, labelSupersetFilter, labelSuperset,
-				labelConstraint, labelAppliedTo, labelTreatment, new Separator(), labelUseAutoNames, labelPolicyName,
+				labelConstraint, labelAppliedTo, labelTreatment, new Separator(), new Label("Names:"), labelPolicyName,
 				labelMarketName, new Separator(), utils.createLabel("Populate:"), labelModificationType, labelStartYear,
 				labelEndYear, labelInitialAmount, labelGrowth);
 		gridPaneLeft.addColumn(1, comboBoxPolicyType, textFieldSubsetFilter, checkComboBoxSubset,
 				textFieldSupersetFilter, checkComboBoxSuperset, comboBoxConstraint, comboBoxAppliedTo,
-				comboBoxTreatment, new Separator(), checkBoxUseAutoNames, textFieldPolicyName, textFieldMarketName,
+				comboBoxTreatment, new Separator(), hBoxAutoUnique, textFieldPolicyName, textFieldMarketName,
 				new Separator(), new Label(), comboBoxModificationType, textFieldStartYear, textFieldEndYear,
 				textFieldInitialAmount, textFieldGrowth);
 		gridPaneLeft.setAlignment(Pos.TOP_LEFT);
@@ -849,8 +854,12 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 
 		// 2. Gather all required values up front
 		String which = this.comboBoxConstraint.getValue().toLowerCase();
-		String ID = utils.getUniqueString();
-		String policy_name = this.textFieldPolicyName.getText() + ID;
+        String ID = null;
+        if (checkBoxUseUniqueNames.isSelected()) { 
+        	ID = utils.getUniqueString();
+        } else {
+        	ID="";
+        }		String policy_name = this.textFieldPolicyName.getText() + ID;
 		String market_name = this.textFieldMarketName.getText() + ID;
 		filenameSuggestion = this.textFieldPolicyName.getText().replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
 

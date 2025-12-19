@@ -20,7 +20,7 @@ modelInterfaceDir = $glimpseDir$/GLIMPSE-ModelInterface
 
 #----Major options-----
 #This is where you specify which database will be used for new GCAM results
-gCamOutputDatabase = $gCamHomeDir$/output/database
+gCamOutputDatabase = $gCamHomeDir$/output/databaseMacTest
 
 #Specify the pathname for this options file. Used to access/edit the file from GLIMPSE
 optionsFilename = $glimpseDir$/options_GCAM-USA-8.2-windows.txt
@@ -102,7 +102,7 @@ xmlEditor = C:/Windows/notepad.exe
 #xmlEditor = "C:/Program Files/IDM Computer Solutions/UltraEdit/uedit64.exe"
 
 #-----GCAM executable name and location-----
-gCamExecutable = ./gcam-glimpse.exe
+gCamExecutable = gcam-glimpse.exe
 #gCamExecutable = gcam.exe
 gCamExecutableArgs = -C 
 gCamExecutableDir = $gCamHomeDir$/exe

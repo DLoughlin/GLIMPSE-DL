@@ -131,7 +131,8 @@ public abstract class PolicyTab extends Tab {
     protected static final String LABEL_USE_AUTO_NAMES = "Names: ";
     protected static final String LABEL_MODIFICATION_TYPE = "Type: ";
     protected static final String LABEL_VALUES = "Values: ";
-    protected static final String CHECKBOX_AUTO = "Auto?";
+    protected static final String CHECKBOX_AUTO = "Auto";
+    protected static final String CHECKBOX_UNIQUE = "Unique";
     
     // === Constants for default values and labels ===
     protected static final String[] MODIFICATION_TYPE_OPTIONS = {
@@ -182,8 +183,10 @@ public abstract class PolicyTab extends Tab {
     protected final TextField textFieldPolicyName = createTextField(PREF_WIDTH);
     protected final Label labelMarketName = createLabel(LABEL_MARKET_NAME, LABEL_WIDTH);
     protected final TextField textFieldMarketName = createTextField(PREF_WIDTH);
-    protected final Label labelUseAutoNames = createLabel(LABEL_USE_AUTO_NAMES, LABEL_WIDTH);
-    protected final CheckBox checkBoxUseAutoNames = createCheckBox(CHECKBOX_AUTO,PREF_WIDTH);
+    //protected final Label labelUseAutoNames = createLabel(LABEL_USE_AUTO_NAMES, LABEL_WIDTH);
+    //protected final Label labelUseUniqueNames = createLabel(CHECKBOX_UNIQUE, LABEL_WIDTH);
+    protected final CheckBox checkBoxUseAutoNames = createCheckBox(CHECKBOX_AUTO);
+    protected final CheckBox checkBoxUseUniqueNames = createCheckBox(CHECKBOX_UNIQUE);
     protected final Label labelValue = createLabel(LABEL_VALUES);
 
     
@@ -207,27 +210,27 @@ public abstract class PolicyTab extends Tab {
         return textField;
     }
 
-    private CheckBox createCheckBox(String checkboxAuto, double width) {
+    private CheckBox createCheckBox(String checkboxName, double width) {
         /**
          * Create a new CheckBox instance with the specified label and preferred width.
-         * @param checkboxAuto The label for the CheckBox
+         * @param checkbox The label for the CheckBox
          * @param width The preferred width for the CheckBox
          * @return A new CheckBox with the given label and width
          */
-        CheckBox checkBox = utils.createCheckBox(checkboxAuto);
+        CheckBox checkBox = utils.createCheckBox(checkboxName);
         checkBox.setPrefWidth(width);
         return checkBox;
     }
 
-    private ComboBox createComboBox(String comboBoxAuto, double width) {
+    private ComboBox createComboBox(String comboBoxName, double width) {
         /**
          * Create a new ComboBox instance with the specified initial item and preferred width.
-         * @param comboBoxAuto The initial item to add to the ComboBox
+         * @param comboBox The initial item to add to the ComboBox
          * @param width The preferred width for the ComboBox
          * @return A new ComboBox with the given item and width
          */
         ComboBox comboBox = utils.createComboBox();
-        comboBox.getItems().add(comboBoxAuto);
+        comboBox.getItems().add(comboBoxName);
         comboBox.setPrefWidth(width);
         return comboBox;
     }

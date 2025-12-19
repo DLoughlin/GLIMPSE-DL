@@ -173,6 +173,8 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	private final CheckComboBox<String> checkComboBoxCategory = createCheckComboBox();
 	private final Label labelComboBoxPollutant = createLabel(LABEL_POLLUTANT, LABEL_WIDTH);
 	private final ComboBox<String> comboBoxPollutant = createComboBoxString();
+	// HBox for Auto and Unique checkboxes
+	private final javafx.scene.layout.HBox hBoxAutoUnique = new javafx.scene.layout.HBox(8);
 
 	/**
 	 * Constructs a TabPollutantTaxCap for the given title and stage. Sets up all UI
@@ -185,6 +187,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 		this.setText(title);
 		this.setStyle(styles.getFontStyle());
 		checkBoxUseAutoNames.setSelected(true);
+		checkBoxUseUniqueNames.setSelected(true);
 		textFieldPolicyName.setDisable(true);
 		textFieldMarketName.setDisable(true);
 		super.setupEventHandlers();
@@ -299,12 +302,14 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	 */
 	private void setupLeftColumn() {
 		gridPaneLeft.add(utils.createLabel("Specification:"), 0, 0, 2, 1);
+		hBoxAutoUnique.getChildren().clear();
+		hBoxAutoUnique.getChildren().addAll(checkBoxUseAutoNames, checkBoxUseUniqueNames);
 		gridPaneLeft.addColumn(0, labelComboBoxMeasure, labelComboBoxPollutant, labelCheckComboBoxCategory, new Label(),
-				new Separator(), labelUseAutoNames, labelPolicyName, labelMarketName, new Label(), new Separator(),
+				new Separator(), new Label("Names:"), labelPolicyName, labelMarketName, new Label(), new Separator(),
 				utils.createLabel("Populate:"), labelModificationType, labelStartYear, labelEndYear, labelInitialAmount,
 				labelGrowth, labelConvertFrom);
 		gridPaneLeft.addColumn(1, comboBoxMeasure, comboBoxPollutant, checkComboBoxCategory, new Label(),
-				new Separator(), checkBoxUseAutoNames, textFieldPolicyName, textFieldMarketName, new Label(),
+				new Separator(), hBoxAutoUnique, textFieldPolicyName, textFieldMarketName, new Label(),
 				new Separator(), new Label(), comboBoxModificationType, textFieldStartYear, textFieldEndYear,
 				textFieldInitialAmount, textFieldGrowth, comboBoxConvertFrom);
 		gridPaneLeft.setAlignment(Pos.TOP_LEFT);
@@ -458,7 +463,12 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 		String[] listOfSelectedRegions = utils.getAllSelectedRegions(tree);
 		listOfSelectedRegions = utils.removeUSADuplicate(listOfSelectedRegions);
 
-		String ID = utils.getUniqueString();
+        String ID = null;
+        if (checkBoxUseUniqueNames.isSelected()) { 
+        	ID = utils.getUniqueString();
+        } else {
+        	ID="";
+        }
 		String policy_name = textFieldPolicyName.getText() + ID;
 		String market_name = textFieldMarketName.getText() + ID;
 		filenameSuggestion = textFieldPolicyName.getText().replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";

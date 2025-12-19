@@ -84,6 +84,7 @@ import javafx.stage.Stage;
 public class TabCafeStd extends PolicyTab implements Runnable {
     // === Constants for UI labels and options ===
     private static final String LABEL_SPECIFICATION = "Specification:";
+    private static final String LABEL_NAMES = "Names:";
     private static final String LABEL_SUBSECTOR = "Subsector:";
     private static final String LABEL_POPULATE = "Populate:";
     private static final String LABEL_FINAL_VAL = "Final Val: ";
@@ -116,6 +117,8 @@ public class TabCafeStd extends PolicyTab implements Runnable {
     private final CheckComboBox<String> checkComboBoxTech = utils.createCheckComboBox(PREF_WIDTH);
     private final Label labelWhichUnits = utils.createLabel(LABEL_UNITS, LABEL_WIDTH);
     private final ComboBox<String> comboBoxWhichUnits = utils.createComboBoxString(PREF_WIDTH);
+    // HBox for Auto and Unique checkboxes
+    private final HBox hBoxAutoUnique = new HBox(8); // spacing of 8
     
     /**
      * Constructs a new TabCafeStd instance and initializes the UI components for the CAFE Standard tab.
@@ -131,6 +134,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 
         // Set up initial state of check box and policy and market textfields
         checkBoxUseAutoNames.setSelected(true);
+        checkBoxUseUniqueNames.setSelected(true);
         textFieldPolicyName.setDisable(true);
         textFieldMarketName.setDisable(true);
 
@@ -186,12 +190,15 @@ public class TabCafeStd extends PolicyTab implements Runnable {
      */
     private void setupLeftColumn() {
         gridPaneLeft.add(utils.createLabel(LABEL_SPECIFICATION), 0, 0, 2, 1);
+        // Add checkboxes to HBox
+        hBoxAutoUnique.getChildren().clear();
+        hBoxAutoUnique.getChildren().addAll(checkBoxUseAutoNames, checkBoxUseUniqueNames);
         gridPaneLeft.addColumn(0, labelComboBoxSubsector, labelCheckComboBoxTech,  
-                labelWhichUnits, new Label(),  new Separator(), labelUseAutoNames, labelPolicyName, labelMarketName,
+                labelWhichUnits, new Label(),  new Separator(), utils.createLabel(LABEL_NAMES), labelPolicyName, labelMarketName,
                 new Label(), new Separator(), utils.createLabel(LABEL_POPULATE), labelModificationType, labelStartYear,
                 labelEndYear, labelInitialAmount, labelGrowth);
         gridPaneLeft.addColumn(1, comboBoxSubsector, checkComboBoxTech,  
-                comboBoxWhichUnits, new Label(), new Separator(), checkBoxUseAutoNames, textFieldPolicyName,
+                comboBoxWhichUnits, new Label(), new Separator(), hBoxAutoUnique, textFieldPolicyName,
                 textFieldMarketName, new Label(), new Separator(), new Label(), comboBoxModificationType,
                 textFieldStartYear, textFieldEndYear, textFieldInitialAmount, textFieldGrowth);
         gridPaneLeft.setAlignment(Pos.TOP_LEFT);
@@ -324,7 +331,12 @@ public class TabCafeStd extends PolicyTab implements Runnable {
             return;
         }
 
-        String ID = utils.getUniqueString();
+        String ID = null;
+        if (checkBoxUseUniqueNames.isSelected()) { 
+        	ID = utils.getUniqueString();
+        } else {
+        	ID="";
+        }
         String policyName = textFieldPolicyName.getText() + ID;
         String marketName = textFieldMarketName.getText() + ID;
         filenameSuggestion = textFieldPolicyName.getText().replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";

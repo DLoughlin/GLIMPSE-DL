@@ -5083,7 +5083,7 @@
 				<axis1 name="GHG">GHG</axis1>
 				<axis2 name="Year">emissions</axis2>
 				<!--<xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[@type = 'sector' or @type = 'resource']/*[@type = 'subsector']//*[@type = 'technology']/-->
-				<xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[(@type = 'sector') ]/*[@type = 'subsector']//*[@type = 'technology']/
+				<xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[(@type = 'sector') ]/*[@type = 'subsector' (:collapse:)]//*[@type = 'technology']/
 					*[@type = 'GHG' and @name = 'CO2' (:collapse:) ]/emissions/node()</xPath>
 				<!--<xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[@type = 'sector']//*[@type = 'technology']/
 					*[@type = 'GHG']/emissions/node()</xPath>-->
@@ -5480,7 +5480,7 @@
 			<emissionsQueryBuilder title="5.10 CO2,NOx,SO2,PM2.5,VOC,CO,NH3 by tech">
 				<axis1 name="GHG">GHG</axis1>
 				<axis2 name="Year">emissions</axis2>
-				<xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[(@type = 'sector') ]/*[@type = 'subsector' ]//*[@type = 'technology']/
+				<xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[(@type = 'sector') ]/*[@type = 'subsector' (:collapse:) ]//*[@type = 'technology']/
 					*[@type = 'GHG' and ((@name='CO2') or (@name='CO2_FUG') or (@name='NOx') or (@name='NOx_AGR') or (@name='NOx_AWB') or (@name='NH3') or (@name='NH3_AGR') or (@name='NH3_AWB') or 
 					  (@name='SO2') or (@name='SO2_AGR') or (@name='SO2_AWB') or (@name='SO2_1') or (@name='SO2_1_AGR') or (@name='SO2_1_AWB') or 
 					  (@name='NMVOC') or (@name='NMVOC_AGR') or (@name='NMVOC_AWB') or
@@ -5836,7 +5836,7 @@
 				<axis1 name="GHG">GHG</axis1>
 				<axis2 name="Year">emissions</axis2>
 				<!--<xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[@type = 'sector' or @type = 'resource']/*[@type = 'subsector']//*[@type = 'technology']/-->
-				<xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[(@type = 'sector') ]/*[@type = 'subsector']//*[@type = 'technology']/
+				<xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[(@type = 'sector') ]/*[@type = 'subsector' (:collapse:)]//*[@type = 'technology']/
 					*[@type = 'GHG']/emissions/node()</xPath>
 				<!--<xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[@type = 'sector']//*[@type = 'technology']/
 					*[@type = 'GHG']/emissions/node()</xPath>-->
@@ -5871,6 +5871,90 @@
 						<rewrite from="CO_AGR" to="CO"/>
 						<rewrite from="NH3_AGR" to="NH3"/>
 						<rewrite from="H2_AGR" to="H2"/>
+					</level>
+				</labelRewriteList>
+			</emissionsQueryBuilder>
+			<emissionsQueryBuilder title="5.14a All emissions by EGU tech">
+				<axis1 name="GHG">GHG</axis1>
+				<axis2 name="Year">emissions</axis2>
+				<xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[(@type = 'sector') ]/*[@type = 'subsector']/*[@type = 'subsector']//*[@type = 'technology']/
+					*[@type = 'GHG']/emissions/node()</xPath>
+				<comments>All tracked emission species by technology.</comments>
+				<labelRewriteList append-values="false">
+					<level name="GHG">
+						<rewrite from="CO2_FUG" to="CO2"/>
+						<rewrite from="CO2_FUG" to="CO2"/>
+						<rewrite from="SO2_1" to="SO2"/>
+						<rewrite from="SO2_1_AWB" to="SO2"/>
+						<rewrite from="SO2_1_AGR" to="SO2"/>
+						<rewrite from="SO2_3" to="SO2"/>
+						<rewrite from="SO2_3_AGR" to="SO2"/>
+						<rewrite from="SO2_3_AWB" to="SO2"/>
+						<rewrite from="CO2_ELEC" to=""/>
+						<rewrite from="CO2_ELEC2" to=""/>
+						<rewrite from="BC_AWB" to="BC"/>
+						<rewrite from="OC_AWB" to="OC"/>
+						<rewrite from="CH4_AWB" to="CH4"/>
+						<rewrite from="N2O_AWB" to="N2O"/>
+						<rewrite from="NOx_AWB" to="NOx"/>
+						<rewrite from="NMVOC_AWB" to="NMVOC"/>
+						<rewrite from="CO_AWB" to="CO"/>
+						<rewrite from="NH3_AWB" to="NH3"/>
+						<rewrite from="H2_AWB" to="H2"/>
+						<rewrite from="BC_AGR" to="BC"/>
+						<rewrite from="OC_AGR" to="OC"/>
+						<rewrite from="CH4_AGR" to="CH4"/>
+						<rewrite from="N2O_AGR" to="N2O"/>
+						<rewrite from="NOx_AGR" to="NOx"/>
+						<rewrite from="NMVOC_AGR" to="NMVOC"/>
+						<rewrite from="CO_AGR" to="CO"/>
+						<rewrite from="NH3_AGR" to="NH3"/>
+						<rewrite from="H2_AGR" to="H2"/>
+					</level>
+				</labelRewriteList>
+			</emissionsQueryBuilder>
+			<emissionsQueryBuilder title="5.14b All emissions by non-EGU tech">
+				<axis1 name="GHG">GHG</axis1>
+				<axis2 name="Year">emissions</axis2>
+				<xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[(@type = 'sector') ]/*[@type = 'subsector']/*[@type = 'technology']/
+					*[@type = 'GHG']/emissions/node()</xPath>
+				<comments>All tracked emission species by technology.</comments>
+				<labelRewriteList append-values="false">
+					<level name="GHG">
+						<rewrite from="CO2_FUG" to="CO2"/>
+						<rewrite from="CO2_FUG" to="CO2"/>
+						<rewrite from="SO2_1" to="SO2"/>
+						<rewrite from="SO2_1_AWB" to="SO2"/>
+						<rewrite from="SO2_1_AGR" to="SO2"/>
+						<rewrite from="SO2_3" to="SO2"/>
+						<rewrite from="SO2_3_AGR" to="SO2"/>
+						<rewrite from="SO2_3_AWB" to="SO2"/>
+						<rewrite from="CO2_ELEC" to=""/>
+						<rewrite from="CO2_ELEC2" to=""/>
+						<rewrite from="BC_AWB" to="BC"/>
+						<rewrite from="OC_AWB" to="OC"/>
+						<rewrite from="CH4_AWB" to="CH4"/>
+						<rewrite from="N2O_AWB" to="N2O"/>
+						<rewrite from="NOx_AWB" to="NOx"/>
+						<rewrite from="NMVOC_AWB" to="NMVOC"/>
+						<rewrite from="CO_AWB" to="CO"/>
+						<rewrite from="NH3_AWB" to="NH3"/>
+						<rewrite from="H2_AWB" to="H2"/>
+						<rewrite from="BC_AGR" to="BC"/>
+						<rewrite from="OC_AGR" to="OC"/>
+						<rewrite from="CH4_AGR" to="CH4"/>
+						<rewrite from="N2O_AGR" to="N2O"/>
+						<rewrite from="NOx_AGR" to="NOx"/>
+						<rewrite from="NMVOC_AGR" to="NMVOC"/>
+						<rewrite from="CO_AGR" to="CO"/>
+						<rewrite from="NH3_AGR" to="NH3"/>
+						<rewrite from="H2_AGR" to="H2"/>
+					</level>
+					<level name="sector">
+						<rewrite from="base load generation" to =""/> 
+						<rewrite from="intermediate generation" to =""/> 
+						<rewrite from="peak generation" to =""/>
+						<rewrite from="subpeak generation" to =""/> 						
 					</level>
 				</labelRewriteList>
 			</emissionsQueryBuilder>
@@ -6218,6 +6302,85 @@
 					</level>
 				</labelRewriteList>-->
 				</emissionsQueryBuilder>
+				<emissionsQueryBuilder title="10.1a F-gases by region (CO2eq)">
+				<axis1 name="GHG">GHG</axis1>
+				<axis2 name="Year">emissions</axis2>
+				<xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[@type = 'sector' (:collapse:) or @type = 'resource' (:collapse:)]//
+					*[(@name='C2F6') or (@name='CF4') or (starts-with(@name,'HFC'))]/emissions/node()</xPath>
+				<comments>Total emissions of several air pollutants (in Tg, which is equivalent to million metric tonnes)</comments>
+				<labelRewriteList append-values="false">
+					<level name="GHG">
+						<rewrite from="CO2_FUG" to="CO2"/>
+						<rewrite from="CO2_FUG" to="CO2"/>
+						<rewrite from="SO2_1" to="SO2"/>
+						<rewrite from="SO2_1_AWB" to="SO2"/>
+						<rewrite from="SO2_1_AGR" to="SO2"/>
+						<rewrite from="SO2_3" to="SO2"/>
+						<rewrite from="SO2_3_AGR" to="SO2"/>
+						<rewrite from="SO2_3_AWB" to="SO2"/>
+						<rewrite from="CO2_ELEC" to=""/>
+						<rewrite from="CO2_ELEC2" to=""/>
+						<rewrite from="BC_AWB" to="BC"/>
+						<rewrite from="OC_AWB" to="OC"/>
+						<rewrite from="CH4_AWB" to="CH4"/>
+						<rewrite from="N2O_AWB" to="N2O"/>
+						<rewrite from="NOx_AWB" to="NOx"/>
+						<rewrite from="NMVOC_AWB" to="NMVOC"/>
+						<rewrite from="CO_AWB" to="CO"/>
+						<rewrite from="NH3_AWB" to="NH3"/>
+						<rewrite from="H2_AWB" to="H2"/>
+						<rewrite from="BC_AGR" to="BC"/>
+						<rewrite from="OC_AGR" to="OC"/>
+						<rewrite from="CH4_AGR" to="CH4"/>
+						<rewrite from="N2O_AGR" to="N2O"/>
+						<rewrite from="NOx_AGR" to="NOx"/>
+						<rewrite from="NMVOC_AGR" to="NMVOC"/>
+						<rewrite from="CO_AGR" to="CO"/>
+						<rewrite from="NH3_AGR" to="NH3"/>
+						<rewrite from="H2_AGR" to="H2"/>
+					</level>
+				</labelRewriteList>
+			</emissionsQueryBuilder>
+				<emissionsQueryBuilder title="10.1b F-gases by sector (CO2eq)">
+				<axis1 name="Sector">sector</axis1>
+				<axis2 name="Year">emissions</axis2>
+				<!--<axis1 name="GHG">GHG</axis1>
+				<axis2 name="Year">emissions</axis2>-->
+				<xPath buildList="true" dataName="emissions" group="false" sumAll="false">*[(@type = 'sector')or @type = 'resource']//*[(@name='C2F6') or (@name='CF4') or (starts-with(@name,'HFC'))]/emissions/node()</xPath>
+				<comments>Sectoral emissions of several air pollutants (in Tg, which is equivalent to million metric tonnes)</comments>
+				<labelRewriteList append-values="false">
+					<level name="GHG">
+						<rewrite from="CO2_FUG" to="CO2"/>
+						<rewrite from="CO2_FUG" to="CO2"/>
+						<rewrite from="SO2_1" to="SO2"/>
+						<rewrite from="SO2_1_AWB" to="SO2"/>
+						<rewrite from="SO2_1_AGR" to="SO2"/>
+						<rewrite from="SO2_3" to="SO2"/>
+						<rewrite from="SO2_3_AGR" to="SO2"/>
+						<rewrite from="SO2_3_AWB" to="SO2"/>
+						<rewrite from="CO2_ELEC" to=""/>
+						<rewrite from="CO2_ELEC2" to=""/>
+						<rewrite from="BC_AWB" to="BC"/>
+						<rewrite from="OC_AWB" to="OC"/>
+						<rewrite from="CH4_AWB" to="CH4"/>
+						<rewrite from="N2O_AWB" to="N2O"/>
+						<rewrite from="NOx_AWB" to="NOx"/>
+						<rewrite from="NMVOC_AWB" to="NMVOC"/>
+						<rewrite from="CO_AWB" to="CO"/>
+						<rewrite from="NH3_AWB" to="NH3"/>
+						<rewrite from="H2_AWB" to="H2"/>
+						<rewrite from="BC_AGR" to="BC"/>
+						<rewrite from="OC_AGR" to="OC"/>
+						<rewrite from="CH4_AGR" to="CH4"/>
+						<rewrite from="N2O_AGR" to="N2O"/>
+						<rewrite from="NOx_AGR" to="NOx"/>
+						<rewrite from="NMVOC_AGR" to="NMVOC"/>
+						<rewrite from="CO_AGR" to="CO"/>
+						<rewrite from="NH3_AGR" to="NH3"/>
+						<rewrite from="H2_AGR" to="H2"/>
+					</level>
+				</labelRewriteList>
+			</emissionsQueryBuilder>
 				<emissionsQueryBuilder title="10.2 NOx,SO2,PM2.5,VOC,CO,NH3 by region (short tons)">
 					<axis1 name="GHG">GHG</axis1>
 					<axis2 name="Year">emissions</axis2>

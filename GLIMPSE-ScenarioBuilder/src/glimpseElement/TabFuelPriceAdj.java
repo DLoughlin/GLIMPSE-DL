@@ -83,6 +83,8 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     private final CheckComboBox<String> checkComboBoxFuel = createCheckComboBox();
     private final Label labelUnits = createLabel(LABEL_UNITS, LABEL_WIDTH);
     private final Label labelUnitsValue = createLabel(LABEL_UNITS_VALUE, 225.);
+    // HBox for Auto and Unique checkboxes
+    private final HBox hBoxAutoUnique = new HBox(8);
 
     /**
      * List of available fuel types for selection, populated from technology info.
@@ -128,6 +130,8 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         // Set up initial state of check box and text fields
         if (checkBoxUseAutoNames != null)
             checkBoxUseAutoNames.setSelected(true);
+        if (checkBoxUseUniqueNames != null)
+            checkBoxUseUniqueNames.setSelected(true);
         if (textFieldPolicyName != null)
             textFieldPolicyName.setDisable(true);
         if (textFieldMarketName != null)
@@ -163,14 +167,16 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
      */
     private void setupLeftColumn() {
         gridPaneLeft.getChildren().clear();
+        hBoxAutoUnique.getChildren().clear();
+        hBoxAutoUnique.getChildren().addAll(checkBoxUseAutoNames, checkBoxUseUniqueNames);
         gridPaneLeft.addColumn(0, createLabel("Specification:"),labelFuel, new Label(), labelUnits, new Label(), new Separator(),
-                labelUseAutoNames, labelPolicyName, labelMarketName, new Label(), new Separator(),
-                createLabel("Populate:"), labelModificationType, labelStartYear, labelEndYear, labelInitialAmount,
-                labelGrowth, labelConvertFrom);
+        createLabel("Names:"), labelPolicyName, labelMarketName, new Label(), new Separator(),
+        createLabel("Populate:"), labelModificationType, labelStartYear, labelEndYear, labelInitialAmount,
+        labelGrowth, labelConvertFrom);
         gridPaneLeft.addColumn(1, createLabel("Select one or more:"),checkComboBoxFuel, new Label(), labelUnitsValue, new Label(),
-                new Separator(), checkBoxUseAutoNames, textFieldPolicyName, textFieldMarketName, new Label(),
-                new Separator(), new Label(), comboBoxModificationType, textFieldStartYear, textFieldEndYear,
-                textFieldInitialAmount, textFieldGrowth, comboBoxConvertFrom);
+        new Separator(), hBoxAutoUnique, textFieldPolicyName, textFieldMarketName, new Label(),
+        new Separator(), new Label(), comboBoxModificationType, textFieldStartYear, textFieldEndYear,
+        textFieldInitialAmount, textFieldGrowth, comboBoxConvertFrom);
         gridPaneLeft.setAlignment(Pos.TOP_LEFT);
         gridPaneLeft.setVgap(3.);
         gridPaneLeft.setStyle(styles.getStyle2());
@@ -310,7 +316,12 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
 
             filenameSuggestion = "";
 
-            String ID = utils.getUniqueString();
+            String ID = null;
+            if (checkBoxUseUniqueNames.isSelected()) { 
+            	ID = utils.getUniqueString();
+            } else {
+            	ID="";
+            }
 
             filenameSuggestion = textFieldPolicyName.getText().replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
             String policyName = textFieldPolicyName.getText() + ID;

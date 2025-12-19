@@ -102,6 +102,12 @@ public class TabTechTax extends PolicyTab implements Runnable {
 	private final ComboBox<String> comboBoxMeasure = utils.createComboBoxString();
 	private final Label labelUnits = utils.createLabel("Units: ", LABEL_WIDTH);
 
+	// Add missing label and checkbox for auto and unique names
+	private final Label labelUseAutoNames = utils.createLabel("Names: ", LABEL_WIDTH);
+
+	// --- New HBox for auto and unique checkboxes ---
+	private final HBox hboxAutoUnique = new HBox(8); // spacing 8
+
 	/**
 	 * Constructs the TabTechTax UI and logic.
 	 * @param title  Tab title to display
@@ -112,6 +118,7 @@ public class TabTechTax extends PolicyTab implements Runnable {
 		this.setStyle(styles.getFontStyle());
 		textFieldFilter.setPromptText("Filter techs");
 		checkBoxUseAutoNames.setSelected(true);
+		checkBoxUseUniqueNames.setSelected(true);
 		textFieldPolicyName.setDisable(true);
 		textFieldMarketName.setDisable(true);
 		setupUIControls();
@@ -144,6 +151,10 @@ public class TabTechTax extends PolicyTab implements Runnable {
 		VBox tabLayout = new VBox();
 		tabLayout.getChildren().addAll(gridPanePresetModification);
 		this.setContent(tabLayout);
+
+		// Setup HBox for auto and unique checkboxes
+		hboxAutoUnique.getChildren().addAll(checkBoxUseAutoNames, checkBoxUseUniqueNames);
+		hboxAutoUnique.setAlignment(Pos.CENTER_LEFT);
 	}
 
 	/**
@@ -164,11 +175,12 @@ public class TabTechTax extends PolicyTab implements Runnable {
 	private void setupLeftColumn() {
 		gridPaneLeft.add(utils.createLabel("Specification:"), 0, 0, 2, 1);
 		gridPaneLeft.addColumn(0, labelComboBoxMeasure, labelComboBoxCategory, labelFilter, labelCheckComboBoxTech, 
-				new Label(), labelUnits, new Label(), new Separator(), this.labelUseAutoNames, this.labelPolicyName,
-				this.labelMarketName, new Label(), new Separator(), labelModificationType, labelStartYear, labelEndYear,
+				new Label(), labelUnits, new Label(), new Separator(), labelUseAutoNames, labelPolicyName,
+				labelMarketName, new Label(), new Separator(), labelModificationType, labelStartYear, labelEndYear,
 				labelInitialAmount, labelGrowth, labelConvertFrom);
+		// Replace checkBoxUseAutoNames with hboxAutoUnique in column 1
 		gridPaneLeft.addColumn(1, comboBoxMeasure, comboBoxCategory, textFieldFilter, checkComboBoxTech, 
-				new Label(), labelUnits2, new Label(), new Separator(), this.checkBoxUseAutoNames, textFieldPolicyName,
+				new Label(), labelUnits2, new Label(), new Separator(), hboxAutoUnique, textFieldPolicyName,
 				textFieldMarketName, new Label(), new Separator(), comboBoxModificationType, textFieldStartYear,
 				textFieldEndYear, textFieldInitialAmount, textFieldGrowth, comboBoxConvertFrom);
 		gridPaneLeft.setAlignment(Pos.TOP_LEFT);
@@ -599,7 +611,12 @@ public class TabTechTax extends PolicyTab implements Runnable {
 			String states = utils.returnAppendedString(listOfSelectedLeaves);
 			filenameSuggestion = "";
 			String taxOrSubsidy = comboBoxMeasure.getSelectionModel().getSelectedItem().trim().toLowerCase();
-			String ID = utils.getUniqueString();
+            String ID = null;
+            if (checkBoxUseUniqueNames.isSelected()) { 
+            	ID = utils.getUniqueString();
+            } else {
+            	ID="";
+            }
 			String policyName = this.textFieldPolicyName.getText() + ID;
 			String marketName = this.textFieldMarketName.getText() + ID;
 			filenameSuggestion = this.textFieldPolicyName.getText().replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
