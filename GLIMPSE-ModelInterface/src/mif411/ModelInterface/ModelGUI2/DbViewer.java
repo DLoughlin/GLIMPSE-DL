@@ -2517,8 +2517,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                 new Thread(new Runnable() {
                     public void run() {
                         File tempDir = null;
+                        File backupDir = null;
                         String cont = null;
                         String dbPath = null;
+                        boolean rebuildSuccess = false;
                         try {
                             // gather docs to export from the Manage DB dialog list (only what's shown there)
                             java.util.List<ScenarioListItem> currentScns = new java.util.ArrayList<ScenarioListItem>();
@@ -2564,16 +2566,26 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                             // close database
                             System.out.println("Rebuild: closing database before deleting files...");
                             XMLDB.closeDatabase();
-                            // delete old DB files
+                            // --- BEGIN BACKUP LOGIC ---
+                            File dbDir = null;
                             if (dbPath != null && cont != null) {
-                                File dbDir = new File(dbPath, cont);
+                                dbDir = new File(dbPath, cont);
                                 if (dbDir.exists()) {
-                                    System.out.println("Rebuild: deleting old DB files at " + dbDir.getAbsolutePath());
-                                    deleteRecursive(dbDir);
-                                    System.out.println("Rebuild: deletion of old DB files completed");
+                                    // Create backup directory
+                                    backupDir = new File(dbDir.getParentFile(), dbDir.getName() + "_backup_" + System.currentTimeMillis());
+                                    System.out.println("Rebuild: backing up DB directory to " + backupDir.getAbsolutePath());
+                                    copyDirectory(dbDir, backupDir);
+                                    System.out.println("Rebuild: backup completed");
                                 } else {
                                     System.out.println("Rebuild: DB directory not found: " + dbDir.getAbsolutePath());
                                 }
+                            }
+                            // --- END BACKUP LOGIC ---
+                            // delete old DB files
+                            if (dbDir != null && dbDir.exists()) {
+                                System.out.println("Rebuild: deleting old DB files at " + dbDir.getAbsolutePath());
+                                deleteRecursive(dbDir);
+                                System.out.println("Rebuild: deletion of old DB files completed");
                             }
                             // create a fresh context and DB, import files
                             org.basex.core.Context tmpCtx = new org.basex.core.Context();
@@ -2619,9 +2631,9 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                                         XMLDB.openDatabase(new org.basex.core.Context());
                                         try {
                                             if (cont != null && XMLDB.getInstance() != null && XMLDB.getInstance().getContext() != null) {
-                                                org.basex.core.cmd.Open openCmd = new org.basex.core.cmd.Open(cont);
-                                                String openRes = openCmd.execute(XMLDB.getInstance().getContext());
-                                                System.out.println("Rebuild: Open command result: " + openRes);
+                                               org.basex.core.cmd.Open openCmd = new org.basex.core.cmd.Open(cont);
+                                               String openRes = openCmd.execute(XMLDB.getInstance().getContext());
+                                               System.out.println("Rebuild: Open command result: " + openRes);
                                             }
                                         } catch (Exception openEx2) {
                                             System.out.println("Rebuild: failed to set default collection via Open(): " + openEx2);
@@ -2650,23 +2662,59 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                                         try { tmpCtx.close(); } catch (Exception ignore) {}
                                     }
                                 }
+                                rebuildSuccess = true;
                             } finally {
                                 // nothing to do here
                             }
                         } catch (final Exception ex) {
                             ex.printStackTrace();
-                            SwingUtilities.invokeLater(new Runnable() {
-                                public void run() {
-                                    statusField.setText("Rebuild failed");
-                                    InterfaceMain.getInstance().showMessageDialog(
-                                            "Database rebuild failed. See console for details.", "Rebuild Error",
-                                            JOptionPane.ERROR_MESSAGE);
+                            // --- RESTORE ON FAILURE ---
+                            if (backupDir != null && backupDir.exists()) {
+                                try {
+                                    dbPath = System.getProperty("org.basex.DBPATH");
+                                    File dbDir = new File(dbPath, cont);
+                                    if (dbDir.exists()) {
+                                        deleteRecursive(dbDir);
+                                    }
+                                    copyDirectory(backupDir, dbDir);
+                                    System.out.println("Rebuild: Database restore from backup completed.");
+                                    SwingUtilities.invokeLater(new Runnable() {
+                                        public void run() {
+                                            statusField.setText("Rebuild failed. Database restored from backup.");
+                                            InterfaceMain.getInstance().showMessageDialog(
+                                                    "Database rebuild failed. The previous database has been restored.", "Rebuild Error",
+                                                    JOptionPane.ERROR_MESSAGE);
+                                        }
+                                    });
+                                } catch (Exception restoreEx) {
+                                    System.out.println("Rebuild: Failed to restore database from backup: " + restoreEx);
+                                    SwingUtilities.invokeLater(new Runnable() {
+                                        public void run() {
+                                            statusField.setText("Rebuild failed. Restore from backup also failed.");
+                                            InterfaceMain.getInstance().showMessageDialog(
+                                                    "Database rebuild failed and restore from backup also failed. Manual intervention required.",
+                                                    "Rebuild Error", JOptionPane.ERROR_MESSAGE);
+                                        }
+                                    });
                                 }
-                            });
+                            } else {
+                                SwingUtilities.invokeLater(new Runnable() {
+                                    public void run() {
+                                        statusField.setText("Rebuild failed. No backup available.");
+                                        InterfaceMain.getInstance().showMessageDialog(
+                                                "Database rebuild failed and no backup was available.", "Rebuild Error",
+                                                JOptionPane.ERROR_MESSAGE);
+                                    }
+                                });
+                            }
                         } finally {
                             // cleanup temp dir if present
                             if (tempDir != null && tempDir.exists()) {
                                 try { deleteRecursive(tempDir); } catch (Exception ignored) {}
+                            }
+                            // If rebuild succeeded, delete backup
+                            if (rebuildSuccess && backupDir != null && backupDir.exists()) {
+                                try { deleteRecursive(backupDir); } catch (Exception ignored) {}
                             }
                             SwingUtilities.invokeLater(new Runnable() {
                                 public void run() {
@@ -2763,6 +2811,24 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 			System.out.println("Rebuild: deleted " + f.getAbsolutePath());
 		}
 	}
+
+	// Helper to copy files/directories recursively
+	private static void copyDirectory(File source, File dest) throws IOException {
+    if (source == null || !source.exists()) return;
+    if (source.isDirectory()) {
+        if (!dest.exists()) {
+            if (!dest.mkdirs()) throw new IOException("Failed to create directory: " + dest);
+        }
+        File[] children = source.listFiles();
+        if (children != null) {
+            for (File c : children) {
+                copyDirectory(c, new File(dest, c.getName()));
+            }
+        }
+    } else {
+        java.nio.file.Files.copy(source.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+    }
+}
 
 	// Minimal implementation of TabDragListener used for tab dragging listeners
 	private class TabDragListener implements MouseListener, MouseMotionListener {
