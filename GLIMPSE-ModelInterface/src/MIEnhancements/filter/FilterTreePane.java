@@ -47,12 +47,14 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JTree;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.JTextField;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
@@ -81,6 +83,7 @@ public class FilterTreePane {
     private JSplitPane sp;
     public JDialog dialog;
     private boolean debug = false;
+    private DefaultMutableTreeNode originalRootNode; // Store the original root node
 
     /**
      * Constructs a FilterTreePane and displays the filter dialog.
@@ -169,6 +172,8 @@ public class FilterTreePane {
             DefaultMutableTreeNode top = createNode("Filter All", "Root", null);
             tree = new JTree(top);
             createNodes(top, cn);
+            // Store a deep copy of the original root node for restoring
+            originalRootNode = deepCopyTree(top);
             if (existSel)
                 setSelBoolean();
             tree.getSelectionModel().setSelectionMode(4); // Multiple interval selection
@@ -216,11 +221,67 @@ public class FilterTreePane {
     }
 
     /**
+     * Creates the filter input box and the Ok/Cancel button box for the dialog.
+     * @return Box containing filter input and buttons
+     */
+    private Box crtBottomPanel() {
+        Box vbox = Box.createVerticalBox();
+        // Add 5px padding above filter input row
+        vbox.add(Box.createVerticalStrut(5));
+        // Filter input row
+        Box filterBox = Box.createHorizontalBox();
+        filterBox.add(Box.createHorizontalStrut(5)); // 5px padding left
+        filterBox.add(Box.createHorizontalStrut(10)); // increased left padding before Filter label
+        JLabel filterLabel = new JLabel("Filter:");
+        JTextField filterField = new JTextField(20);
+        JButton applyButton = new JButton("Apply");
+        JButton clearButton = new JButton("Clear");
+        // Add filter action
+        applyButton.addActionListener(e -> {
+            String filterText = filterField.getText().trim().toLowerCase();
+            if (filterText.isEmpty()) {
+                // Show all nodes if filter is empty
+                expandAll(tree, true);
+            } else {
+                filterTree(tree, filterText);
+            }
+        });
+        clearButton.addActionListener(e -> {
+            filterField.setText("");
+            // Restore the original tree model
+            if (originalRootNode != null) {
+                tree.setModel(new javax.swing.tree.DefaultTreeModel(deepCopyTree(originalRootNode)));
+                collapseToLevel(tree, 1);
+            }
+        });
+        filterBox.add(filterLabel);
+        filterBox.add(Box.createHorizontalStrut(5));
+        filterBox.add(filterField);
+        filterBox.add(Box.createHorizontalStrut(5));
+        filterBox.add(applyButton);
+        filterBox.add(Box.createHorizontalStrut(5));
+        filterBox.add(clearButton);
+        filterBox.add(Box.createHorizontalStrut(5)); // 5px padding right
+        vbox.add(filterBox);
+        // Add 5px padding below filter input row
+        vbox.add(Box.createVerticalStrut(5));
+        vbox.add(new javax.swing.JSeparator(javax.swing.SwingConstants.HORIZONTAL)); // horizontal separator
+        // Add 5px padding above button row
+        vbox.add(Box.createVerticalStrut(5));
+        // Ok/Cancel button row
+        vbox.add(crtButton());
+        // Add 5px padding below button row
+        vbox.add(Box.createVerticalStrut(5));
+        return vbox;
+    }
+
+    /**
      * Creates the Ok/Cancel button box for the dialog.
      * @return Box containing buttons
      */
     private Box crtButton() {
         Box box = Box.createHorizontalBox();
+        box.add(Box.createHorizontalGlue()); // add glue before buttons for centering
         JButton jb = new JButton("Ok");
         jb.setName("Ok");
         MouseListener ml = new MouseAdapter() {
@@ -242,10 +303,12 @@ public class FilterTreePane {
         };
         jb.addMouseListener(ml);
         box.add(jb);
+        box.add(Box.createHorizontalStrut(10)); // space between buttons
         jb = new JButton("Cancel");
         jb.setName("Cancel");
         jb.addMouseListener(ml);
         box.add(jb);
+        box.add(Box.createHorizontalGlue()); // add glue after buttons for centering
         return box;
     }
 
@@ -460,11 +523,11 @@ public class FilterTreePane {
     public void showFilter() {
         dialog = new JDialog();
         dialog.setTitle(chartName + " Filter");
-        dialog.setSize(300, 400);
+        dialog.setSize(500, 500); // increased height by 50 pixels (was 450)
         dialog.setLocationRelativeTo(jtable);
         dialog.getContentPane().setLayout(new BorderLayout());
         dialog.getContentPane().add(buildTree(buildTreeName(jtable)), BorderLayout.CENTER);
-        dialog.getContentPane().add(crtButton(), BorderLayout.SOUTH);
+        dialog.getContentPane().add(crtBottomPanel(), BorderLayout.SOUTH);
         dialog.setVisible(true);
         DbViewer.openWindows.add(dialog);
     }
@@ -481,5 +544,109 @@ public class FilterTreePane {
      */
     public JDialog getDialog() {
         return dialog;
+    }
+
+    // Helper method to filter tree leaves by text
+    private void filterTree(JTree tree, String filterText) {
+        DefaultMutableTreeNode originalRoot = (DefaultMutableTreeNode) tree.getModel().getRoot();
+        DefaultMutableTreeNode filteredRoot = filterTreeBuildFilteredRoot(originalRoot, filterText);
+        tree.setModel(new javax.swing.tree.DefaultTreeModel(filteredRoot));
+        collapseAll(tree);
+        expandAllMatching(tree, filteredRoot, new TreePath(filteredRoot));
+    }
+
+    // Recursively build a filtered tree containing only matching leaves and their parent branches
+    private DefaultMutableTreeNode filterTreeBuildFilteredRoot(DefaultMutableTreeNode node, String filterText) {
+        DefaultMutableTreeNode filteredNode = new DefaultMutableTreeNode(node.getUserObject());
+        boolean hasMatchingChild = false;
+        for (int i = 0; i < node.getChildCount(); i++) {
+            DefaultMutableTreeNode child = (DefaultMutableTreeNode) node.getChildAt(i);
+            DefaultMutableTreeNode filteredChild = filterTreeBuildFilteredRoot(child, filterText);
+            if (filteredChild != null) {
+                filteredNode.add(filteredChild);
+                hasMatchingChild = true;
+            }
+        }
+        if (node.isLeaf()) {
+            String nodeStr = node.toString().toLowerCase();
+            if (nodeStr.contains(filterText)) {
+                return filteredNode;
+            } else {
+                return null;
+            }
+        } else {
+            return hasMatchingChild ? filteredNode : null;
+        }
+    }
+
+    // Collapse all nodes in the tree
+    private void collapseAll(JTree tree) {
+        DefaultMutableTreeNode root = (DefaultMutableTreeNode) tree.getModel().getRoot();
+        if (root!=null) collapseAllRecursive(tree, new TreePath(root));
+    }
+    private void collapseAllRecursive(JTree tree, TreePath parent) {
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) parent.getLastPathComponent();
+        for (int i = 0; i < node.getChildCount(); i++) {
+            TreeNode child = node.getChildAt(i);
+            TreePath path = parent.pathByAddingChild(child);
+            collapseAllRecursive(tree, path);
+        }
+        tree.collapsePath(parent);
+    }
+
+    // Expand all paths to matching leaves
+    private void expandAllMatching(JTree tree, DefaultMutableTreeNode node, TreePath path) {
+        if (node.isLeaf()) {
+            tree.expandPath(path.getParentPath());
+        } else {
+            for (int i = 0; i < node.getChildCount(); i++) {
+                DefaultMutableTreeNode child = (DefaultMutableTreeNode) node.getChildAt(i);
+                expandAllMatching(tree, child, path.pathByAddingChild(child));
+            }
+        }
+    }
+
+    // Helper to expand/collapse all nodes
+    private void expandAll(JTree tree, boolean expand) {
+        DefaultMutableTreeNode root = (DefaultMutableTreeNode) tree.getModel().getRoot();
+        expandAllRecursive(tree, new TreePath(root), expand);
+    }
+    private void expandAllRecursive(JTree tree, TreePath parent, boolean expand) {
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) parent.getLastPathComponent();
+        for (int i = 0; i < node.getChildCount(); i++) {
+            TreeNode child = node.getChildAt(i);
+            TreePath path = parent.pathByAddingChild(child);
+            expandAllRecursive(tree, path, expand);
+        }
+        if (expand) tree.expandPath(parent); else tree.collapsePath(parent);
+    }
+
+    // Helper: Deep copy a tree node and its children
+    private DefaultMutableTreeNode deepCopyTree(DefaultMutableTreeNode node) {
+        DefaultMutableTreeNode copy = new DefaultMutableTreeNode(node.getUserObject());
+        for (int i = 0; i < node.getChildCount(); i++) {
+            DefaultMutableTreeNode child = (DefaultMutableTreeNode) node.getChildAt(i);
+            copy.add(deepCopyTree(child));
+        }
+        return copy;
+    }
+
+    // Collapse tree to a specific level (root is level 0)
+    private void collapseToLevel(JTree tree, int level) {
+        DefaultMutableTreeNode root = (DefaultMutableTreeNode) tree.getModel().getRoot();
+        collapseToLevelRecursive(tree, new TreePath(root), 0, level);
+    }
+    private void collapseToLevelRecursive(JTree tree, TreePath parent, int currentLevel, int maxLevel) {
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) parent.getLastPathComponent();
+        if (currentLevel < maxLevel) {
+            tree.expandPath(parent);
+            for (int i = 0; i < node.getChildCount(); i++) {
+                TreeNode child = node.getChildAt(i);
+                TreePath path = parent.pathByAddingChild(child);
+                collapseToLevelRecursive(tree, path, currentLevel + 1, maxLevel);
+            }
+        } else {
+            tree.collapsePath(parent);
+        }
     }
 }

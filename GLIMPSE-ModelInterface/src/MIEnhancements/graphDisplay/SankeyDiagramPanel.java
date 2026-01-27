@@ -352,9 +352,15 @@ public class SankeyDiagramPanel extends JFrame implements ComponentListener {
 						// add loading icon to QueryResultsPanel
 						TabCloseIcon loadingIcon = new TabCloseIcon(tablesTabs);
 						// creating new panel for holding the results of the queries
-						JComponent ret = new QueryResultsPanel(qg, singleBinding,scnList.getSelectedValues(),regionList.getSelectedValues(), loadingIcon, false);		
+						JComponent ret = new QueryResultsPanel(qg, singleBinding,scnList.getSelectedValues(),regionList.getSelectedValues(), loadingIcon, false); 			
 						// adds new tab for query results panel
-						tablesTabs.addTab(qg.toString(), loadingIcon, ret, DbViewer.createCommentTooltip(selPaths[i]));
+						// tablesTabs.addTab(qg.toString(), loadingIcon, ret, DbViewer.createCommentTooltip(selPaths[i]));
+						// create a simple tooltip from the selected tree path (DbViewer.createCommentTooltip is not static/visible)
+						String tooltip = null;
+						if (selPaths[i] != null && selPaths[i].getLastPathComponent() != null) {
+							tooltip = selPaths[i].getLastPathComponent().toString();
+						}
+						tablesTabs.addTab(qg.toString(), loadingIcon, ret, tooltip);
 						System.out.println("check tablesTabs number: " + tablesTabs.getComponentCount());
 					} catch (ClassCastException cce) {
 						System.out.println("Warning: Caught " + cce + " likely a QueryGroup was in the selection");

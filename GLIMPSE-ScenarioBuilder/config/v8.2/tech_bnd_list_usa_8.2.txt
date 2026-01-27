@@ -752,6 +752,11 @@ trn_pass_road : Bus : FCEV : H2 retail dispensing : EJ : trn_pass_road : million
 trn_pass_road : Bus : Hybrid Liquids : refined liquids enduse : EJ : trn_pass_road : million pass-km : Trn-Onroad
 trn_pass_road : Bus : Liquids : refined liquids enduse : EJ : trn_pass_road : million pass-km : Trn-Onroad
 trn_pass_road : Bus : NG : delivered gas : EJ : trn_pass_road : million pass-km : Trn-Onroad
+trn_pass_road : School Bus : BEV : elect_td_trn : EJ : trn_pass_road : million pass-km : Trn-Onroad
+trn_pass_road : School Bus : FCEV : H2 retail dispensing : EJ : trn_pass_road : million pass-km : Trn-Onroad
+trn_pass_road : School Bus : Hybrid Liquids : refined liquids enduse : EJ : trn_pass_road : million pass-km : Trn-Onroad
+trn_pass_road : School Bus : Liquids : refined liquids enduse : EJ : trn_pass_road : million pass-km : Trn-Onroad
+trn_pass_road : School Bus : NG : delivered gas : EJ : trn_pass_road : million pass-km : Trn-Onroad
 trn_pass_road_LDV : 2W and 3W : BEV : elect_td_trn : EJ : trn_pass_road_LDV : million pass-km : Trn-Onroad
 trn_pass_road_LDV : 2W and 3W : LA-BEV : elect_td_trn : EJ : trn_pass_road_LDV : million pass-km : Trn-Onroad
 trn_pass_road_LDV : 2W and 3W : Liquids : refined liquids enduse : EJ : trn_pass_road_LDV : million pass-km : Trn-Onroad

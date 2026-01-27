@@ -412,8 +412,10 @@ public class DOMTreeBuilder {
 		// get all the immediate children of e1 and compare them to e2
 		NodeList list1 = e1.getChildNodes();
 		for(int i=0; i<list1.getLength(); i++){
-			if(list1.item(i).getNodeType() != Element.TEXT_NODE){
-				if(compareHelper((Element)list1.item(i), e2)){
+			// only consider element nodes
+			if(list1.item(i).getNodeType() == Node.ELEMENT_NODE) {
+				Element childElem = (Element) list1.item(i);
+				if(compareHelper(childElem, e2)){
 					return list1.item(i);
 				}
 			}
