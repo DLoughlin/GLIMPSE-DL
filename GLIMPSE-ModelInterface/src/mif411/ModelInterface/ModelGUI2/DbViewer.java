@@ -2263,7 +2263,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                  }
                  
                  int ans = InterfaceMain.getInstance().showConfirmDialog(
-                         "Remove scenario? This process removes the scenario index but does not decrease database size.",
+                         "Remove scenario? This removes the scenario index but does not decrease database size.\nAfter removing, click on Rebuild DB to reclaim space.\nRebuild DB may take as long as an hour or two.",
                          "Click on Optimize to reclaim space.", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
                          JOptionPane.NO_OPTION);
                  if (ans != JOptionPane.YES_OPTION) {
@@ -2498,7 +2498,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                 }
 
                 int ans = InterfaceMain.getInstance().showConfirmDialog(
-                        "Rebuild database from remaining documents?\nThis will export all documents, drop the database files, create a fresh database and re-import the exported documents.\nThis may take many minutes.",
+                        "Rebuild database? This will export all scemarops, create a fresh database and re-import the scenarios.\nRebuilding is expected to require as long as an hour or two.",
                         "Confirm Rebuild", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
                         JOptionPane.NO_OPTION);
                 if (ans != JOptionPane.YES_OPTION) {
