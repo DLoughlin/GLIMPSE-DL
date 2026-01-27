@@ -119,10 +119,10 @@ public class InterfaceMain implements ActionListener {
 	public static final int EDIT_MENU_POS = 1;
 	public static final int VIEW_MENU_POS = 2;
 	// public static final int TOOLS_MENU_POS = 80; // YD added
-	public static final int ADVANCED_MENU_POS = 90; // YD added
-	public static final int ADVANCED_SUBMENU1_POS = 0; // YD added
-	public static final int ADVANCED_SUBMENU15_POS = 2; // YD added
-	public static final int ADVANCED_SUBMENU2_POS = 5; // YD added
+	public static final int TOOLS_MENU_POS = 90; // YD added
+	public static final int TOOLS_SUBMENU1_POS = 0; // YD added
+	public static final int TOOLS_SUBMENU15_POS = 2; // YD added
+	public static final int TOOLS_SUBMENU2_POS = 5; // YD added
 	public static final int QUERIES_UNDO_MENUITEM_POS = 25; // YD added
 	public static final int QUERIES_REDO_MENUITEM_POS = 30; // YD added
 	public static final int HELP_MENU_POS = 100;
@@ -668,7 +668,7 @@ public class InterfaceMain implements ActionListener {
 		// YD added lines to add "Tools" and "Advanced" to the main menu bar
 		menuMan.addMenuItem(new JMenu("View"), VIEW_MENU_POS);
 		// menuMan.addMenuItem(new JMenu("Tools"), TOOLS_MENU_POS);
-		menuMan.addMenuItem(new JMenu("Advanced"), ADVANCED_MENU_POS);
+		menuMan.addMenuItem(new JMenu("Tools"), TOOLS_MENU_POS); // Renamed from "Advanced" to "Tools"
 		menuMan.addMenuItem(new JMenu("Help"), HELP_MENU_POS);
 		// YD added the following lines to add "Query File" under "Edit" dropdown menu
 		editQuerySubMenu = new JMenuItem("Query File");
@@ -702,26 +702,26 @@ public class InterfaceMain implements ActionListener {
 		// dropdown menu
 		advancedSubMenu1 = new JMenu("Queries");
 		advancedSubMenu1.setMnemonic(KeyEvent.VK_S);
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).addMenuItem(advancedSubMenu1, ADVANCED_SUBMENU1_POS);
+		menuMan.getSubMenuManager(TOOLS_MENU_POS).addMenuItem(advancedSubMenu1, TOOLS_SUBMENU1_POS);
 		advancedSubMenu2 = new JMenu("Open Files");
 		advancedSubMenu2.setMnemonic(KeyEvent.VK_O);
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).addMenuItem(advancedSubMenu2, ADVANCED_SUBMENU2_POS);
+		menuMan.getSubMenuManager(TOOLS_MENU_POS).addMenuItem(advancedSubMenu2, TOOLS_SUBMENU2_POS);
 		// YD added the following lines to re-arrange "Batch File" from "File" dropdown
 		// menu to be under "Advanced" >> "Open Files"
 
 		batchMenu = new JMenuItem("Batch Query File");
 		batchMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, ActionEvent.ALT_MASK));
 		batchMenu.addActionListener(this);
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).getSubMenuManager(ADVANCED_SUBMENU2_POS).addMenuItem(batchMenu, 5);
+		menuMan.getSubMenuManager(TOOLS_MENU_POS).getSubMenuManager(TOOLS_SUBMENU2_POS).addMenuItem(batchMenu, 5);
 		// YD moved these lines because "Save" and "Save as" are moved to be "Advanced"
 		// >> "Queries"
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).getSubMenuManager(ADVANCED_SUBMENU1_POS)
+		menuMan.getSubMenuManager(TOOLS_MENU_POS).getSubMenuManager(TOOLS_SUBMENU1_POS)
 				.addMenuItem(saveMenu = new JMenuItem("Save"), QUERIES_SAVE_MENUITEM_POS);
 		saveMenu.setEnabled(false);
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).getSubMenuManager(ADVANCED_SUBMENU1_POS)
+		menuMan.getSubMenuManager(TOOLS_MENU_POS).getSubMenuManager(TOOLS_SUBMENU1_POS)
 				.addMenuItem(saveAsMenu = new JMenuItem("Save As"), QUERIES_SAVEAS_MENUITEM_POS);
 		saveAsMenu.setEnabled(false);
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).getSubMenuManager(ADVANCED_SUBMENU1_POS)
+		menuMan.getSubMenuManager(TOOLS_MENU_POS).getSubMenuManager(TOOLS_SUBMENU1_POS)
 				.addSeparator(QUERIES_SAVEAS_MENUITEM_POS);
 
 		setupUndo(menuMan);
@@ -736,13 +736,13 @@ public class InterfaceMain implements ActionListener {
 		undoManager.setLimit(10);
 
 		undoMenu = new JMenuItem("Undo");
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).getSubMenuManager(ADVANCED_SUBMENU1_POS).addMenuItem(undoMenu,
+		menuMan.getSubMenuManager(TOOLS_MENU_POS).getSubMenuManager(TOOLS_SUBMENU1_POS).addMenuItem(undoMenu,
 				QUERIES_UNDO_MENUITEM_POS);
-		// menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS).getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addSeparator(QUERIES_UNDO_MENUITEM_POS);
+		// menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS).getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addSeparator(QUERIES_UNDO_MENUITEM_POS);
 		redoMenu = new JMenuItem("Redo");
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).getSubMenuManager(ADVANCED_SUBMENU1_POS).addMenuItem(redoMenu,
+		menuMan.getSubMenuManager(TOOLS_MENU_POS).getSubMenuManager(TOOLS_SUBMENU1_POS).addMenuItem(redoMenu,
 				QUERIES_REDO_MENUITEM_POS);
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).getSubMenuManager(ADVANCED_SUBMENU1_POS)
+		menuMan.getSubMenuManager(TOOLS_MENU_POS).getSubMenuManager(TOOLS_SUBMENU1_POS)
 				.addSeparator(QUERIES_REDO_MENUITEM_POS);
 
 		undoMenu.setEnabled(false);

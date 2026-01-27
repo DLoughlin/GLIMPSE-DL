@@ -183,8 +183,8 @@ public class PPViewer implements ActionListener, MenuAdder, BatchRunner
   	  menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_P,
   				ActionEvent.ALT_MASK));
   	  menuItem.addActionListener(this);
-  	  menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS).
-  			getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU2_POS).addMenuItem(menuItem, 20);
+  	  menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS).
+  			getSubMenuManager(InterfaceMain.TOOLS_SUBMENU2_POS).addMenuItem(menuItem, 20);
   }
   
   /**

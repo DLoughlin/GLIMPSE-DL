@@ -593,7 +593,8 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).addMenuItem(menuItem, 5);
 
 		final JMenuItem menuManage = makeMenuItem("Manage DB");
-		menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).addMenuItem(menuManage, 10);
+		//DHL: Hiding menu item since there is a button with the same functionality  
+		//menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).addMenuItem(menuManage, 10);
 		menuManage.setEnabled(false);
 
 		parentFrame.addPropertyChangeListener(new PropertyChangeListener() {
@@ -689,56 +690,58 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		// Query Tree Lock/Unlock
 		queriesLockMenu = makeMenuItem(queryTreeLocked ? "Unlock Query Tree" : "Lock Query Tree");
 		queriesLockMenu.addActionListener(this);
-		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS)
-				.getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addMenuItem(queriesLockMenu, 2);
+		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS)
+				.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addMenuItem(queriesLockMenu, 2);
 
 		// Query Update/Create/Edit/Remove
 		queriesUpdateMenu = makeMenuItem("Update Single Query");
 		queriesUpdateMenu.addActionListener(this);
 		queriesUpdateMenu.setEnabled(false);
-		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS)
-				.getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addMenuItem(queriesUpdateMenu, 5);
+		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS)
+				.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addMenuItem(queriesUpdateMenu, 5);
 
 		queriesCreateMenu = makeMenuItem("Create");
 		queriesCreateMenu.addActionListener(this);
 		queriesCreateMenu.setEnabled(false);
-		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS)
-				.getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addMenuItem(queriesCreateMenu, 10);
+		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS)
+				.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addMenuItem(queriesCreateMenu, 10);
 
 		queriesEditMenu = makeMenuItem("Edit");
 		queriesEditMenu.addActionListener(this);
 		queriesEditMenu.setEnabled(false);
-		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS)
-				.getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addMenuItem(queriesEditMenu, 15);
+		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS)
+				.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addMenuItem(queriesEditMenu, 15);
 
 		queriesRemoveMenu = makeMenuItem("Remove");
 		queriesRemoveMenu.addActionListener(this);
 		queriesRemoveMenu.setEnabled(false);
-		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS)
-				.getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addMenuItem(queriesRemoveMenu, 20);
+		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS)
+				.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addMenuItem(queriesRemoveMenu, 20);
 
 		// Favorites
 		loadFavoritesMenu = makeMenuItem("Load Favorite Queries File");
-		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS)
-				.getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addMenuItem(loadFavoritesMenu, 45);
+		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS)
+				.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addMenuItem(loadFavoritesMenu, 45);
 
 		createFavoritesMenu = makeMenuItem("Create Favorite Queries File");
-		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS)
-				.getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addMenuItem(createFavoritesMenu, 45);
+		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS)
+				.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addMenuItem(createFavoritesMenu, 45);
 
 		appendFavoritesMenu = makeMenuItem("Append Favorite Queries File");
-		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS)
-				.getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addMenuItem(appendFavoritesMenu, 48);
+		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS)
+				.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addMenuItem(appendFavoritesMenu, 48);
 
+		/****Hiding menu option for hiding beta features since features are now reasonably stable
 		// Separator
-		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS).addSeparator(99);
+		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS).addSeparator(99);
 
 		// Beta Features
 		String betaText = (InterfaceMain.enableMapping || InterfaceMain.enableSankey) ? "Disable Beta Features"
 				: "Enable Beta Features";
 		betaMn = makeMenuItem(betaText);
 		betaMn.addActionListener(this);
-		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS).addMenuItem(betaMn, 100);
+		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS).addMenuItem(betaMn, 100);
+		*/
 	}
 
 	public void actionPerformed(ActionEvent e) {
