@@ -2908,8 +2908,134 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		}
 	}
 
+	public void exportTabs() {
+		final InterfaceMain main = InterfaceMain.getInstance();
+
+		if (tablesTabs.getTabCount() == 0) {
+			// error?
+			return;
+		}
+
+		// select export location
+		String exportDialogTitle = "Select Export Directory";
+		FileFilter fileFilter = new FileFilter() {
+			public boolean accept(File f) {
+				return f.isDirectory();
+			}
+
+			public String getDescription() {
+				return "Directory to export into";
+			}
+		};
+
+		FileChooser fc = FileChooserFactory.getFileChooser();
+		final File[] exportLocation = fc.doFilePrompt(null, exportDialogTitle, FileChooser.SAVE_DIALOG,
+				new File(main.getProperties().getProperty("lastDirectory", ".")), fileFilter);
+
+		if (exportLocation == null) {
+			// user canceled, nothing to do
+			return;
+		}
+
+		ArrayList<String> tab_titles = new ArrayList<String>();
+
+		int tab_count = tablesTabs.getTabCount();
+		for (int i = 0; i < tab_count; i++) {
+			String tab_title = tablesTabs.getTitleAt(i).replaceAll(" ", "_").replaceAll(":", "");
+
+			//System.out.println("Title:" + tab_title);
+
+			int k = 0;
+			for (int j = 0; j < tab_titles.size(); j++) {
+				if (tab_titles.get(j).equals(tab_title))
+					k++;
+			}
+			tab_titles.add(tab_title);
+			if (k > 0)
+				tab_title += ("_" + k);
+			
+
+			Component c = tablesTabs.getComponentAt(i);
+
+			JTable jTable = getJTableFromComponent(c);
+
+			TableModel tm = jTable.getModel();
+
+			if (tm != null) {
+				String filename = exportLocation[0].getAbsolutePath() + File.separator + tab_title + ".csv";
+				writeTableModelToFile(filename, tm);
+			}
+					
+		}
+		JOptionPane.showMessageDialog(null, tab_titles.size() + " files exported to " + exportLocation[0].getAbsolutePath());
+	}
+	
+	protected void writeTableModelToFile(String filename, TableModel tm) {
+		try {
+			PrintWriter pw = new PrintWriter(new FileOutputStream(filename));
+
+			int no_rows = tm.getRowCount();
+			int no_cols = tm.getColumnCount();
+
+			String header = "";
+			String s = "";
+			for (int j = 0; j < no_cols; j++) {
+				if (s != "")
+					s += ",";
+				s += tm.getColumnName(j);
+			}
+			pw.println(s);
+
+			for (int i = 0; i < no_rows; i++) {
+				s = "";
+				for (int j = 0; j < no_cols; j++) {
+					if (s != "")
+						s += ",";
+					s += tm.getValueAt(i, j);
+				}
+				pw.println(s);
+			}
+
+			pw.close();
+
+		} catch (Exception e) {
+			System.out.println("Problem writing tab to CSV file:" + e);
+		}
+
+	}
+	
+	public static JTable getJTableFromComponent(java.awt.Component comp) {
+		Object c;
+		try {
+			QueryResultsPanel qPanel = (QueryResultsPanel) comp;
+			c = qPanel.getComponent(0);
+
+			if (c instanceof JPanel) {
+				return null;
+			}
+			if (c instanceof JSplitPane) {
+				JSplitPane jsp = (JSplitPane) c;
+				Component c1 = jsp.getLeftComponent();
+
+				if (c1 instanceof JScrollPane) {
+					return (JTable) ((JScrollPane) (c1)).getViewport().getView();
+				} else {
+					// if not a JScrollPane, assumes it is a JPanel
+					JPanel jp = (JPanel) c1;
+					JScrollPane jscp = (JScrollPane) jp.getComponent(1);
+					return (JTable) jscp.getViewport().getView();
+				}
+			} else {
+				return (JTable) ((JScrollPane) c).getViewport().getView();
+			}
+		} catch (ClassCastException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
 	// Export open tabs as CSVs or other formats - minimal stub
-	protected void exportTabs() {
+	protected void exportTabsOld() {
 		if (tablesTabs == null || tablesTabs.getTabCount() == 0) {
 			InterfaceMain.getInstance().showMessageDialog("No tabs to export.", "Export Tabs",
 					JOptionPane.INFORMATION_MESSAGE);
