@@ -8,5 +8,5 @@
 "queries">"GLIMPSE queries">"2. Energy use by end-use sector">"by fuel">"2.4 Refined liquids use by aggregate sector"
 "queries">"GLIMPSE queries">"2. Energy use by end-use sector">"by fuel">"2.5 Biomass use by aggregate sector"
 "queries">"GLIMPSE queries">"2. Energy use by end-use sector">"by fuel">"2.6 Hydrogen use by aggregate sector"
-"queries">"GLIMPSE queries">"3. Conversion technologies inputs and outputs">"output">"3.14 Refined liquids production by tech (GCAM-USA)"
 "queries">"GLIMPSE queries">"3. Conversion technologies inputs and outputs">"output">"3.10 Electricity generation by aggregated subsector with renewable detail"
+"queries">"GLIMPSE queries">"3. Conversion technologies inputs and outputs">"output">"3.14 Refined liquids production by aggregated category (GCAM-USA)"
