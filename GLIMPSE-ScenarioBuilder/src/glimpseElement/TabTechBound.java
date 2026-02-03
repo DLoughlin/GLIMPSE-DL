@@ -222,9 +222,12 @@ public class TabTechBound extends PolicyTab implements Runnable {
 		ComboBox<?>[] comboBoxes = { comboBoxCategory, comboBoxModificationType, comboBoxConstraint, comboBoxAppliedTo,
 				comboBoxTreatment };
 		for (ComboBox<?> cb : comboBoxes) {
-			cb.setMaxWidth(MAX_WIDTH);
-			cb.setMinWidth(MIN_WIDTH);
-			cb.setPrefWidth(PREF_WIDTH);
+			if (cb != null) {
+				cb.setMaxWidth(MAX_WIDTH);
+				cb.setMinWidth(MIN_WIDTH);
+				cb.setPrefWidth(PREF_WIDTH);
+				cb.getStyleClass().add("combo-box");
+			}
 		}
 		checkComboBoxTech.setMaxWidth(MAX_WIDTH);
 		checkComboBoxTech.setMinWidth(MIN_WIDTH);
@@ -263,7 +266,9 @@ public class TabTechBound extends PolicyTab implements Runnable {
 				textFieldGrowth);
 		gridPaneLeft.setAlignment(Pos.TOP_LEFT);
 		gridPaneLeft.setVgap(3.);
-		gridPaneLeft.setStyle(styles.getStyle2());
+		// Use explicit padding rather than CSS -fx-padding to ensure consistent
+		// internal spacing between tabs (use shared default padding from styles)
+		// Intentionally omit explicit padding/background here; PolicyTab provides defaults
 		scrollPaneLeft.setContent(gridPaneLeft);
 	}
 
@@ -397,7 +402,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 			for (String[] tech : techInfo) {
 				if (tech == null || tech.length == 0)
 					continue;
-				String text = tech[7] != null ? tech[7].trim() : "";
+				String text = (tech.length > 7 && tech[7] != null) ? tech[7].trim() : "";
 				boolean match = false;
 				for (String cat : categoryList) {
 					if (text.equals(cat)) {
@@ -411,7 +416,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 			}
 			categoryList = utils.getUniqueItemsFromStringArrayList(categoryList);
 			for (String cat : categoryList) {
-				if (cat != null)
+				if (cat != null && !cat.isEmpty())
 					comboBoxCategory.getItems().add(cat.trim());
 			}
 
@@ -432,7 +437,6 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	 * Called when the filter or category changes.
 	 */
 	private void updateCheckComboBoxTech() {
-		// Platform.runLater(() -> {
 		String cat = comboBoxCategory.getValue();
 		if (cat == null)
 			return;
@@ -452,13 +456,13 @@ public class TabTechBound extends PolicyTab implements Runnable {
 					if (techRow == null || techRow.length < 3)
 						continue;
 					String line = (techRow[0] != null ? techRow[0].trim() : "") + " : "
-							+ (techRow[1] != null ? techRow[1] : "") + " : " + (techRow[2] != null ? techRow[2] : "");
+						+ (techRow[1] != null ? techRow[1] : "") + " : " + (techRow[2] != null ? techRow[2] : "");
 					if (filterText.isEmpty() || line.contains(filterText)) {
 						if (techRow.length >= 7 && techRow[6] != null)
 							line += " : " + techRow[6];
 						if (!line.equals(lastLine)) {
 							lastLine = line;
-							if (isAllCat || techRow[7].equals(cat)) {
+							if (isAllCat || (techRow.length > 7 && techRow[7] != null && techRow[7].equals(cat))) {
 								checkComboBoxTech.getItems().add(line);
 							}
 						}
@@ -474,7 +478,6 @@ public class TabTechBound extends PolicyTab implements Runnable {
 			System.out.println("Error reading tech list from " + vars.getTchBndListFilename() + ":");
 			System.out.println("  ---> " + e);
 		}
-		// };);
 	}
 
 	/**
@@ -484,41 +487,44 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	 * names. Handles edge cases for multiple regions.
 	 */
 	protected void setPolicyAndMarketNames() {
-		// Platform.runLater(() -> {
 		if (checkBoxUseAutoNames.isSelected()) {
 			String policyType = "--";
-			String technology = "Tech";
 			String sector = "--";
 			String state = "--";
 			String treatment = "--";
 			String appliedTo = "--";
 			try {
 				String s = comboBoxConstraint.getValue();
-				if (s.contains("Upper"))
-					policyType = "_Up";
-				if (s.contains("Lower"))
-					policyType = "_Lo";
-				if (s.contains("Fixed"))
-					policyType = "_Fx";
+				if (s != null) {
+					if (s.contains("Upper"))
+						policyType = "_Up";
+					if (s.contains("Lower"))
+						policyType = "_Lo";
+					if (s.contains("Fixed"))
+						policyType = "_Fx";
+				}
 				s = comboBoxCategory.getValue();
-				if (!s.equals(SELECT_ONE)) {
+				if (s != null && !s.equals(SELECT_ONE)) {
 					s = s.replace(" ", "_");
 					s = utils.capitalizeOnlyFirstLetterOfString(s);
 					sector = s;
 				}
 				s = comboBoxTreatment.getValue();
-				if (s.contains("Each"))
-					treatment = "_Ea";
-				if (s.contains("Across"))
-					treatment = "_Acr";
-				
-				s = comboBoxAppliedTo.getValue();
-				if (s.contains("Sales")) {
-					appliedTo = "_sales";
-				} else {
-					appliedTo = "_stock";
+				if (s != null) {
+					if (s.contains("Each"))
+						treatment = "_Ea";
+					if (s.contains("Across"))
+						treatment = "_Acr";
 				}
-				
+				s = comboBoxAppliedTo.getValue();
+				if (s != null) {
+					if (s.contains("Sales")) {
+						appliedTo = "_sales";
+					} else {
+						appliedTo = "_stock";
+					}
+				}
+
 				String[] listOfSelectedLeaves = utils.getAllSelectedRegions(paneForCountryStateTree.getTree());
 				if (listOfSelectedLeaves.length > 0) {
 					listOfSelectedLeaves = utils.removeUSADuplicate(listOfSelectedLeaves);
@@ -538,7 +544,6 @@ public class TabTechBound extends PolicyTab implements Runnable {
 				System.out.println("Cannot auto-name market. Continuing.");
 			}
 		}
-		// });
 	}
 
 	/**
@@ -570,7 +575,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	private void saveScenarioComponent(TreeView<String> tree) {
 
 		if (!qaInputs()) {
-			Thread.currentThread().destroy();
+			// Do not attempt to forcibly destroy the thread; simply abort save operation
 			return;
 		}
 
@@ -680,7 +685,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 
 			if (prev_subsector.equals("")) {
 				prev_subsector = subsector;
-			} else if (subsector != prev_subsector) {
+			} else if (!subsector.equals(prev_subsector)) {
 				prev_subsector = subsector;
 				isMultiSubsector = true;
 			}
@@ -728,12 +733,12 @@ public class TabTechBound extends PolicyTab implements Runnable {
 
 									if (is_nested) {
 										nestedBuffer.append(state).append(",").append(sector).append(",")
-												.append(subsector).append(",").append(tech).append(",").append(y1)
-												.append(",").append(use_this_policy_name1).append(vars.getEol());
+											.append(subsector).append(",").append(tech).append(",").append(y1)
+											.append(",").append(use_this_policy_name1).append(vars.getEol());
 									} else {
 										nonNestedBuffer.append(state).append(",").append(sector).append(",")
-												.append(subsector).append(",").append(tech).append(",").append(y1)
-												.append(",").append(use_this_policy_name1).append(vars.getEol());
+											.append(subsector).append(",").append(tech).append(",").append(y1)
+											.append(",").append(use_this_policy_name1).append(vars.getEol());
 									}
 
 								}
@@ -769,7 +774,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 //						}
 
 		if (loadFactorList.size() > 0)
-			loadFactorList = utils.removeDuplicateStringsFromArrayList(loadFactorList);
+			loadFactorList = utils.getUniqueItemsFromStringArrayList(loadFactorList);
 
 		files.writeToBufferedFile(bw1, nestedBuffer.toString());
 		files.writeToBufferedFile(bw2, nonNestedBuffer.toString());
@@ -1117,11 +1122,9 @@ public class TabTechBound extends PolicyTab implements Runnable {
 		ObservableList<String> selectedTechs = checkComboBoxTech.getCheckModel().getCheckedItems();
 		String units = UNITS_DEFAULT;
 		if (selectedTechs != null && !selectedTechs.isEmpty()) {
-			// Example: extract units from selected techs if available
-			// This logic should be replaced with actual units extraction as needed
 			String firstTech = selectedTechs.get(0);
 			String[] parts = firstTech.split(":");
-			if (parts.length >= 4) {
+			if (parts.length >= 4 && parts[3] != null) {
 				units = parts[3].trim();
 			}
 		}

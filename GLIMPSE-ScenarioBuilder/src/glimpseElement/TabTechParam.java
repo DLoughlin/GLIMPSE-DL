@@ -142,10 +142,6 @@ public class TabTechParam extends PolicyTab implements Runnable {
 
     // === Layout and UI Components ===
     // Layout containers for tab columns and panes
-    //private final GridPane gridPanePresetModification = new GridPane();
-    //private final ScrollPane scrollPaneLeft = new ScrollPane();
-    //private final GridPane gridPaneLeft = new GridPane();
-    //private final VBox vBoxCenter = new VBox();
 
     // === UI Controls ===
     // JavaFX controls for user input and display
@@ -303,8 +299,18 @@ public class TabTechParam extends PolicyTab implements Runnable {
                 textFieldGrowth, comboBoxConvertFrom);
         gridPaneLeft.setAlignment(Pos.TOP_LEFT);
         gridPaneLeft.setVgap(3.);
-        gridPaneLeft.setStyle(styles.getStyle2());
-        scrollPaneLeft.setContent(gridPaneLeft);
+        // Use explicit padding rather than CSS -fx-padding for consistent internal spacing
+        //gridPaneLeft.setPadding(styles.getDefaultPadding());
+        // Apply shared background color (separate from padding)
+        //gridPaneLeft.setStyle(styles.getBackgroundStyle());
+        // Apply padding and background to scroll panes so content spacing matches other tabs
+        //scrollPaneLeft.setPadding(styles.getDefaultPadding());
+        //scrollPaneLeft.setStyle(styles.getBackgroundStyle());
+        //scrollPaneCenter.setPadding(styles.getDefaultPadding());
+        //scrollPaneCenter.setStyle(styles.getBackgroundStyle());
+        //scrollPaneRight.setPadding(styles.getDefaultPadding());
+        //scrollPaneRight.setStyle(styles.getBackgroundStyle());
+         scrollPaneLeft.setContent(gridPaneLeft);
     }
 
     /**
@@ -470,43 +476,42 @@ public class TabTechParam extends PolicyTab implements Runnable {
      */
     private void setupComboBoxCategory() {
         comboBoxCategory.getItems().clear();
-        comboBoxCategory.getItems().addAll("Select One","All");
-        comboBoxCategory.getSelectionModel().selectFirst();
-        try {
-            String[][] techInfo = vars.getTechInfo();
-            if (techInfo == null) return;
-            ArrayList<String> categoryList = new ArrayList<>();
+        comboBoxCategory.getItems().addAll(SELECT_ONE, ALL);
+         comboBoxCategory.getSelectionModel().selectFirst();
+         try {
+            if (this.techInfo == null) return;
+             ArrayList<String> categoryList = new ArrayList<>();
  
-            for (String[] tech : techInfo) {
-                if (tech == null || tech.length == 0) continue;
-                String text = tech[7] != null ? tech[7].trim() : "";
-                boolean match = false;
-                for (String cat : categoryList) {
-                    if (text.equals(cat)) {
-                        match = true;
-                        break;
-                    }
-                }
-                if (!match) {
-                        categoryList.add(text);
-                }
-            }
-            categoryList = utils.getUniqueItemsFromStringArrayList(categoryList);
-            for (String cat : categoryList) {
-                if (cat != null) comboBoxCategory.getItems().add(cat.trim());
-            }
+            for (String[] tech : this.techInfo) {
+                 if (tech == null || tech.length == 0) continue;
+                 String text = tech[7] != null ? tech[7].trim() : "";
+                 boolean match = false;
+                 for (String cat : categoryList) {
+                     if (text.equals(cat)) {
+                         match = true;
+                         break;
+                     }
+                 }
+                 if (!match) {
+                         categoryList.add(text);
+                 }
+             }
+             categoryList = utils.getUniqueItemsFromStringArrayList(categoryList);
+             for (String cat : categoryList) {
+                 if (cat != null) comboBoxCategory.getItems().add(cat.trim());
+             }
 
-        } catch (NullPointerException e) {
-            utils.warningMessage("Problem reading tech list: Null value encountered.");
-            System.out.println("NullPointerException reading tech list from " + vars.getTchBndListFilename() + ":");
-            System.out.println("  ---> " + e);
-        } catch (Exception e) {
-            utils.warningMessage("Problem reading tech list.");
-            System.out.println("Error reading tech list from " + vars.getTchBndListFilename() + ":");
-            System.out.println("  ---> " + e);
-        }
-    }
-    
+         } catch (NullPointerException e) {
+             utils.warningMessage("Problem reading tech list: Null value encountered.");
+             System.out.println("NullPointerException reading tech list from " + vars.getTchBndListFilename() + ":");
+             System.out.println("  ---> " + e);
+         } catch (Exception e) {
+             utils.warningMessage("Problem reading tech list.");
+             System.out.println("Error reading tech list from " + vars.getTchBndListFilename() + ":");
+             System.out.println("  ---> " + e);
+         }
+     }
+     
 
     /**
      * Updates the technology check combo box based on the selected sector and filter text.
@@ -517,8 +522,7 @@ public class TabTechParam extends PolicyTab implements Runnable {
     private void updateCheckComboTechs() {
             String cat = comboBoxCategory.getValue();
             if (cat == null) return;
-            String[][] techInfo = vars.getTechInfo();
-            if (techInfo == null) return;
+            if (this.techInfo == null) return;
             boolean isAllCat = cat.equals(ALL);
             try {
                 if (!checkComboBoxTech.getItems().isEmpty()) {
@@ -528,7 +532,7 @@ public class TabTechParam extends PolicyTab implements Runnable {
                 if (cat != null) {
                     String lastLine = "";
                     String filterText = textFieldFilter.getText() != null ? textFieldFilter.getText().trim() : "";
-                    for (String[] techRow : techInfo) {
+                    for (String[] techRow : this.techInfo) {
                         if (techRow == null || techRow.length < 3) continue;
                         String line = (techRow[0] != null ? techRow[0].trim() : "") + " : " + (techRow[1] != null ? techRow[1] : "") + " : " + (techRow[2] != null ? techRow[2] : "");
                         if (filterText.isEmpty() || line.contains(filterText)) {
@@ -696,6 +700,8 @@ public class TabTechParam extends PolicyTab implements Runnable {
      */
     public boolean doesPrefixMatch(String[] item, String[] prefix) {
         if (prefix == null) return true;
+        if (item == null) return false;
+        if (item.length < prefix.length) return false;
         for (int i = 0; i < prefix.length; i++) {
             if (!item[i].equals(prefix[i])) return false;
         }

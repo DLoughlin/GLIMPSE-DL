@@ -45,7 +45,8 @@ public class LegendPanel extends JComponent {
             g.fillRect(0, 0, getWidth(), getHeight());
         }
         Graphics2D g2d = (Graphics2D) g.create();
-        legend.draw(g2d, g.getClipBounds());
+        java.awt.geom.Rectangle2D area = new java.awt.geom.Rectangle2D.Double(0, 0, getWidth(), getHeight());
+        legend.draw(g2d, area);
         g2d.dispose();
     }
 

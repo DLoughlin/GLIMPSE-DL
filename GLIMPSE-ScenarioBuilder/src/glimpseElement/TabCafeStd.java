@@ -41,10 +41,8 @@ import org.controlsfx.control.CheckComboBox;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
-import javafx.scene.control.CheckBoxTreeItem.TreeModificationEvent;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
@@ -146,9 +144,6 @@ public class TabCafeStd extends PolicyTab implements Runnable {
         setupEventHandlers();
         setPolicyAndMarketNames();
         setUnitsLabel();
-        VBox tabLayout = new VBox();
-        tabLayout.getChildren().addAll(gridPanePresetModification);
-        this.setContent(tabLayout);
         
         // Update policy and market names when region tree changes
         paneForCountryStateTree.getTree().addEventHandler(ActionEvent.ACTION, e -> {
@@ -203,7 +198,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
                 textFieldStartYear, textFieldEndYear, textFieldInitialAmount, textFieldGrowth);
         gridPaneLeft.setAlignment(Pos.TOP_LEFT);
         gridPaneLeft.setVgap(3.);
-        gridPaneLeft.setStyle(styles.getStyle2());
+        //gridPaneLeft.setStyle(styles.getStyle2());
         scrollPaneLeft.setContent(gridPaneLeft);
     }
 
@@ -327,15 +322,15 @@ public class TabCafeStd extends PolicyTab implements Runnable {
      */
     private void saveScenarioComponent(TreeView<String> tree) {
         if (!qaInputs()) {
-            Thread.currentThread().destroy();
+            // QA failed - abort save
             return;
         }
 
         String ID = null;
         if (checkBoxUseUniqueNames.isSelected()) { 
-        	ID = utils.getUniqueString();
+            ID = utils.getUniqueString();
         } else {
-        	ID="";
+            ID="";
         }
         String policyName = textFieldPolicyName.getText() + ID;
         String marketName = textFieldMarketName.getText() + ID;
@@ -496,9 +491,13 @@ public class TabCafeStd extends PolicyTab implements Runnable {
         ObservableList<DataPoint> data = paneForComponentDetails != null ? this.paneForComponentDetails.table.getItems() : null;
         if (data == null) return false;
         for (DataPoint dp : data) {
-            Integer year = Integer.parseInt(dp.getYear().trim());
-            if (listOfAllowableYears.contains(year)) {
-                return true;
+            try {
+                Integer year = Integer.parseInt(dp.getYear().trim());
+                if (listOfAllowableYears.contains(year)) {
+                    return true;
+                }
+            } catch (NumberFormatException nfe) {
+                // ignore invalid year entries
             }
         }
         return false;
@@ -532,26 +531,28 @@ public class TabCafeStd extends PolicyTab implements Runnable {
                 }
             }
             // Check subsector selection
-            if (comboBoxSubsector.getSelectionModel().getSelectedItem().equals(SELECT_ONE)) {
+            String selectedSubsector = comboBoxSubsector.getSelectionModel().getSelectedItem();
+            if (selectedSubsector == null || selectedSubsector.equals(SELECT_ONE)) {
                 message.append("Sector comboBox must have a selection").append(vars.getEol());
                 errorCount++;
             }
             // Check tech selection
-            if (checkComboBoxTech != null && ((checkComboBoxTech.getCheckModel().getCheckedItems().size() == 0))) {
+            if (checkComboBoxTech == null || checkComboBoxTech.getCheckModel().getCheckedItems().isEmpty()) {
                 message.append("Tech checkComboBox must have at least one selection").append(vars.getEol());
                 errorCount++;
             }
             // Check units selection
-            if (comboBoxWhichUnits.getSelectionModel().getSelectedItem().equals(SELECT_ONE)) {
+            String selectedUnits = comboBoxWhichUnits.getSelectionModel().getSelectedItem();
+            if (selectedUnits == null || selectedUnits.equals(SELECT_ONE)) {
                 message.append("Treatment comboBox must have a selection").append(vars.getEol());
                 errorCount++;
             }
             // Check market and policy name fields
-            if (textFieldMarketName.getText().isEmpty()) {
+            if (textFieldMarketName.getText() == null || textFieldMarketName.getText().isEmpty()) {
                 message.append("A market name must be provided").append(vars.getEol());
                 errorCount++;
             }
-            if (textFieldPolicyName.getText().isEmpty()) {
+            if (textFieldPolicyName.getText() == null || textFieldPolicyName.getText().isEmpty()) {
                 message.append("A policy name must be provided").append(vars.getEol());
                 errorCount++;
             }

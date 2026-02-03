@@ -58,6 +58,7 @@ import javafx.scene.control.cell.CheckBoxTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
@@ -114,11 +115,10 @@ public class TabTechAvailable extends PolicyTab implements Runnable {
 
     // === Table and Layout Components ===
     public final TableView<TechBound> tableTechBounds = new TableView<>();
-    private final PaneForCountryStateTree paneForCountryStateTree = new PaneForCountryStateTree();
-
-    // === Data Lists ===
-    private ObservableList<TechBound> origList;
-    private ObservableList<TechBound> tableList;
+     
+     // === Data Lists ===
+     private ObservableList<TechBound> origList;
+     private ObservableList<TechBound> tableList;
 
     // === Filter and Control UI ===
     private final Label filterByCategoryLabel = createLabel(LABEL_FILTER_BY_CATEGORY);
@@ -152,10 +152,10 @@ public class TabTechAvailable extends PolicyTab implements Runnable {
      * Includes filter fields, year fields, selection buttons, and table columns.
      */
     private void setupUIControls() {
-    	
-		// Set up the filter text field to update the sector combo box
-		filterTextField.setPromptText("Filter techs");
-    	
+        
+        // Set up the filter text field to update the sector combo box
+        filterTextField.setPromptText("Filter techs");
+        
         firstYrTextField.setText(DEFAULT_FIRST_YEAR);
         lastYrTextField.setText(DEFAULT_LAST_YEAR);
 
@@ -199,7 +199,7 @@ public class TabTechAvailable extends PolicyTab implements Runnable {
         firstYrTextField.setPrefWidth(styles.getBigButtonWidth());
         lastYrTextField.setPrefWidth(styles.getBigButtonWidth());
         tableTechBounds.setMinWidth(500);
-        tableTechBounds.setPrefWidth(700);
+        //tableTechBounds.setPrefWidth(700);
         paneForCountryStateTree.setMinWidth(275.);
     }
 
@@ -211,20 +211,78 @@ public class TabTechAvailable extends PolicyTab implements Runnable {
         this.setText(title);
         HBox tabLayout = new HBox();
         tabLayout.autosize();
-        VBox leftPanel = new VBox();
-        leftPanel.setPadding(new Insets(10, 10, 10, 10));
-        leftPanel.getChildren().add(utils.createLabel(LABEL_TECH_SELECT));
-        HBox filterLayout = new HBox();
-        filterLayout.setPadding(new Insets(10, 10, 10, 10));
-        filterLayout.getChildren().addAll(filterByCategoryLabel, comboBoxCategoryFilter, filterByTextLabel, filterTextField);
+        // Apply centralized default padding, spacing and background style so the tab
+        // visually matches other PolicyTab-based tabs
+        tabLayout.setPadding(styles.getDefaultPadding());
+        tabLayout.setSpacing(6.0);
+        //tabLayout.setStyle(styles.getStyle2());
+         VBox leftPanel = new VBox();
+        // apply CSS-based border to match the requested format
+        leftPanel.setStyle("-fx-border-color: #A9A9A9; -fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4;");
+        leftPanel.setPadding(styles.getDefaultPadding());
+          // Title at top
+          Label titleLabel = utils.createLabel(LABEL_TECH_SELECT);
+          leftPanel.getChildren().add(titleLabel);
+        // Ensure left panel uses the same light background and padding as other panels
+        //leftPanel.setStyle(styles.getStyle2());
+        //  leftPanel.setStyle(styles.getStyle2());
+        //leftPanel.setPadding(styles.getDefaultPadding());
+         
+         // Filter layout immediately under the title (anchored to top)
+         HBox filterHBox = new HBox();
+         filterHBox.setPadding(styles.getDefaultPadding());
+         filterHBox.getChildren().addAll(filterByCategoryLabel, comboBoxCategoryFilter, filterByTextLabel, filterTextField);
+         leftPanel.getChildren().add(filterHBox);
+
+        // Main table that should expand vertically
+        leftPanel.getChildren().add(tableTechBounds);
+        VBox.setVgrow(tableTechBounds, Priority.ALWAYS);
+
+        // Place the reset/year controls at the bottom
         HBox resetYrLayout = new HBox();
-        resetYrLayout.setPadding(new Insets(5, 5, 5, 5));
-        resetYrLayout.setSpacing(5.);
-        resetYrLayout.getChildren().addAll(selectLabel, selectAllButton, selectRangeButton, firstYrLabel, firstYrTextField, lastYrLabel, lastYrTextField, setFirstLastYrsButton);
-        leftPanel.getChildren().addAll(filterLayout, tableTechBounds, resetYrLayout);
-        tabLayout.getChildren().addAll(leftPanel, paneForCountryStateTree);
-        this.setContent(tabLayout);
-    }
+         // Use centralized medium padding for grouped control areas, add 5px extra top padding
+         Insets medPad = styles.getMediumPadding();
+         resetYrLayout.setPadding(new Insets(medPad.getTop() + 5, medPad.getRight(), medPad.getBottom(), medPad.getLeft()));
+         resetYrLayout.setSpacing(5.);
+         resetYrLayout.getChildren().addAll(selectLabel, selectAllButton, selectRangeButton, firstYrLabel, firstYrTextField, lastYrLabel, lastYrTextField, setFirstLastYrsButton);
+         leftPanel.getChildren().add(resetYrLayout);
+
+        // Allow the left panel to expand vertically with the tab
+        leftPanel.prefHeightProperty().bind(tabLayout.heightProperty());
+        
+        // Bind the table bottom to the top of resetYrLayout so the table resizes exactly up to the controls
+        // Subtract header and filter heights and a small padding to avoid overlap
+        tableTechBounds.prefHeightProperty().bind(leftPanel.heightProperty()
+                .subtract(resetYrLayout.heightProperty())
+                .subtract(filterHBox.heightProperty())
+                .subtract(titleLabel.heightProperty())
+                .subtract(20));
+ 
+         // Make the tree pane 1/3 of the width, and anchor it to the right side
+         // Use PolicyTab helper to set up the right column (adds paneForCountryStateTree into vBoxRight/scrollPaneRight)
+         setupRightColumn();
+         // Configure right scroll pane so the tree pane can expand to the right edge
+         // Let the scroll pane fit its content width and bind the tree pane width to the scroll pane
+         scrollPaneRight.setFitToWidth(true);
+         scrollPaneRight.setFitToHeight(true);
+         // Align children of the right VBox to the top-right so the tree sits against the right edge when smaller
+         vBoxRight.setAlignment(javafx.geometry.Pos.TOP_RIGHT);
+         // Allow the pane to grow to the scroll pane width (minus small padding)
+         paneForCountryStateTree.prefWidthProperty().bind(scrollPaneRight.widthProperty().subtract(8));
+         paneForCountryStateTree.setMaxWidth(Double.MAX_VALUE);
+         // Bind the scrollPaneRight to occupy ~1/3 of the total tab width
+         scrollPaneRight.prefWidthProperty().bind(tabLayout.widthProperty().multiply(0.33));
+         HBox.setHgrow(leftPanel, Priority.ALWAYS);
+         
+         // Ensure table also resizes with the left panel
+         tableTechBounds.prefWidthProperty().bind(leftPanel.widthProperty().subtract(20));
+         // Apply default style/padding to the right scroll pane so the tree matches other tabs
+         //scrollPaneRight.setStyle(styles.getStyle2());
+         scrollPaneRight.setPadding(styles.getDefaultPadding());
+ 
+         tabLayout.getChildren().addAll(leftPanel, scrollPaneRight);
+         this.setContent(tabLayout);
+     }
 
     /**
      * Sets up a boolean column (Never? or Range?) for the table.
@@ -362,11 +420,14 @@ public class TabTechAvailable extends PolicyTab implements Runnable {
      */
     private void selectAllVisibleItems() {
         Platform.runLater(() -> {
-            FilteredList<TechBound> visibleComponents = new FilteredList<>(tableTechBounds.getItems(), p -> true);
-            boolean b = true;
+            ObservableList<TechBound> visibleComponents = tableTechBounds.getItems();
+            // If any visible item is not currently bound, set all to bound; otherwise clear all
+            boolean anyUnbound = false;
             for (TechBound tb : visibleComponents) {
-                if (tb.isBoundAll()) b = false;
-                tb.setIsBoundAll(b);
+                if (!tb.isBoundAll()) { anyUnbound = true; break; }
+            }
+            for (TechBound tb : visibleComponents) {
+                tb.setIsBoundAll(anyUnbound);
             }
             String text = filterTextField.getText();
             filterTextField.setText("Resetting...");
@@ -380,11 +441,14 @@ public class TabTechAvailable extends PolicyTab implements Runnable {
      */
     private void selectRangeVisibleItems() {
         Platform.runLater(() -> {
-            FilteredList<TechBound> visibleComponents = new FilteredList<>(tableTechBounds.getItems(), p -> true);
-            boolean b = true;
+            ObservableList<TechBound> visibleComponents = tableTechBounds.getItems();
+            // If any visible item is not currently range-bound, set all to range; otherwise clear all
+            boolean anyUnbound = false;
             for (TechBound tb : visibleComponents) {
-                if (tb.isBoundRange()) b = false;
-                tb.setIsBoundRange(b);
+                if (!tb.isBoundRange()) { anyUnbound = true; break; }
+            }
+            for (TechBound tb : visibleComponents) {
+                tb.setIsBoundRange(anyUnbound);
             }
             String text = filterTextField.getText();
             filterTextField.setText("Resetting...");
@@ -448,19 +512,16 @@ public class TabTechAvailable extends PolicyTab implements Runnable {
      * @return Suggested filename string
      */
     public String getFilenameSuggestion() {
-    	String name="";
-    	
-		String[] selectedLeaves = utils.getAllSelectedRegions(paneForCountryStateTree.getTree());
-		String state = "";
+        String[] selectedLeaves = utils.getAllSelectedRegions(paneForCountryStateTree.getTree());
+        String state = "";
         if (selectedLeaves.length > 0) {
             selectedLeaves = utils.removeUSADuplicate(selectedLeaves);
             String stateStr = utils.returnAppendedString(selectedLeaves).replace(",", "");
             state = stateStr.length() < 9 ? stateStr : "Reg";
         }
-        name = ("tchAvl" + "_" + state).replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
-		return name;		
-	}   
-    
+        return ("tchAvl_" + state).replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
+    }
+
     /**
      * Saves the current scenario component to file, including both nested and non-nested technology bounds.
      * Builds file content and metadata for export.
@@ -636,7 +697,6 @@ public class TabTechAvailable extends PolicyTab implements Runnable {
      */
     private ObservableList<TechBound> getBoundList() {
         ObservableList<TechBound> list = FXCollections.observableArrayList();
-        int num = 0;
         try {
             String[][] techInfo = vars.getTechInfo();
             String lastLine = "";
@@ -651,12 +711,10 @@ public class TabTechAvailable extends PolicyTab implements Runnable {
                     }
                 }
             }
-            num++;
         } catch (Exception e) {
             utils.warningMessage("Problem reading tech list. Attempting to use defaults.");
             System.out.println("Error reading tech list from " + vars.getTchBndListFilename() + ":");
             System.out.println("  ---> " + e);
-            if (num == 0) System.out.println("Stopping with " + num + " read in.");
         }
         return list;
     }

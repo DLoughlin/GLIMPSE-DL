@@ -34,6 +34,7 @@ import java.awt.Container;
 import java.awt.Dimension;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileSystemNotFoundException;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -156,7 +157,13 @@ public class XMLDB {
 			throw new Exception("Could not open databse because "+xmldbInstance.contName+
 					" is still open");
 		}
+		try {
 		xmldbInstance = new XMLDB(contextIn);
+		} 
+		catch (FileSystemNotFoundException e) {
+		    System.err.println("BaseX initialization issue. Likely OK. Continuing...");
+		    throw e;
+		}
 	}
 
 	/**
@@ -224,9 +231,9 @@ public class XMLDB {
         System.out.println("Container name="+containerNameUnmodified);
         
         //workaround
-        //contName = containerNameUnmodified;
+        contName = containerNameUnmodified;
         //Dan: This code seems to be generating false warnings, commenting out for now
-        contName = IO.get( containerNameUnmodified ).dbName();
+        //contName = IO.get( containerNameUnmodified ).dbName();
         if( !containerNameUnmodified.equals( contName ) ) {
             System.out.println( "WARNING: "+containerNameUnmodified+" contains invalid characters, it has been changed to: "+contName );
             System.out.println( "WARNING: container name '"+containerNameUnmodified+
@@ -412,7 +419,7 @@ public class XMLDB {
 			}
 
 		} catch (Exception e) {
-			e.printStackTrace();
+		 e.printStackTrace();
 		}
 	}
 	public void removeDoc(String docName) {

@@ -179,7 +179,7 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         textFieldInitialAmount, textFieldGrowth, comboBoxConvertFrom);
         gridPaneLeft.setAlignment(Pos.TOP_LEFT);
         gridPaneLeft.setVgap(3.);
-        gridPaneLeft.setStyle(styles.getStyle2());
+        //gridPaneLeft.setStyle(styles.getStyle2());
         scrollPaneLeft.setContent(gridPaneLeft);
     }
 
@@ -214,7 +214,7 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         textFieldMarketName.setPrefWidth(pref_wid);
         comboBoxConvertFrom.setMaxWidth(max_wid);
         comboBoxConvertFrom.setMinWidth(min_wid);
-        comboBoxConvertFrom.setPrefWidth(min_wid);
+        comboBoxConvertFrom.setPrefWidth(pref_wid);
     }
 
     /**
@@ -306,8 +306,8 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
      */
     private void saveScenarioComponent(TreeView<String> tree) {
         if (!qaInputs()) {
-            // If QA fails, terminate the current thread
-            Thread.currentThread().destroy();
+            // If QA fails, stop processing and return from method
+            return;
         } else {
             String[][] tech_list = vars.getTechInfo();
             String[] listOfSelectedLeaves = utils.getAllSelectedRegions(tree);
@@ -391,7 +391,7 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         String fuel = fuelList != null ? utils.getStringFromList(checkComboBoxFuel.getCheckModel().getCheckedItems(), ";") : "";
         rtnStr.append("#Fuel: ").append(fuel).append(vars.getEol());
         rtnStr.append("#Units: ").append(labelUnitsValue.getText()).append(vars.getEol());
-        if (policy == null) market = textFieldPolicyName.getText();
+        if (policy == null) policy = textFieldPolicyName.getText();
         rtnStr.append("#Policy name: ").append(policy).append(vars.getEol());
         if (market == null) market = textFieldMarketName.getText();
         rtnStr.append("#Market name: ").append(market).append(vars.getEol());
@@ -522,6 +522,7 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
             }
             if (textFieldMarketName == null || textFieldMarketName.getText().equals("")) {
                 message += "A market name must be provided" + vars.getEol();
+                error_count++;
             }
         } catch (Exception e1) {
             System.out.println("error " + e1);

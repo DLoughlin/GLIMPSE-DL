@@ -65,6 +65,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Vector;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -228,7 +229,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	private String filteringText; // YD added
 	private Enumeration<TreePath> expansionState;// YD added
 	private boolean AllCollapsed = false; // YD added
-	private static final int BOTTOM_PANE_HEIGHT = 32;
+	private static final int BOTTOM_PANE_HEIGHT = 25;
 	ArrayList<String> region_list = new ArrayList<String>();// YD added,Feb-2024
 	ArrayList<String> subregion_list = new ArrayList<String>();// YD added,Feb-2024
 	ArrayList<String> preset_region_list = new ArrayList<String>();// YD added,Feb-2024
@@ -2619,7 +2620,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                         File backupDir = null;
                         String cont = null;
                         String dbPath = null;
-                        boolean rebuildSuccess = false;
+                        AtomicBoolean rebuildSuccess = new AtomicBoolean(false);
                         try {
                             // gather docs to export from the Manage DB dialog list (only what's shown there)
                             java.util.List<ScenarioListItem> currentScns = new java.util.ArrayList<ScenarioListItem>();
@@ -2761,7 +2762,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                                         try { tmpCtx.close(); } catch (Exception ignore) {}
                                     }
                                 }
-                                rebuildSuccess = true;
+                                rebuildSuccess.set(true);
                             } finally {
                                 // nothing to do here
                             }
@@ -2812,7 +2813,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                                 try { deleteRecursive(tempDir); } catch (Exception ignored) {}
                             }
                             // If rebuild succeeded, delete backup
-                            if (rebuildSuccess && backupDir != null && backupDir.exists()) {
+                            if (rebuildSuccess.get() && backupDir != null && backupDir.exists()) {
                                 try { deleteRecursive(backupDir); } catch (Exception ignored) {}
                             }
                             SwingUtilities.invokeLater(new Runnable() {
@@ -2820,7 +2821,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                                     filterDialog.getGlassPane().setVisible(false);
                                     filterDialog.getGlassPane().setCursor(Cursor.getDefaultCursor());
                                     // ensure buttons restored in finally as well
-                                    //restoreAllButtons.run();
+                                    restoreAllButtons.run();
+                                    if (rebuildSuccess.get()) {
+                                        JOptionPane.showMessageDialog(filterDialog, "Database rebuild is complete.", "Rebuild Complete", JOptionPane.INFORMATION_MESSAGE);
+                                    }
                                 }
                             });
                         }
@@ -3524,7 +3528,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 				}
 			} else {
 				return (JTable) ((JScrollPane) c).getViewport().getView();
-			}
+				}
 		} catch (ClassCastException e) {
 			e.printStackTrace();
 			return null;

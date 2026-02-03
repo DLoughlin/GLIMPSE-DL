@@ -139,7 +139,8 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
     // === UI controls ===
     // UI controls for sector selection and units display
     private final Label labelSector = createLabel(LABEL_SECTOR, LABEL_WIDTH);
-    private final ComboBox<String> comboBoxSector = createComboBoxString(SECTOR_SELECT_ONE, PREF_WIDTH);
+    // Initialize simply here; population and sizing are handled in setup methods
+    private final ComboBox<String> comboBoxSector = new ComboBox<>();
     private final Label labelUnits = createLabel(LABEL_UNITS, LABEL_WIDTH);
     private final Label labelUnitsValue = createLabel("", LABEL_WIDTH);
     private final Label labelValue = createLabel(LABEL_VALUES, LABEL_WIDTH);
@@ -172,27 +173,11 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
         setComponentWidths();
         setupUILayout();
         setupActions();
-        VBox tabLayout = new VBox(gridPanePresetModification);
-        this.setContent(tabLayout);
+        // Use the shared layout from PolicyTab.setupUILayout() so this tab inherits
+        // centralized padding and scroll pane styles. Do not replace the content here.
     }
 
     /**
-     * Creates a ComboBox populated with the given modification types and sets its preferred width.
-     *
-     * @param modificationTypes Array of modification type strings to populate the ComboBox
-     * @param prefWidth Preferred width for the ComboBox
-     * @return A ComboBox<String> with the specified items and width
-     */
-    private ComboBox<String> createComboBoxString(String[] modificationTypes, double prefWidth) {
-		ComboBox<String> comboBox = new ComboBox<>();
-		comboBox.setPrefWidth(prefWidth);
-		for (String type : modificationTypes) {
-			comboBox.getItems().add(type);
-		}
-		return comboBox;
-	}
-
-	/**
      * Initializes and creates all UI controls for the tab.
      * Place all control instantiations here if not already at field declaration.
      * This method is a placeholder for future expansion if more controls are created dynamically.
@@ -216,7 +201,7 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
                 comboBoxModificationType, textFieldStartYear, textFieldEndYear, textFieldInitialAmount, textFieldGrowth);
         gridPaneLeft.setAlignment(Pos.TOP_LEFT);
         gridPaneLeft.setVgap(3.);
-        gridPaneLeft.setStyle(styles.getStyle2());
+        //gridPaneLeft.setStyle(styles.getStyle2());
         scrollPaneLeft.setContent(gridPaneLeft);
     }
 
@@ -483,9 +468,13 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
         ObservableList<DataPoint> data = paneForComponentDetails != null ? this.paneForComponentDetails.table.getItems() : null;
         if (data == null) return false;
         for (DataPoint dp : data) {
-            Integer year = Integer.parseInt(dp.getYear().trim());
-            if (listOfAllowableYears.contains(year)) {
-                return true;
+            try {
+                Integer year = Integer.parseInt(dp.getYear().trim());
+                if (listOfAllowableYears.contains(year)) {
+                    return true;
+                }
+            } catch (NumberFormatException nfe) {
+                // ignore invalid year entries
             }
         }
         return false;

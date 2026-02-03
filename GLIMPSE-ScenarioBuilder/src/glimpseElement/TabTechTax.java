@@ -148,9 +148,8 @@ public class TabTechTax extends PolicyTab implements Runnable {
 		setupEventHandlers();
 		setPolicyAndMarketNames();
 		setUnitsLabel();
-		VBox tabLayout = new VBox();
-		tabLayout.getChildren().addAll(gridPanePresetModification);
-		this.setContent(tabLayout);
+		// Use the layout established by PolicyTab.setupUILayout() so the tab inherits
+		// centralized padding/style and scroll pane padding. Do not replace the content here.
 
 		// Setup HBox for auto and unique checkboxes
 		hboxAutoUnique.getChildren().addAll(checkBoxUseAutoNames, checkBoxUseUniqueNames);
@@ -185,7 +184,17 @@ public class TabTechTax extends PolicyTab implements Runnable {
 				textFieldEndYear, textFieldInitialAmount, textFieldGrowth, comboBoxConvertFrom);
 		gridPaneLeft.setAlignment(Pos.TOP_LEFT);
 		gridPaneLeft.setVgap(3.);
-		gridPaneLeft.setStyle(styles.getStyle2());
+		// Use explicit padding rather than CSS -fx-padding for consistent spacing
+		// gridPaneLeft.setPadding(styles.getDefaultPadding());
+		// Apply the shared background color via CSS fragment
+		// gridPaneLeft.setStyle(styles.getBackgroundStyle());
+		// Apply padding and background to scroll panes so content spacing matches other tabs
+		// scrollPaneLeft.setPadding(styles.getDefaultPadding());
+		// scrollPaneLeft.setStyle(styles.getBackgroundStyle());
+		// scrollPaneCenter.setPadding(styles.getDefaultPadding());
+		// scrollPaneCenter.setStyle(styles.getBackgroundStyle());
+		// scrollPaneRight.setPadding(styles.getDefaultPadding());
+		// scrollPaneRight.setStyle(styles.getBackgroundStyle());
 		scrollPaneLeft.setContent(gridPaneLeft);
 	}
 
@@ -220,34 +229,34 @@ public class TabTechTax extends PolicyTab implements Runnable {
 
 		super.setupEventHandlers();
 
-		// Set up the filter text field to update the sector combo box
-
-		//textFieldFilter.setOnAction(e -> Platform.runLater(() -> setupComboBoxCategory()));
+		// Update tech list when filter is applied
 		textFieldFilter.setOnAction(e -> Platform.runLater(() -> updateCheckComboBoxTech()));
-		
-		// Set up the sector combo box to update the technology check combo box
-		//comboBoxCategory.setPromptText("Select a category"); // DHL: how does prompt text work for combo box?
-		comboBoxCategory.setOnAction(e -> {
-            String selectedItem = comboBoxCategory.getSelectionModel().getSelectedItem();
-            if (selectedItem == null) return;
-            if (selectedItem.equals(SELECT_ONE)) {
-                checkComboBoxTech.getCheckModel().clearChecks();
-                checkComboBoxTech.getItems().clear();
-                checkComboBoxTech.getItems().add(SELECT_ONE_OR_MORE);
-                checkComboBoxTech.getCheckModel().check(0);
-                checkComboBoxTech.setDisable(true);
 
-                textFieldFilter.setText("");
-                textFieldFilter.setDisable(true);
-            } else {
-            	updateCheckComboBoxTech();
-                checkComboBoxTech.setDisable(false);
-                textFieldFilter.setDisable(false);
-            }			
+		// Sector combo box: update tech list, enable/disable controls, and refresh names/units
+		comboBoxCategory.setOnAction(e -> Platform.runLater(() -> {
+			String selectedItem = comboBoxCategory.getSelectionModel().getSelectedItem();
+			if (selectedItem == null)
+				return;
+			if (selectedItem.equals(SELECT_ONE)) {
+				checkComboBoxTech.getCheckModel().clearChecks();
+				checkComboBoxTech.getItems().clear();
+				checkComboBoxTech.getItems().add(SELECT_ONE_OR_MORE);
+				checkComboBoxTech.getCheckModel().check(0);
+				checkComboBoxTech.setDisable(true);
+
+				textFieldFilter.setText("");
+				textFieldFilter.setDisable(true);
+				labelUnits2.setText("");
+			} else {
+				updateCheckComboBoxTech();
+				checkComboBoxTech.setDisable(false);
+				textFieldFilter.setDisable(false);
+			}
 			setPolicyAndMarketNames();
-		});
+			setUnitsLabel();
+		}));
 
-		// Wrap all UI updates in Platform.runLater
+		// Double-clicking the tech label toggles selection of all techs
 		labelCheckComboBoxTech.setOnMouseClicked(e -> {
 			if (!checkComboBoxTech.isDisabled()) {
 				boolean isFirstItemChecked = checkComboBoxTech.getCheckModel().isChecked(0);
@@ -259,33 +268,16 @@ public class TabTechTax extends PolicyTab implements Runnable {
 					}
 				}
 			}
-		});/*);*/
-		comboBoxCategory.setOnAction(e -> {
-			String selectedItem = comboBoxCategory.getSelectionModel().getSelectedItem();
-			if (selectedItem != null) {
-				if (selectedItem.equals(SELECT_ONE)) {
-					checkComboBoxTech.getItems().clear();
-					checkComboBoxTech.getItems().add(SELECT_ONE_OR_MORE);
-					checkComboBoxTech.getCheckModel().check(0);
-					checkComboBoxTech.setDisable(true);
-					labelUnits2.setText("");
-	                textFieldFilter.setText("");
-	                textFieldFilter.setDisable(true);
-				} else {
-					checkComboBoxTech.setDisable(false);
-					updateCheckComboBoxTech();
-					textFieldFilter.setDisable(false);
-				}
-			}
-			setPolicyAndMarketNames();
-			setUnitsLabel();
 		});
+
+		// When checked items change, update units label
 		checkComboBoxTech.getCheckModel().getCheckedItems()
 				.addListener((ListChangeListener<String>) c -> Platform.runLater(() -> {
 					while (c.next()) {
 						setUnitsLabel();
 					}
 				}));
+
 		comboBoxMeasure.setOnAction(e -> Platform.runLater(() -> setPolicyAndMarketNames()));
 
 	}

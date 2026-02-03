@@ -249,6 +249,13 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 				((CheckComboBox<?>) cb).setMinWidth(MIN_WIDTH);
 			}
 		}
+
+		// Apply modern style to ComboBoxes
+		comboBoxPolicyType.getStyleClass().add("combo-box");
+		comboBoxAppliedTo.getStyleClass().add("combo-box");
+		comboBoxConstraint.getStyleClass().add("combo-box");
+		comboBoxTreatment.getStyleClass().add("combo-box");
+		comboBoxModificationType.getStyleClass().add("combo-box");
 	}
 
 
@@ -290,7 +297,18 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 				textFieldInitialAmount, textFieldGrowth);
 		gridPaneLeft.setAlignment(Pos.TOP_LEFT);
 		gridPaneLeft.setVgap(3.);
-		gridPaneLeft.setStyle(styles.getStyle2());
+		// Use explicit padding rather than CSS -fx-padding for consistent internal spacing
+		//gridPaneLeft.setPadding(styles.getDefaultPadding());
+		// Apply light background so the left panel matches the dialog's button area
+		//gridPaneLeft.setStyle(styles.getLightBackgroundStyle() + styles.getBackgroundStyle());
+		// Apply padding and background to scroll panes so spacing matches other tabs
+		//scrollPaneLeft.setPadding(styles.getDefaultPadding());
+		//scrollPaneLeft.setStyle(styles.getBackgroundStyle());
+		//scrollPaneCenter.setPadding(styles.getDefaultPadding());
+		//scrollPaneCenter.setStyle(styles.getBackgroundStyle());
+		//scrollPaneRight.setPadding(styles.getDefaultPadding());
+		//scrollPaneRight.setStyle(styles.getBackgroundStyle());
+		// Intentionally omit explicit padding/background here; PolicyTab provides defaults
 		scrollPaneLeft.setContent(gridPaneLeft);
 	}
 
@@ -705,9 +723,9 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 				for (int i = 0; i < checkComboBoxSubset.getItems().size(); i++) {
 					String itemText = checkComboBoxSubset.getItems().get(i).toLowerCase();
 					if (itemText.indexOf("ccs") >= 0)
-						checkComboBoxSubset.getCheckModel().check(i);
+					checkComboBoxSubset.getCheckModel().check(i);
 					if (itemText.indexOf("nuclear") >= 0)
-						checkComboBoxSubset.getCheckModel().check(i);
+					checkComboBoxSubset.getCheckModel().check(i);
 				}
 			}
 			if (policyType.contains("EV")) {
@@ -1167,36 +1185,39 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 	 * @param policy The policy name.
 	 * @return The metadata content as a String.
 	 */
-	public String getMetaDataContent(TreeView<String> tree, String market, String policy) {
-		String rtn_str = "";
-		StringBuilder rtnStr = new StringBuilder();
-		
-		ObservableList<String> subset_list = checkComboBoxSubset.getCheckModel().getCheckedItems();
-		String subset = utils.getStringFromList(subset_list, ";");
-		ObservableList<String> superset_list = checkComboBoxSuperset.getCheckModel().getCheckedItems();
-		String superset = utils.getStringFromList(superset_list, ";");
+    public String getMetaDataContent(TreeView<String> tree, String market, String policy) {
+        StringBuilder rtnStr = new StringBuilder();
 
-        rtnStr.append("########## Scenario Component Metadata ##########").append(vars.getEol());
+        ObservableList<String> subset_list = checkComboBoxSubset.getCheckModel().getCheckedItems();
+        String subset = utils.getStringFromList(subset_list, ";");
+        ObservableList<String> superset_list = checkComboBoxSuperset.getCheckModel().getCheckedItems();
+        String superset = utils.getStringFromList(superset_list, ";");
+
+        rtnStr.append(METADATA_HEADER).append(vars.getEol());
         rtnStr.append("#Scenario component type: ").append(this.getText()).append(vars.getEol());
-        rtnStr.append("#Type: ").append(this.comboBoxPolicyType.getSelectionModel().getSelectedItem()).append(vars.getEol());
-        rtnStr.append("#Subset: ").append(subset).append(vars.getEol());
-        rtnStr.append("#Superset: ").append(superset).append(vars.getEol());
-        rtnStr.append("#AppliedTo: ").append(this.comboBoxAppliedTo.getSelectionModel().getSelectedItem()).append(vars.getEol());
-        rtnStr.append("#Treatment: ").append(this.comboBoxTreatment.getSelectionModel().getSelectedItem()).append(vars.getEol());
-        rtnStr.append("#Constraint: ").append(this.comboBoxConstraint.getSelectionModel().getSelectedItem()).append(vars.getEol());
-        rtnStr.append("#Policy name: ").append(this.textFieldPolicyName.getText()).append(vars.getEol());
-        rtnStr.append("#Market name: ").append(this.textFieldMarketName.getText()).append(vars.getEol());
+        rtnStr.append(METADATA_TYPE).append(this.comboBoxPolicyType.getSelectionModel().getSelectedItem()).append(vars.getEol());
+        rtnStr.append(METADATA_SUBSET).append(subset).append(vars.getEol());
+        rtnStr.append(METADATA_SUPERSET).append(superset).append(vars.getEol());
+        rtnStr.append(METADATA_APPLIED_TO).append(this.comboBoxAppliedTo.getSelectionModel().getSelectedItem()).append(vars.getEol());
+        rtnStr.append(METADATA_TREATMENT).append(this.comboBoxTreatment.getSelectionModel().getSelectedItem()).append(vars.getEol());
+        rtnStr.append(METADATA_CONSTRAINT).append(this.comboBoxConstraint.getSelectionModel().getSelectedItem()).append(vars.getEol());
+        // Use the provided parameters rather than querying UI fields directly
+        rtnStr.append(METADATA_POLICY_NAME).append(policy).append(vars.getEol());
+        rtnStr.append(METADATA_MARKET_NAME).append(market).append(vars.getEol());
+
         String[] listOfSelectedLeaves = utils.getAllSelectedRegions(tree);
         listOfSelectedLeaves = utils.removeUSADuplicate(listOfSelectedLeaves);
         String states = utils.returnAppendedString(listOfSelectedLeaves);
-        rtnStr.append("#Regions: ").append(states).append(vars.getEol());
+        rtnStr.append(METADATA_REGIONS).append(states).append(vars.getEol());
+
         ArrayList<String> tableContent = this.paneForComponentDetails.getDataYrValsArrayList();
         for (String row : tableContent) {
-            rtnStr.append("#Table data:").append(row).append(vars.getEol());
+            rtnStr.append(METADATA_TABLE_DATA).append(row).append(vars.getEol());
         }
-        rtnStr.append("#################################################").append(vars.getEol());
+
+        rtnStr.append(METADATA_FOOTER).append(vars.getEol());
         return rtnStr.toString();
-	}
+    }
 
 	/**
 	 * Loads the content of a scenario component from a list of strings, updating the UI accordingly.
@@ -1291,46 +1312,38 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 	 * Checks region selection, table data, subset/superset selections, combo box selections, and unit consistency.
 	 * @return true if all required inputs are valid, false otherwise.
 	 */
-	protected boolean qaInputs() {
+     protected boolean qaInputs() {
 
-		TreeView<String> tree = paneForCountryStateTree.getTree();
+         TreeView<String> tree = paneForCountryStateTree.getTree();
 
-		int error_count = 0;
-		String message = "";
+         int error_count = 0;
+         String message = "";
 
-		try {
+         try {
 
-			if (utils.getAllSelectedRegions(tree).length < 1) {
-				message += "Must select at least one region from tree" + vars.getEol();
-				error_count++;
-			}
-			if (paneForComponentDetails.table.getItems().size() == 0) {
-				message += "Data table must have at least one entry" + vars.getEol();
-				error_count++;
-			} else {
-					boolean match = validateTableDataYears();
-					if (!match) {
-						message += "Years specified in table must match allowable policy years ("
-								+ vars.getAllowablePolicyYears() + ")" + vars.getEol();
-						error_count++;
-					}
-			}
-			if ((checkComboBoxSubset.getCheckModel().getCheckedItems().size() == 0)
-					) {
-				message += "Subset checkCombox must have at least one selection" + vars.getEol();
-				error_count++;
-			} else if (checkComboBoxSubset.getCheckModel().getCheckedItems().size() == 0) {
-				message += "Subset checkCombox must have at least one selection" + vars.getEol();
-				error_count++;
-			}
-			if ((checkComboBoxSuperset.getCheckModel().getCheckedItems().size() == 0)
-					) {
-				message += "Superset checkCombox must have at least one selection" + vars.getEol();
-				error_count++;
-			} else if (checkComboBoxSuperset.getCheckModel().getCheckedItems().size() == 0) {
-				message += "Superset checkCombox must have at least one selection" + vars.getEol();
-				error_count++;
-			}
+             if (utils.getAllSelectedRegions(tree).length < 1) {
+                 message += "Must select at least one region from tree" + vars.getEol();
+                 error_count++;
+             }
+             if (paneForComponentDetails.table.getItems().size() == 0) {
+                 message += "Data table must have at least one entry" + vars.getEol();
+                 error_count++;
+             } else {
+                     boolean match = validateTableDataYears();
+                     if (!match) {
+                         message += "Years specified in table must match allowable policy years ("
+                                 + vars.getAllowablePolicyYears() + ")" + vars.getEol();
+                         error_count++;
+                     }
+             }
+            if (checkComboBoxSubset.getCheckModel().getCheckedItems().size() == 0) {
+                message += "Subset CheckComboBox must have at least one selection" + vars.getEol();
+                error_count++;
+            }
+            if (checkComboBoxSuperset.getCheckModel().getCheckedItems().size() == 0) {
+                message += "Superset CheckComboBox must have at least one selection" + vars.getEol();
+                error_count++;
+            }
 			if (comboBoxConstraint.getSelectionModel().getSelectedItem().equals("Select One")) {
 				message += "No selection for Constraint. All comboBoxes must have a selection" + vars.getEol();
 				error_count++;

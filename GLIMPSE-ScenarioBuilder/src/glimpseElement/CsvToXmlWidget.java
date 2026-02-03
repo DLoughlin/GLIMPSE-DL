@@ -114,7 +114,8 @@ public class CsvToXmlWidget {
 		
 		grid.setHgap(10);
 		grid.setVgap(10);
-		grid.setPadding(new Insets(0,10,0,10));
+		// Use centralized horizontal padding for grids
+		grid.setPadding(styles.getHorizontalPadding10());
 		
 		grid.add(topLabel, 0, 0);
 		grid.add(csvFileLabel, 0, 1);
@@ -143,20 +144,23 @@ public class CsvToXmlWidget {
 			});
 		
 		VBox root = new VBox();
-		root.setPadding(new Insets(2, 2, 2, 2));
+		// Use centralized tiny padding for compact roots
+		root.setPadding(styles.getTinyPadding());
 		root.setSpacing(5);
-		root.setAlignment(Pos.TOP_LEFT);
+         root.setAlignment(Pos.TOP_LEFT);
 
-		HBox buttonBox = new HBox();
-		buttonBox.setPadding(new Insets(3, 3, 3, 3));
+         HBox buttonBox = new HBox();
+         // Use centralized button box padding
+         buttonBox.setPadding(styles.getButtonBoxPadding());
 
-		buttonBox.setSpacing(5);
-		buttonBox.setAlignment(Pos.CENTER);
-		buttonBox.getChildren().addAll(convertButton,closeButton);
+         buttonBox.setSpacing(5);
+         buttonBox.setAlignment(Pos.CENTER);
+         buttonBox.getChildren().addAll(convertButton,closeButton);
 
 
 		
-		root.getChildren().addAll(grid,buttonBox);
+ 
+ 	root.getChildren().addAll(grid,buttonBox);
 		scene.setRoot(root);
 
 		stage.setScene(scene);

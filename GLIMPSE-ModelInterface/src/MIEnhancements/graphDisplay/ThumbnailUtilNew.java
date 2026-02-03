@@ -3,6 +3,7 @@ package graphDisplay;
 // Utility imports for chart creation and display
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
@@ -20,9 +21,12 @@ import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.SwingUtilities;
 
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
@@ -53,6 +57,7 @@ public class ThumbnailUtilNew {
 	private static final int DEFAULT_GRID_WIDTH = 2;
 	private static final int DEFAULT_PANEL_MIN_WIDTH = 330;
 	private static final Color DEFAULT_PANEL_BG_COLOR = Color.GREEN;
+	private static final int SCROLL_BAR_WIDTH = 65;
 	private static final Font THUMBNAIL_TITLE_FONT = new Font("Arial", Font.BOLD, 12);
 	private static final Font THUMBNAIL_SUBTITLE_FONT = new Font("Arial", Font.BOLD, 11);
 	private static final String CATEGORY_LINE_CHART = "chart.CategoryLineChart";
@@ -140,8 +145,15 @@ public class ThumbnailUtilNew {
 						tempC = MyChartFactory.createChart(CATEGORY_LINE_CHART, path, chartName,
 								keys[i] + "|" + metaCol, new String[] { chartName, stitle }, my_unit,
 								ArrayConversion.array2String(l), column, null, data, -1);
-						if (unitLookup != null)
-							tempC.setUnitsLookup(unitLookup);
+						if (unitLookup != null) {
+							HashMap<String, String> normalizedLookup = new HashMap<>();
+							for (String unitKey : unitLookup.keySet()) {
+								if (unitKey != null) {
+									normalizedLookup.put(unitKey.trim().replace(",", "-"), unitLookup.get(unitKey));
+								}
+							}
+							tempC.setUnitsLookup(normalizedLookup);
+						}
 						chartL.add(tempC);
 					} catch (ClassNotFoundException | NullPointerException e) {
 						LOGGER.log(Level.WARNING, "Chart creation failed for key: " + key, e);
@@ -383,10 +395,12 @@ public class ThumbnailUtilNew {
 	 */
 	public static JPanel setChartPane(Chart[] chart, int w, int gridWidth, boolean sameScale, boolean transpose) {
 		// Create grid layout for chart thumbnails
+		int padding = SCROLL_BAR_WIDTH / 4;
 		GridLayout gl = new GridLayout(0, gridWidth);
 		gl.setHgap(0);
-		gl.setVgap(0);
+		gl.setVgap(padding);
 		JPanel chartPane = new JPanel(gl);
+		chartPane.setBorder(BorderFactory.createEmptyBorder(padding, 0, padding, 0));
 		// Calculate max and min values for scaling
 		double max = setMax(chart);
 		double min = setMin(chart);
@@ -439,10 +453,13 @@ public class ThumbnailUtilNew {
 		}
 		if (freeChart != null) {
 			// Set axis label positions and scaling
-			if (category)
+			if (category) {
 				freeChart.getCategoryPlot().getDomainAxis().setCategoryLabelPositions(CategoryLabelPositions.DOWN_90);
-			else
+				freeChart.getCategoryPlot().getDomainAxis().setLabel(null);
+			} else {
 				freeChart.getXYPlot().getDomainAxis().setLabelAngle(90);
+				freeChart.getXYPlot().getDomainAxis().setLabel(null);
+			}
 			if (sameScale) {
 				if (category) {
 					freeChart.getCategoryPlot().getRangeAxis().setUpperBound(max);
@@ -472,7 +489,9 @@ public class ThumbnailUtilNew {
 			ChartUtils.applyCurrentTheme(freeChart);
 			try {
 				// Create thumbnail image
-				BufferedImage thumb1 = freeChart.createBufferedImage(w, w, BufferedImage.TYPE_INT_ARGB, null);
+				int padding = SCROLL_BAR_WIDTH / 8;
+				int imageSize = Math.max(1, w - (padding * 2));
+				BufferedImage thumb1 = freeChart.createBufferedImage(imageSize, imageSize, BufferedImage.TYPE_INT_ARGB, null);
 				ImageIcon image1 = new ImageIcon(thumb1);
 				jb.setIcon(image1);
 				jb.setName(String.valueOf(idx));
@@ -523,12 +542,47 @@ public class ThumbnailUtilNew {
 		JPanel jp = null;
 		if (chartPane != null) {
 			jp = new JPanel(new BorderLayout());
-			jp.setMinimumSize(new Dimension(DEFAULT_PANEL_MIN_WIDTH, sp.getHeight()));
+			jp.setMinimumSize(new Dimension(DEFAULT_PANEL_MIN_WIDTH, 100));
 			jp.setBackground(DEFAULT_PANEL_BG_COLOR);
 			jp.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 			jp.setName(chart[firstNonNullidx].getGraphName());
+			jp.putClientProperty("isGraph", true);
 			new OptionsArea(jp, chart, gridWidth, false, sp);
-			jp.add(chartPane, BorderLayout.CENTER);
+
+			JScrollPane scrollPane = new JScrollPane(chartPane);
+			scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+			scrollPane.getVerticalScrollBar().setUnitIncrement(20);
+			jp.add(scrollPane, BorderLayout.CENTER);
+			
+			final int finalW = w;
+			final int finalGridWidth = gridWidth;
+			final JSplitPane finalSp = sp; // Make sp final for lambda
+
+			// Check current state before the component is likely replaced by the caller
+			Component currentRight = finalSp.getRightComponent();
+			boolean isExistingGraph = false;
+			if (currentRight instanceof JComponent) {
+				Boolean prop = (Boolean) ((JComponent) currentRight).getClientProperty("isGraph");
+				isExistingGraph = prop != null && prop;
+			}
+			
+			boolean shouldResize = !isExistingGraph;
+			if (isExistingGraph) {
+				int currentRightWidth = currentRight.getWidth();
+				if (currentRightWidth < SCROLL_BAR_WIDTH || finalSp.getDividerLocation() < 0) {
+					shouldResize = true;
+				}
+			}
+
+			final boolean finalShouldResize = shouldResize;
+
+			SwingUtilities.invokeLater(() -> {
+				if (finalSp.getWidth() > 0 && finalShouldResize) {
+					int paneWidth = (finalW * finalGridWidth) + SCROLL_BAR_WIDTH;
+					finalSp.setDividerLocation(finalSp.getWidth() - paneWidth);
+				}
+			});
+			
 			jp.updateUI();
 		}
 		return jp;

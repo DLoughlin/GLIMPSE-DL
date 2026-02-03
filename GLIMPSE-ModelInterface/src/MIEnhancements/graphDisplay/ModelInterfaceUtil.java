@@ -164,7 +164,12 @@ public class ModelInterfaceUtil {
             }
         }
         for (int i = 0; i < jtable.getRowCount(); i++) {
-            toReturn.put(jtable.getValueAt(i, colToGrab).toString(), jtable.getValueAt(i, jtable.getColumnCount() - 1).toString());
+            Object keyObj = jtable.getValueAt(i, colToGrab);
+            Object unitObj = jtable.getValueAt(i, jtable.getColumnCount() - 1); // Last column is units
+            String key = (keyObj == null) ? "" : keyObj.toString();
+            String unit = (unitObj == null) ? "NA" : unitObj.toString();
+            if (unit.trim().isEmpty()) unit = "NA";
+            toReturn.put(key, unit);
         }
         return toReturn;
     }
@@ -257,7 +262,11 @@ public class ModelInterfaceUtil {
                 }
             }
             // Append units at end of each row
-            data[i][end] = ((String) jtable.getValueAt(i, jtable.getColumnCount() - 1));
+            String units = (String) jtable.getValueAt(i, jtable.getColumnCount() - 1);
+            if (units == null || units.trim().isEmpty()) {
+                units = "NA";
+            }
+            data[i][end] = units;
             if (debug)
                 System.out.println("ModelInterfaceUtil:getTableData:data: " + Arrays.toString(data[i]));
         }

@@ -61,8 +61,8 @@ public class GLIMPSEVariables {
 
     // --- Constants ---
     private final String DEFAULT_GLIMPSE_VERSION = "GLIMPSE-CE v1.0";
-    public final int DEFAULT_SCENARIO_BUILDER_WIDTH = 1200;
-    public final int DEFAULT_SCENARIO_BUILDER_HEIGHT = 800;
+    public final int DEFAULT_SCENARIO_BUILDER_WIDTH = 1600;
+    public final int DEFAULT_SCENARIO_BUILDER_HEIGHT = 900;
     private final float DEFAULT_MAX_DATABASE_SIZE_GB = 40f;
     private final List<Integer> DEFAULT_ALLOWABLE_POLICY_YEARS_LIST = new ArrayList<>(Arrays.asList(2025,2030,2035,2040,2045,2050,2055,2060,2065,2070,2075,2080,2085,2090,2095,2100));
     private final List<Integer> DEFAULT_ALL_YEARS_LIST = new ArrayList<>(Arrays.asList(1990,2005,2010,2015,2021,2025,2030,2035,2040,2045,2050,2055,2060,2065,2070,2075,2080,2085,2090,2095,2100));

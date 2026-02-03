@@ -55,6 +55,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
 
@@ -98,9 +99,9 @@ import java.util.stream.Stream;
 public class ScenarioBuilder {
 
 	// Constants for UI Labels and Tooltips
-	private static final String LABEL_COMPONENT_LIBRARY = "Component Library";
+	private static final String LABEL_COMPONENT_LIBRARY = "Component\nLibrary";
 	private static final String LABEL_CREATE_SCENARIO = "Create Scenario";
-	private static final String LABEL_SCENARIO_LIBRARY = "Scenario Library";
+	private static final String LABEL_SCENARIO_LIBRARY = "Scenario\nLibrary";
 	private static final String LABEL_SEARCH = "Search:";
 	private static final String TOOLTIP_FILTER = "Enter text to begin filtering";
 	private static final String TOOLTIP_REMOVE_SELECTED_COMPONENTS = "Remove selected component(s) from scenario";
@@ -188,8 +189,9 @@ public class ScenarioBuilder {
 	 * Adds all relevant controls and sets style for the pane.
 	 */
 	private void createComponentLibraryPane() {
-		labelComponentLibrary = utils.createLabel(LABEL_COMPONENT_LIBRARY, 1.7 * styles.getBigButtonWidth());
-		labelSearchComponentLibrary = utils.createLabel(LABEL_SEARCH, styles.getBigButtonWidth());
+		labelComponentLibrary = utils.createLabel(LABEL_COMPONENT_LIBRARY/*, 1.7 * styles.getBigButtonWidth()*/);
+		labelSearchComponentLibrary = utils.createLabel(LABEL_SEARCH);
+		labelSearchComponentLibrary.setMinWidth(Region.USE_PREF_SIZE);
 
 		HBox paneObjects = new HBox();
 		Client.paneComponentLibrary = new PaneNewScenarioComponent();
@@ -199,8 +201,8 @@ public class ScenarioBuilder {
 			labelComponentLibrary, utils.getSeparator(Orientation.VERTICAL, 15, false),
 			labelSearchComponentLibrary, ComponentLibraryTable.getFilterComponentsTextField(),
 			utils.getSeparator(Orientation.VERTICAL, 10, false), Client.buttonNewComponent,
-			utils.getSeparator(Orientation.VERTICAL, 10, false), Client.buttonEditComponent,
-			utils.getSeparator(Orientation.VERTICAL, 10, false), Client.buttonBrowseComponentLibrary,
+			utils.getSeparator(Orientation.VERTICAL, 5, false), Client.buttonEditComponent,
+			utils.getSeparator(Orientation.VERTICAL, 5, false), Client.buttonBrowseComponentLibrary,
 			utils.getSeparator(Orientation.VERTICAL, 10, false), Client.buttonDeleteComponent,
 			utils.getSeparator(Orientation.VERTICAL, 10, false), Client.buttonRefreshComponents
 		);
@@ -216,7 +218,6 @@ public class ScenarioBuilder {
 	private void createCreateScenarioPane() {
 		labelScenarioName = utils.createLabel(LABEL_CREATE_SCENARIO, 2 * styles.getBigButtonWidth());
 		Client.paneCreateScenario = new PaneCreateScenario(Client.primaryStage);
-		Client.paneCreateScenario.getvBox().setStyle(styles.getFontStyle());
 
 		vBoxCreateScenario = new VBox(5, Client.paneCreateScenario.getvBox());
 		vBoxCreateScenario.setStyle(styles.getStyle1());
@@ -227,7 +228,7 @@ public class ScenarioBuilder {
 	 * Configures filtering and sorting for the scenario table and sets style for the pane.
 	 */
 	private void createScenarioLibraryPane() {
-		labelScenarioLibrary = utils.createLabel(LABEL_SCENARIO_LIBRARY, styles.getBigButtonWidth() * 1.75);
+		labelScenarioLibrary = utils.createLabel(LABEL_SCENARIO_LIBRARY/*, styles.getBigButtonWidth() * 1.75*/);
 
 		TextField filterScenarioTextField = utils.createTextField();
 		filterScenarioTextField.setMinWidth(styles.getBigButtonWidth());
@@ -252,10 +253,9 @@ public class ScenarioBuilder {
 		ScenarioTable.tableScenariosLibrary.setItems(sortedScenarios);
 
 		Client.paneScenarioLibrary = new PaneScenarioLibrary(Client.primaryStage);
-		Client.paneScenarioLibrary.gethBox().setStyle(styles.getFontStyle());
 
 		HBox buttonHBox = new HBox();
-		labelSearchScenarios = utils.createLabel(LABEL_SEARCH, styles.getBigButtonWidth());
+		labelSearchScenarios = utils.createLabel(LABEL_SEARCH/*, styles.getBigButtonWidth()*/);
 		labelSearchScenarios.setTextAlignment(TextAlignment.LEFT);
 
 		// Add all relevant controls to the scenario library pane
@@ -269,11 +269,11 @@ public class ScenarioBuilder {
 			Client.buttonResults, Client.buttonResultsForSelected,
 			utils.getSeparator(Orientation.VERTICAL, 6, false), Client.buttonDiffFiles,
 			Client.buttonShowRunQueue, utils.getSeparator(Orientation.VERTICAL, 6, false),
-			Client.buttonViewExeLog, Client.buttonViewLog, Client.buttonViewExeErrors, Client.buttonViewErrors,
-			utils.getSeparator(Orientation.VERTICAL, 6, false), Client.buttonReport, Client.buttonRefreshScenarioStatus
+			Client.buttonViewExeLog, Client.buttonViewExeErrors, Client.buttonViewLog, Client.buttonViewErrors,
+			utils.getSeparator(Orientation.VERTICAL, 6, false), /*Client.buttonReport,*/ Client.buttonRefreshScenarioStatus
 		);
 
-		HBox bottomPane = new HBox(60, labelScenarioLibrary, buttonHBox);
+		HBox bottomPane = new HBox(15, labelScenarioLibrary, buttonHBox);
 		vBoxRun = new VBox(5, bottomPane, Client.paneScenarioLibrary.gethBox());
 	}
 
@@ -282,15 +282,15 @@ public class ScenarioBuilder {
 	 * Sets up tooltips, disables by default, and assigns event handlers for each button.
 	 */
 	private void createArrowButtons() {
-		Client.buttonLeftArrow = utils.createButton(null, styles.getBigButtonWidth(), TOOLTIP_REMOVE_SELECTED_COMPONENTS, "leftArrow7");
+		Client.buttonLeftArrow = utils.createButton(null, styles.getBigButtonWidth(), TOOLTIP_REMOVE_SELECTED_COMPONENTS, "left_arrow");
 		Client.buttonLeftArrow.setDisable(true);
 		Client.buttonLeftArrow.setOnAction(this::removeSelectedComponents);
 
-		Client.buttonLeftDoubleArrow = utils.createButton(null, styles.getBigButtonWidth(), TOOLTIP_REMOVE_ALL_COMPONENTS, "leftDoubleArrow7");
+		Client.buttonLeftDoubleArrow = utils.createButton(null, styles.getBigButtonWidth(), TOOLTIP_REMOVE_ALL_COMPONENTS, "double_left_arrow");
 		Client.buttonLeftDoubleArrow.setDisable(true);
 		Client.buttonLeftDoubleArrow.setOnAction(this::removeAllComponents);
 
-		Client.buttonRightArrow = utils.createButton(null, styles.getBigButtonWidth(), TOOLTIP_ADD_SELECTED_COMPONENTS, "rightArrow7");
+		Client.buttonRightArrow = utils.createButton(null, styles.getBigButtonWidth(), TOOLTIP_ADD_SELECTED_COMPONENTS, "right_arrow");
 		Client.buttonRightArrow.setDisable(true);
 		Client.buttonRightArrow.setOnAction(this::addSelectedComponents);
 

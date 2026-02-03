@@ -190,7 +190,9 @@ public class OptionsArea {
 		w = ThumbnailUtilNew.computeFixGridLayoutViewSize(sp.getSize().width, gridWidth);
 		// Dan: Using modified version (2)
 		JPanel chartPane = ThumbnailUtilNew.setChartPane(chart, w, gridWidth, sameScale, false);
-		jp.add(chartPane, BorderLayout.CENTER);
+		JScrollPane scrollPane = new JScrollPane(chartPane);
+		scrollPane.getVerticalScrollBar().setUnitIncrement(20);
+		jp.add(scrollPane, BorderLayout.CENTER);
 		jp.updateUI();
 	}
 

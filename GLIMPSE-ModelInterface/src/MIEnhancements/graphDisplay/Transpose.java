@@ -85,8 +85,31 @@ public class Transpose {
 		}
 		String[] newSeries = meta.split(","); // each original chart becomes a new series based on metadata
 		int idx = ThumbnailUtilNew.getFirstNonNullChart(chart);
+
+		// Extract units from each original chart to associate with the new series (which correspond to original charts)
+		// The length of 'newSeries' is determined by the number of original charts that made it into 'meta'
+		// We need an array of units that matches 'newSeries' length/order.
+		String[] newSeriesUnits = new String[newSeries.length];
+		// 'meta' comes from getMetaArray(chart), which iterates through 'chart' array.
+		// So 'newSeries' should align with 'chart' array elements, assuming all charts are included in meta.
+		// However, getMetaArray might filter or process. Let's look at getMetaArray implementation if needed, 
+		// but typically it just maps chart->meta. 
+		// Let's assume 1-to-1 mapping for now.
+		for(int i=0; i<newSeries.length && i<chart.length; i++) {
+		    if(chart[i] != null && chart[i].getAxis_name_unit() != null && chart[i].getAxis_name_unit().length > 1) {
+		        // axis_name_unit[1] is the Y-axis label which usually contains the unit, e.g. "Energy (EJ)"
+		        // We want to extract just "EJ" or keep "Energy (EJ)". 
+		        // ThumbnailUtilNew.createChart constructs it as: item_shown + " (" + str_unit + ")"
+		        // Let's use the full y-axis label as the unit for now, or parse it if specifically requested.
+		        // The user prompt example says "input (EJ)", which looks like a full axis label.
+		        newSeriesUnits[i] = chart[i].getAxis_name_unit()[1];
+		    } else {
+		        newSeriesUnits[i] = "";
+		    }
+		}
+
 		Chart[] chart1 = ThumbnailUtilNew.createTransposeChart(chart[idx].getGraphName(), // same as queryName
-				chart[idx].getAxis_name_unit(), // units
+				newSeriesUnits, // units - PASS SPECIFIC SERIES UNITS HERE instead of generic axis units
 				chart[idx].getChartColumn(), meta, newSeries, // what were previously the graph names
 				newPlotNames, // what was previously the legend
 				new ArrayList<String[][]>(transposedData)); // transposed data

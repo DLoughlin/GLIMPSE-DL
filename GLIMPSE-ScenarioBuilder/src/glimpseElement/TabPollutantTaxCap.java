@@ -35,8 +35,6 @@
  */
 package glimpseElement;
 
-import java.io.BufferedWriter;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,7 +48,6 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TreeView;
-import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 /**
@@ -128,8 +125,10 @@ import javafx.stage.Stage;
  */
 public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	// === Constants for UI Texts and Options ===
-	private static final double MAX_WIDTH = 225;
-	private static final double MIN_WIDTH = 175;
+	//private static final double MAX_WIDTH = 225;
+	//private static final double MIN_WIDTH = 175;
+    private static final double MAX_WIDTH = 225;
+    private static final double MIN_WIDTH = 175;
 	private static final double PREF_WIDTH = LABEL_WIDTH;
 	private static final String[] MEASURE_OPTIONS = { "Select One", "Emission Cap (Mt)", "Emission Tax ($/t)" };
 	//private static final String[] POLLUTANT_OPTIONS = { "Select One", "CO2 (MT C)", "CO2 (MT CO2)", "GHG (MT CO2E)",
@@ -313,9 +312,17 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 				new Separator(), new Label(), comboBoxModificationType, textFieldStartYear, textFieldEndYear,
 				textFieldInitialAmount, textFieldGrowth, comboBoxConvertFrom);
 		gridPaneLeft.setAlignment(Pos.TOP_LEFT);
-		gridPaneLeft.setVgap(3.);
-		gridPaneLeft.setStyle(styles.getStyle2());
+//		gridPaneLeft.setVgap(3.);
+//		//		gridPaneLeft.setStyle(styles.getStyle2());
+//		// Use light background so the left panel matches the dialog's button area
+//		// gridPaneLeft.setStyle(styles.getStyle2() + styles.getLightBackgroundStyle());
+//		// Use standard background so left panel matches MPG Target left pane
+//		gridPaneLeft.setStyle(styles.getStyle2());
+//		scrollPaneLeft.setStyle(styles.getStyle2());
 		scrollPaneLeft.setContent(gridPaneLeft);
+//        // Ensure center and right scroll panes use same background color
+//        scrollPaneCenter.setStyle(styles.getStyle2());
+//        scrollPaneRight.setStyle(styles.getStyle2());
 	}
 
 	/**
@@ -455,7 +462,6 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	private void saveScenarioComponent(TreeView<String> tree) {
 		// Validate inputs before proceeding
 		if (!qaInputs()) {
-			Thread.currentThread().destroy();
 			return;
 		}
 

@@ -102,8 +102,8 @@ public class Client extends Application {
 	private static final String VERSION = "GLIMPSE-CE ScenarioBuilder";
 	
     // region Constants
-    private static final double MIN_WINDOW_HEIGHT = 650;
-    private static final double MIN_WINDOW_WIDTH = 955;
+    private static final double MIN_WINDOW_HEIGHT = 850;
+    private static final double MIN_WINDOW_WIDTH = 1100;
     private static final double SPLASH_WIDTH = 383.0;
     private static final double SPLASH_HEIGHT = 384.0;
     private static final String OPTIONS_ARG_FLAG = "-options";
@@ -335,8 +335,21 @@ public class Client extends Application {
      */
     private void setMainWindow(GridPane mainGridPane, MenuBar menuBar) {
         // Compose the root layout
+        sb.setStyle(styles.getBackgroundStyle() + " -fx-padding: 5; -fx-border-color: #B0B0B0; -fx-border-width: 1 0 0 0;");
         final VBox root = new VBox(menuBar, mainGridPane, sb);
         final Scene scene = new Scene(root, vars.DEFAULT_SCENARIO_BUILDER_WIDTH, vars.DEFAULT_SCENARIO_BUILDER_HEIGHT);
+
+        // Apply Modern CSS
+        try {
+            java.net.URL cssUrl = getClass().getResource("/resources/modern.css");
+            if (cssUrl != null) {
+                scene.getStylesheets().add(cssUrl.toExternalForm());
+            } else {
+                System.out.println("Could not find modern.css resource.");
+            }
+        } catch (Exception e) {
+            System.err.println("Error loading modern.css: " + e.getMessage());
+        }
 
         primaryStage.setScene(scene);
         primaryStage.setTitle(VERSION);
