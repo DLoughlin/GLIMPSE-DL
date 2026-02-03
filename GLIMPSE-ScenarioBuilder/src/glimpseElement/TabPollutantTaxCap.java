@@ -51,76 +51,22 @@ import javafx.scene.control.TreeView;
 import javafx.stage.Stage;
 
 /**
- * TabPollutantTaxCap provides the user interface and logic for creating and
- * editing pollutant tax/cap policies in the GLIMPSE Scenario Builder.
+ * TabPollutantTaxCap provides the UI and logic to create and edit pollutant
+ * tax and cap scenario components in the GLIMPSE Scenario Builder.
  *
  * <p>
- * <b>Main responsibilities:</b>
+ * Responsibilities:
  * <ul>
- *   <li>Allow users to select measure type (tax or cap), pollutant, and sector/category</li>
- *   <li>Configure policy and market names (auto/manual)</li>
- *   <li>Specify and populate cap/tax values over time</li>
- *   <li>Validate, import, and export scenario component data as CSV</li>
+ *   <li>Present measure, pollutant, and sector/category controls to the user</li>
+ *   <li>Support automatic and manual naming for policies and markets</li>
+ *   <li>Collect and validate time-series cap/tax values and selected regions</li>
+ *   <li>Generate CSV scenario component files with embedded metadata</li>
  * </ul>
  * </p>
  *
  * <p>
- * <b>Features:</b>
- * <ul>
- *   <li>Support for multiple pollutants (CO2, GHG, NOx, SO2, etc.)</li>
- *   <li>Automatic and manual naming for policy and market</li>
- *   <li>Dynamic enabling/disabling of UI controls based on selections</li>
- *   <li>Validation of user input and units</li>
- *   <li>Progress tracking for file generation</li>
- * </ul>
- * </p>
- *
- * <p>
- * <b>Usage:</b>
- * <pre>
- * TabPollutantTaxCap tab = new TabPollutantTaxCap("Pollutant Tax/Cap", stage);
- * // Add to TabPane, interact via UI
- * </pre>
- * </p>
- *
- * <p>
- * <b>Thread Safety:</b> This class is not thread-safe and should be used only
- * on the JavaFX Application Thread.
- * </p>
- *
- * <p>
- * <b>Class Details:</b>
- * <ul>
- *   <li>Extends {@link PolicyTab} and implements {@link Runnable}.</li>
- *   <li>Handles UI setup, event listeners, and scenario file generation for pollutant tax/cap policies.</li>
- *   <li>Supports robust CO2 cap, GHG tax/cap, and flexible tax/cap for other pollutants.</li>
- *   <li>Provides methods for loading, validating, and saving scenario component data.</li>
- * </ul>
- * </p>
- *
- * <p>
- * <b>Key Methods:</b>
- * <ul>
- *   <li>{@link #TabPollutantTaxCap(String, Stage)} - Constructor, sets up UI and listeners.</li>
- *   <li>{@link #setupUIControls()} - Initializes UI controls and listeners.</li>
- *   <li>{@link #saveScenarioComponent()} - Main entry for saving scenario data.</li>
- *   <li>{@link #saveScenarioComponentFlexTaxOrCap(String[], String, String, List, String, String, String, String, String)} - Handles flexible tax/cap file generation.</li>
- *   <li>{@link #saveScenarioComponentGHGTaxOrCap(String[], String, String, String, String, String)} - Handles GHG tax/cap file generation.</li>
- *   <li>{@link #saveScenarioComponentRobustCO2Cap(String[], String, String, String, String)} - Handles robust CO2 cap file generation.</li>
- *   <li>{@link #getMetaDataContent(TreeView, String, String)} - Generates metadata for scenario files.</li>
- *   <li>{@link #loadContent(ArrayList)} - Loads scenario data from file.</li>
- *   <li>{@link #qaInputs()} - Validates user input before saving.</li>
- * </ul>
- * </p>
- *
- * <p>
- * <b>See Also:</b>
- * <ul>
- *   <li>{@link PolicyTab}</li>
- *   <li>{@link DataPoint}</li>
- *   <li>{@link PaneForComponentDetails}</li>
- *   <li>{@link Utils}</li>
- * </ul>
+ * Threading: all UI interactions must occur on the JavaFX Application Thread.
+ * Methods that update UI components use Platform.runLater where appropriate.
  * </p>
  */
 public class TabPollutantTaxCap extends PolicyTab implements Runnable {
@@ -176,11 +122,14 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	private final javafx.scene.layout.HBox hBoxAutoUnique = new javafx.scene.layout.HBox(8);
 
 	/**
-	 * Constructs a TabPollutantTaxCap for the given title and stage. Sets up all UI
-	 * controls, listeners, and default values for the pollutant tax/cap policy tab.
+	 * Construct and initialize the pollutant tax/cap tab.
 	 *
-	 * @param title  the tab title
-	 * @param stageX JavaFX Stage (not used directly)
+	 * The constructor configures default checkbox states (auto/unique naming),
+	 * disables manual name fields when auto naming is enabled, registers shared
+	 * event handlers from the superclass, and builds the tab UI layout.
+	 *
+	 * @param title  the tab title displayed in the TabPane
+	 * @param stageX JavaFX Stage (kept for compatibility; not used directly)
 	 */
 	public TabPollutantTaxCap(String title, Stage stageX) {
 		this.setText(title);
@@ -197,8 +146,12 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Initializes and configures all UI controls, populates combo boxes, and sets
-	 * up listeners for user interaction.
+	 * Initialize UI controls, populate choice lists, and wire listeners.
+	 *
+	 * This method prepares the left/center/right column controls, fills the
+	 * measure, pollutant and category lists using data from vars, configures
+	 * default selections, and registers listeners that keep derived values
+	 * (for example auto-generated names) in sync with user changes.
 	 */
 	private void setupUIControls() {
 		// Set up left, center, and right columns of the UI
@@ -359,16 +312,12 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Automatically sets the policy and market names based on current selections
-	 * and options. If auto-naming is enabled, updates the text fields accordingly.
-	 * Uses selected measure, pollutant, category, and region to generate unique
-	 * names. Handles edge cases for multiple categories or regions.
-	 * <p>
-	 * This method is called whenever relevant UI controls change. It ensures that
-	 * the policy and market names are unique and descriptive, reflecting the user's
-	 * selections. The logic accounts for multiple categories and regions, and
-	 * applies string replacements to ensure valid names.
-	 * </p>
+	 * Compute and set default policy and market names when auto-naming is enabled.
+	 *
+	 * The generated name reflects the selected measure, pollutant, category
+	 * and the (possibly aggregated) region string. Name components are
+	 * sanitized (spaces and dashes replaced) to produce safe identifiers.
+	 * UI updates are executed on the JavaFX thread via Platform.runLater.
 	 */
 	protected void setPolicyAndMarketNames() {
 		Platform.runLater(() -> {
@@ -448,14 +397,11 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Saves the scenario component using the provided region tree. Validates
-	 * inputs, generates metadata and CSV, and sets fileContent/filenameSuggestion.
+	 * Saves the scenario component using the provided region tree.
 	 *
-	 * <p>
-	 * This method routes to the appropriate file generation logic based on the
-	 * selected measure and pollutant. It handles all cases for tax/cap policies,
-	 * including robust CO2 cap, GHG tax/cap, and flexible tax/cap for other pollutants.
-	 * </p>
+	 * Validates inputs then dispatches to the proper generator based on the
+	 * selected pollutant and measure (robust CO2 cap, GHG tax/cap, or
+	 * flexible tax/cap). This is the main entry point used by run().
 	 *
 	 * @param tree TreeView of selected regions
 	 */

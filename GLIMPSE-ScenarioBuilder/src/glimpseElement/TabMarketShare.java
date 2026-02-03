@@ -59,170 +59,145 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 /**
- * TabMarketShare provides the user interface and logic for creating and editing
- * market share policies in the GLIMPSE Scenario Builder.
+ * TabMarketShare is a GUI tab that provides the UI and logic for creating,
+ * editing, validating, and saving market-share style policies used by GLIMPSE.
  * <p>
- * <b>Features:</b>
- * <ul>
- *   <li>Allows selection and filtering of technology subsets and supersets for market share policies.</li>
- *   <li>Supports configuration of policy type, application, constraint, and treatment options.</li>
- *   <li>Handles population and validation of policy data tables.</li>
- *   <li>Generates scenario component metadata and writes policy files for GLIMPSE.</li>
- *   <li>Supports loading and saving of scenario component configurations.</li>
- * </ul>
+ * This class encapsulates the JavaFX widgets (ComboBoxes, CheckComboBoxes,
+ * TextFields, tables, and region tree) and contains the export logic that
+ * converts user selections into the CSV input tables consumed by GLIMPSE.
  * <p>
- * <b>UI Elements:</b>
- * <ul>
- *   <li>ComboBoxes for policy type, application, constraint, treatment, and modification type.</li>
- *   <li>CheckComboBoxes for subset and superset technology selection.</li>
- *   <li>TextFields for filtering, policy/market names, and year/value entry.</li>
- *   <li>Buttons for populating, clearing, and deleting table entries.</li>
- *   <li>TreeView for region selection.</li>
- * </ul>
- * <p>
- * <b>Workflow:</b>
- * <ol>
- *   <li>User selects policy type and filters technologies.</li>
- *   <li>User selects subset and superset technologies.</li>
- *   <li>User configures application, constraint, and treatment.</li>
- *   <li>User enters year/value data and populates the table.</li>
- *   <li>User saves the scenario component, generating files and metadata.</li>
- * </ol>
- * <p>
- * <b>Dependencies:</b>
- * <ul>
- *   <li>JavaFX for UI components and threading.</li>
- *   <li>ControlsFX for CheckComboBox controls.</li>
- *   <li>GLIMPSE utility classes for file and data handling.</li>
- * </ul>
- * <p>
- * <b>Thread Safety:</b> Not thread-safe; use only on JavaFX Application Thread.
+ * Notes:
+ * - This class is intended to be used only on the JavaFX Application Thread.
+ * - All file-writing and I/O performed by this class delegates to helper
+ *   utilities (files, utils, vars) that live elsewhere in the project.
+ *
+ * @author GLIMPSE Team
+ * @since 1.0
  */
 public class TabMarketShare extends PolicyTab implements Runnable {
-	// === Constants for UI text and options ===
-	private static final double MIN_WIDTH = 175;
-	private static final String SELECT_ONE = "Select One";
-	private static final String SELECT_ONE_OR_MORE = "Select One or More";
-	private static final String[] POLICY_TYPE_OPTIONS = { SELECT_ONE, "Renewable Portfolio Standard (RPS)",
-			"Clean Energy Standard (CES)", "EV passenger cars and trucks (LDV-EV)", "EV passenger cars trucks and MCs (LDV-EV)",
-			"EV freight light truck (HDV-Lt)", "EV freight medium truck (HDV-Med)", "EV freight heavy truck (HDV-Hvy)", 
-			"EV freight all trucks (HDV-EV)","LED lights (LED)", "Heat pumps (HP)", "Biofuels (BioF)", "Other (OTH)", 
-			"Sector:EGU (EGU)", "Sector:Industry (IND)", "Sector:Industry-fuels (Fuels)","Sector:Buildings (BLD)", 
-			"Sector:Trn-Onroad (Onroad)", "Sector:Trn-ALM (ALM)", "Sector:Other (OTH)" };
-	private static final String[] APPLIED_TO_OPTIONS = { SELECT_ONE, "All Stock", "Sales" };
-	private static final String[] CONSTRAINT_OPTIONS = { SELECT_ONE, "Lower", "Fixed" };
-	private static final String[] TREATMENT_OPTIONS = { SELECT_ONE, "Each Selected Region", "Across Selected Regions" };
-	private static final String[] MODIFICATION_TYPE_OPTIONS = { "Initial and Final %", "Initial w/% Growth/yr",
-			"Initial w/% Growth/pd", "Initial w/Delta/yr", "Initial w/Delta/pd" };
+    // === Constants for UI text and options ===
+    private static final double MIN_WIDTH = 175;
+    private static final String SELECT_ONE = "Select One";
+    private static final String SELECT_ONE_OR_MORE = "Select One or More";
+    private static final String[] POLICY_TYPE_OPTIONS = { SELECT_ONE, "Renewable Portfolio Standard (RPS)",
+            "Clean Energy Standard (CES)", "EV passenger cars and trucks (LDV-EV)", "EV passenger cars trucks and MCs (LDV-EV)",
+            "EV freight light truck (HDV-Lt)", "EV freight medium truck (HDV-Med)", "EV freight heavy truck (HDV-Hvy)", 
+            "EV freight all trucks (HDV-EV)","LED lights (LED)", "Heat pumps (HP)", "Biofuels (BioF)", "Other (OTH)", 
+            "Sector:EGU (EGU)", "Sector:Industry (IND)", "Sector:Industry-fuels (Fuels)","Sector:Buildings (BLD)", 
+            "Sector:Trn-Onroad (Onroad)", "Sector:Trn-ALM (ALM)", "Sector:Other (OTH)" };
+    private static final String[] APPLIED_TO_OPTIONS = { SELECT_ONE, "All Stock", "Sales" };
+    private static final String[] CONSTRAINT_OPTIONS = { SELECT_ONE, "Lower", "Fixed" };
+    private static final String[] TREATMENT_OPTIONS = { SELECT_ONE, "Each Selected Region", "Across Selected Regions" };
+    private static final String[] MODIFICATION_TYPE_OPTIONS = { "Initial and Final %", "Initial w/% Growth/yr",
+            "Initial w/% Growth/pd", "Initial w/Delta/yr", "Initial w/Delta/pd" };
 
-	// === Labels and Controls ===
-	private final Label labelSubsetFilter = createLabel("Subset Filter:", LABEL_WIDTH);
-	private final TextField textFieldSubsetFilter = createTextField();
-	private final Label labelSupersetFilter = createLabel("Superset Filter:", LABEL_WIDTH);
-	private final TextField textFieldSupersetFilter = createTextField();
-	private final Label labelPolicyType = createLabel("Type?", LABEL_WIDTH);
-	private final ComboBox<String> comboBoxPolicyType = createComboBoxString();
-	private final Label labelSubset = createLabel("Subset: ", LABEL_WIDTH);
-	private final CheckComboBox<String> checkComboBoxSubset = createCheckComboBox();
-	private final Label labelSuperset = createLabel("Superset: ", LABEL_WIDTH);
-	private final CheckComboBox<String> checkComboBoxSuperset = createCheckComboBox();
-	private final Label labelAppliedTo = createLabel("Applied to: ", LABEL_WIDTH);
-	private final ComboBox<String> comboBoxAppliedTo = createComboBoxString();
-	private final Label labelConstraint = createLabel("Constraint: ", LABEL_WIDTH);
-	private final ComboBox<String> comboBoxConstraint = createComboBoxString();
-	private final Label labelTreatment = createLabel("Treatment: ", LABEL_WIDTH);
-	private final ComboBox<String> comboBoxTreatment = createComboBoxString();
-	private final HBox hBoxAutoUnique = new HBox(8);
+    // === Labels and Controls ===
+    private final Label labelSubsetFilter = createLabel("Subset Filter:", LABEL_WIDTH);
+    private final TextField textFieldSubsetFilter = createTextField();
+    private final Label labelSupersetFilter = createLabel("Superset Filter:", LABEL_WIDTH);
+    private final TextField textFieldSupersetFilter = createTextField();
+    private final Label labelPolicyType = createLabel("Type?", LABEL_WIDTH);
+    private final ComboBox<String> comboBoxPolicyType = createComboBoxString();
+    private final Label labelSubset = createLabel("Subset: ", LABEL_WIDTH);
+    private final CheckComboBox<String> checkComboBoxSubset = createCheckComboBox();
+    private final Label labelSuperset = createLabel("Superset: ", LABEL_WIDTH);
+    private final CheckComboBox<String> checkComboBoxSuperset = createCheckComboBox();
+    private final Label labelAppliedTo = createLabel("Applied to: ", LABEL_WIDTH);
+    private final ComboBox<String> comboBoxAppliedTo = createComboBoxString();
+    private final Label labelConstraint = createLabel("Constraint: ", LABEL_WIDTH);
+    private final ComboBox<String> comboBoxConstraint = createComboBoxString();
+    private final Label labelTreatment = createLabel("Treatment: ", LABEL_WIDTH);
+    private final ComboBox<String> comboBoxTreatment = createComboBoxString();
+    private final HBox hBoxAutoUnique = new HBox(8);
 
-	// === Constants for Metadata ===
-	private static final String METADATA_HEADER = "########## Scenario Component Metadata ##########";
-	private static final String METADATA_FOOTER = "#################################################";
-	private static final String METADATA_SCENARIO_TYPE = "#Scenario component type: Market Share";
-	private static final String METADATA_TYPE = "#Type: ";
-	private static final String METADATA_SUBSET = "#Subset: ";
-	private static final String METADATA_SUPERSET = "#Superset: ";
-	private static final String METADATA_APPLIED_TO = "#Applied to: ";
-	private static final String METADATA_TREATMENT = "#Treatment: ";
-	private static final String METADATA_CONSTRAINT = "#Constraint: ";
-	private static final String METADATA_POLICY_NAME = "#Policy name: ";
-	private static final String METADATA_MARKET_NAME = "#Market name: ";
-	private static final String METADATA_REGIONS = "#Regions: ";
-	private static final String METADATA_TABLE_DATA = "#Table data:";
+    // === Constants for Metadata ===
+    private static final String METADATA_HEADER = "########## Scenario Component Metadata ##########";
+    private static final String METADATA_FOOTER = "#################################################";
+    private static final String METADATA_SCENARIO_TYPE = "#Scenario component type: Market Share";
+    private static final String METADATA_TYPE = "#Type: ";
+    private static final String METADATA_SUBSET = "#Subset: ";
+    private static final String METADATA_SUPERSET = "#Superset: ";
+    private static final String METADATA_APPLIED_TO = "#Applied to: ";
+    private static final String METADATA_TREATMENT = "#Treatment: ";
+    private static final String METADATA_CONSTRAINT = "#Constraint: ";
+    private static final String METADATA_POLICY_NAME = "#Policy name: ";
+    private static final String METADATA_MARKET_NAME = "#Market name: ";
+    private static final String METADATA_REGIONS = "#Regions: ";
+    private static final String METADATA_TABLE_DATA = "#Table data:";
 
-	/**
-	 * Constructs a TabMarketShare instance for the given scenario builder tab.
-	 * @param title  The tab title.
-	 * @param stageX The JavaFX stage.
-	 * @param pane   The parent pane.
-	 */
-	public TabMarketShare(String title, Stage stageX, PaneNewScenarioComponent pane) {
-		this.setText(title);
-		this.setStyle(styles.getFontStyle());
-    	super.setupEventHandlers();
-		setupUIControls();
-		setupUIComponents();
-		setComponentWidths();
-		setupUILayout();
-		setPolicyAndMarketNames();
-		customize();
-	}
+    /**
+     * Constructs a TabMarketShare instance for the given scenario builder tab.
+     * @param title  the tab title
+     * @param stageX the JavaFX Stage used by the dialog
+     * @param pane   the parent PaneNewScenarioComponent containing shared resources
+     */
+    public TabMarketShare(String title, Stage stageX, PaneNewScenarioComponent pane) {
+        this.setText(title);
+        this.setStyle(styles.getFontStyle());
+        super.setupEventHandlers();
+        setupUIControls();
+        setupUIComponents();
+        setComponentWidths();
+        setupUILayout();
+        setPolicyAndMarketNames();
+        customize();
+    }
 
-	/**
-	 * Sets up all UI controls, listeners, and default values for the market share policy tab.
-	 * Includes ComboBox and CheckComboBox options, widget actions, and event handlers.
-	 */
-	private void setupUIControls() {
-		// Set up initial state for auto-naming and text fields
-		checkBoxUseAutoNames.setSelected(true);
-		checkBoxUseUniqueNames.setSelected(true);
-		textFieldPolicyName.setDisable(true);
-		textFieldMarketName.setDisable(true);
-		// Populate ComboBox options
-		comboBoxPolicyType.getItems().addAll(POLICY_TYPE_OPTIONS);
-		comboBoxPolicyType.getSelectionModel().select(0);
-		checkComboBoxSubset.getItems().addAll(SELECT_ONE_OR_MORE);
-		checkComboBoxSuperset.getItems().addAll(SELECT_ONE_OR_MORE);
-		checkComboBoxSubset.getCheckModel().check(0);
-		checkComboBoxSuperset.getCheckModel().check(0);
-		checkComboBoxSubset.setPrefWidth(70);
-		checkComboBoxSuperset.setPrefWidth(70);
-		checkComboBoxSubset.setMaxWidth(70);
-		checkComboBoxSuperset.setMaxWidth(70);
-		comboBoxAppliedTo.getItems().addAll(APPLIED_TO_OPTIONS);
-		comboBoxAppliedTo.getSelectionModel().selectFirst();
-		comboBoxConstraint.getItems().addAll(CONSTRAINT_OPTIONS);
-		comboBoxConstraint.getSelectionModel().selectFirst();
-		comboBoxTreatment.getItems().addAll(TREATMENT_OPTIONS);
-		comboBoxTreatment.getSelectionModel().selectFirst();
-		comboBoxModificationType.getItems().addAll(MODIFICATION_TYPE_OPTIONS);
-		comboBoxModificationType.getSelectionModel().selectFirst();
-		// Widget actions and event handlers
-		setupWidgetActions();
+    /**
+     * Initialize UI controls and default values, and wire basic listeners.
+     * This only configures widgets and does not perform expensive I/O.
+     */
+    private void setupUIControls() {
+        // Set up initial state for auto-naming and text fields
+        checkBoxUseAutoNames.setSelected(true);
+        checkBoxUseUniqueNames.setSelected(true);
+        textFieldPolicyName.setDisable(true);
+        textFieldMarketName.setDisable(true);
+        // Populate ComboBox options
+        comboBoxPolicyType.getItems().addAll(POLICY_TYPE_OPTIONS);
+        comboBoxPolicyType.getSelectionModel().select(0);
+        checkComboBoxSubset.getItems().addAll(SELECT_ONE_OR_MORE);
+        checkComboBoxSuperset.getItems().addAll(SELECT_ONE_OR_MORE);
+        checkComboBoxSubset.getCheckModel().check(0);
+        checkComboBoxSuperset.getCheckModel().check(0);
+        checkComboBoxSubset.setPrefWidth(70);
+        checkComboBoxSuperset.setPrefWidth(70);
+        checkComboBoxSubset.setMaxWidth(70);
+        checkComboBoxSuperset.setMaxWidth(70);
+        comboBoxAppliedTo.getItems().addAll(APPLIED_TO_OPTIONS);
+        comboBoxAppliedTo.getSelectionModel().selectFirst();
+        comboBoxConstraint.getItems().addAll(CONSTRAINT_OPTIONS);
+        comboBoxConstraint.getSelectionModel().selectFirst();
+        comboBoxTreatment.getItems().addAll(TREATMENT_OPTIONS);
+        comboBoxTreatment.getSelectionModel().selectFirst();
+        comboBoxModificationType.getItems().addAll(MODIFICATION_TYPE_OPTIONS);
+        comboBoxModificationType.getSelectionModel().selectFirst();
+        // Widget actions and event handlers
+        setupWidgetActions();
 
-		// Update policy and market names when region tree changes
-		paneForCountryStateTree.getTree().addEventHandler(ActionEvent.ACTION, e -> {
-			setPolicyAndMarketNames();
-		});
-		
+        // Update policy and market names when the selected region tree changes
+        paneForCountryStateTree.getTree().addEventHandler(ActionEvent.ACTION, e -> {
+            setPolicyAndMarketNames();
+        });
+    }
 
-	}
+    /**
+     * Complete additional simple UI customizations such as prompt text and
+     * default combo selections. This is separated from setupUIControls because
+     * these adjustments are non-critical defaults.
+     */
+    public void customize() {
 
-	/**
-	 * sets default selections for modification type, treatment, and applied to.
-	 * Also sets prompt text for subset and superset filter text fields.
-	 */
-	public void customize() {
+        // Set prompt text for subset and superset filter text fields
+        textFieldSubsetFilter.setPromptText("Filter techs in numerator");
+        textFieldSupersetFilter.setPromptText("Filter techs in denominator");
 
-		// Set prompt text for subset and superset filter text fields
-		textFieldSubsetFilter.setPromptText("Filter techs in numerator");
-		textFieldSupersetFilter.setPromptText("Filter techs in denominator");
-		
-		// Set default selections for modification type, treatment, and applied to
-		this.comboBoxModificationType.getSelectionModel().select("Initial and Final %");
-		this.comboBoxModificationType.fireEvent(new ActionEvent());
-		this.comboBoxTreatment.getSelectionModel().select("Select One");
-		this.comboBoxAppliedTo.getSelectionModel().select("Select One");		
-	}
+        // Select sensible defaults for modification type, treatment, and applied-to
+        this.comboBoxModificationType.getSelectionModel().select("Initial and Final %");
+        this.comboBoxModificationType.fireEvent(new ActionEvent());
+        this.comboBoxTreatment.getSelectionModel().select("Select One");
+        this.comboBoxAppliedTo.getSelectionModel().select("Select One");        
+    }
 
 	/**
 	 * sets up the UI components for the tab, including left, center, and right columns.
@@ -230,15 +205,15 @@ public class TabMarketShare extends PolicyTab implements Runnable {
     public void setupUIComponents() {
         setupLeftColumn();
         setupCenterColumn();
-        setupRightColumn();   	
+        setupRightColumn();    	
     }	
 	
 	/**
 	 * Sets the min and max widths for all ComboBoxes and CheckComboBoxes in the tab.
 	 * Ensures consistent sizing for UI elements.
 	 */
-	private void setComponentWidths() {
-		Object[] comboBoxes = { comboBoxPolicyType, checkComboBoxSubset, checkComboBoxSuperset, comboBoxAppliedTo,
+    private void setComponentWidths() {
+        Object[] comboBoxes = { comboBoxPolicyType, checkComboBoxSubset, checkComboBoxSuperset, comboBoxAppliedTo,
 				comboBoxModificationType, comboBoxConstraint, comboBoxTreatment };
 		for (Object cb : comboBoxes) {
 			if (cb instanceof ComboBox) {
@@ -412,7 +387,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 			for (String[] tech : techInfo) {
 				String line = tech[0].trim() + " : " + tech[1] + " : " + tech[2];
 				if (line.equals(lastLine))
-					continue;
+					continue; // skip duplicate entries
 				lastLine = line;
 				if (tech.length >= 7) {
 					line += " : " + tech[6] + " : " + tech[7];
@@ -440,10 +415,13 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 				if (showSup)
 					techListSup.add(line.trim());
 			}
+		 // clear previous entries before repopulating
 			checkComboBoxSubset.getCheckModel().clearChecks();
 			checkComboBoxSubset.getItems().clear();
 			checkComboBoxSuperset.getCheckModel().clearChecks();
 			checkComboBoxSuperset.getItems().clear();
+
+			// Flags that control which techs to show based on policy type
 			boolean showEgu = false;
 			boolean showLdvCar = false;
 			boolean showLdvTruck = false;
@@ -502,10 +480,13 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 				showSectorTrnAlm = true;
 			if (policyType.contains("Sector:Other"))
 				showSectorTrnAlm = true;
+
+			// Evaluate each candidate tech line for inclusion
 			for (String techLine : techListSub) {
 				boolean showTech = false;
 				String techLineLc = techLine.toLowerCase();
 				if (showEgu) {
+					// EGU-targeted policies select electricity generation technologies
 					if (techLineLc.startsWith("electricity")) {
 						showTech = true;
 					} else if (techLineLc.startsWith("base load")) {
@@ -596,12 +577,14 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 					showTech = true;
 
 				} else {
+					// default: show everything when no specific policy filter applies
 					showTech = true;
 				}
 				if (showTech) {
 					checkComboBoxSubset.getItems().add(techLine);
 				}
 			}
+			// Repeat evaluation for superset candidate list
 			for (String techLine : techListSup) {
 				boolean showTech = false;
 				String techLineLc = techLine.toLowerCase();
@@ -702,6 +685,8 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 					checkComboBoxSuperset.getItems().add(techLine);
 				}
 			}
+
+			// Auto-check common technologies for some policy types (RPS/CES/EV/LED/HP/BioF)
 			if ((policyType.contains("RPS")) || (policyType.contains("CES"))) {
 				for (int i = 0; i < checkComboBoxSubset.getItems().size(); i++) {
 					String itemText = checkComboBoxSubset.getItems().get(i).toLowerCase();
@@ -723,9 +708,9 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 				for (int i = 0; i < checkComboBoxSubset.getItems().size(); i++) {
 					String itemText = checkComboBoxSubset.getItems().get(i).toLowerCase();
 					if (itemText.indexOf("ccs") >= 0)
-					checkComboBoxSubset.getCheckModel().check(i);
+						checkComboBoxSubset.getCheckModel().check(i);
 					if (itemText.indexOf("nuclear") >= 0)
-					checkComboBoxSubset.getCheckModel().check(i);
+						checkComboBoxSubset.getCheckModel().check(i);
 				}
 			}
 			if (policyType.contains("EV")) {
@@ -775,75 +760,76 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 		}
 	}
 
-	/**
-	 * Sets the policy and market names automatically based on current selections if
-	 * auto-naming is enabled. Uses selected policy type, application, treatment, and regions.
-	 */
-	protected void setPolicyAndMarketNames() {
-		Platform.runLater(() -> {
-			if (checkBoxUseAutoNames.isSelected()) {
-				String policyType = comboBoxPolicyType.getValue() != null ? comboBoxPolicyType.getValue()
-						.replace(" ", "-").replace(":", "") : "--";
-				if (policyType.contains("Other"))
-					policyType = "Share";
-				if (policyType.contains("Select"))
-					policyType = "---";
-				if ((policyType.contains("("))&&((policyType.contains(")")))) {
-					policyType = utils.getTextBetweenParen(policyType);
-				}
-				
-				String toWhich = "--";
-				String state = "--";
-				String treatment = "--";
-				String constraint = "--";
-				
-				try {
-					String s = comboBoxAppliedTo.getValue();
-					if (s != null && s.contains("Sales"))
-						toWhich = "_sales";
-					if (s != null && s.contains("All"))
-						toWhich = "_stock";
-					
-					s = comboBoxTreatment.getValue();
-					if (s != null && s.contains("Each"))
-						treatment = "_Ea";
-					if (s != null && s.contains("Acr"))
-						treatment = "_Acr";
-					
-					s = comboBoxConstraint.getValue();
-					if (s != null && s.contains("Lo")) {
-						constraint = "_Lo";
-					}
-					if (s != null && s.contains("Hi")) {
-						constraint = "_Hi";
-					}
-					if (s != null && s.contains("Fix")) {
-						constraint = "_Fx";
-					}
-					
-					String[] listOfSelectedLeaves = utils.getAllSelectedRegions(paneForCountryStateTree.getTree());
-					listOfSelectedLeaves = utils.removeUSADuplicate(listOfSelectedLeaves);
-					String stateStr = utils.returnAppendedString(listOfSelectedLeaves).replace(",", "");
-					if (stateStr.length() < 9) {
-						state = "_"+stateStr;
-					} else {
-						state = "_Reg";
-					}
-					String name = "mktShr_" + policyType + constraint + treatment + toWhich + state ;
-					name = name.replaceAll("[^a-zA-Z0-9_]", "_").replaceAll("___", "__").replaceAll("__", "_");
-					textFieldMarketName.setText(name + "_Mkt");
-					textFieldPolicyName.setText(name);
-				} catch (Exception e) {
-					// Ignore auto-naming errors
-				}
-			}
-		});
-	}
+    /**
+     * Automatically set the policy and market name fields based on the current
+     * UI selections and the currently selected regions. Auto-naming is only
+     * performed when the "use auto names" checkbox is selected.
+     */
+    protected void setPolicyAndMarketNames() {
+        Platform.runLater(() -> {
+            if (checkBoxUseAutoNames.isSelected()) {
+                String policyType = comboBoxPolicyType.getValue() != null ? comboBoxPolicyType.getValue()
+                        .replace(" ", "-").replace(":", "") : "--";
+                if (policyType.contains("Other"))
+                    policyType = "Share";
+                if (policyType.contains("Select"))
+                    policyType = "---";
+                if ((policyType.contains("("))&&((policyType.contains(")")))) {
+                    policyType = utils.getTextBetweenParen(policyType);
+                }
 
-	/**
-	 * Runs background tasks or updates for this tab. Implementation of Runnable
-	 * interface. Triggers saveScenarioComponent on the JavaFX Application Thread.
-	 */
+                String toWhich = "--";
+                String state = "--";
+                String treatment = "--";
+                String constraint = "--";
+
+                try {
+                    String s = comboBoxAppliedTo.getValue();
+                    if (s != null && s.contains("Sales"))
+                        toWhich = "_sales";
+                    if (s != null && s.contains("All"))
+                        toWhich = "_stock";
+
+                    s = comboBoxTreatment.getValue();
+                    if (s != null && s.contains("Each"))
+                        treatment = "_Ea";
+                    if (s != null && s.contains("Acr"))
+                        treatment = "_Acr";
+
+                    s = comboBoxConstraint.getValue();
+                    if (s != null && s.contains("Lo")) {
+                        constraint = "_Lo";
+                    }
+                    if (s != null && s.contains("Hi")) {
+                        constraint = "_Hi";
+                    }
+                    if (s != null && s.contains("Fix")) {
+                        constraint = "_Fx";
+                    }
+
+                    String[] listOfSelectedLeaves = utils.getAllSelectedRegions(paneForCountryStateTree.getTree());
+                    listOfSelectedLeaves = utils.removeUSADuplicate(listOfSelectedLeaves);
+                    String stateStr = utils.returnAppendedString(listOfSelectedLeaves).replace(",", "");
+                    if (stateStr.length() < 9) {
+                        state = "_"+stateStr;
+                    } else {
+                        state = "_Reg";
+                    }
+                    String name = "mktShr_" + policyType + constraint + treatment + toWhich + state ;
+                    name = name.replaceAll("[^a-zA-Z0-9_]", "_").replaceAll("___", "__").replaceAll("__", "_");
+                    textFieldMarketName.setText(name + "_Mkt");
+                    textFieldPolicyName.setText(name);
+                } catch (Exception e) {
+                    // Ignore auto-naming errors silently (non-fatal for user interaction)
+                }
+            }
+        });
+    }
+
+    /**
+     * Runs background tasks or updates for this tab. Implementation of Runnable
+     * interface. Triggers saveScenarioComponent on the JavaFX Application Thread.
+     */
 	@Override
 	public void run() {
 		Platform.runLater(this::saveScenarioComponent);
@@ -995,7 +981,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 								}
 								if ((vars.isGcamUSA()) && (state.toLowerCase().equals("usa"))
 										&& (listOfSelectedLeaves.length > 1)) {
-									// skip
+									// skip entries for national USA when also processing states
 								} else {
 									if (is_subsector_in_region) {
 										Double val = valuef_list[i];
@@ -1083,7 +1069,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 							
 							if ((vars.isGcamUSA()) && (state.toLowerCase().equals("usa"))
 									&& (listOfSelectedLeaves.length > 1)) {
-								// skip
+								// skip national USA when states are also present
 							} else if (conversions != null) {
 								if (conversions.startsWith(","))
 									conversions = conversions.substring(1);
@@ -1128,10 +1114,10 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 				}
 				if (applied_to.equals("sales")) {
 					use_this_market_name += "-" + year_list[i];
-					use_this_policy_name += "-" + year_list[i];
+				 use_this_policy_name += "-" + year_list[i];
 				}
 				if ((vars.isGcamUSA()) && (state.toLowerCase().equals("usa")) && (listOfSelectedLeaves.length > 1)) {
-					// skip
+					// skip national USA when states are also present
 				} else {
 					String line = "";
 					if (which.equals("fixed")) {
@@ -1178,13 +1164,15 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Generates the metadata content for the scenario component, including selected
-	 * options and table data. Used for file output and documentation.
-	 * @param tree   The TreeView containing selected regions.
-	 * @param market The market name.
-	 * @param policy The policy name.
-	 * @return The metadata content as a String.
-	 */
+     * Build a short metadata string that documents the selections in the GUI.
+     * The metadata is written to the temporary metadata file and stored with the
+     * generated policy files for reproducibility.
+     *
+     * @param tree   tree containing the selected regions
+     * @param market the market name to record
+     * @param policy the policy name to record
+     * @return a formatted metadata string
+     */
     public String getMetaDataContent(TreeView<String> tree, String market, String policy) {
         StringBuilder rtnStr = new StringBuilder();
 
@@ -1219,99 +1207,105 @@ public class TabMarketShare extends PolicyTab implements Runnable {
         return rtnStr.toString();
     }
 
-	/**
-	 * Loads the content of a scenario component from a list of strings, updating the UI accordingly.
-	 * Used for loading saved scenario configurations.
-	 * @param content The content to load.
-	 */
-	@Override
-	public void loadContent(ArrayList<String> content) {
-		for (int i = 0; i < content.size(); i++) {
-			String line = content.get(i);
-			int pos = line.indexOf(":");
-			if (line.startsWith("#") && (pos > -1)) {
-				String param = line.substring(1, pos).trim().toLowerCase();
-				String value = line.substring(pos + 1).trim();
+    /**
+     * Load a scenario component from a list of metadata lines and populate the
+     * UI fields accordingly. This method expects the format written by
+     * getMetaDataContent and tolerates a subset of entries.
+     *
+     * @param content the metadata/content lines to parse
+     */
+    @Override
+    public void loadContent(ArrayList<String> content) {
+        for (int i = 0; i < content.size(); i++) {
+            String line = content.get(i);
+            int pos = line.indexOf(":");
+            if (line.startsWith("#") && (pos > -1)) {
+                String param = line.substring(1, pos).trim().toLowerCase();
+                String value = line.substring(pos + 1).trim();
 
-				if ((param.contains("type")) && (!param.startsWith("Scenario component"))) {
-					comboBoxPolicyType.setValue(value);
-					comboBoxPolicyType.fireEvent(new ActionEvent());
-				} else if (param.equals("applied to")) {
-					if (value.contains("sales")) {
-						value = "Sales";
-					} else {
-						value = "All Stock";
-					}
-					comboBoxAppliedTo.setValue(value);
-					comboBoxAppliedTo.fireEvent(new ActionEvent());
-				} else if (param.equals("treatment")) {
-					comboBoxTreatment.setValue(value);
-					comboBoxTreatment.fireEvent(new ActionEvent());
-				} else if (param.equals("constraint")) {
-					comboBoxConstraint.setValue(value);
-					comboBoxConstraint.fireEvent(new ActionEvent());
-//				} else if (param.equals("policy name")) {
-//					textFieldPolicyName.setText(value);
-//					textFieldPolicyName.fireEvent(new ActionEvent());
-//				} else if (param.equals("market name")) {
-//					textFieldMarketName.setText(value);
-//					textFieldMarketName.fireEvent(new ActionEvent());
-				} else if (param.equals("subset")) {
-					checkComboBoxSubset.getCheckModel().clearChecks();
-					String[] set = utils.splitString(value, ";");
-					for (int j = 0; j < set.length; j++) {
-						String item = set[j].trim();
-						// System.out.println("Attempting to check >>"+item+"<<");
-						checkComboBoxSubset.getCheckModel().check(item);
-					}
-					checkComboBoxSubset.fireEvent(new ActionEvent());
-				} else if (param.equals("superset")) {
-					checkComboBoxSuperset.getCheckModel().clearChecks();
-					String[] set = utils.splitString(value, ";");
-					for (int j = 0; j < set.length; j++) {
-						String item = set[j].trim();
-						checkComboBoxSuperset.getCheckModel().check(item);
-					}
-					checkComboBoxSuperset.fireEvent(new ActionEvent());
-				} else if (param.equals("regions")) {
-					String[] regions = utils.splitString(value, ",");
-					this.paneForCountryStateTree.selectNodes(regions);
-				} else if (param.equals("table data")) {
-					String[] s = utils.splitString(value, ",");
-					this.paneForComponentDetails.data.add(new DataPoint(s[0], s[1]));
-				}
+                if ((param.contains("type")) && (!param.startsWith("Scenario component"))) {
+                    comboBoxPolicyType.setValue(value);
+                    comboBoxPolicyType.fireEvent(new ActionEvent());
+                } else if (param.equals("applied to")) {
+                    if (value.contains("sales")) {
+                        value = "Sales";
+                    } else {
+                        value = "All Stock";
+                    }
+                    comboBoxAppliedTo.setValue(value);
+                    comboBoxAppliedTo.fireEvent(new ActionEvent());
+                } else if (param.equals("treatment")) {
+                    comboBoxTreatment.setValue(value);
+                    comboBoxTreatment.fireEvent(new ActionEvent());
+                } else if (param.equals("constraint")) {
+                    comboBoxConstraint.setValue(value);
+                    comboBoxConstraint.fireEvent(new ActionEvent());
+//                } else if (param.equals("policy name")) {
+//                    textFieldPolicyName.setText(value);
+//                    textFieldPolicyName.fireEvent(new ActionEvent());
+//                } else if (param.equals("market name")) {
+//                    textFieldMarketName.setText(value);
+//                    textFieldMarketName.fireEvent(new ActionEvent());
+                } else if (param.equals("subset")) {
+                    checkComboBoxSubset.getCheckModel().clearChecks();
+                    String[] set = utils.splitString(value, ";");
+                    for (int j = 0; j < set.length; j++) {
+                        String item = set[j].trim();
+                        // Attempt to check by exact item text; ControlsFX will ignore unknown items
+                        checkComboBoxSubset.getCheckModel().check(item);
+                    }
+                    checkComboBoxSubset.fireEvent(new ActionEvent());
+                } else if (param.equals("superset")) {
+                    checkComboBoxSuperset.getCheckModel().clearChecks();
+                    String[] set = utils.splitString(value, ";");
+                    for (int j = 0; j < set.length; j++) {
+                        String item = set[j].trim();
+                        checkComboBoxSuperset.getCheckModel().check(item);
+                    }
+                    checkComboBoxSuperset.fireEvent(new ActionEvent());
+                } else if (param.equals("regions")) {
+                    String[] regions = utils.splitString(value, ",");
+                    this.paneForCountryStateTree.selectNodes(regions);
+                } else if (param.equals("table data")) {
+                    String[] s = utils.splitString(value, ",");
+                    this.paneForComponentDetails.data.add(new DataPoint(s[0], s[1]));
+                }
 
-			}
-		}
-		this.setPolicyAndMarketNames();
-		this.paneForComponentDetails.updateTable();
-	}
+            }
+        }
+        this.setPolicyAndMarketNames();
+        this.paneForComponentDetails.updateTable();
+    }
 
-	/**
-	 * Helper method to validate table data years against allowable policy years.
-	 * Ensures that at least one year in the table matches allowable years.
-	 * @return true if at least one year matches allowable years, false otherwise
-	 */
-	private boolean validateTableDataYears() {
-		List<Integer> listOfAllowableYears = vars.getAllowablePolicyYears();
-		ObservableList<DataPoint> data = paneForComponentDetails != null ? this.paneForComponentDetails.table.getItems()
-				: null;
-		if (data == null)
-			return false;
-		for (DataPoint dp : data) {
-			Integer year = Integer.parseInt(dp.getYear().trim());
-			if (listOfAllowableYears.contains(year)) {
-				return true;
-			}
-		}
-		return false;
-	}
+    /**
+     * Validate that the years entered in the data table intersect the allowable
+     * policy years. Returns true if at least one table year is within the
+     * allowed set.
+     *
+     * @return true when the table contains at least one allowable year; false otherwise
+     */
+    private boolean validateTableDataYears() {
+        List<Integer> listOfAllowableYears = vars.getAllowablePolicyYears();
+        ObservableList<DataPoint> data = paneForComponentDetails != null ? this.paneForComponentDetails.table.getItems()
+                : null;
+        if (data == null)
+            return false;
+        for (DataPoint dp : data) {
+            Integer year = Integer.parseInt(dp.getYear().trim());
+            if (listOfAllowableYears.contains(year)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-	/**
-	 * Performs QA checks to ensure all required inputs for saving the scenario component are valid.
-	 * Checks region selection, table data, subset/superset selections, combo box selections, and unit consistency.
-	 * @return true if all required inputs are valid, false otherwise.
-	 */
+    /**
+     * Perform QA checks for required inputs before saving. This includes checking
+     * region selection, data table content, technology selections, combo box
+     * values, and consistency of units where applicable.
+     *
+     * @return true when inputs pass validation; false otherwise
+     */
      protected boolean qaInputs() {
 
          TreeView<String> tree = paneForCountryStateTree.getTree();
@@ -1321,107 +1315,121 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 
          try {
 
+             // Require at least one selected region
              if (utils.getAllSelectedRegions(tree).length < 1) {
                  message += "Must select at least one region from tree" + vars.getEol();
                  error_count++;
              }
+
+             // Require at least one data table entry and ensure years intersect allowable policy years
              if (paneForComponentDetails.table.getItems().size() == 0) {
                  message += "Data table must have at least one entry" + vars.getEol();
                  error_count++;
              } else {
-                     boolean match = validateTableDataYears();
-                     if (!match) {
-                         message += "Years specified in table must match allowable policy years ("
-                                 + vars.getAllowablePolicyYears() + ")" + vars.getEol();
-                         error_count++;
-                     }
+                 boolean match = validateTableDataYears();
+                 if (!match) {
+                     message += "Years specified in table must match allowable policy years ("
+                             + vars.getAllowablePolicyYears() + ")" + vars.getEol();
+                     error_count++;
+                 }
              }
-            if (checkComboBoxSubset.getCheckModel().getCheckedItems().size() == 0) {
-                message += "Subset CheckComboBox must have at least one selection" + vars.getEol();
-                error_count++;
-            }
-            if (checkComboBoxSuperset.getCheckModel().getCheckedItems().size() == 0) {
-                message += "Superset CheckComboBox must have at least one selection" + vars.getEol();
-                error_count++;
-            }
-			if (comboBoxConstraint.getSelectionModel().getSelectedItem().equals("Select One")) {
-				message += "No selection for Constraint. All comboBoxes must have a selection" + vars.getEol();
-				error_count++;
-			}
-			if (comboBoxAppliedTo.getSelectionModel().getSelectedItem().equals("Select One")) {
-				message += "No selection for Application. All comboBoxes must have a selection" + vars.getEol();
-				error_count++;
-			}
-			if (comboBoxTreatment.getSelectionModel().getSelectedItem().equals("Select One")) {
-				message += "No selection for Treatment. All comboBoxes must have a selection" + vars.getEol();
-				error_count++;
-			}
-			if (textFieldMarketName.getText().equals("")) {
-				message += "A market name must be provided" + vars.getEol();
-				error_count++;
-			}
-			if (textFieldPolicyName.getText().equals("")) {
-				message += "A policy name must be provided" + vars.getEol();
-				error_count++;
-			}
-			// check to make sure units match
-			if ((checkComboBoxSubset.getCheckModel().getCheckedItems().size() >= 1)
-					&& (checkComboBoxSuperset.getCheckModel().getCheckedItems().size() >= 1)) {
-				try {
-					ObservableList<String> checkBoxSubsetItems = checkComboBoxSubset.getCheckModel().getCheckedItems();
-					ObservableList<String> checkBoxSupersetItems = checkComboBoxSuperset.getCheckModel()
-							.getCheckedItems();
-					String[] items = checkBoxSubsetItems.get(0).split(":");
-					String units = null;
-					if (items.length == 4)
-						units = items[3].trim();
-					if (units != null) {
-						for (int i = 0; i < checkBoxSubsetItems.size(); i++) {
-							items = checkBoxSubsetItems.get(0).split(":");
-							if (!items[3].trim().equals(units)) {
-								message += "Units of selected items must match: e.g., " + items[3] + "!=" + units;
-								error_count++;
-							}
-						}
-						for (int i = 0; i < checkBoxSupersetItems.size(); i++) {
-							items = checkBoxSupersetItems.get(0).split(":");
-							if (!items[3].trim().equals(units)) {
-								message += "Units of selected items must match: e.g., " + items[3] + "!=" + units;
-								error_count++;
-							}
-						}
-					}
-				} catch (Exception except) {
-					System.out.println("Unable to verify that units of selected items match");
-				}
-			}
 
-		} catch (Exception e1) {
-			error_count++;
-			message += "Error in QA of entries" + vars.getEol();
-		}
-		if (error_count > 0) {
-			if (error_count == 1) {
-				utils.warningMessage(message);
-			} else if (error_count > 1) {
-				utils.displayString(message, "Parsing Errors");
-			}
-		}
+             // Require at least one selection in both subset and superset lists
+             if (checkComboBoxSubset.getCheckModel().getCheckedItems().size() == 0) {
+                 message += "Subset CheckComboBox must have at least one selection" + vars.getEol();
+                 error_count++;
+             }
+             if (checkComboBoxSuperset.getCheckModel().getCheckedItems().size() == 0) {
+                 message += "Superset CheckComboBox must have at least one selection" + vars.getEol();
+                 error_count++;
+             }
 
-		boolean is_correct;
-		if (error_count == 0) {
-			is_correct = true;
-		} else {
-			is_correct = false;
-		}
-		return is_correct;
-	}
+             // Ensure all combo boxes have a valid selection (not the default placeholder)
+             if (comboBoxConstraint.getSelectionModel().getSelectedItem().equals("Select One")) {
+                 message += "No selection for Constraint. All comboBoxes must have a selection" + vars.getEol();
+                 error_count++;
+             }
+             if (comboBoxAppliedTo.getSelectionModel().getSelectedItem().equals("Select One")) {
+                 message += "No selection for Application. All comboBoxes must have a selection" + vars.getEol();
+                 error_count++;
+             }
+             if (comboBoxTreatment.getSelectionModel().getSelectedItem().equals("Select One")) {
+                 message += "No selection for Treatment. All comboBoxes must have a selection" + vars.getEol();
+                 error_count++;
+             }
+
+             // Require non-empty names
+             if (textFieldMarketName.getText().equals("")) {
+                 message += "A market name must be provided" + vars.getEol();
+                 error_count++;
+             }
+             if (textFieldPolicyName.getText().equals("")) {
+                 message += "A policy name must be provided" + vars.getEol();
+                 error_count++;
+             }
+
+             // If both subset and superset have selections, attempt to verify that their units match
+             if ((checkComboBoxSubset.getCheckModel().getCheckedItems().size() >= 1)
+                     && (checkComboBoxSuperset.getCheckModel().getCheckedItems().size() >= 1)) {
+                 try {
+                     ObservableList<String> checkBoxSubsetItems = checkComboBoxSubset.getCheckModel().getCheckedItems();
+                     ObservableList<String> checkBoxSupersetItems = checkComboBoxSuperset.getCheckModel()
+                             .getCheckedItems();
+
+                     // Derive units from the first subset item if present (format: sector:subsector:tech[:unit])
+                     String[] items = checkBoxSubsetItems.get(0).split(":");
+                     String units = null;
+                     if (items.length == 4)
+                         units = items[3].trim();
+
+                     if (units != null) {
+                         // Check all checked subset items
+                         for (String it : checkBoxSubsetItems) {
+                             String[] itParts = it.split(":");
+                             if (itParts.length >= 4 && !itParts[3].trim().equals(units)) {
+                                 message += "Units of selected items must match: e.g., " + itParts[3] + "!=" + units
+                                         + vars.getEol();
+                                 error_count++;
+                             }
+                         }
+                         // Check all checked superset items
+                         for (String it : checkBoxSupersetItems) {
+                             String[] itParts = it.split(":");
+                             if (itParts.length >= 4 && !itParts[3].trim().equals(units)) {
+                                 message += "Units of selected items must match: e.g., " + itParts[3] + "!=" + units
+                                         + vars.getEol();
+                                 error_count++;
+                             }
+                         }
+                     }
+                 } catch (Exception except) {
+                     System.out.println("Unable to verify that units of selected items match");
+                 }
+             }
+
+         } catch (Exception e1) {
+             // Catch-all for unexpected errors during QA
+             error_count++;
+             message += "Error in QA of entries" + vars.getEol();
+         }
+
+         // Display accumulated error messages to user
+         if (error_count > 0) {
+             if (error_count == 1) {
+                 utils.warningMessage(message);
+             } else {
+                 utils.displayString(message, "Parsing Errors");
+             }
+         }
+
+         return (error_count == 0);
+     }
 
 	/**
-	 * Returns the suggested filename for the scenario component file.
-	 * Used when saving the scenario component to disk.
-	 * @return The suggested filename as a String.
-	 */
+     * Return the suggested filename that was created when saving the component.
+     *
+     * @return filename suggestion or null if none exists
+     */
 	@Override
 	public String getFilenameSuggestion() {
 		return filenameSuggestion;
@@ -1453,10 +1461,10 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Updates the progress bar on the JavaFX Application Thread.
-	 * @param progress The progress value to set (between 0.0 and 1.0).
-	 */
-	private void updateProgressBar(double progress) {
-		Platform.runLater(() -> progressBar.setProgress(progress));
-	}
+     * Update the progress bar value safely on the JavaFX Application Thread.
+     * @param progress a value between 0.0 and 1.0
+     */
+    private void updateProgressBar(double progress) {
+        Platform.runLater(() -> progressBar.setProgress(progress));
+    }
 }

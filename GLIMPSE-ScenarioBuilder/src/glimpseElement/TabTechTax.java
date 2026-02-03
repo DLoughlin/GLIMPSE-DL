@@ -50,36 +50,21 @@ import javafx.stage.Stage;
 
 /**
  * TabTechTax provides the user interface and logic for creating and editing
- * technology tax or subsidy policies in the GLIMPSE Scenario Builder.
- * <p>
- * <b>Main Features:</b>
+ * technology-level tax or subsidy policies in the GLIMPSE Scenario Builder.
+ *
+ * <p>Responsibilities:
  * <ul>
- *   <li>Sector selection and filtering</li>
- *   <li>Technology multi-selection with checkboxes</li>
- *   <li>Tax/Subsidy type selection</li>
- *   <li>Policy and market name auto-generation</li>
- *   <li>Units display and validation</li>
- *   <li>Region selection via tree</li>
- *   <li>Data entry and validation for policy years and values</li>
- *   <li>Support for loading and saving scenario component data</li>
+ *   <li>Present controls to choose a sector/category, filter and select technologies, and pick policy type (tax/subsidy).</li>
+ *   <li>Collect regions, yearly values and other parameters and serialize them into the GLIMPSE input CSV format.</li>
+ *   <li>Validate user input before saving and provide informative warnings when data are inconsistent.</li>
  * </ul>
- * <p>
- * <b>Usage:</b> Instantiate as a tab in the scenario builder. Extends {@link PolicyTab} and implements {@link Runnable}.
- * <p>
- * <b>Thread Safety:</b> Not thread-safe; use only on the JavaFX Application Thread.
- * <p>
- * <b>Key Methods:</b>
+ *
+ * <p>Notes:
  * <ul>
- *   <li>{@link #setupUIControls()} - Initializes UI controls</li>
- *   <li>{@link #setupEventHandlers()} - Sets up event listeners</li>
- *   <li>{@link #setupComboBoxCategory()} - Populates sector ComboBox</li>
- *   <li>{@link #updateCheckComboBoxTech()} - Updates technology CheckComboBox</li>
- *   <li>{@link #setPolicyAndMarketNames()} - Auto-generates policy/market names</li>
- *   <li>{@link #saveScenarioComponent()} - Saves scenario component</li>
- *   <li>{@link #qaInputs()} - Validates user inputs</li>
- *   <li>{@link #setUnitsLabel()} - Updates units label</li>
- *   <li>{@link #getUnits()} - Gets units for selected technologies</li>
+ *   <li>This class is intended to be used on the JavaFX Application Thread (not thread-safe).</li>
+ *   <li>It extends PolicyTab to inherit common UI elements and behaviors used by other policy tabs.</li>
  * </ul>
+ *
  */
 public class TabTechTax extends PolicyTab implements Runnable {
 	private static final String LABEL_UNITS_WARNING = "Warning - Units do not match!";
@@ -157,8 +142,8 @@ public class TabTechTax extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Initializes all UI controls for the tab (labels, combo boxes, etc.).
-	 * Sets up left, center, and right columns of the UI.
+	 * Initializes all UI controls for the tab and arranges them into left/center/right columns.
+	 * This method delegates to smaller helper methods that create logical groups of controls.
 	 */
 	private void setupUIControls() {
 		setupLeftColumn();
@@ -168,8 +153,12 @@ public class TabTechTax extends PolicyTab implements Runnable {
 
 	// === UI Setup Methods ===
 	/**
-	 * Sets up the left column of the UI, adding labels and controls to the grid pane.
-	 * Includes filter, sector, technology, type, units, and other input fields.
+	 * Configure and populate the left column grid. This includes labels and controls for
+	 * the policy specification (measure, category, technology selection, units, naming,
+	 * modification type and data entry fields).
+	 *
+	 * The grid is placed inside scrollPaneLeft so contents can be scrolled when the
+	 * available vertical space is limited.
 	 */
 	private void setupLeftColumn() {
 		gridPaneLeft.add(utils.createLabel("Specification:"), 0, 0, 2, 1);
@@ -209,7 +198,9 @@ public class TabTechTax extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Sets the width properties for the provided controls.
+	 * Utility to set width bounds on a list of controls. Preferred, minimum and maximum
+	 * widths are applied so layout managers can compute stable sizes.
+	 *
 	 * @param controls Controls to set width for
 	 */
 	private void setComponentWidths(Control... controls) {
@@ -221,9 +212,13 @@ public class TabTechTax extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Sets up event handlers for UI components in the tab.
-	 * Includes listeners for combo boxes, checkboxes, buttons, and filter fields.
-	 * All UI updates are wrapped in Platform.runLater for thread safety.
+	 * Attach listeners and event handlers for controls in this tab. Event handlers
+	 * update the UI state (enable/disable controls, refresh lists), respond to
+	 * user actions (filtering, selection) and propagate changes to dependent fields
+	 * (policy/market names, units label).
+	 *
+	 * All UI updates are scheduled on the JavaFX Application Thread using
+	 * Platform.runLater when necessary to maintain thread-safety.
 	 */
 	protected void setupEventHandlers() {
 
@@ -284,9 +279,10 @@ public class TabTechTax extends PolicyTab implements Runnable {
 
 	
     /**
-     * Populates the sector combo box based on the technology info and filter text.
-     * Handles filtering and ensures no duplicate sectors are added.
-     * <p>
+     * Populate the category (sector) ComboBox from the technology metadata. This
+     * method reads the tech info matrix and collects unique category names while
+     * guarding against null values and duplicates. It always provides the
+     * 'Select One' and 'All' options first.
      */
     private void setupComboBoxCategory() {
         comboBoxCategory.getItems().clear();
@@ -440,9 +436,12 @@ public class TabTechTax extends PolicyTab implements Runnable {
 //	}
 
 	/**
-	 * Updates the technology check combo box based on selected sector and filter text.
-	 * Only technologies matching the filter and sector are shown.
-	 * Called when the filter or category changes.
+	 * Update the technology CheckComboBox to show technologies that match the
+	 * currently selected category and any filter text. Each displayed item is a
+	 * short concatenation of sector : subsector : technology [ : unit ].
+	 *
+	 * The method clears and repopulates the check box model and preserves
+	 * robustness against malformed or null tech rows.
 	 */
 	private void updateCheckComboBoxTech() {
 
@@ -530,8 +529,9 @@ public class TabTechTax extends PolicyTab implements Runnable {
 //	}
 
 	/**
-	 * Sets the policy and market names automatically based on current selections if auto-naming is enabled.
-	 * Name is constructed from type, sector, technology, and region selections.
+	 * When auto-naming is enabled, construct consistent policy and market names
+	 * derived from measure, category and selected regions. The generated name is
+	 * sanitized to contain only alphanumeric characters and underscores.
 	 */
 	protected void setPolicyAndMarketNames() {
 		Platform.runLater(() -> {
@@ -589,8 +589,12 @@ public class TabTechTax extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Saves the scenario component using the provided tree.
-	 * @param tree the TreeView containing region selections
+	 * Save the scenario component using the selected region tree. This performs
+	 * input QA and then assembles the CSV content for the chosen technologies,
+	 * policy type and year/value pairs. The method writes separate sections for
+	 * standard and transport technologies to match the GLIMPSE input format.
+	 *
+	 * @param tree the TreeView providing the selected regions
 	 */
 	private void saveScenarioComponent(TreeView<String> tree) {
 		// Validate all user inputs before proceeding
@@ -694,11 +698,15 @@ public class TabTechTax extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Generates metadata content for the scenario component, including selected technologies, type, policy, market, regions, and table data.
-	 * @param tree   the TreeView containing region selections
-	 * @param market the market name
-	 * @param policy the policy name
-	 * @return a String containing the metadata content
+	 * Build a human-readable metadata header for the scenario component file.
+	 * The metadata includes selections such as measure, category, technology list,
+	 * region selection and the table of year/value pairs. This text is prefixed
+	 * to the CSV content to make saved scenario components self-describing.
+	 *
+	 * @param tree   TreeView containing region selections
+	 * @param market market name to place in metadata (may be null)
+	 * @param policy policy name to place in metadata (may be null)
+	 * @return a String containing formatted metadata followed by a trailing EOL
 	 */
 	public String getMetaDataContent(TreeView<String> tree, String market, String policy) {
 		StringBuilder rtnStr = new StringBuilder();
@@ -854,8 +862,10 @@ public class TabTechTax extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Sets the units label based on selected technologies and their units.
-	 * Updates the labelUnits2 control with the correct units or warning.
+	 * Update the units label (labelUnits2) according to the units of the
+	 * currently selected technologies. If selected technologies contain mixed
+	 * units the label will show a warning. Several unit names are normalized
+	 * to more human-friendly strings used in policy value entry.
 	 */
 	public void setUnitsLabel() {
 		String s = getUnits();
@@ -891,9 +901,11 @@ public class TabTechTax extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Gets the units for the currently selected technologies.
-	 * If multiple units are found, returns "No match".
-	 * @return the units as a String, or "No match" if units differ
+	 * Determine the units string for the selected technologies. If multiple
+	 * different units are present, the method returns "No match". If the
+	 * placeholder item is selected, an empty string is returned.
+	 *
+	 * @return units string, empty if none selected, or "No match" when mixed
 	 */
 	public String getUnits() {
 		ObservableList<String> techList = checkComboBoxTech.getCheckModel().getCheckedItems();

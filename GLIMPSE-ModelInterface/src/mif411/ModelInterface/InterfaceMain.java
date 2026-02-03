@@ -109,7 +109,18 @@ import joptsimple.OptionSet;
 import com.sun.media.imageioimpl.common.PackageUtil;
 import java.lang.reflect.Field;
 
+import java.awt.Font;
+import java.awt.Color;
+import javax.swing.JButton;
+
 public class InterfaceMain implements ActionListener {
+	private static final Font UNIFIED_FONT = new Font("Segoe UI", Font.PLAIN, 14);
+	private static final Color UNIFIED_BG = new Color(245, 245, 250); // Soft background
+	private static final Color UNIFIED_PANEL_BG = new Color(255, 255, 255); // Panel background
+	private static final Color UNIFIED_BTN_BG = new Color(230, 235, 245); // Button background
+	private static final Color UNIFIED_BTN_FG = new Color(30, 30, 60); // Button foreground
+	private static final Color UNIFIED_BORDER = new Color(200, 200, 220); // Border color
+
 	/**
 	 * Unique identifier used for serializing.
 	 */
@@ -513,10 +524,11 @@ public class InterfaceMain implements ActionListener {
 		main = null;
 		main = new InterfaceMain();
 		main.mainFrame = new JFrame("Model Interface");
-
 		String image_str = ".\\results.png";
 		main.mainFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(image_str));
-
+		main.mainFrame.getContentPane().setBackground(UNIFIED_BG);
+		main.mainFrame.getContentPane().setFont(UNIFIED_FONT);
+		main.mainFrame.getRootPane().setBorder(javax.swing.BorderFactory.createLineBorder(UNIFIED_BORDER, 1));
 		if (Boolean.parseBoolean(main.savedProperties.getProperty("isMaximized", "false"))) {
 			main.mainFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
 		}
@@ -546,9 +558,8 @@ public class InterfaceMain implements ActionListener {
 		main.mainFrame.setSize(Integer.parseInt(lastWidth), Integer.parseInt(lastHeight));
 
 		main.mainFrame.setLayout(new BorderLayout());
-
 		main.initialize();
-//		// main.pack();
+		// main.pack();
 		main.mainFrame.setVisible(false);
 		if (path != null) {
 			main.fireControlChange("DbViewer");
@@ -598,6 +609,23 @@ public class InterfaceMain implements ActionListener {
 		addMenuItems(menuMan);
 		addMenuAdderMenuItems(menuMan);
 		finalizeMenu(menuMan);
+		// Set font for menu bar and items
+		JMenuBar menuBar = mainFrame.getJMenuBar();
+		if (menuBar != null) {
+			menuBar.setFont(UNIFIED_FONT);
+			for (int i = 0; i < menuBar.getMenuCount(); i++) {
+				JMenu menu = menuBar.getMenu(i);
+				if (menu != null) {
+					menu.setFont(UNIFIED_FONT);
+					for (int j = 0; j < menu.getItemCount(); j++) {
+						JMenuItem item = menu.getItem(j);
+						if (item != null) {
+							item.setFont(UNIFIED_FONT);
+						}
+					}
+				}
+			}
+		}
 		// if path to DB was provided, dispatch to DBViewer to open database
 //		  if (path != null) fireControlChange("DbViewer");		 
 	}
@@ -612,7 +640,6 @@ public class InterfaceMain implements ActionListener {
 		// YD edits, August-2023
 		// JMenu submenu; //YD commented out
 		// submenu = new JMenu("Open"); //YD commented out, changed "Open" to "Open DB"
-		// in "DbViewer.java"
 		// submenu.setMnemonic(KeyEvent.VK_S); //YD commented out
 		// menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(submenu,
 		// FILE_OPEN_SUBMENU_POS); //YD commented out
@@ -823,7 +850,25 @@ public class InterfaceMain implements ActionListener {
 	}
 
 	private void finalizeMenu(MenuManager menuMan) {
-		JMenuBar mb = menuMan.createMenu(); // new JMenuBar();
+		JMenuBar mb = menuMan.createMenu();
+		mb.setBackground(UNIFIED_BG);
+		mb.setFont(UNIFIED_FONT);
+		for (int i = 0; i < mb.getMenuCount(); i++) {
+			JMenu menu = mb.getMenu(i);
+			if (menu != null) {
+				menu.setFont(UNIFIED_FONT);
+				menu.setBackground(UNIFIED_BG);
+				menu.setForeground(UNIFIED_BTN_FG);
+				for (int j = 0; j < menu.getItemCount(); j++) {
+					JMenuItem item = menu.getItem(j);
+					if (item != null) {
+						item.setFont(UNIFIED_FONT);
+						item.setBackground(UNIFIED_BTN_BG);
+						item.setForeground(UNIFIED_BTN_FG);
+					}
+				}
+			}
+		}
 		mainFrame.setJMenuBar(mb);
 	}
 
@@ -1257,6 +1302,7 @@ public class InterfaceMain implements ActionListener {
 	 * @param message     The message to show.
 	 * @param title       The title of the dialog.
 	 * @param messageType The message type.
+	 * @return A string representing the meaning of messageType.
 	 */
 	public void showMessageDialog(Object message, String title, int messageType) {
 		// Dan: Message dialog seemed to cause threading issues. Now just prints to

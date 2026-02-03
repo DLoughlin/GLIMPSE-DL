@@ -47,30 +47,19 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
 /**
- * TabFuelPriceAdj provides the user interface and logic for creating and editing
- * fuel price adjustment policies in the GLIMPSE Scenario Builder.
- * <p>
- * <b>Main Features:</b>
- * <ul>
- *   <li>Specify, edit, and save fuel price adjustment policies.</li>
- *   <li>Select fuels, regions, and adjustment types.</li>
- *   <li>Auto-generate policy and market names based on selections.</li>
- *   <li>Validate user input and provide feedback for missing/invalid data.</li>
- *   <li>Generate scenario component files for downstream processing.</li>
- *   <li>Load existing policy files and populate the UI.</li>
- * </ul>
+ * TabFuelPriceAdj implements the UI and logic for creating and editing fuel
+ * price adjustment scenario components in the GLIMPSE Scenario Builder.
  *
- * <b>Usage:</b>
- * <ul>
- *   <li>Instantiate with a tab title and JavaFX stage.</li>
- *   <li>Interact with the UI to select fuels, regions, and adjustment parameters.</li>
- *   <li>Use Populate, Delete, and Clear buttons to manage adjustment values.</li>
- *   <li>Save the scenario component to generate the output file.</li>
- * </ul>
+ * Responsibilities:
+ * - Build and manage the JavaFX controls used to define a fuel price
+ *   adjustment policy (fuels, regions, adjustment values, names, units).
+ * - Validate the user input before saving.
+ * - Generate the scenario component file content (metadata + table rows).
  *
- * <b>Threading:</b> Implements Runnable for background save operations. UI updates must be wrapped in Platform.runLater.
- *
- * <b>Dependencies:</b> Requires JavaFX, ControlsFX, and GLIMPSE utility classes.
+ * This class focuses on UI wiring and content generation only; it does not
+ * perform file I/O itself. It implements Runnable so save operations can be
+ * dispatched off the FX application thread if needed (UI updates must use
+ * Platform.runLater).
  */
 public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     // === UI constants ===
@@ -83,41 +72,42 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     private final CheckComboBox<String> checkComboBoxFuel = createCheckComboBox();
     private final Label labelUnits = createLabel(LABEL_UNITS, LABEL_WIDTH);
     private final Label labelUnitsValue = createLabel(LABEL_UNITS_VALUE, 225.);
-    // HBox for Auto and Unique checkboxes
+    // HBox grouping the auto-name and unique-name checkboxes
     private final HBox hBoxAutoUnique = new HBox(8);
 
     /**
-     * List of available fuel types for selection, populated from technology info.
+     * Cached list of fuel names (extracted from technology info) used to
+     * populate the fuel selection control.
      */
     private ArrayList<String> fuelList = new ArrayList<>();
 
     /**
-     * Constructs a new TabFuelPriceAdj instance and initializes the UI components
-     * for the Fuel Price Adjustment tab. Sets up event handlers and populates
-     * controls with available data.
+     * Construct a TabFuelPriceAdj and initialize controls and layout.
      *
-     * @param title  The title of the tab
-     * @param stageX The JavaFX stage
+     * @param title  tab title shown to the user
+     * @param stageX primary JavaFX Stage (used for dialogs/ownership)
      */
     public TabFuelPriceAdj(String title, Stage stageX) {
-    	super.setupEventHandlers();
-    	setupUIControls(title, stageX);
+        super.setupEventHandlers();
+        setupUIControls(title, stageX);
         setComponentWidths();
         setupUILayout();
     }
 
     /**
-     * Sets up the UI controls and populates them with available data.
+     * Initialize UI controls, load options from shared variables/utilities,
+     * and attach event listeners. This method only mutates UI state; it does
+     * not perform file operations.
      *
-     * @param title  The title of the tab
-     * @param stageX The JavaFX stage
+     * @param title  tab title
+     * @param stageX JavaFX Stage used for any dialogs
      */
     private void setupUIControls(String title, Stage stageX) {
         setupLeftColumn();
         setupCenterColumn();
         setupRightColumn();
 
-        // Set up region tree and tab title
+        // Expand the root of the region tree (if available)
         TreeItem<String> ti = paneForCountryStateTree != null && paneForCountryStateTree.getTree() != null
                 ? paneForCountryStateTree.getTree().getRoot()
                 : null;
@@ -127,7 +117,8 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         if (styles != null)
             this.setStyle(styles.getFontStyle());
 
-        // Set up initial state of check box and text fields
+        // Default control states: auto/unique naming enabled and name fields
+        // disabled when auto naming is active.
         if (checkBoxUseAutoNames != null)
             checkBoxUseAutoNames.setSelected(true);
         if (checkBoxUseUniqueNames != null)
@@ -137,25 +128,24 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         if (textFieldMarketName != null)
             textFieldMarketName.setDisable(true);
         if (comboBoxConvertFrom != null) {
-    		//comboBoxConvertFrom.getItems().clear();
-            //comboBoxConvertFrom.getItems().addAll(CONVERT_FROM_OPTIONS);
             comboBoxConvertFrom.getSelectionModel().selectFirst();
         }
 
-        // Populate fuel and modification type options
+        // Populate fuel options from technology info
         String[][] tech_list = vars.getTechInfo();
         extractInfoFromTechList(tech_list);
         if (checkComboBoxFuel != null && fuelList != null)
             checkComboBoxFuel.getItems().addAll(fuelList);
 
+        // Populate modification type choices
         if (comboBoxModificationType != null) {
             comboBoxModificationType.getItems().addAll(MODIFICATION_TYPE_OPTIONS);
             comboBoxModificationType.getSelectionModel().selectFirst();
         }
-        
+
         setPolicyAndMarketNames();
 
-        // Event handlers for UI controls
+        // Update generated names whenever the fuel selection changes
         checkComboBoxFuel.getCheckModel().getCheckedItems()
                 .addListener((javafx.collections.ListChangeListener<String>) change -> {
                     setPolicyAndMarketNames();
@@ -163,7 +153,8 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     }
 
     /**
-     * Configures the left column of the tab UI, including labels and controls.
+     * Build the left column of the tab, arranging labels and input controls.
+     * The HBox groups the auto/unique name checkboxes for a compact layout.
      */
     private void setupLeftColumn() {
         gridPaneLeft.getChildren().clear();
@@ -179,12 +170,13 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         textFieldInitialAmount, textFieldGrowth, comboBoxConvertFrom);
         gridPaneLeft.setAlignment(Pos.TOP_LEFT);
         gridPaneLeft.setVgap(3.);
-        //gridPaneLeft.setStyle(styles.getStyle2());
+        // gridPaneLeft styling left to style manager elsewhere
         scrollPaneLeft.setContent(gridPaneLeft);
     }
 
     /**
-     * Sets min, max, and preferred widths for controls in the tab for consistent UI layout.
+     * Set consistent min/max/preferred widths for commonly used controls in the tab
+     * to improve layout stability across platforms.
      */
     private void setComponentWidths() {
         double max_wid = this.MAX_WIDTH, min_wid = this.MIN_WIDTH, pref_wid = this.PREF_WIDTH;
@@ -218,26 +210,30 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     }
 
     /**
-     * Extracts fuel technology names from the technology list and populates fuelList.
-     * Only technologies categorized as "Energy-Carrier" are included.
+     * Extract fuel (energy-carrier) names from the provided technology info
+     * array. Filters technologies whose category equals "Energy-Carrier"
+     * and de-duplicates the resulting list.
      *
-     * @param tech_list 2D array of technology information
+     * @param tech_list 2D array of technology metadata (as provided by vars)
      */
     private void extractInfoFromTechList(String[][] tech_list) {
         for (int row = 0; row < tech_list.length; row++) {
             String str_cat = tech_list[row][7].trim();
             String str_tech = tech_list[row][2].trim();
+            // Keep only energy carrier technologies as candidate fuels
             if (str_cat.equals("Energy-Carrier")) {
                 fuelList.add(str_tech);
             }
         }
-        // Remove duplicates
+        // Remove duplicate names while preserving ordering
         fuelList = utils.getUniqueItemsFromStringArrayList(fuelList);
     }
 
     /**
-     * Sets the policy and market names automatically based on selected fuels and regions.
-     * If auto-naming is enabled, updates the text fields accordingly.
+     * Auto-generate policy and market names based on the currently selected
+     * fuel(s) and region(s). Applies simple normalization (lowercase,
+     * underscores) and a fallback when multiple items are selected.
+     *
      * Naming convention: fuelPrc-<fuel>-<region>
      */
     protected void setPolicyAndMarketNames() {
@@ -246,14 +242,14 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
             String fuel = "----";
             String state = "--";
             try {
-                // Determine selected fuel(s)
+                // Build fuel part: single fuel -> normalized name, multiple -> "Misc"
                 if (checkComboBoxFuel.getCheckModel().getCheckedItems() != null) {
                     fuel = "Misc";
                     if (checkComboBoxFuel.getCheckModel().getCheckedItems().size() == 1) {
                         fuel = checkComboBoxFuel.getCheckModel().getCheckedItems().get(0).toLowerCase().replaceAll(" ", "_");
                     }
                 }
-                // Determine selected region(s)
+                // Build region part: collapse selection to a short string, use "Reg" for longer aggregated names
                 String[] listOfSelectedLeaves = (paneForCountryStateTree != null
                         && paneForCountryStateTree.getTree() != null)
                                 ? utils.getAllSelectedRegions(paneForCountryStateTree.getTree())
@@ -264,9 +260,9 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
                     if (state_str.length() < 9)
                         state = state_str;
                     else
-                        state = "Reg";
+                        state = "Reg"; // use generic region label when selection is large
                 }
-                // Set names
+                // Compose and normalize the name, then write to the text fields
                 String name = policy_type + "-" + fuel + "-" + state;
                 name = name.replaceAll(" ", "_").replaceAll("-", "_").replaceAll("--", "_").replaceAll("_-_", "_").replaceAll("---", "");
                 if (textFieldMarketName != null)
@@ -274,14 +270,15 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
                 if (textFieldPolicyName != null)
                     textFieldPolicyName.setText(name);
             } catch (Exception e) {
+                // Non-fatal: if auto-naming fails, the user can enter names manually
                 System.out.println("Cannot auto-name market. Continuing.");
             }
         }
     }
 
     /**
-     * Runnable implementation. Triggers saving of the scenario component.
-     * Intended to be called in a separate thread; UI updates must be wrapped in Platform.runLater.
+     * Runnable entry point used to invoke a save operation off the FX thread.
+     * This method delegates to saveScenarioComponent().
      */
     @Override
     public void run() {
@@ -289,8 +286,9 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     }
 
     /**
-     * Saves the scenario component using the current UI state and selected regions.
-     * Delegates to saveScenarioComponent(TreeView<String> tree).
+     * Save the scenario component using the tree attached to the country/state
+     * pane. This method is a convenient wrapper that delegates to the
+     * saveScenarioComponent(TreeView<String>) implementation.
      */
     @Override
     public void saveScenarioComponent() {
@@ -298,15 +296,19 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     }
 
     /**
-     * Saves the scenario component for the specified tree of regions. Performs QA
-     * checks, generates unique IDs, and builds the output file content including
-     * metadata and adjustment values for each selected fuel and region.
+     * Build and validate the scenario component content for the supplied region
+     * tree. Performs QA checks, constructs unique identifiers (optional), and
+     * aggregates adjustment rows for each selected fuel/technology and region.
+     * The resulting content is written to the fileContent field.
      *
-     * @param tree The TreeView of regions
+     * NOTE: This method constructs the CSV content but does not write it to
+     * disk; that responsibility is handled elsewhere.
+     *
+     * @param tree TreeView of selected regions
      */
     private void saveScenarioComponent(TreeView<String> tree) {
         if (!qaInputs()) {
-            // If QA fails, stop processing and return from method
+            // Validation failed: abort save
             return;
         } else {
             String[][] tech_list = vars.getTechInfo();
@@ -317,10 +319,10 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
             filenameSuggestion = "";
 
             String ID = null;
-            if (checkBoxUseUniqueNames.isSelected()) { 
-            	ID = utils.getUniqueString();
+            if (checkBoxUseUniqueNames.isSelected()) {
+                ID = utils.getUniqueString();
             } else {
-            	ID="";
+                ID="";
             }
 
             filenameSuggestion = textFieldPolicyName.getText().replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
@@ -333,7 +335,7 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
 
             List<String> selectedFuels = checkComboBoxFuel.getCheckModel().getCheckedItems();
 
-            // For each selected fuel, find matching technologies and build adjustment rows
+            // For each selected fuel, find corresponding tech entries and generate rows
             for (String fuel : selectedFuels) {
                 for (int t = 0; t < tech_list.length; t++) {
                     String cat = tech_list[t][7].trim();
@@ -376,17 +378,18 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     }
 
     /**
-     * Generates the metadata content string for the scenario component, including
-     * selected fuels, units, policy/market names, and table data.
+     * Create the metadata block that is prepended to the generated component
+     * content. Metadata includes selected fuels, units, names, regions and the
+     * table rows used to construct the component.
      *
-     * @param tree   The TreeView of regions
-     * @param market The market name
-     * @param policy The policy name
-     * @return Metadata content string
+     * @param tree   the region tree used for region selection
+     * @param market market name to include (if null, the current UI value is used)
+     * @param policy policy name to include (if null, the current UI value is used)
+     * @return formatted metadata string (ends with EOL)
      */
     public String getMetaDataContent(TreeView<String> tree, String market, String policy) {
-    	StringBuilder rtnStr = new StringBuilder();
-    	rtnStr.append("########## Scenario Component Metadata ##########").append(vars.getEol());
+        StringBuilder rtnStr = new StringBuilder();
+        rtnStr.append("########## Scenario Component Metadata ##########").append(vars.getEol());
         rtnStr.append("#Scenario component type: ").append(this.getText()).append(vars.getEol());
         String fuel = fuelList != null ? utils.getStringFromList(checkComboBoxFuel.getCheckModel().getCheckedItems(), ";") : "";
         rtnStr.append("#Fuel: ").append(fuel).append(vars.getEol());
@@ -408,10 +411,11 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     }
 
     /**
-     * Loads content from a list of strings (typically from a file) and populates
-     * the UI fields accordingly. Parses metadata and table data, and updates UI controls.
+     * Load a saved scenario component represented as a list of lines and update
+     * the UI controls to reflect the loaded values. Only metadata lines (those
+     * starting with '#') that contain a ':' separator are parsed here.
      *
-     * @param content The list of content lines to load
+     * @param content lines read from a saved component file
      */
     @Override
     public void loadContent(ArrayList<String> content) {
@@ -421,7 +425,7 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
             if (line.startsWith("#") && (pos > -1)) {
                 String param = line.substring(1, pos).trim().toLowerCase();
                 String value = line.substring(pos + 1).trim();
-                // Populate UI fields based on metadata
+                // Map recognized metadata keys back into the UI
                 if (param.equals("fuel") && checkComboBoxFuel != null) {
                     String[] set = utils.splitString(value, ";");
                     for (int j = 0; j < set.length; j++) {
@@ -454,10 +458,11 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     }
 
     /**
-     * Helper method to parse table data from a string and add to the component details.
-     * Expects a comma-separated string with year and value.
+     * Parse a single table-data string of the form "year,value" and add it
+     * to the component details data structure. This method tolerates extra
+     * columns but uses only the first two values as year and value.
      *
-     * @param value The string containing year and value, comma-separated
+     * @param value comma-separated data string
      */
     private void parseAndAddTableData(String value) {
         String[] s = utils.splitString(value, ",");
@@ -467,8 +472,11 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     }
 
     /**
-     * Validates table data years against allowable policy years.
-     * Returns true if at least one year matches allowable years, false otherwise.
+     * Check that the years present in the data table intersect with the
+     * allowable policy years. Returns true if at least one data year is
+     * allowable; false otherwise.
+     *
+     * @return true when at least one table year is valid for policies
      */
     private boolean validateTableDataYears() {
         List<Integer> listOfAllowableYears = vars.getAllowablePolicyYears();
@@ -486,11 +494,11 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     }
 
     /**
-     * Performs QA checks on the current UI state to ensure all required inputs are valid.
-     * Displays warnings or error messages as needed. Checks for region selection,
-     * table data, valid years, fuel selection, and policy/market names.
+     * Perform QA on current UI inputs. Returns true if all required fields are
+     * present and valid. On failure, display a user-facing message summarizing
+     * the problems.
      *
-     * @return true if all inputs are valid, false otherwise
+     * @return true when QA passes
      */
     protected boolean qaInputs() {
         TreeView<String> tree = paneForCountryStateTree != null ? paneForCountryStateTree.getTree() : null;
@@ -544,12 +552,13 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     }
 
     /**
-     * Helper method to set min, max, and preferred widths for multiple Controls.
+     * Convenience method to set widths on an array of controls. Useful for
+     * applying uniform sizing in layout code.
      *
-     * @param controls Array of controls to set widths for
-     * @param min      Minimum width
-     * @param max      Maximum width
-     * @param pref     Preferred width
+     * @param controls array of controls to resize
+     * @param min      minimum width
+     * @param max      maximum width
+     * @param pref     preferred width
      */
     private void setWidths(Control[] controls, double min, double max, double pref) {
         for (Control c : controls) {
@@ -560,50 +569,50 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     }
 
     /**
-     * Helper method to add items to a ComboBox<String>.
+     * Add the provided items to the given ComboBox.
      *
-     * @param comboBox the ComboBox to add items to
-     * @param items    the array of items to add
+     * @param comboBox the ComboBox to populate
+     * @param items    items to add
      */
     private void addItemsToComboBox(ComboBox<String> comboBox, String[] items) {
         comboBox.getItems().addAll(items);
     }
 
     /**
-     * Helper method to add items to a CheckComboBox<String>.
+     * Add the provided items to the given CheckComboBox.
      *
-     * @param checkComboBox the CheckComboBox to add items to
-     * @param items         the array of items to add
+     * @param checkComboBox the CheckComboBox to populate
+     * @param items         items to add
      */
     private void addItemsToCheckComboBox(CheckComboBox<String> checkComboBox, String[] items) {
         checkComboBox.getItems().addAll(items);
     }
 
     /**
-     * Registers an event handler for a ComboBox's ActionEvent.
+     * Register an ActionEvent handler with the provided ComboBox.
      *
-     * @param comboBox the ComboBox to register the event for
-     * @param handler  the event handler
+     * @param comboBox the ComboBox to register the handler on
+     * @param handler  handler invoked when the selection changes
      */
     private void registerComboBoxEvent(ComboBox<String> comboBox, javafx.event.EventHandler<ActionEvent> handler) {
         comboBox.setOnAction(handler);
     }
 
     /**
-     * Registers an event handler for a CheckBox's ActionEvent.
+     * Register an ActionEvent handler with the provided CheckBox.
      *
-     * @param checkBox the CheckBox to register the event for
-     * @param handler  the event handler
+     * @param checkBox the CheckBox to register the handler on
+     * @param handler  handler invoked when the checkbox state changes
      */
     private void registerCheckBoxEvent(CheckBox checkBox, javafx.event.EventHandler<ActionEvent> handler) {
         checkBox.setOnAction(handler);
     }
 
     /**
-     * Registers an event handler for a Button's ActionEvent.
+     * Register an ActionEvent handler with the provided Button.
      *
-     * @param button  the Button to register the event for
-     * @param handler the event handler
+     * @param button  the Button to register the handler on
+     * @param handler handler invoked when the button is pressed
      */
     private void registerButtonEvent(Button button, javafx.event.EventHandler<ActionEvent> handler) {
         button.setOnAction(handler);

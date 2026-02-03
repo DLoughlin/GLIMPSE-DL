@@ -106,28 +106,48 @@ import javafx.stage.Stage;
  * <h2>Revision History</h2>
  * <ul>
  *   <li>2025-09-16: Updated Javadoc and comments for clarity and completeness.</li>
+ *   <li>2026-02-03: Minor updates to Javadoc and removed unused comments.</li>
  * </ul>
  */
 public class TabFixedDemand extends PolicyTab implements Runnable {
     // === Constants for UI Strings and Options ===
-    // UI label strings for sector, units, values, and specification
+    
+    /** Label text for sector selection. */
     private static final String LABEL_SECTOR = "Sector: ";
+    /** Label text for units display. */
     private static final String LABEL_UNITS = "Units: ";
+    /** Label text for final value. */
     private static final String LABEL_FINAL = "Final: ";
+    /** Label text for values section. */
     private static final String LABEL_VALUES = "Values: ";
+    /** Header text for specification section. */
     private static final String LABEL_SPECIFICATION = "Specification:";
+    /** Label text for populate button/section. */
     private static final String LABEL_POPULATE = "Populate:";
+
+    /** Standard label width for alignment. */
     private static final double LABEL_WIDTH = 125;
+    
     // Modification type strings for demand specification
+    /** Modification type: Set initial and final points. */
     private static final String MOD_TYPE_INITIAL_FINAL = "Initial and Final";
+    /** Modification type: Initial value with percentage growth per year. */
     private static final String MOD_TYPE_GROWTH_YR = "Initial w/% Growth/yr";
+    /** Modification type: Initial value with percentage growth per period. */
     private static final String MOD_TYPE_GROWTH_PD = "Initial w/% Growth/pd";
+    /** Modification type: Initial value with constant delta per year. */
     private static final String MOD_TYPE_DELTA_YR = "Initial w/Delta/yr";
+    /** Modification type: Initial value with constant delta per period. */
     private static final String MOD_TYPE_DELTA_PD = "Initial w/Delta/pd";
+    
+    /** Array of all available modification types. */
     private static final String[] MODIFICATION_TYPES = {
             MOD_TYPE_INITIAL_FINAL, MOD_TYPE_GROWTH_YR, MOD_TYPE_GROWTH_PD, MOD_TYPE_DELTA_YR, MOD_TYPE_DELTA_PD
     };
+    
+    /** Constant for 'Other' sector selection. */
     private static final String SECTOR_OTHER = "Other";
+    /** Constant for default select prompt. */
     private static final String SECTOR_SELECT_ONE = "Select One";
 
     // === Utility singletons ===
@@ -146,7 +166,10 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
     private final Label labelValue = createLabel(LABEL_VALUES, LABEL_WIDTH);
     
     // === Data ===
-    // Sector information array from GLIMPSEVariables
+    /**
+     * Sector information array retrieved from GLIMPSEVariables.
+     * Each row contains details about a sector (name, units, etc.).
+     */
     private final String[][] sectorInfo;
 
     /**
@@ -173,14 +196,14 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
         setComponentWidths();
         setupUILayout();
         setupActions();
-        // Use the shared layout from PolicyTab.setupUILayout() so this tab inherits
-        // centralized padding and scroll pane styles. Do not replace the content here.
+        
+        // Use the shared layout from PolicyTab.setupUILayout().
+        // This ensures the tab inherits centralized padding and scroll pane styles.
     }
 
     /**
-     * Initializes and creates all UI controls for the tab.
-     * Place all control instantiations here if not already at field declaration.
-     * This method is a placeholder for future expansion if more controls are created dynamically.
+     * Initializes the UI structure for the tab.
+     * Sets up event handlers and arranges the left, center, and right columns.
      */
     private void setupUIControls() {
     	super.setupEventHandlers();
@@ -190,7 +213,8 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
     }
 
     /**
-     * Sets up the left column of the UI, including sector selection and input fields.
+     * Configures the content of the left column (Sector selection, inputs).
+     * Clears existing children and rebuilds the grid pane with labels and input fields.
      */
     private void setupLeftColumn() {
         gridPaneLeft.getChildren().clear();
@@ -201,7 +225,7 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
                 comboBoxModificationType, textFieldStartYear, textFieldEndYear, textFieldInitialAmount, textFieldGrowth);
         gridPaneLeft.setAlignment(Pos.TOP_LEFT);
         gridPaneLeft.setVgap(3.);
-        //gridPaneLeft.setStyle(styles.getStyle2());
+        // Note: Styling is handled via global styles or inherited.
         scrollPaneLeft.setContent(gridPaneLeft);
     }
 
@@ -232,16 +256,19 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
         comboBoxSector.getSelectionModel().selectFirst();
         comboBoxModificationType.getItems().addAll(MODIFICATION_TYPES);
         comboBoxModificationType.getSelectionModel().selectFirst();
-        // Sector selection event: update units or show custom sector input
+        
+        // Sector selection event: update displayed units when a new sector is chosen.
         registerComboBoxEvent(comboBoxSector, e -> {
             String selectedItem = comboBoxSector.getSelectionModel().getSelectedItem();
             if (selectedItem == null) return;
             if (SECTOR_OTHER.equals(selectedItem)) {
-                // set other sector box to visible and enable (not implemented)
+                // Future feature: set other sector box to visible and enable.
             } else {
                 updateSectorOutputAndUnits();
             }
         });
+        
+        // Initialize state by firing initial event
         comboBoxSector.fireEvent(new ActionEvent());
     }
 
@@ -317,9 +344,9 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
     }
 
     /**
-     * Saves the scenario component by generating metadata and CSV content.
-     * Uses selected regions, sector, and demand values.
-     * Calls overloaded saveScenarioComponent(TreeView) with the region tree.
+     * Saves the scenario component to a file.
+     * Uses the currently selected regions from the tree view.
+     * This is an override of the base class or interface method.
      */
     @Override
     public void saveScenarioComponent() {
@@ -327,10 +354,9 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
     }
 
 	/**
-	 * Generates a suggested filename for the scenario component based on sector and regions.
-	 * Format: [Sector]_fxDMD_[Regions].csv, with special handling for long region lists.
-	 *
-	 * @return Suggested filename string
+	 * Constructs a suggested filename based on the current sector and selected regions.
+	 * 
+	 * @return A filename string like "fxDMD_SectorName_RegionList.csv"
 	 */
     public String getFilenameSuggestion() {
     	String name="";
@@ -344,6 +370,7 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
         if (selectedLeaves.length > 0) {
             selectedLeaves = utils.removeUSADuplicate(selectedLeaves);
             String stateStr = utils.returnAppendedString(selectedLeaves).replace(",", "");
+            // If the region string is too long, truncate/abbreviate it
             state = stateStr.length() < 9 ? stateStr : "Reg";
         }
         name = ("fxDMD" + "_" + sectorName + "_" + state).replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
@@ -352,27 +379,30 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
 	}
     
     /**
-     * Saves the scenario component using the provided region tree.
-     * Validates inputs, generates metadata and CSV, and sets fileContent/filenameSuggestion.
+     * Helper method to save the scenario component.
+     * Validates input, constructs the CSV content, and prepares the file for saving.
      *
-     * @param tree TreeView of selected regions
+     * @param tree The TreeView containing the selected regions.
      */
     private void saveScenarioComponent(TreeView<String> tree) {
         if (qaInputs()) {
             StringBuilder fileContentBuilder = new StringBuilder();
-            // Append metadata header
+            
+            // 1. Append metadata header
             fileContentBuilder.append(getMetaDataContent(tree, "", ""));
+            
+            // 2. Define input table structure
             fileContentBuilder.append("INPUT_TABLE").append(vars.getEol())
                 .append("Variable ID").append(vars.getEol())
                 .append("GLIMPSEFixedDemand").append(vars.getEol()).append(vars.getEol());
 
-            // Get selected regions (leaves only, no duplicates)
+            // 3. Prepare data for export
             String[] listOfSelectedLeaves = utils.removeUSADuplicate(utils.getAllSelectedRegions(tree));
             String sectorName = comboBoxSector.getSelectionModel().getSelectedItem();
             if (sectorName != null) sectorName = sectorName.trim();
             filenameSuggestion = getFilenameSuggestion();
 
-            // Get year/value data from table
+            // Extract year and value pairs from the data table
             List<String> dataArrayList = paneForComponentDetails.getDataYrValsArrayList();
             List<String> yearList = new ArrayList<>();
             List<String> valueList = new ArrayList<>();
@@ -385,7 +415,7 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
                 }
             }
 
-            // Write CSV header and data rows
+            // 4. Write CSV header and data rows
             fileContentBuilder.append("region,sector,sector,year,value").append(vars.getEol());
             for (String region : listOfSelectedLeaves) {
                 for (int i = 0; i < yearList.size(); i++) {
@@ -403,12 +433,13 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
     }
 
     /**
-     * Returns the metadata content for the scenario component file, including sector, regions, and table data.
+     * Generates metadata text for the file header.
+     * Includes component type, sector, regions, and raw table data.
      *
-     * @param tree TreeView of selected regions
-     * @param market Market name (not used)
-     * @param policy Policy name (not used)
-     * @return Metadata string for file header
+     * @param tree The TreeView of selected regions
+     * @param market Unused parameter (kept for interface consistency)
+     * @param policy Unused parameter (kept for interface consistency)
+     * @return A formatted string containing the metadata.
      */
     public String getMetaDataContent(TreeView<String> tree, String market, String policy) {
         StringBuilder rtnStr = new StringBuilder();
@@ -428,18 +459,20 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
     }
 
     /**
-     * Loads content into the tab from a list of strings (e.g., when editing a component).
-     * Populates sector, regions, and table data from file content.
+     * Loads a scenario component from a list of strings (file content).
+     * Parses metadata to populate the UI fields (sector, regions, table data).
      *
-     * @param content List of file lines to load
+     * @param content ArrayList of strings representing the file lines.
      */
     @Override
     public void loadContent(ArrayList<String> content) {
         for (String line : content) {
             int pos = line.indexOf(":");
+            // Check for metadata lines starting with '#'
             if (line.startsWith("#") && (pos > -1)) {
                 String param = line.substring(1, pos).trim().toLowerCase();
                 String value = line.substring(pos + 1).trim();
+                
                 if (param.equals("sector")) {
                     comboBoxSector.setValue(value);
                     comboBoxSector.fireEvent(new ActionEvent());
@@ -450,7 +483,9 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
                 }
                 if (param.equals("table data")) {
                     String[] s = utils.splitString(value, ",");
-                    paneForComponentDetails.data.add(new DataPoint(s[0], s[1]));
+                    if (s.length >= 2) {
+                         paneForComponentDetails.data.add(new DataPoint(s[0], s[1]));
+                    }
                 }
             }
         }
@@ -493,14 +528,18 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
         int errorCount = 0;
         StringBuilder message = new StringBuilder();
         try {
+            // Check if at least one region is selected
 			if (utils.getAllSelectedRegions(tree).length < 1) {
 				message.append("Must select at least one region from tree").append(vars.getEol());
 				errorCount++;
 			}
+            
+            // Check if table has data
 			if (paneForComponentDetails == null || paneForComponentDetails.table.getItems().size() == 0) {
 				message.append("Data table must have at least one entry").append(vars.getEol());
 				errorCount++;
 			} else {
+                // Validate years in table against allowable policy years
 				boolean match = validateTableDataYears();
 				if (!match) {
 					message.append("Years specified in table must match allowable policy years (")
@@ -508,6 +547,8 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
 					errorCount++;
 				}
 			}
+            
+            // Check if sector is selected
             String selected = comboBoxSector.getSelectionModel().getSelectedItem();
             if (selected == null || selected.equals(SECTOR_SELECT_ONE)) {
                 message.append("Sector comboBox must have a selection").append(vars.getEol());
@@ -517,6 +558,7 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
             errorCount++;
             message.append("Error in QA of entries").append(vars.getEol());
         }
+        
         if (errorCount > 0) {
             if (errorCount == 1) {
                 utils.warningMessage(message.toString());
@@ -537,11 +579,12 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
     private void registerComboBoxEvent(ComboBox<String> comboBox, javafx.event.EventHandler<ActionEvent> handler) {
         comboBox.setOnAction(handler);
     }
+
     /**
      * Registers an event handler for a Button's ActionEvent.
      *
-     * @param button the Button to register the event for
-     * @param handler the event handler
+     * @param button The Button to register the event for.
+     * @param handler The event handler to execute on action.
      */
     private void registerButtonEvent(Button button, javafx.event.EventHandler<ActionEvent> handler) {
         button.setOnAction(handler);

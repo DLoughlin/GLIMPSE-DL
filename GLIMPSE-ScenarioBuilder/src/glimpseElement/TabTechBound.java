@@ -59,73 +59,20 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 /**
- * TabTechBound provides the user interface and logic for creating and editing
- * technology bound policies in the GLIMPSE Scenario Builder.
+ * TabTechBound provides the UI and behavior for creating and editing
+ * technology-bound policies in the GLIMPSE Scenario Builder.
  *
- * <p>
- * <b>Main responsibilities:</b>
+ * <p>This class builds the controls for selecting sector/category, filtering
+ * and selecting technologies, choosing constraint type (upper, lower, fixed),
+ * and specifying how the policy is applied across regions. It also validates
+ * inputs and writes the scenario component to temporary files in the format
+ * expected by the GLIMPSE model interface.</p>
+ *
+ * <p>Notes:
  * <ul>
- *   <li>Allow users to select sector/category, filter and select technologies, and specify constraint type</li>
- *   <li>Configure policy and market names (auto/manual) and treatment (per region or across regions)</li>
- *   <li>Specify and populate constraint values over time</li>
- *   <li>Validate, import, and export scenario component data as CSV</li>
- * </ul>
- * </p>
- *
- * <p>
- * <b>Features:</b>
- * <ul>
- *   <li>Support for filtering and selecting multiple technologies</li>
- *   <li>Automatic and manual naming for policy and market</li>
- *   <li>Dynamic enabling/disabling of UI controls based on selections</li>
- *   <li>Validation of user input and units</li>
- *   <li>Progress tracking for file generation</li>
- * </ul>
- * </p>
- *
- * <p>
- * <b>Usage:</b>
- * <pre>
- * TabTechBound tab = new TabTechBound("Tech Bound", stage);
- * // Add to TabPane, interact via UI
- * </pre>
- * </p>
- *
- * <p>
- * <b>Thread Safety:</b> This class is not thread-safe and should be used only
- * on the JavaFX Application Thread.
- * </p>
- *
- * <p>
- * <b>Class Details:</b>
- * <ul>
- *   <li>Extends {@link PolicyTab} and implements {@link Runnable}.</li>
- *   <li>Handles UI setup, event listeners, and scenario file generation for technology bound policies.</li>
- *   <li>Supports upper, lower, and fixed bounds, and flexible treatment across/within regions.</li>
- *   <li>Provides methods for loading, validating, and saving scenario component data.</li>
- * </ul>
- * </p>
- *
- * <p>
- * <b>Key Methods:</b>
- * <ul>
- *   <li>{@link #TabTechBound(String, Stage)} - Constructor, sets up UI and listeners.</li>
- *   <li>{@link #setupUIControls()} - Initializes UI controls and listeners.</li>
- *   <li>{@link #saveScenarioComponent()} - Main entry for saving scenario data.</li>
- *   <li>{@link #saveScenarioComponent(TreeView)} - Handles file generation for tech bound policies.</li>
- *   <li>{@link #getMetaDataContent(TreeView, String, String)} - Generates metadata for scenario files.</li>
- *   <li>{@link #loadContent(ArrayList)} - Loads scenario data from file.</li>
- *   <li>{@link #qaInputs()} - Validates user input before saving.</li>
- * </ul>
- * </p>
- *
- * <p>
- * <b>See Also:</b>
- * <ul>
- *   <li>{@link PolicyTab}</li>
- *   <li>{@link DataPoint}</li>
- *   <li>{@link PaneForComponentDetails}</li>
- *   <li>{@link Utils}</li>
+ *   <li>Instances are intended to be used from the JavaFX Application Thread.</li>
+ *   <li>The class extends {@link PolicyTab} and implements {@link Runnable} so
+ *       it can be executed on the JavaFX thread to trigger saves.</li>
  * </ul>
  * </p>
  */
@@ -171,12 +118,10 @@ public class TabTechBound extends PolicyTab implements Runnable {
     private final javafx.scene.layout.HBox hBoxAutoUnique = new javafx.scene.layout.HBox(8);
 
 	/**
-	 * Constructs a new TabTechBound instance and initializes the UI components for
-	 * the technology bound tab. Sets up event handlers and populates controls with
-	 * available data.
+	 * Create a new TabTechBound instance and initialize controls and listeners.
 	 *
-	 * @param title  The title of the tab
-	 * @param stageX The JavaFX stage (not used directly)
+	 * @param title The tab title
+	 * @param stageX The JavaFX stage (provided by caller; used by parent classes)
 	 */
 	public TabTechBound(String title, Stage stageX) {
 		this.setText(title);
@@ -194,8 +139,8 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Sets up UI controls with options and default values. Initializes checkboxes,
-	 * disables manual name fields if auto-naming is enabled.
+	 * Initialize basic UI control state: default checkbox selections and disabling
+	 * manual name fields while auto-naming is enabled.
 	 */
 	private void setupUIControls() {
 		checkBoxUseAutoNames.setSelected(true);
@@ -205,8 +150,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Sets up the main UI components for the left, center, and right columns. Calls
-	 * setup methods for each column.
+	 * Build the primary UI columns for this tab.
 	 */
 	public void setupUIComponents() {
 		setupLeftColumn();
@@ -215,8 +159,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Sets preferred, min, and max widths for UI components for consistent layout.
-	 * Iterates over ComboBoxes and TextFields to set their widths.
+	 * Ensure consistent sizing for comboboxes and text fields used in the layout.
 	 */
 	private void setComponentWidths() {
 		ComboBox<?>[] comboBoxes = { comboBoxCategory, comboBoxModificationType, comboBoxConstraint, comboBoxAppliedTo,
@@ -242,12 +185,11 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Sets up the left column UI controls and layout. Adds labels and controls to
-	 * the gridPaneLeft.
+	 * Configure the left column layout and add labeled controls.
 	 */
 	private void setupLeftColumn() {
 
-		// Filter TextField initial text
+		// Set prompt text to help users filter the tech list
 		textFieldFilter.setPromptText("Filter techs");
 
 		gridPaneLeft.getChildren().clear();
@@ -266,15 +208,13 @@ public class TabTechBound extends PolicyTab implements Runnable {
 				textFieldGrowth);
 		gridPaneLeft.setAlignment(Pos.TOP_LEFT);
 		gridPaneLeft.setVgap(3.);
-		// Use explicit padding rather than CSS -fx-padding to ensure consistent
-		// internal spacing between tabs (use shared default padding from styles)
-		// Intentionally omit explicit padding/background here; PolicyTab provides defaults
+		// Scroll pane holds the left grid
 		scrollPaneLeft.setContent(gridPaneLeft);
 	}
 
 	/**
-	 * Sets up the technology combo box with default values and disables it until a
-	 * filter or category is selected.
+	 * Initialize the technology check-combo with a default entry and disable it
+	 * until a category or filter is provided by the user.
 	 */
 	private void setupTechComboBox() {
 		checkComboBoxTech.getItems().add(SELECT_ONE_OR_MORE);
@@ -283,8 +223,8 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Sets up combo box options for treatment, constraint, and modification type.
-	 * Populates combo boxes with available options and selects defaults.
+	 * Populate combo boxes with their available options and select sensible
+	 * defaults.
 	 */
 	private void setupComboBoxOptions() {
 		comboBoxTreatment.getItems().addAll(TREATMENT_OPTIONS);
@@ -298,38 +238,26 @@ public class TabTechBound extends PolicyTab implements Runnable {
 		comboBoxAppliedTo.getSelectionModel().selectFirst();
 	}
 
-	/**
-	 * Called when the category ComboBox selection changes. Updates policy/market names.
-	 */
 	private void onCategorySelected() {
 		setPolicyAndMarketNames();
 	}
 
-	/**
-	 * Called when the constraint ComboBox selection changes. Updates policy/market names.
-	 */
 	private void onConstraintSelected() {
 		setPolicyAndMarketNames();
 	}
 
-	/**
-	 * Called when the treatment ComboBox selection changes. Updates policy/market names.
-	 */
 	private void onTreatmentSelected() {
 		setPolicyAndMarketNames();
 	}
 
-	/**
-	 * Called when the appliedTo ComboBox selection changes. Updates policy/market names.
-	 */
 	private void onAppliedToSelected() {
 		setPolicyAndMarketNames();
 	}
 
 	/**
-	 * Sets up event handlers for UI components, including listeners for filter,
-	 * category, technology, and other controls.
-	 * Handles dynamic UI changes and triggers auto-naming and validation as needed.
+	 * Attach listeners to controls to react to user actions. Listeners update
+	 * available techs, auto-name marketplace/policy, and enable/disable fields
+	 * appropriately.
 	 */
 	protected void setupEventHandlers() {
 
@@ -337,12 +265,12 @@ public class TabTechBound extends PolicyTab implements Runnable {
 
 		setEventHandler(textFieldFilter, e -> {
 			updateCheckComboBoxTech();
-//			}
 		});
 
 		setEventHandler(checkComboBoxTech, e -> setPolicyAndMarketNames());
 
 		labelCheckComboBoxTech.setOnMouseClicked(e -> {
+			// Allow double-click to select/deselect all when control is enabled
 			if (!checkComboBoxTech.isDisabled()) {
 				boolean isFirstItemChecked = checkComboBoxTech.getCheckModel().isChecked(0);
 				if (e.getClickCount() == 2) {
@@ -359,6 +287,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 			if (selectedItem == null)
 				return;
 			if (selectedItem.equals(SELECT_ONE)) {
+				// Reset tech list and disable filtering controls
 				checkComboBoxTech.getCheckModel().clearChecks();
 				checkComboBoxTech.getItems().clear();
 				checkComboBoxTech.getItems().add(SELECT_ONE_OR_MORE);
@@ -368,6 +297,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 				textFieldFilter.setText("");
 				textFieldFilter.setDisable(true);
 			} else {
+				// Populate techs for the selected category
 				updateCheckComboBoxTech();
 				checkComboBoxTech.setDisable(false);
 				textFieldFilter.setDisable(false);
@@ -386,8 +316,8 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Populates the sector combo box based on the technology info and filter text.
-	 * Handles filtering and ensures no duplicate sectors are added.
+	 * Populate category combo box using tech information supplied by vars.
+	 * Ensures categories are unique and non-empty before adding them.
 	 */
 	private void setupComboBoxCategory() {
 		comboBoxCategory.getItems().clear();
@@ -432,9 +362,8 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Updates the technology check combo box based on the selected sector and
-	 * filter text. Only technologies matching the filter and sector are shown.
-	 * Called when the filter or category changes.
+	 * Update the technology list shown in the check-combobox based on the
+	 * selected category and the filter text. Avoids duplicate entries.
 	 */
 	private void updateCheckComboBoxTech() {
 		String cat = comboBoxCategory.getValue();
@@ -481,10 +410,9 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Automatically sets the policy and market names based on the current
-	 * selections and auto-naming rules.
-	 * Uses selected constraint, category, treatment, and region to generate unique
-	 * names. Handles edge cases for multiple regions.
+	 * Auto-generate policy and market names when auto-naming is enabled. Uses
+	 * current selections (constraint, category, treatment, applied-to and
+	 * selected regions) to compose a readable, unique default name.
 	 */
 	protected void setPolicyAndMarketNames() {
 		if (checkBoxUseAutoNames.isSelected()) {
@@ -547,8 +475,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Runnable implementation: triggers saving the scenario component. Calls
-	 * saveScenarioComponent().
+	 * Runnable implementation: schedule a save on the JavaFX thread.
 	 */
 	@Override
 	public void run() {
@@ -556,9 +483,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Saves the scenario component using the current region tree.
-	 * Main entry point for saving the scenario component. Calls the overloaded
-	 * saveScenarioComponent(TreeView) method.
+	 * Public save entrypoint — use currently selected region tree from the UI.
 	 */
 	@Override
 	public void saveScenarioComponent() {
@@ -566,16 +491,17 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Saves the scenario component using the provided region tree. Writes metadata
-	 * and constraint tables to temporary files. Handles nested/non-nested techs and
-	 * transportation load factors.
+	 * Core logic to validate inputs and write the scenario component to a set
+	 * of temporary files. The method constructs the appropriate headers based
+	 * on the constraint type, handles nested vs non-nested technologies, and
+	 * applies transport load-factor conversions when needed.
 	 *
-	 * @param tree The region selection tree
+	 * @param tree The region selection tree from the UI
 	 */
 	private void saveScenarioComponent(TreeView<String> tree) {
 
 		if (!qaInputs()) {
-			// Do not attempt to forcibly destroy the thread; simply abort save operation
+			// Abort save if validation fails
 			return;
 		}
 
@@ -733,12 +659,12 @@ public class TabTechBound extends PolicyTab implements Runnable {
 
 									if (is_nested) {
 										nestedBuffer.append(state).append(",").append(sector).append(",")
-											.append(subsector).append(",").append(tech).append(",").append(y1)
-											.append(",").append(use_this_policy_name1).append(vars.getEol());
+										.append(subsector).append(",").append(tech).append(",").append(y1)
+										.append(",").append(use_this_policy_name1).append(vars.getEol());
 									} else {
 										nonNestedBuffer.append(state).append(",").append(sector).append(",")
-											.append(subsector).append(",").append(tech).append(",").append(y1)
-											.append(",").append(use_this_policy_name1).append(vars.getEol());
+										.append(subsector).append(",").append(tech).append(",").append(y1)
+										.append(",").append(use_this_policy_name1).append(vars.getEol());
 									}
 
 								}
@@ -748,30 +674,6 @@ public class TabTechBound extends PolicyTab implements Runnable {
 				}
 			}
 		}
-
-//						
-//						if (appliedTo.equals("all stock")) {
-//							use_this_market_name += "-"+yr;
-//						}
-//						if (sector.toLowerCase().startsWith("trn")) {
-//							String loadStr = utils.getTrnVehInfo("load", state, sector, subsector, tech, yr);
-//							loadFactorList.add(state + "," + sector + "," + subsector + "," + yr + "," + loadStr);
-//						}
-//
-//						int y = Integer.parseInt(yr);
-//						if (((y > calib_year) && (y >= start_year) && (y <= last_year))) { // only apply bound to legit
-//																							// years
-//
-//							if (is_nested) {
-//								nestedBuffer.append(state).append(",").append(sector).append(",").append(subsector)
-//										.append(",").append(tech).append(",").append(y).append(",")
-//										.append(use_this_policy_name).append(vars.getEol());
-//							} else {
-//								nonNestedBuffer.append(state).append(",").append(sector).append(",").append(subsector)
-//										.append(",").append(tech).append(",").append(y).append(",")
-//										.append(use_this_policy_name).append(vars.getEol());
-//							}
-//						}
 
 		if (loadFactorList.size() > 0)
 			loadFactorList = utils.getUniqueItemsFromStringArrayList(loadFactorList);
@@ -787,11 +689,11 @@ public class TabTechBound extends PolicyTab implements Runnable {
 
 		{
 			files.writeToBufferedFile(bw3,
-					"region,policy-name,market,type,constraint-yr,constraint-val,min-price-yr,min-price-val"
+						"region,policy-name,market,type,constraint-yr,constraint-val,min-price-yr,min-price-val"
 							+ vars.getEol());
 		} else {
 			files.writeToBufferedFile(bw3,
-					"region,policy-name,market,type,constraint-yr,constraint-val" + vars.getEol());
+						"region,policy-name,market,type,constraint-yr,constraint-val" + vars.getEol());
 		}
 
 		StringBuilder constraintBuffer = new StringBuilder();
@@ -837,16 +739,16 @@ public class TabTechBound extends PolicyTab implements Runnable {
 
 				if (bound_type.equals("fixed bound")) {
 					constraintBuffer.append(state).append(",").append(use_this_policy_name1).append(",")
-							.append(use_this_market_name).append(",tax,").append(year).append(",").append(val)
-							.append(",").append(year).append(",-100").append(vars.getEol());
+						.append(use_this_market_name).append(",tax,").append(year).append(",").append(val)
+						.append(",").append(year).append(",-100").append(vars.getEol());
 				} else if (bound_type.equals("upper bound")) {
 					constraintBuffer.append(state).append(",").append(use_this_policy_name1).append(",")
-							.append(use_this_market_name).append(",tax,").append(year).append(",").append(val)
-							.append(vars.getEol());
+						.append(use_this_market_name).append(",tax,").append(year).append(",").append(val)
+						.append(vars.getEol());
 				} else if (bound_type.equals("lower bound")) {
 					constraintBuffer.append(state).append(",").append(use_this_policy_name1).append(",")
-							.append(use_this_market_name).append(",subsidy,").append(year).append(",").append(val)
-							.append(vars.getEol());
+						.append(use_this_market_name).append(",subsidy,").append(year).append(",").append(val)
+						.append(vars.getEol());
 				}
 			}
 		}
@@ -880,29 +782,29 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Returns a string containing the metadata content for the scenario component.
-	 * Includes category, technologies, constraint, applied to, treatment, policy/market names, regions, and table data.
+	 * Build a metadata header string describing the selected inputs. This is
+	 * written to the temporary metadata file for the scenario component.
 	 *
-	 * @param tree   The region selection tree
-	 * @param market The market name
-	 * @param policy The policy name
-	 * @return Metadata content as a string
+	 * @param tree   Region selection tree
+	 * @param market Market name used in the generated files
+	 * @param policy Policy name used in the generated files
+	 * @return A formatted metadata string
 	 */
 	public String getMetaDataContent(TreeView<String> tree, String market, String policy) {
 		StringBuilder rtnStr = new StringBuilder();
 		rtnStr.append("########## Scenario Component Metadata ##########").append(vars.getEol());
 		rtnStr.append("#Scenario component type: ").append(this.getText()).append(vars.getEol());
 		rtnStr.append("#Category: ").append(this.comboBoxCategory.getSelectionModel().getSelectedItem())
-				.append(vars.getEol());
+			.append(vars.getEol());
 		ObservableList<String> techList = checkComboBoxTech.getCheckModel().getCheckedItems();
 		String techs = utils.getStringFromList(techList, ";");
 		rtnStr.append("#Technologies: ").append(techs).append(vars.getEol());
 		rtnStr.append("#Constraint: ").append(comboBoxConstraint.getSelectionModel().getSelectedItem())
-				.append(vars.getEol());
+			.append(vars.getEol());
 		rtnStr.append("#Applied to: ").append(comboBoxAppliedTo.getSelectionModel().getSelectedItem())
-				.append(vars.getEol());
+			.append(vars.getEol());
 		rtnStr.append("#Treatment: ").append(comboBoxTreatment.getSelectionModel().getSelectedItem())
-				.append(vars.getEol());
+			.append(vars.getEol());
 		if (policy == null)
 			market = textFieldPolicyName.getText();
 		rtnStr.append("#Policy name: ").append(policy).append(vars.getEol());
@@ -922,11 +824,10 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Loads content into the tab from the provided list of strings. Populates
-	 * category, technologies, constraint, treatment, policy/market names, regions,
-	 * and table data.
+	 * Load a previously saved component (metadata lines) into the UI controls.
+	 * Lines are expected to start with a '#' followed by a key:value pair.
 	 *
-	 * @param content List of content lines to load
+	 * @param content Lines read from a metadata file
 	 */
 	@Override
 	public void loadContent(ArrayList<String> content) {
@@ -943,7 +844,6 @@ public class TabTechBound extends PolicyTab implements Runnable {
 				if (param.equals("technologies")) {
 					checkComboBoxTech.getCheckModel().clearChecks();
 					String[] set = utils.splitString(value, ";");
-					// Enhanced for-loop for set
 					for (String item : set) {
 						if (item != null) {
 							checkComboBoxTech.getCheckModel().check(item.trim());
@@ -968,14 +868,6 @@ public class TabTechBound extends PolicyTab implements Runnable {
 					comboBoxTreatment.setValue(value);
 					comboBoxTreatment.fireEvent(new ActionEvent());
 				}
-//				if (param.equals("policy name")) {
-//					textFieldPolicyName.setText(value);
-//					textFieldPolicyName.fireEvent(new ActionEvent());
-//				}
-//				if (param.equals("market name")) {
-//					textFieldMarketName.setText(value);
-//					textFieldMarketName.fireEvent(new ActionEvent());
-//				}
 				if (param.equals("regions")) {
 					String[] regions = utils.splitString(value, ",");
 					this.paneForCountryStateTree.selectNodes(regions);
@@ -994,9 +886,10 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Helper method to validate table data years against allowable policy years.
+	 * Check whether the table contains at least one data point whose year is
+	 * among the allowable policy years.
 	 *
-	 * @return true if at least one year matches allowable years, false otherwise
+	 * @return true if a valid year is present; false otherwise
 	 */
 	private boolean validateTableDataYears() {
 		List<Integer> listOfAllowableYears = vars.getAllowablePolicyYears();
@@ -1014,11 +907,10 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Validates that all required inputs for saving the scenario component are
-	 * present and correct. Checks for at least one region, at least one table
-	 * entry, and required selections.
+	 * Validate that required inputs are present and sensible before attempting
+	 * to save the scenario component. Displays warnings when errors are found.
 	 *
-	 * @return true if all required inputs are valid, false otherwise
+	 * @return true if inputs pass QA; false otherwise
 	 */
 	protected boolean qaInputs() {
 
@@ -1040,7 +932,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 				boolean match = validateTableDataYears();
 				if (!match) {
 					message += "Years specified in table must match allowable policy years ("
-							+ vars.getAllowablePolicyYears() + ")" + vars.getEol();
+						+ vars.getAllowablePolicyYears() + ")" + vars.getEol();
 					error_count++;
 				}
 			}
@@ -1095,12 +987,12 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Utility method to set an event handler for a control (Button, ComboBox,
-	 * CheckBox, TextField).
+	 * Convenience method to assign an action handler to various control types.
+	 * Accepts Button, ComboBox, CheckBox, and TextField instances.
 	 *
-	 * @param control The control to set the event handler for
-	 * @param handler The event handler to assign
-	 * @param <T>     The type of the control
+	 * @param control The control to wire the handler to
+	 * @param handler The action handler to assign
+	 * @param <T> Control type
 	 */
 	private <T extends javafx.scene.Node> void setEventHandler(T control, EventHandler<ActionEvent> handler) {
 		if (control instanceof Button) {
@@ -1115,8 +1007,8 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Updates the units label based on the selected technologies. If available,
-	 * extracts units from the selected technology string.
+	 * Update the units label using the first selected technology's units field,
+	 * if present in the tech string parts.
 	 */
 	private void setUnitsLabel() {
 		ObservableList<String> selectedTechs = checkComboBoxTech.getCheckModel().getCheckedItems();

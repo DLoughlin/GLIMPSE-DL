@@ -63,37 +63,20 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 /**
- * TabTechParam provides the user interface and logic for creating and editing technology parameter policies
- * in the GLIMPSE Scenario Builder. This tab allows users to select sectors, filter technologies, specify parameters,
- * and configure input/output values for scenario components.
+ * TabTechParam is the JavaFX tab used in the GLIMPSE Scenario Builder to create
+ * and edit technology parameter policy components.
  *
  * <p>
- * <b>Overview:</b> TabTechParam is a JavaFX-based tab for the GLIMPSE Scenario Builder that enables users to define technology parameter policies for scenario components. It provides controls for sector and technology selection, parameter specification, region selection, and value entry. The class manages the UI layout, event handling, data validation, and serialization of scenario component metadata.
+ * The tab provides UI controls for selecting technology categories and specific
+ * technologies, choosing a parameter to modify (and a sub-parameter/emission
+ * when applicable), specifying input/output units, selecting regions, and
+ * entering year/value pairs for the policy. It handles validation (QA),
+ * serialization to CSV, and metadata creation for saving scenario components.
  * </p>
  *
  * <p>
- * <b>Key Features:</b>
- * <ul>
- *   <li>Sector and technology filtering and selection</li>
- *   <li>Parameter and sub-parameter (emission) selection</li>
- *   <li>Input/output unit display and validation</li>
- *   <li>Region selection via a tree view</li>
- *   <li>Data entry for policy years and values</li>
- *   <li>Metadata and CSV content generation for scenario saving</li>
- *   <li>Comprehensive QA checks for user input</li>
- * </ul>
- * </p>
- *
- * <p>
- * <b>Usage:</b> This class is instantiated as a tab in the scenario builder. It extends {@link PolicyTab} and implements {@link Runnable}.
- * </p>
- *
- * <p>
- * <b>Thread Safety:</b> This class is not thread-safe and should be used on the JavaFX Application Thread.
- * </p>
- *
- * <p>
- * <b>Dependencies:</b> Relies on GLIMPSE utility classes, ControlsFX CheckComboBox, and JavaFX controls.
+ * This class extends PolicyTab and implements Runnable; UI work must be
+ * performed on the JavaFX Application Thread.
  * </p>
  */
 public class TabTechParam extends PolicyTab implements Runnable {
@@ -103,11 +86,11 @@ public class TabTechParam extends PolicyTab implements Runnable {
     private static final String SELECT_ONE_OR_MORE = "Select One or More";
     private static final String ALL = "All";
     private static final String[] PARAM_OPTIONS = {
-    		SELECT_ONE , "Shareweight", "Subsector Shareweight", "Nested-Subsector Shareweight", "Levelized Non-Energy Cost",
+            SELECT_ONE , "Shareweight", "Subsector Shareweight", "Nested-Subsector Shareweight", "Levelized Non-Energy Cost",
             "Capacity Factor", "Fixed Output", "Lifetime", "Halflife"
     };
     private static final String[] EMISSION_OPTIONS = {
-    		SELECT_ONE, "NOx", "SO2", "PM10", "PM2.5", "CO", "NH3", "NMVOC", "BC", "OC"
+            SELECT_ONE, "NOx", "SO2", "PM10", "PM2.5", "CO", "NH3", "NMVOC", "BC", "OC"
     };
     private static final String WARNING_UNITS_MISMATCH = "Warning - Units do not match!";
     private static final String UNIT_UNITLESS = "unitless";
@@ -144,7 +127,9 @@ public class TabTechParam extends PolicyTab implements Runnable {
     // Layout containers for tab columns and panes
 
     // === UI Controls ===
-    // JavaFX controls for user input and display
+    // JavaFX controls for user input and display. These are initialized via
+    // helper methods in PolicyTab (inherited) and here to keep the UI fields
+    // strongly-typed and available across methods.
     private final Label labelCategory = createLabel(LABEL_CATEGORY, LABEL_WIDTH);
     private final ComboBox<String> comboBoxCategory = createComboBoxString(PREF_WIDTH);
     private final Label labelFilter = createLabel(LABEL_FILTER, LABEL_WIDTH);
@@ -164,35 +149,36 @@ public class TabTechParam extends PolicyTab implements Runnable {
     private final Label labelValue = createLabel(LABEL_VALUES);
 
     // === Data ===
-    // Technology info array loaded from GLIMPSEVariables
+    // Technology info array loaded from GLIMPSEVariables. Structure is assumed
+    // to be rows of String arrays describing sector, subsector, tech, inputs,
+    // outputs and categories (see GLIMPSEVariables.getTechInfo()).
     private String[][] techInfo = null;
 
     /**
-     * Constructs a new TabTechParam instance and initializes the UI components for the Technology Parameter tab.
-     * Sets up event handlers and populates controls with available data.
+     * Construct a TabTechParam instance and initialize the UI controls.
      *
-     * @param title The title of the tab
-     * @param stageX The JavaFX stage
+     * @param title the title shown on the tab
+     * @param stageX the JavaFX Stage (passed to super or used for dialogs)
      */
     public TabTechParam(String title, Stage stageX) {
         // sets tab title and style
         this.setText(title);
         this.setStyle(styles.getFontStyle());
 
-        setupUIControls(); // Initialize UI controls and their options
+        setupUIControls(); // Initialize UI controls and default options
         setComponentWidths();
         setupUIComponents();
-        setupUILayout();   // Arrange UI components in the tab
-        setupEventHandlers(); // Register event handlers for user interaction
-        techInfo = vars.getTechInfo(); // Load technology info data
-        setupComboBoxCategory(); // Populate Category combo box
-        
+        setupUILayout();   // arrange the left/center/right panes
+        setupEventHandlers(); // register event handlers
+        techInfo = vars.getTechInfo(); // load technology metadata
+        setupComboBoxCategory(); // populate Category combo box
+
         //checkComboBoxTech.setDisable(true);
     }
 
-	/**
-     * Sets up UI controls with options and default values.
-     * Initializes combo boxes, check combo boxes, and disables/enables controls as needed.
+    /**
+     * Initialize control lists, default selections and visibility states.
+     * Keeps the UI in a known default state before any data is loaded.
      */
     private void setupUIControls() {
         checkComboBoxTech.getItems().clear();
@@ -201,12 +187,12 @@ public class TabTechParam extends PolicyTab implements Runnable {
         checkComboBoxTech.setDisable(true);
         textFieldFilter.setDisable(true);
 
-        //comboBoxCategory.getItems().clear();
-        //comboBoxConvertFrom.getItems().addAll(CONVERT_FROM_OPTIONS);
+        // comboBoxConvertFrom defaults
         comboBoxConvertFrom.getSelectionModel().selectFirst();
         comboBoxConvertFrom.setVisible(false);
         labelConvertFrom.setVisible(false);
 
+        // Parameter 2 is hidden unless required by the chosen parameter
         labelComboBoxParam2.setVisible(false);
         comboBoxParam2.setVisible(false);
 
@@ -224,11 +210,10 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
 
     /**
-     * Sets preferred, min, and max widths for UI components.
-     * Ensures consistent sizing for all controls in the tab.
+     * Set consistent min/max/preferred widths for UI components in this tab.
      */
     private void setComponentWidths() {
-        // Set widths for all relevant UI components
+        // Set widths for specific labels
         Label[] labels = { labelTextFieldInput, labelTextFieldInput2, labelTextFieldOutput, labelTextFieldOutput2 };
         for (Label label : labels) {
             if (label != null) {
@@ -245,6 +230,7 @@ public class TabTechParam extends PolicyTab implements Runnable {
                 comboBox.setPrefWidth(PREF_WIDTH);
             }
         }
+        // Set widths for other controls used for data entry
         checkComboBoxTech.setMaxWidth(MAX_WIDTH);
         checkComboBoxTech.setMinWidth(MIN_WIDTH);
         checkComboBoxTech.setPrefWidth(PREF_WIDTH);
@@ -269,25 +255,25 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
     
     /**
-     * Sets up the left, center, and right columns of the UI.
-     * Calls helper methods to arrange controls in each column.
+     * Configure left/center/right UI columns.
      */
     public void setupUIComponents() {
         setupLeftColumn();
         setupCenterColumn();
-        setupRightColumn();   	
+        setupRightColumn();    
     }
 
     /**
-     * Sets up the left column UI components and layout.
-     * Populates the left grid pane with labels and controls for filtering, sector, technology, and parameter selection.
+     * Build the left column controls and add them to the left grid pane. This
+     * includes category, filter, technology list, parameter selectors, and
+     * populate controls.
      */
     private void setupLeftColumn() {
 
-		// Set up the filter text field to update the sector combo box
-		textFieldFilter.setPromptText("Filter techs");
-    	
-    	gridPaneLeft.getChildren().clear();
+        // Prompt text helps users know they can filter the list of techs
+        textFieldFilter.setPromptText("Filter techs");
+        
+        gridPaneLeft.getChildren().clear();
         gridPaneLeft.add(utils.createLabel(LABEL_SPECIFICATION), 0, 0, 2, 1);
         gridPaneLeft.addColumn(0, labelCategory, labelFilter, labelCheckComboBoxTech, labelComboBoxParam, labelComboBoxParam2,
                 labelTextFieldInput, labelTextFieldOutput, labelTextFieldUnits, new Separator(),
@@ -299,55 +285,46 @@ public class TabTechParam extends PolicyTab implements Runnable {
                 textFieldGrowth, comboBoxConvertFrom);
         gridPaneLeft.setAlignment(Pos.TOP_LEFT);
         gridPaneLeft.setVgap(3.);
-        // Use explicit padding rather than CSS -fx-padding for consistent internal spacing
-        //gridPaneLeft.setPadding(styles.getDefaultPadding());
-        // Apply shared background color (separate from padding)
-        //gridPaneLeft.setStyle(styles.getBackgroundStyle());
-        // Apply padding and background to scroll panes so content spacing matches other tabs
-        //scrollPaneLeft.setPadding(styles.getDefaultPadding());
-        //scrollPaneLeft.setStyle(styles.getBackgroundStyle());
-        //scrollPaneCenter.setPadding(styles.getDefaultPadding());
-        //scrollPaneCenter.setStyle(styles.getBackgroundStyle());
-        //scrollPaneRight.setPadding(styles.getDefaultPadding());
-        //scrollPaneRight.setStyle(styles.getBackgroundStyle());
+        // Use scroll pane to contain the grid content for consistent layout
          scrollPaneLeft.setContent(gridPaneLeft);
     }
 
     /**
-     * Registers an event handler for a Button's ActionEvent.
-     * @param button The button to register the handler for
-     * @param handler The event handler
+     * Small helper to attach an action handler to a button. Keeps code
+     * consistent and centralizes registration logic.
+     *
+     * @param button target button
+     * @param handler handler to execute on action
      */
     protected void registerButtonEvent(Button button, javafx.event.EventHandler<ActionEvent> handler) {
         button.setOnAction(handler);
     }
     /**
-     * Registers an event handler for a ComboBox's ActionEvent.
-     * @param comboBox The combo box to register the handler for
-     * @param handler The event handler
+     * Register an action handler for a ComboBox.
      */
     private void registerComboBoxEvent(ComboBox<String> comboBox, javafx.event.EventHandler<ActionEvent> handler) {
         comboBox.setOnAction(handler);
     }
     /**
-     * Registers an event handler for a TextField's ActionEvent.
-     * @param textField The text field to register the handler for
-     * @param handler The event handler
+     * Register an action handler for a TextField.
      */
     private void registerTextFieldEvent(TextField textField, javafx.event.EventHandler<ActionEvent> handler) {
         textField.setOnAction(handler);
     }
 
     /**
-     * Sets up event handlers for UI controls.
-     * Handles user interactions such as filtering, sector/technology/parameter selection, and button actions.
+     * Configure event handlers for user interactions in the tab. This includes
+     * filter updates, category/parameter selection and reacting to changes in
+     * the checked technologies list.
      */
     protected void setupEventHandlers() {
 
-    	super.setupEventHandlers();
-    	
-    	registerTextFieldEvent(textFieldFilter, e -> { updateCheckComboTechs(); });
-    	
+        super.setupEventHandlers();
+        
+        // Update tech list when filter text is changed (press Enter)
+        registerTextFieldEvent(textFieldFilter, e -> { updateCheckComboTechs(); });
+        
+        // Double-clicking the tech label toggles selection when enabled
         labelCheckComboBoxTech.setOnMouseClicked(e -> {
             if (!checkComboBoxTech.isDisabled()) {
                 boolean isFirstItemChecked = checkComboBoxTech.getCheckModel().isChecked(0);
@@ -361,10 +338,12 @@ public class TabTechParam extends PolicyTab implements Runnable {
             }
 
         });
+        // Category selection controls enabling/disabling of tech selection and filter
         registerComboBoxEvent(comboBoxCategory, e -> {
             String selectedItem = comboBoxCategory.getSelectionModel().getSelectedItem();
             if (selectedItem == null) return;
             if (selectedItem.equals(SELECT_ONE)) {
+                // Reset tech selection UI when no category chosen
                 checkComboBoxTech.getCheckModel().clearChecks();
                 checkComboBoxTech.getItems().clear();
                 checkComboBoxTech.getItems().add(SELECT_ONE_OR_MORE);
@@ -374,12 +353,14 @@ public class TabTechParam extends PolicyTab implements Runnable {
                 textFieldFilter.setText("");
                 textFieldFilter.setDisable(true);
             } else {
+                // Populate and enable tech list when a category is selected
                 updateCheckComboTechs();
                 checkComboBoxTech.setDisable(false);
                 textFieldFilter.setDisable(false);
             }
             setUnitsLabel();
         });
+        // Parameter selection may reveal a secondary parameter (e.g., emissions)
         registerComboBoxEvent(comboBoxParam, e -> {
             comboBoxParam2.getSelectionModel().selectFirst();
             comboBoxParam2.setDisable(true);
@@ -404,10 +385,11 @@ public class TabTechParam extends PolicyTab implements Runnable {
                 }
                 setUnitsLabel();
             } catch (Exception ex) {
-                // ignore
+                // guard against unexpected nulls or index errors - do not propagate
             }
         });
 
+        // When the set of checked technologies changes, update displayed IO units
         checkComboBoxTech.getCheckModel().getCheckedItems().addListener((ListChangeListener<String>) c -> Platform.runLater(() -> {
             updateInputOutputUnits();
             setUnitsLabel();
@@ -415,9 +397,11 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
 
     /**
-     * Updates the input and output unit labels based on the selected technologies.
-     * Sets labelTextFieldInput2 and labelTextFieldOutput2 based on checked technologies.
-     * Handles cases where multiple technologies are selected and units may differ.
+     * Update the displayed input/output unit labels based on currently checked
+     * technologies in the CheckComboBox.
+     *
+     * If multiple selected technologies have differing units the label will be
+     * set to "various" for that direction (input or output).
      */
     private void updateInputOutputUnits() {
         ObservableList<String> checkedItems = checkComboBoxTech.getCheckModel().getCheckedItems();
@@ -457,22 +441,22 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
 
     /**
-     * Creates a new TextField with the specified preferred width.
+     * Create a new TextField with a specific preferred width.
      *
-     * @param prefWidth the preferred width for the TextField
-     * @return a new TextField instance with the given preferred width
+     * @param prefWidth preferred width in pixels
+     * @return configured TextField
      */
     private TextField createTextField(double prefWidth) {
-		TextField textField = new TextField();
-		textField.setPrefWidth(prefWidth);
-		return textField;
-	}
+        TextField textField = new TextField();
+        textField.setPrefWidth(prefWidth);
+        return textField;
+    }
 
 
     /**
-     * Populates the sector combo box based on the technology info and filter text.
-     * Handles filtering and ensures no duplicate sectors are added.
-     * <p>
+     * Populate the category combo box from the technology info array. The
+     * category is expected to be at index 7 for each tech row. Duplicate
+     * categories are removed.
      */
     private void setupComboBoxCategory() {
         comboBoxCategory.getItems().clear();
@@ -514,10 +498,9 @@ public class TabTechParam extends PolicyTab implements Runnable {
      
 
     /**
-     * Updates the technology check combo box based on the selected sector and filter text.
-     * Only technologies matching the filter and sector are shown.
-     * <p>
-     * Called when the filter or category changes.
+     * Refresh the technologies shown in the CheckComboBox according to the
+     * selected category and any filter text. Avoids duplicate entries and keeps
+     * the display stable.
      */
     private void updateCheckComboTechs() {
             String cat = comboBoxCategory.getValue();
@@ -559,10 +542,12 @@ public class TabTechParam extends PolicyTab implements Runnable {
     
 
     /**
-     * Generates the metadata content string for the scenario component, including selected category, technologies, parameter, regions, and table data.
+     * Build the metadata header and body for the scenario component file. The
+     * returned string includes category, technologies, parameter and all selected
+     * regions as well as the data table rows.
      *
-     * @param tree The TreeView of regions
-     * @return Metadata content string
+     * @param tree TreeView of regions (used to extract selected leaves)
+     * @return string containing metadata and EOL-terminated lines
      */
     public String getMetaDataContent(TreeView<String> tree) {
         StringBuilder rtnStr = new StringBuilder();
@@ -586,10 +571,10 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
 
     /**
-     * Loads content from a list of strings (typically from a file) and populates the UI fields accordingly.
-     * Parses each line for category, technologies, parameter, regions, and table data.
+     * Load saved scenario component content (metadata lines) into the UI.
+     * Recognizes category, technologies, parameter, regions and table data.
      *
-     * @param content The list of content lines to load
+     * @param content list of lines to parse
      */
     @Override
     public void loadContent(ArrayList<String> content) {
@@ -603,7 +588,7 @@ public class TabTechParam extends PolicyTab implements Runnable {
                     comboBoxCategory.fireEvent(new ActionEvent());
                 }
                 if (param.equals("technologies")) {
-                    //checkComboBoxTech.getCheckModel().clearChecks();
+                    // mark each technology in the checked list
                     String[] set = utils.splitString(value, ";");
                     for (String item : set) {
                         checkComboBoxTech.getCheckModel().check(item.trim());
@@ -630,11 +615,13 @@ public class TabTechParam extends PolicyTab implements Runnable {
 
 
     /**
-     * Adds input and output information to the text fields for a given technology row and prefix.
+     * For a given technology prefix, set the input/output labels using the
+     * matching row in the techInfo array. This method is used when constructing
+     * UI values from a single technology selection.
      *
-     * @param techInfo The technology info array
-     * @param row The row index
-     * @param prefix The prefix array to match
+     * @param techInfo two-dimensional array of tech metadata
+     * @param row unused parameter kept for API compatibility
+     * @param prefix array of prefix values to match (sector, subsector, tech)
      */
     public void addIOToTextFields(String[][] techInfo, int row, String[] prefix) {
         for (String[] tech : techInfo) {
@@ -656,12 +643,8 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
 
     /**
-     * Adds non-duplicate items to a combo box from the technology info array, matching a prefix.
-     *
-     * @param comboBox The combo box to add items to
-     * @param techInfo The technology info array
-     * @param row The row index to use for item
-     * @param prefix The prefix array to match
+     * Add unique values from techInfo at the given index to the provided
+     * ComboBox, for rows matching the provided prefix.
      */
     public void addNonDuplicatesToComboBox(ComboBox<String> comboBox, String[][] techInfo, int row, String[] prefix) {
         for (String[] tech : techInfo) {
@@ -674,12 +657,8 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
 
     /**
-     * Adds non-duplicate items to a check combo box from the technology info array, matching a prefix.
-     *
-     * @param checkComboBox The check combo box to add items to
-     * @param techInfo The technology info array
-     * @param row The row index to use for item
-     * @param prefix The prefix array to match
+     * Add unique values from techInfo at the given index to the provided
+     * CheckComboBox, for rows matching the provided prefix.
      */
     public void addNonDuplicatesToCheckComboBox(CheckComboBox<String> checkComboBox, String[][] techInfo, int row, String[] prefix) {
         for (String[] tech : techInfo) {
@@ -692,11 +671,12 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
 
     /**
-     * Checks if the given item array matches the prefix array.
+     * Determine whether the item array begins with the given prefix array.
+     * Returns true when prefix is null (matches all) and false for mismatches.
      *
-     * @param item The item array to check
-     * @param prefix The prefix array to match against
-     * @return true if the prefix matches, false otherwise
+     * @param item full item array
+     * @param prefix prefix array to compare against (may be null)
+     * @return true if prefix matches the start of item
      */
     public boolean doesPrefixMatch(String[] item, String[] prefix) {
         if (prefix == null) return true;
@@ -709,11 +689,12 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
 
     /**
-     * Returns the units string for the selected technologies.
-     * If multiple technologies are selected and their units do not match, returns "No match".
-     * If no technologies are selected, returns an empty string.
+     * Determine a representative unit string for the currently checked
+     * technologies. If different selected items have different units,
+     * "No match" is returned. If nothing is selected an empty string is
+     * returned.
      *
-     * @return The units string, or "No match" if units are inconsistent
+     * @return unit string, or "No match"/empty as described
      */
     public String getUnits() {
         ObservableList<String> techList = checkComboBoxTech.getCheckModel().getCheckedItems();
@@ -727,7 +708,7 @@ public class TabTechParam extends PolicyTab implements Runnable {
                     unit = "No match";
                 }
             } catch (Exception e) {
-                // ignore
+                // ignore malformed lines and continue
             }
         }
         if (unit.equals(SELECT_ONE_OR_MORE)) unit = "";
@@ -735,9 +716,9 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
 
     /**
-     * Sets the units label based on the selected technologies and parameter.
-     * Updates the labelTextFieldUnits2 with the appropriate units or warning.
-     * Handles special cases for certain parameters.
+     * Update the displayed units label according to the selected parameter
+     * and the units derived from selected technologies. Handles special cases
+     * for particular parameters (e.g., Capacity Factor, Lifetime).
      */
     public void setUnitsLabel() {
         String s = getUnits();
@@ -778,8 +759,7 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
 
     /**
-     * Runs background tasks or updates for this tab. Implementation of Runnable interface.
-     * Typically triggers saving of the scenario component.
+     * Runnable implementation: save scenario component when run() invoked.
      */
     @Override
     public void run() {
@@ -787,8 +767,7 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
 
     /**
-     * Saves the scenario component using the current UI state and selected regions.
-     * Performs QA checks before saving. Generates metadata and CSV content for the scenario component.
+     * Save scenario component using the selected regions from the UI tree.
      */
     @Override
     public void saveScenarioComponent() {
@@ -796,10 +775,10 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
 
     /**
-     * Saves the scenario component for the specified tree of regions.
-     * Performs QA checks and generates file content and filename suggestion.
+     * Save scenario component to internal fields (fileContent/filenameSuggestion).
+     * Performs QA checks and prepares CSV content.
      *
-     * @param tree The TreeView of regions
+     * @param tree TreeView of regions used to build region fields
      */
     private void saveScenarioComponent(TreeView<String> tree) {
         if (!qaInputs()) {
@@ -819,39 +798,41 @@ public class TabTechParam extends PolicyTab implements Runnable {
 
 
     /**
-     * Suggests a filename for the scenario component based on selected technologies, parameter, and regions.
+     * Build a filename suggestion using selected technologies, parameter and
+     * regions. Produces a sanitized filename safe for most filesystems.
      *
-     * @return Suggested filename string
+     * @return suggested filename with .csv extension
      */
     public String getFilenameSuggestion() {
-    	String name="";
-    	
-    	String tech="Multi";
-    	
-    	if (this.checkComboBoxTech.getCheckModel().getCheckedItems().size()==1) {
-			tech = this.checkComboBoxTech.getCheckModel().getCheckedItems().get(0);
-		}
-    	
-    	String param = this.comboBoxParam.getValue();
+        String name="";
+        
+        String tech="Multi";
+        
+        if (this.checkComboBoxTech.getCheckModel().getCheckedItems().size()==1) {
+            tech = this.checkComboBoxTech.getCheckModel().getCheckedItems().get(0);
+        }
+        
+        String param = this.comboBoxParam.getValue();
 
-    	String state = "Reg";
+        String state = "Reg";
         String[] selectedLeaves = utils.getAllSelectedRegions(paneForCountryStateTree.getTree());
         if (selectedLeaves.length > 0) {
             selectedLeaves = utils.removeUSADuplicate(selectedLeaves);
             String stateStr = utils.returnAppendedString(selectedLeaves).replace(",", "");
             state = stateStr.length() < 9 ? stateStr : "Reg";
         }
-    	
+        
         name = ("tchPrm" + "_" + tech + "_" + param + "_" + state).replaceAll("[^a-zA-Z0-9_]", "_").replaceAll("___", "__").replaceAll("__", "_") + ".csv";
-		return name;		
-	}
+        return name;        
+    }
     
     /**
-     * Loads data from the GUI for saving to file.
-     * Serializes selected technologies, regions, parameters, and table data into a list of strings.
+     * Gather data from the GUI controls and return a list of type;sector;...
+     * strings suitable for CSV creation. Each checked technology produces one
+     * data line containing years/values and metadata fields.
      *
-     * @param tree The TreeView of regions
-     * @return ArrayList of data strings
+     * @param tree tree of selected regions
+     * @return list of formatted data strings
      */
     private ArrayList<String> loadDataFromGUI(TreeView<String> tree) {
         ArrayList<String> dataList = new ArrayList<>();
@@ -889,11 +870,11 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
 
     /**
-     * Gets a comma-separated string of selected leaves (regions) from the tree.
-     * Handles special case for USA regions if GCAM-USA is enabled.
+     * Return a comma-separated list of selected leaf regions, handling a GCAM-
+     * USA special-case where "USA" may be represented differently.
      *
-     * @param tree The TreeView of regions
-     * @return Comma-separated string of selected regions
+     * @param tree TreeView of regions
+     * @return comma-separated selected regions string
      */
     private String getSelectedLeaves(TreeView<String> tree) {
         String[] listOfSelectedLeaves = utils.getAllSelectedRegions(tree);
@@ -905,9 +886,10 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
 
     /**
-     * Helper method to validate table data years against allowable policy years.
-     * Checks that at least one year in the table matches allowable years.
-     * @return true if at least one year matches allowable years, false otherwise
+     * Validate that the table data contains at least one row with a year that
+     * is present in the allowable policy years configured in GLIMPSE.
+     *
+     * @return true when a valid year is found, false otherwise
      */
     private boolean validateTableDataYears() {
         List<Integer> listOfAllowableYears = vars.getAllowablePolicyYears();
@@ -923,11 +905,12 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
     
     /**
-     * Performs QA checks on the current UI state to ensure all required inputs are valid.
-     * Displays warnings or error messages as needed.
-     * Checks for region selection, data table entries, category/technology/parameter selection, and year validity.
+     * Run a series of QA checks on the current UI state. Checks include: at
+     * least one region selected, at least one table entry, checked technologies,
+     * and required parameter selections. Displays warnings/dialogs where
+     * problems are found.
      *
-     * @return true if all inputs are valid, false otherwise
+     * @return true if all QA checks pass
      */
     protected boolean qaInputs() {
         TreeView<String> tree = paneForCountryStateTree.getTree();
