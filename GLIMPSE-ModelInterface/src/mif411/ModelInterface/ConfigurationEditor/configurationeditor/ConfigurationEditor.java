@@ -250,8 +250,9 @@ public class ConfigurationEditor extends JFrame implements DOMDocumentEditor, Me
 		// Add a menu item to launch the configuration editor.
 		final JMenuItem editConfMenuItem = new JMenuItem(
 				"Configuration...");  //YD edits, changed back to "Configuration..." 
-		editConfMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E,
-				ActionEvent.CTRL_MASK));
+		// Removed accelerator so no "Cntl-E" shortcut is shown.
+		// editConfMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E,
+		// 		ActionEvent.CTRL_MASK));
 		// Add an action listener which will launch the configuration editor.
 		editConfMenuItem.addActionListener(new ActionListener() {
             /**

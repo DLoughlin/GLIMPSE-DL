@@ -680,122 +680,122 @@ public class InterfaceMain implements ActionListener {
 	}
 
 	private void addMenuItems(MenuManager menuMan) {
-		JMenu fileMenu = new JMenu("File");
-		fileMenu.setMnemonic(KeyEvent.VK_F);
-		menuMan.addMenuItem(fileMenu, FILE_MENU_POS);
-		// Add Save / Save As to File menu
-		saveMenu = new JMenuItem("Save");
-		saveMenu.setEnabled(false);
-		saveMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, getMenuShortcutMask()));
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveMenu, 20);
-		saveAsMenu = new JMenuItem("Save As…");
-		saveAsMenu.setEnabled(false);
-		saveAsMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, getMenuShortcutMask() | java.awt.event.InputEvent.SHIFT_DOWN_MASK));
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveAsMenu, 25);
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(FILE_MENU_SEPERATOR);
+        JMenu fileMenu = new JMenu("File");
+        fileMenu.setMnemonic(KeyEvent.VK_F);
+        menuMan.addMenuItem(fileMenu, FILE_MENU_POS);
+        // Add Save / Save As to File menu
+        saveMenu = new JMenuItem("Save");
+        saveMenu.setEnabled(false);
+        // Removed accelerator: saveMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, getMenuShortcutMask()));
+        // menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveMenu, 20);
+        saveAsMenu = new JMenuItem("Save As…");
+        saveAsMenu.setEnabled(false);
+        // Removed accelerator: saveAsMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, getMenuShortcutMask() | java.awt.event.InputEvent.SHIFT_DOWN_MASK));
+        // menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveAsMenu, 25);
+        // menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(FILE_MENU_SEPERATOR);
 
-		quitMenu = makeMenuItem("Quit");
-		quitMenu.setMnemonic(KeyEvent.VK_Q);
-		quitMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, getMenuShortcutMask()));
-		menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(quitMenu, FILE_QUIT_MENUITEM_POS);
+        quitMenu = makeMenuItem("Quit");
+        quitMenu.setMnemonic(KeyEvent.VK_Q);
+        // Removed accelerator: quitMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, getMenuShortcutMask()));
+        menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(quitMenu, FILE_QUIT_MENUITEM_POS);
 
-		JMenu editMenu = new JMenu("Edit");
-		editMenu.setMnemonic(KeyEvent.VK_E);
-		menuMan.addMenuItem(editMenu, EDIT_MENU_POS);
+        JMenu editMenu = new JMenu("Edit");
+        editMenu.setMnemonic(KeyEvent.VK_E);
+        menuMan.addMenuItem(editMenu, EDIT_MENU_POS);
 
-		// Remove Config menu (replaced by Preferences… under Edit)
-		// menuMan.addMenuItem(new JMenu("Config"), CONFIG_MENU_POS);
+        // Remove Config menu (replaced by Preferences… under Edit)
+        // menuMan.addMenuItem(new JMenu("Config"), CONFIG_MENU_POS);
 
-		JMenu viewMenu = new JMenu("View");
-		viewMenu.setMnemonic(KeyEvent.VK_V);
-		menuMan.addMenuItem(viewMenu, VIEW_MENU_POS);
-		JMenu toolsMenu = new JMenu("Tools");
-		toolsMenu.setMnemonic(KeyEvent.VK_T);
-		menuMan.addMenuItem(toolsMenu, TOOLS_MENU_POS);
-		// Ensure expected submenus exist for downstream menu adders
-		MenuManager toolsMM = menuMan.getSubMenuManager(TOOLS_MENU_POS);
-		if (toolsMM != null) {
-			// Removed empty "Queries" submenu under Tools
-			toolsMM.addMenuItem(new JMenu("Open Files"), TOOLS_SUBMENU2_POS);
-		}
+        JMenu viewMenu = new JMenu("View");
+        viewMenu.setMnemonic(KeyEvent.VK_V);
+        menuMan.addMenuItem(viewMenu, VIEW_MENU_POS);
+        JMenu toolsMenu = new JMenu("Tools");
+        toolsMenu.setMnemonic(KeyEvent.VK_T);
+        menuMan.addMenuItem(toolsMenu, TOOLS_MENU_POS);
+        // Ensure expected submenus exist for downstream menu adders
+        MenuManager toolsMM = menuMan.getSubMenuManager(TOOLS_MENU_POS);
+        if (toolsMM != null) {
+            // Removed empty "Queries" submenu under Tools
+            toolsMM.addMenuItem(new JMenu("Open Files"), TOOLS_SUBMENU2_POS);
+        }
 
-		// Move Run Batch… under Tools (position 10). A separator is already added
-		// before CSV to XML at position 19, keeping a separator between them.
-		batchMenu = new JMenuItem("Run Batch…");
-		batchMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, getMenuShortcutMask()));
-		batchMenu.addActionListener(this);
-		// menuMan.getSubMenuManager(TOOLS_MENU_POS).addMenuItem(batchMenu, 10);
+        // Move Run Batch… under Tools (position 10). A separator is already added
+        // before CSV to XML at position 19, keeping a separator between them.
+        batchMenu = new JMenuItem("Run Batch…");
+        // Removed accelerator: batchMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, getMenuShortcutMask()));
+        batchMenu.addActionListener(this);
+        // menuMan.getSubMenuManager(TOOLS_MENU_POS).addMenuItem(batchMenu, 10);
 
-		JMenu helpMenu = new JMenu("Help");
-		helpMenu.setMnemonic(KeyEvent.VK_H);
-		menuMan.addMenuItem(helpMenu, HELP_MENU_POS);
+        JMenu helpMenu = new JMenu("Help");
+        helpMenu.setMnemonic(KeyEvent.VK_H);
+        menuMan.addMenuItem(helpMenu, HELP_MENU_POS);
 
-		// Preferences… under Edit
-		JMenuItem preferences = new JMenuItem("Preferences…");
-		preferences.setMnemonic(KeyEvent.VK_P);
-		preferences.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, getMenuShortcutMask()));
-		preferences.addActionListener(this);
-		menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(preferences, 5);
+        // Preferences… under Edit
+        JMenuItem preferences = new JMenuItem("Preferences…");
+        preferences.setMnemonic(KeyEvent.VK_P);
+        // Removed accelerator: preferences.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, getMenuShortcutMask()));
+        preferences.addActionListener(this);
+        menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(preferences, 5);
 
-		// Add Help (F1) under Help menu
-		helpItem = new JMenuItem("Help");
-		helpItem.setMnemonic(KeyEvent.VK_H);
-		helpItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));
-		helpItem.addActionListener(this);
-		menuMan.getSubMenuManager(HELP_MENU_POS).addMenuItem(helpItem, 0);
+        // Add Help (F1) under Help menu
+        helpItem = new JMenuItem("Help");
+        helpItem.setMnemonic(KeyEvent.VK_H);
+        // Removed accelerator: helpItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));
+        helpItem.addActionListener(this);
+        menuMan.getSubMenuManager(HELP_MENU_POS).addMenuItem(helpItem, 0);
 
-		setupUndo(menuMan);
-	}
+        setupUndo(menuMan);
+    }
 
-	// second round YD edited the following lines to move "Undo" and "Redo" to be
-	// under "Advanced" >> "Queries"
+    // second round YD edited the following lines to move "Undo" and "Redo" to be
+    // under "Advanced" >> "Queries"
 
-	private void setupUndo(MenuManager menuMan) {
-		undoManager = new UndoManager();
-		undoManager.setLimit(10);
+    private void setupUndo(MenuManager menuMan) {
+        undoManager = new UndoManager();
+        undoManager.setLimit(10);
 
-		// Create the Undo/Redo menu items but DO NOT register them with the global
-		// MenuManager here. DbViewer will place these items into the Edit -> Queries
-		// submenu to avoid duplicates and control ordering.
-		undoMenu = new JMenuItem("Undo");
-		redoMenu = new JMenuItem("Redo");
-		// Add standard accelerators
-		undoMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, getMenuShortcutMask()));
-		if (isMac()) {
-			redoMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, getMenuShortcutMask() | java.awt.event.InputEvent.SHIFT_DOWN_MASK));
-		} else {
-			redoMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, getMenuShortcutMask()));
-		}
+        // Create the Undo/Redo menu items but DO NOT register them with the global
+        // MenuManager here. DbViewer will place these items into the Edit -> Queries
+        // submenu to avoid duplicates and control ordering.
+        undoMenu = new JMenuItem("Undo");
+        redoMenu = new JMenuItem("Redo");
+        // Add standard accelerators - removed to disable shortcuts
+        // undoMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, getMenuShortcutMask()));
+        if (isMac()) {
+            // Removed accelerator for mac redo: redoMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, getMenuShortcutMask() | java.awt.event.InputEvent.SHIFT_DOWN_MASK));
+        } else {
+            // Removed accelerator for non-mac redo: redoMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, getMenuShortcutMask()));
+        }
 
-		undoMenu.setEnabled(false);
-		redoMenu.setEnabled(false);
+        undoMenu.setEnabled(false);
+        redoMenu.setEnabled(false);
 
-		ActionListener undoListener = new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				String cmd = e.getActionCommand();
-				if (cmd.startsWith("Undo")) {
-					try {
-						undoManager.undo();
-						refreshUndoRedo();
-					} catch (CannotUndoException cue) {
-						cue.printStackTrace();
-					}
-				} else if (cmd.startsWith("Redo")) {
-					try {
-						undoManager.redo();
-						refreshUndoRedo();
-					} catch (CannotRedoException cre) {
-						cre.printStackTrace();
-					}
-				} else {
-					System.out.println("Didn't recognize: " + cmd);
-				}
-			}
-		};
+        ActionListener undoListener = new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                String cmd = e.getActionCommand();
+                if (cmd.startsWith("Undo")) {
+                    try {
+                        undoManager.undo();
+                        refreshUndoRedo();
+                    } catch (CannotUndoException cue) {
+                        cue.printStackTrace();
+                    }
+                } else if (cmd.startsWith("Redo")) {
+                    try {
+                        undoManager.redo();
+                        refreshUndoRedo();
+                    } catch (CannotRedoException cre) {
+                        cre.printStackTrace();
+                    }
+                } else {
+                    System.out.println("Didn't recognize: " + cmd);
+                }
+            }
+        };
 
-		undoMenu.addActionListener(undoListener);
-		redoMenu.addActionListener(undoListener);
-	}
+        undoMenu.addActionListener(undoListener);
+        redoMenu.addActionListener(undoListener);
+    }
 
 	public UndoManager getUndoManager() {
 		return undoManager;
