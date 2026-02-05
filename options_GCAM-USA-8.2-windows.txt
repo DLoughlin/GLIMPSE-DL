@@ -47,7 +47,7 @@ modelInterfaceJar = GLIMPSE-ModelInterface.jar
 modelInterfaceJarDir = $modelInterfaceDir$
 modelInterfaceConfigDir = $modelInterfaceDir$/config
 
-========================== modelInterface options ==========================================
+#========================== modelInterface options ==========================================
 
 #query file used by the GLIMPSE-ModelIngerface
 queryFilename = $modelInterfaceDir$/config/Main_queries_GLIMPSE-8.2.xml
@@ -61,7 +61,7 @@ presetRegionListFilename = $scenarioBuilderDir$/config/v8.2/preset_region_list_8
 #file unit conversion file for ModelInterface
 unitConversionsFilename = $modelInterfaceDir$/config/units_rules.csv
 
-========================== scenarioBuilder options ==========================================
+#========================== scenarioBuilder options ==========================================
 #-----Files for tailoring GLIMPSE to a particular version of GCAM-----
 
 #Template configuration file. This file is modified to create a scenario-specific configuration file
@@ -91,7 +91,7 @@ ghgList = CO2,CH4,CH4_AWB,CH4_AGR,N2O,N2O_AWB,N2O_AGR,C2F6,CF4,SF6,HFC23,HFC32,H
 ghgGWPList = 3.667,25,25,25,298,298,298,12.2,7.39,22.8,14.8,0.675,3.5,1.43,4.47,0.124,3.2,1.64,9.81,0.794,1.03
 ghgUnitList = MtC,TgCH4,TgCH4,TgCH4,TgN2O,TgN2O,TgN2O,GgC2F6,GgCF4,GgSF6,GgHFC23,GgHFC32,GgHFC125,GgHFC134a,GgHFC143a,GgHFC152a,GgHFC227ea,GgHFC43,GgHFC236fa,GgHFC365mfc,GgHFC245fa 
 
-===========================================================================================
+#===========================================================================================
 
 #-----Editors that are automatically invoked when you double click on a txt or xml file
 textEditor = C:/Windows/notepad.exe
