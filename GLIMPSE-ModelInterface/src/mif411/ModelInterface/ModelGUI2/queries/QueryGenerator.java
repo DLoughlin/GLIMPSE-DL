@@ -268,7 +268,8 @@ public class QueryGenerator implements java.io.Serializable{
         final JFrame parentFrame = InterfaceMain.getInstance().getFrame();
 		final JDialog filterDialog = new JDialog(parentFrame, "Create Query", true);
 		filterDialog.setSize(500,400);
-		filterDialog.setLocation(100,100);
+		// Center over the main frame
+		filterDialog.setLocationRelativeTo(parentFrame);
 		filterDialog.setResizable(false);
 
 		final Map typeMap = new LinkedHashMap();
@@ -1047,7 +1048,8 @@ public class QueryGenerator implements java.io.Serializable{
 		String oldTitle = title;
 		final JDialog editDialog = new JDialog(InterfaceMain.getInstance().getFrame(), "Edit Query", false);
 		final QueryGenerator thisGen = this;
-		//editDialog.setLocation(100,100);
+		// Center over the main frame
+		editDialog.setLocationRelativeTo(InterfaceMain.getInstance().getFrame());
 		editDialog.setResizable(false);
 		JButton cancelButton = new JButton("Cancel");
 		JButton okButton = new JButton("  OK  ");

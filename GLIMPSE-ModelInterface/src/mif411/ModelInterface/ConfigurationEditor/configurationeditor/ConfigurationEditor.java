@@ -254,20 +254,23 @@ public class ConfigurationEditor extends JFrame implements DOMDocumentEditor, Me
 				ActionEvent.CTRL_MASK));
 		// Add an action listener which will launch the configuration editor.
 		editConfMenuItem.addActionListener(new ActionListener() {
-			/**
-			 * Method called when the menu item is clicked.
-			 * @param aEvent The event received.
-			 */
-			public void actionPerformed(ActionEvent aEvent) {
-				// Show the configuration editor.
-				pack();
-				setVisible(true);
-			}
-		});
-		aMenuManager.getSubMenuManager(InterfaceMain.EDIT_MENU_POS).addMenuItem(editConfMenuItem,
-				EDIT_CONFIGURATION_MENUITEM_POS);
-	}
-	
+            /**
+             * Method called when the menu item is clicked.
+             * @param aEvent The event received.
+             */
+            public void actionPerformed(ActionEvent aEvent) {
+                // Show the configuration editor.
+                pack();
+                // Center over the main ModelInterface window if available
+                JFrame owner = InterfaceMain.getInstance() != null ? InterfaceMain.getInstance().getFrame() : null;
+                setLocationRelativeTo(owner);
+                setVisible(true);
+            }
+        });
+        aMenuManager.getSubMenuManager(InterfaceMain.EDIT_MENU_POS).addMenuItem(editConfMenuItem,
+                EDIT_CONFIGURATION_MENUITEM_POS);
+    }
+    
     /**
      * This method initializes the main window.
      * 

@@ -924,6 +924,9 @@ public class XMLDB {
         contentPane.add(all, BorderLayout.PAGE_START);
         filterDialog.pack();
 
+        // Center over the ModelInterface main frame
+        filterDialog.setLocationRelativeTo(parentFrame);
+
         // Ensure the dialog gets focus/visibility when shown
         filterDialog.setVisible(true);
         filterDialog.toFront();
@@ -982,9 +985,9 @@ public class XMLDB {
 			contentPane.add(all, BorderLayout.PAGE_START);
 			filterDialog.pack();
 
-			// Position top-left aligned with owner if provided
+			// Center relative to owner if provided, otherwise center over main frame
 			if (owner != null) {
-				filterDialog.setLocation(owner.getX(), owner.getY());
+				filterDialog.setLocationRelativeTo(owner);
 			} else {
 				filterDialog.setLocationRelativeTo(parentFrame);
 			}

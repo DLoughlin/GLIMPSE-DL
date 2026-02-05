@@ -48,6 +48,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -172,6 +173,7 @@ public class InterfaceMain implements ActionListener {
 	private JMenuItem batchMenu;
 	private JMenuItem toolsCSVMenu; // YD added
 	private JMenuItem toolsUnitMenu; // YD added
+	private JMenuItem editRegionsMenu; // Added: Edit Regions menu item
 	// private JMenuItem toolsSankeyMenu; // YD moved to "DbViewer.java"
 
 	// New Config menu items
@@ -185,6 +187,9 @@ public class InterfaceMain implements ActionListener {
 	private JMenu advancedSubMenu2;// YD added
 	private Properties savedProperties;
 	private UndoManager undoManager;
+
+	// New: Help menu primary item
+	private JMenuItem helpItem;
 
 	private MenuAdder dbView = null;
 
@@ -673,141 +678,71 @@ public class InterfaceMain implements ActionListener {
 	}
 
 	private void addMenuItems(MenuManager menuMan) {
-		JMenu m = new JMenu("File");
-		menuMan.addMenuItem(m, FILE_MENU_POS);
-		// YD edits, August-2023
-		// JMenu submenu; //YD commented out
-		// submenu = new JMenu("Open"); //YD commented out, changed "Open" to "Open DB"
-		// submenu.setMnemonic(KeyEvent.VK_S); //YD commented out
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(submenu,
-		// FILE_OPEN_SUBMENU_POS); //YD commented out
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(FILE_OPEN_SUBMENU_POS +
-		// 2); //YD commented out
-		// m.add(submenu);
-		// m.addSeparator();
-
-		// m.add(makeMenuItem("Quit"));
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(newMenu = new
-		// JMenuItem("New"), FILE_NEW_MENUITEM_POS); //YD commented out
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(FILE_NEW_MENUITEM_POS);
-		// //YD commented out
-		// newMenu.setEnabled(false); //YD commented out
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveMenu = new
-		// JMenuItem("Save")/* makeMenuItem("Save") */, FILE_SAVE_MENUITEM_POS); //YD
-		// commented out
-		// saveMenu.setEnabled(false); //YD commented out
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveAsMenu = new
-		// JMenuItem("Save As"), FILE_SAVEAS_MENUITEM_POS);//YD commented out
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(FILE_SAVEAS_MENUITEM_POS);//YD
-		// commented out
-		// saveAsMenu.setEnabled(false);//YD commented out
-		menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(quitMenu = makeMenuItem("Quit"), FILE_QUIT_MENUITEM_POS);
-
-		menuMan.addMenuItem(new JMenu("Edit"), EDIT_MENU_POS);
-		// YD edits, August-2023
-		// copyMenu = new JMenuItem("Copy");//YD commented out
-		// key stroke is system dependent
-		// copyMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C,
-		// ActionEvent.CTRL_MASK));
-		// menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(copyMenu,
-		// EDIT_COPY_MENUITEM_POS);//YD commented out
-		// pasteMenu = new JMenuItem("Paste");//YD commented out
-		// key stroke is system dependent
-		// pasteMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_V,
-		// ActionEvent.CTRL_MASK));
-		// menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(pasteMenu,
-		// EDIT_PASTE_MENUITEM_POS);//YD commented out
-		// menuMan.getSubMenuManager(EDIT_MENU_POS).addSeparator(EDIT_PASTE_MENUITEM_POS);//YD
-		// commented out
-
-		// copyMenu.setEnabled(false);//YD commented out
-		// pasteMenu.setEnabled(false);//YD commented out
-		// YD commented lines 392-396 out because this "Batch File" menuItem needs to be
-		// re-arranged to be under "Advanced" >> "Open Files"
-		// batchMenu = new JMenuItem("Batch File");
-		// batchMenu.setEnabled(true);
-		// batchMenu.addActionListener(this);
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(batchMenu,
-		// FILE_OPEN_SUBMENU_POS);
-
-		// YD added lines to add "Tools" and "Advanced" to the main menu bar
-		menuMan.addMenuItem(new JMenu("View"), VIEW_MENU_POS);
-		// menuMan.addMenuItem(new JMenu("Tools"), TOOLS_MENU_POS);
-		menuMan.addMenuItem(new JMenu("Tools"), TOOLS_MENU_POS); // Renamed from "Advanced" to "Tools"
-
-		// New "Config" menu between Tools and Help
-		menuMan.addMenuItem(new JMenu("Config"), CONFIG_MENU_POS);
-		// Add items under Config
-		menuMan.getSubMenuManager(CONFIG_MENU_POS)
-				.addMenuItem(selectQueryFileMenu = new JMenuItem("Select Query File"), 0);
-		selectQueryFileMenu.addActionListener(this);
-		menuMan.getSubMenuManager(CONFIG_MENU_POS)
-				.addMenuItem(selectUnitsFileMenu = new JMenuItem("Select Units File"), 5);
-		selectUnitsFileMenu.addActionListener(this);
-		menuMan.getSubMenuManager(CONFIG_MENU_POS)
-				.addMenuItem(selectRegionsFileMenu = new JMenuItem("Select Regions File"), 10);
-		selectRegionsFileMenu.addActionListener(this);
-		menuMan.getSubMenuManager(CONFIG_MENU_POS)
-				.addMenuItem(selectMapResourceFolderMenu = new JMenuItem("Select Map Resource Folder"), 15);
-		selectMapResourceFolderMenu.addActionListener(this);
-
-		menuMan.addMenuItem(new JMenu("Help"), HELP_MENU_POS);
-		// YD added the following lines to add "Query File" under "Edit" dropdown menu
-		editQuerySubMenu = new JMenuItem("Query File");
-		editQuerySubMenu.setEnabled(true);
-		editQuerySubMenu.addActionListener(this);
-		editQuerySubMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, ActionEvent.CTRL_MASK));
-		menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(editQuerySubMenu, EDIT_QUERY_SUBMENU_POS);
-
-		// YD added the following lines to add items under "Tools" dropdown menu
-		// second round YD edits, commented it out and moved this block to
-		// "InputViewer.java"
-		/*
-		 * toolsCSVMenu = new JMenuItem("CSV to XML"); toolsCSVMenu.setEnabled(true);
-		 * toolsCSVMenu.addActionListener(this);
-		 * menuMan.getSubMenuManager(TOOLS_MENU_POS).addMenuItem(toolsCSVMenu,
-		 * TOOLS_CSV_MENUITEM_POS);
-		 */
-		toolsUnitMenu = new JMenuItem("Unit Conversions");
-		toolsUnitMenu.setEnabled(true);
-		toolsUnitMenu.addActionListener(this);
-		toolsUnitMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_U, ActionEvent.CTRL_MASK));
-
-		menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(toolsUnitMenu, EDIT_QUERY_SUBMENU_POS);
-
-		// YD commented these lines out, moved "Sankey Diagrams" to "DbViewer.java"
-		// toolsSankeyMenu= new JMenu("Sankey Diagrams");
-		// menuMan.getSubMenuManager(TOOLS_MENU_POS).addMenuItem(toolsSankeyMenu,
-		// TOOLS_SANKEY_MENUITEM_POS);
-
-		// YD added the following lines to create two sub-menus under "Advanced"
-		// dropdown menu
-		advancedSubMenu1 = new JMenu("Queries");
-		advancedSubMenu1.setMnemonic(KeyEvent.VK_S);
-		menuMan.getSubMenuManager(TOOLS_MENU_POS).addMenuItem(advancedSubMenu1, TOOLS_SUBMENU1_POS);
-		advancedSubMenu2 = new JMenu("Open Files");
-		advancedSubMenu2.setMnemonic(KeyEvent.VK_O);
-		menuMan.getSubMenuManager(TOOLS_MENU_POS).addMenuItem(advancedSubMenu2, TOOLS_SUBMENU2_POS);
-		// YD added the following lines to re-arrange "Batch File" from "File" dropdown
-		// menu to be under "Advanced" >> "Open Files"
-
-		batchMenu = new JMenuItem("Batch Query File");
-		batchMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, ActionEvent.ALT_MASK));
-		batchMenu.addActionListener(this);
-		menuMan.getSubMenuManager(TOOLS_MENU_POS).getSubMenuManager(TOOLS_SUBMENU2_POS).addMenuItem(batchMenu, 5);
-		// YD moved these lines because "Save" and "Save as" are moved to be "Advanced"
-		// >> "Queries"
-		menuMan.getSubMenuManager(TOOLS_MENU_POS).getSubMenuManager(TOOLS_SUBMENU1_POS)
-				.addMenuItem(saveMenu = new JMenuItem("Save"), QUERIES_SAVE_MENUITEM_POS);
+		JMenu fileMenu = new JMenu("File");
+		fileMenu.setMnemonic(KeyEvent.VK_F);
+		menuMan.addMenuItem(fileMenu, FILE_MENU_POS);
+		// Add Save / Save As to File menu
+		saveMenu = new JMenuItem("Save");
 		saveMenu.setEnabled(false);
-		menuMan.getSubMenuManager(TOOLS_MENU_POS).getSubMenuManager(TOOLS_SUBMENU1_POS)
-				.addMenuItem(saveAsMenu = new JMenuItem("Save As"), QUERIES_SAVEAS_MENUITEM_POS);
+		saveMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, getMenuShortcutMask()));
+		// menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveMenu, 20);
+		saveAsMenu = new JMenuItem("Save As…");
 		saveAsMenu.setEnabled(false);
-		menuMan.getSubMenuManager(TOOLS_MENU_POS).getSubMenuManager(TOOLS_SUBMENU1_POS)
-				.addSeparator(QUERIES_SAVEAS_MENUITEM_POS);
+		saveAsMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, getMenuShortcutMask() | java.awt.event.InputEvent.SHIFT_DOWN_MASK));
+		// menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveAsMenu, 25);
+		// menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(FILE_MENU_SEPERATOR);
+
+		quitMenu = makeMenuItem("Quit");
+		quitMenu.setMnemonic(KeyEvent.VK_Q);
+		quitMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, getMenuShortcutMask()));
+		menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(quitMenu, FILE_QUIT_MENUITEM_POS);
+
+		JMenu editMenu = new JMenu("Edit");
+		editMenu.setMnemonic(KeyEvent.VK_E);
+		menuMan.addMenuItem(editMenu, EDIT_MENU_POS);
+
+		// Remove Config menu (replaced by Preferences… under Edit)
+		// menuMan.addMenuItem(new JMenu("Config"), CONFIG_MENU_POS);
+
+		JMenu viewMenu = new JMenu("View");
+		viewMenu.setMnemonic(KeyEvent.VK_V);
+		menuMan.addMenuItem(viewMenu, VIEW_MENU_POS);
+		JMenu toolsMenu = new JMenu("Tools");
+		toolsMenu.setMnemonic(KeyEvent.VK_T);
+		menuMan.addMenuItem(toolsMenu, TOOLS_MENU_POS);
+		// Ensure expected submenus exist for downstream menu adders
+		MenuManager toolsMM = menuMan.getSubMenuManager(TOOLS_MENU_POS);
+		if (toolsMM != null) {
+			toolsMM.addMenuItem(new JMenu("Queries"), TOOLS_SUBMENU1_POS);
+			toolsMM.addMenuItem(new JMenu("Open Files"), TOOLS_SUBMENU2_POS);
+		}
+
+		// Move Run Batch… under Tools (position 10). A separator is already added
+		// before CSV to XML at position 19, keeping a separator between them.
+		batchMenu = new JMenuItem("Run Batch…");
+		batchMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, getMenuShortcutMask()));
+		batchMenu.addActionListener(this);
+		// menuMan.getSubMenuManager(TOOLS_MENU_POS).addMenuItem(batchMenu, 10);
+
+		JMenu helpMenu = new JMenu("Help");
+		helpMenu.setMnemonic(KeyEvent.VK_H);
+		menuMan.addMenuItem(helpMenu, HELP_MENU_POS);
+
+		// Preferences… under Edit
+		JMenuItem preferences = new JMenuItem("Preferences…");
+		preferences.setMnemonic(KeyEvent.VK_P);
+		preferences.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, getMenuShortcutMask()));
+		preferences.addActionListener(this);
+		menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(preferences, 5);
+
+		// Add Help (F1) under Help menu
+		helpItem = new JMenuItem("Help");
+		helpItem.setMnemonic(KeyEvent.VK_H);
+		helpItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));
+		helpItem.addActionListener(this);
+		menuMan.getSubMenuManager(HELP_MENU_POS).addMenuItem(helpItem, 0);
 
 		setupUndo(menuMan);
-
 	}
 
 	// second round YD edited the following lines to move "Undo" and "Redo" to be
@@ -818,14 +753,16 @@ public class InterfaceMain implements ActionListener {
 		undoManager.setLimit(10);
 
 		undoMenu = new JMenuItem("Undo");
-		menuMan.getSubMenuManager(TOOLS_MENU_POS).getSubMenuManager(TOOLS_SUBMENU1_POS).addMenuItem(undoMenu,
-				QUERIES_UNDO_MENUITEM_POS);
-		// menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS).getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addSeparator(QUERIES_UNDO_MENUITEM_POS);
+		menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(undoMenu, QUERIES_UNDO_MENUITEM_POS);
 		redoMenu = new JMenuItem("Redo");
-		menuMan.getSubMenuManager(TOOLS_MENU_POS).getSubMenuManager(TOOLS_SUBMENU1_POS).addMenuItem(redoMenu,
-				QUERIES_REDO_MENUITEM_POS);
-		menuMan.getSubMenuManager(TOOLS_MENU_POS).getSubMenuManager(TOOLS_SUBMENU1_POS)
-				.addSeparator(QUERIES_REDO_MENUITEM_POS);
+		menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(redoMenu, QUERIES_REDO_MENUITEM_POS);
+		// Add standard accelerators
+		undoMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, getMenuShortcutMask()));
+		if (isMac()) {
+			redoMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, getMenuShortcutMask() | java.awt.event.InputEvent.SHIFT_DOWN_MASK));
+		} else {
+			redoMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, getMenuShortcutMask()));
+		}
 
 		undoMenu.setEnabled(false);
 		redoMenu.setEnabled(false);
@@ -906,20 +843,16 @@ public class InterfaceMain implements ActionListener {
 
 	private void finalizeMenu(MenuManager menuMan) {
 		JMenuBar mb = menuMan.createMenu();
-		mb.setBackground(UNIFIED_BG);
+		// Keep system Look & Feel colors; avoid forcing custom colors
 		mb.setFont(UNIFIED_FONT);
 		for (int i = 0; i < mb.getMenuCount(); i++) {
 			JMenu menu = mb.getMenu(i);
 			if (menu != null) {
 				menu.setFont(UNIFIED_FONT);
-				menu.setBackground(UNIFIED_BG);
-				menu.setForeground(UNIFIED_BTN_FG);
 				for (int j = 0; j < menu.getItemCount(); j++) {
 					JMenuItem item = menu.getItem(j);
 					if (item != null) {
 						item.setFont(UNIFIED_FONT);
-						item.setBackground(UNIFIED_BTN_BG);
-						item.setForeground(UNIFIED_BTN_FG);
 					}
 				}
 			}
@@ -994,6 +927,14 @@ public class InterfaceMain implements ActionListener {
 			// YD edits second round, when user choose "Query File", check the query file
 			// saved in the savedProperties file
 			// and open the system editor, allowing user to edit it
+		} else if (e.getActionCommand().equals("Preferences…")) {
+			showPreferencesDialog();
+		} else if (e.getActionCommand().equals("Help")) {
+			try {
+				Desktop.getDesktop().browse(new URI("https://github.com/USEPA/GLIMPSE"));
+			} catch (Exception ex) {
+				JOptionPane.showMessageDialog(mainFrame, "Unable to open help page.", "Help", JOptionPane.INFORMATION_MESSAGE);
+			}
 		} else if (e.getActionCommand().equals("Query File")) {
 			if (propertiesFile.exists()) {
 				String theCurrentQueryFile = savedProperties.getProperty("queryFile", null);
@@ -1018,28 +959,21 @@ public class InterfaceMain implements ActionListener {
 					JOptionPane.showMessageDialog(null, "No unit file specified, please add to launch arguments");
 				}
 			}
-		} else if (e.getActionCommand().equals("Batch File")) {
-			// TODO: make it so recent files could work with this
-			FileChooser fc = FileChooserFactory.getFileChooser();
-			final File[] result = fc.doFilePrompt(mainFrame, "Open Batch File", FileChooser.LOAD_DIALOG,
-					new File(getProperties().getProperty("lastDirectory", ".")), new XMLFilter());
-			// these should be run off the GUI thread
-			new Thread(new Runnable() {
-				public void run() {
-					if (result != null) {
-						for (File file : result) {
-							Document doc = FileUtils.loadDocument(file, null);
-							// Only run if the batch file was parsed correctly
-							// note an error would have already been given if it wasn't
-							// parsed correctly
-							if (doc != null) {
-								runBatch(doc.getDocumentElement());
-							}
-						}
+		} else if (e.getActionCommand().equals("Edit Regions")) {
+			if (propertiesFile.exists()) {
+				String regionsFileName = InterfaceMain.presetRegionListLocation;
+				if (regionsFileName != null && regionsFileName.length() > 0) {
+					try {
+						Desktop.getDesktop().edit(new File(regionsFileName));
+					} catch (IOException ioe) {
+						ioe.printStackTrace();
 					}
-					// TODO: message that all were run
+				} else {
+					JOptionPane.showMessageDialog(null, "No regions file specified, please set one in Config > Select Regions File");
 				}
-			}).start();
+			}
+		} else if (e.getActionCommand().equals("Batch File") || e.getActionCommand().equals("Run Batch…")) {
+			runBatch();
 		} else if (e.getActionCommand().equals("Select Query File")) {
 			FileChooser fc = FileChooserFactory.getFileChooser();
 			File start = new File(getProperties().getProperty("queryFile",
@@ -1247,6 +1181,30 @@ public class InterfaceMain implements ActionListener {
 		return null;
 	}
 
+	public void runBatch() {
+		// TODO: make it so recent files could work with this
+		FileChooser fc = FileChooserFactory.getFileChooser();
+		final File[] result = fc.doFilePrompt(mainFrame, "Open Batch File", FileChooser.LOAD_DIALOG,
+				new File(getProperties().getProperty("lastDirectory", ".")), new XMLFilter());
+		// these should be run off the GUI thread
+		new Thread(new Runnable() {
+			public void run() {
+				if (result != null) {
+					for (File file : result) {
+						Document doc = FileUtils.loadDocument(file, null);
+						// Only run if the batch file was parsed correctly
+						// note an error would have already been given if it wasn't
+						// parsed correctly
+						if (doc != null) {
+							runBatch(doc.getDocumentElement());
+						}
+					}
+				}
+				// TODO: message that all were run
+			}
+		}).start();
+	}
+
 	private void runBatch(Node doc) {
 		if (doc.getNodeName().equals("queries")) {
 			System.out.println("Batch queries are not yet merged with this functionality.");
@@ -1314,6 +1272,111 @@ public class InterfaceMain implements ActionListener {
 			savedProperties.storeToXML(fos, "ModelInterface properties");
 		} catch (IOException ioe) {
 			ioe.printStackTrace();
+		}
+	}
+
+	// Preferences dialog implementation
+	private void showPreferencesDialog() {
+		javax.swing.JDialog dlg = new javax.swing.JDialog(mainFrame, "Preferences", true);
+		javax.swing.JTabbedPane tabs = new javax.swing.JTabbedPane();
+
+		// Queries tab
+		javax.swing.JPanel queriesPanel = new javax.swing.JPanel();
+		queriesPanel.setLayout(new javax.swing.BoxLayout(queriesPanel, javax.swing.BoxLayout.Y_AXIS));
+		javax.swing.JLabel qLbl = new javax.swing.JLabel("Default Query File: " + (savedProperties.getProperty("queryFile", "<none>")));
+		qLbl.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
+		javax.swing.JPanel qBtns = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+		JButton btnSetQuery = new JButton("Choose…");
+		btnSetQuery.setActionCommand("Select Query File");
+		btnSetQuery.addActionListener(this);
+		JButton btnEditQuery = new JButton("Edit…");
+		btnEditQuery.setActionCommand("Query File");
+		btnEditQuery.addActionListener(this);
+		qBtns.add(btnSetQuery);
+		qBtns.add(btnEditQuery);
+		qBtns.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
+		queriesPanel.add(qLbl);
+		queriesPanel.add(qBtns);
+		tabs.addTab("Queries", queriesPanel);
+
+		// Units tab
+		javax.swing.JPanel unitsPanel = new javax.swing.JPanel();
+		unitsPanel.setLayout(new javax.swing.BoxLayout(unitsPanel, javax.swing.BoxLayout.Y_AXIS));
+		javax.swing.JLabel uLbl = new javax.swing.JLabel("Units CSV: " + (savedProperties.getProperty("unitsFile", "<none>")));
+		uLbl.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
+		javax.swing.JPanel uBtns = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+		JButton btnUnits = new JButton("Choose…");
+		btnUnits.setActionCommand("Select Units File");
+		btnUnits.addActionListener(this);
+		uBtns.add(btnUnits);
+		uBtns.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
+		unitsPanel.add(uLbl);
+		unitsPanel.add(uBtns);
+		tabs.addTab("Units", unitsPanel);
+
+		// Regions tab
+		javax.swing.JPanel regionsPanel = new javax.swing.JPanel();
+		regionsPanel.setLayout(new javax.swing.BoxLayout(regionsPanel, javax.swing.BoxLayout.Y_AXIS));
+		javax.swing.JLabel rLbl = new javax.swing.JLabel("Regions List: " + (savedProperties.getProperty("presetRegionList", "<none>")));
+		rLbl.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
+		javax.swing.JPanel rBtns = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+		JButton btnRegions = new JButton("Choose…");
+		btnRegions.setActionCommand("Select Regions File");
+		btnRegions.addActionListener(this);
+		rBtns.add(btnRegions);
+		rBtns.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
+		regionsPanel.add(rLbl);
+		regionsPanel.add(rBtns);
+		tabs.addTab("Regions", regionsPanel);
+
+		// Maps tab
+		javax.swing.JPanel mapsPanel = new javax.swing.JPanel();
+		mapsPanel.setLayout(new javax.swing.BoxLayout(mapsPanel, javax.swing.BoxLayout.Y_AXIS));
+		javax.swing.JLabel mLbl = new javax.swing.JLabel("Map Resource Folder: " + (savedProperties.getProperty("mapResourceFolder", "<none>")));
+		mLbl.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
+		javax.swing.JPanel mBtns = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+		JButton btnMaps = new JButton("Choose…");
+		btnMaps.setActionCommand("Select Map Resource Folder");
+		btnMaps.addActionListener(this);
+		mBtns.add(btnMaps);
+		mBtns.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
+		mapsPanel.add(mLbl);
+		mapsPanel.add(mBtns);
+		tabs.addTab("Maps", mapsPanel);
+
+		javax.swing.JPanel content = new javax.swing.JPanel(new java.awt.BorderLayout());
+		content.add(tabs, java.awt.BorderLayout.CENTER);
+
+		javax.swing.JPanel bottom = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT));
+		JButton close = new JButton("Close");
+		close.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) { dlg.dispose(); }
+		});
+		bottom.add(close);
+		content.add(bottom, java.awt.BorderLayout.SOUTH);
+
+		dlg.setContentPane(content);
+		dlg.pack();
+		dlg.setLocationRelativeTo(mainFrame);
+		dlg.setVisible(true);
+	}
+
+	private static boolean isMac() {
+		String os = System.getProperty("os.name", "").toLowerCase();
+		return os.contains("mac");
+	}
+
+	private int getMenuShortcutMask() {
+		try {
+			// Java 9+
+			return (Integer) Toolkit.class.getMethod("getMenuShortcutKeyMaskEx").invoke(Toolkit.getDefaultToolkit());
+		} catch (Exception ex) {
+			try {
+				// Java 8 fallback
+				return (Integer) Toolkit.class.getMethod("getMenuShortcutKeyMask").invoke(Toolkit.getDefaultToolkit());
+			} catch (Exception ex2) {
+				return java.awt.event.InputEvent.CTRL_DOWN_MASK;
+			}
 		}
 	}
 }

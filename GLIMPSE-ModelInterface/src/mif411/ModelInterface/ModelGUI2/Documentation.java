@@ -482,7 +482,8 @@ public class Documentation {
 			return;
 		}
 		final JDialog docDialog = new JDialog(parentFrame, "Annotation", false);
-		docDialog.setLocation(100,100);
+		// Center over main frame instead of fixed coordinates
+		docDialog.setLocationRelativeTo(parentFrame);
 		docDialog.setResizable(false);
 		JButton cancelButton = new JButton("Cancel");
 		JButton okButton = new JButton("  OK  ");
@@ -643,7 +644,8 @@ public class Documentation {
 			docNames.add(documentations.get(i).source + "  Date: "+documentations.get(i).sourceDate);
 		}
 		final JDialog addDocDialog = new JDialog(ModelInterface.InterfaceMain.getInstance().getFrame(), "Add Documentation", true);
-		addDocDialog.setLocation(100,100);
+		// Center over main frame instead of fixed coordinates
+		addDocDialog.setLocationRelativeTo(ModelInterface.InterfaceMain.getInstance().getFrame());
 		addDocDialog.setResizable(false);
 		JButton doneButton = new JButton("Done");
 		JButton updateButton = new JButton("Update");
@@ -759,7 +761,8 @@ public class Documentation {
 
 	public boolean newDocumentationDialog() {
 		final JDialog newDocDialog = new JDialog(ModelInterface.InterfaceMain.getInstance().getFrame(), "Add Documentation", true);
-		newDocDialog.setLocation(100,100);
+		// Center over main frame instead of fixed coordinates
+		newDocDialog.setLocationRelativeTo(ModelInterface.InterfaceMain.getInstance().getFrame());
 		newDocDialog.setResizable(false);
 		int prevDocSize = documentations.size();
 		JButton okButton = new JButton("  OK  ");

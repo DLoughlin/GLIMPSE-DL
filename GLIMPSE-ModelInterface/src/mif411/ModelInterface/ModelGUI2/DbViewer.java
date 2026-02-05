@@ -83,6 +83,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -223,6 +224,9 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	private JMenuItem loadFavoritesMenu;
 	private JMenuItem appendFavoritesMenu;// YD Feb-2024
 	private JMenuItem betaMn;
+	// New: move Save/Save As under Tools > Queries menu
+	private JMenuItem queriesSaveMenu;
+	private JMenuItem queriesSaveAsMenu;
 
 	private JMenuItem menuExpPrn;
 
@@ -351,8 +355,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 						} catch (NumberFormatException nfe) {
 							System.out.println("Invalid split location preference: " + nfe);
 						}
-						main.getSaveMenu().addActionListener(thisViewer);
-						main.getSaveAsMenu().addActionListener(thisViewer);
+						// Do not attach File menu Save/Save As here; they are managed under Tools > Queries
+						// Ensure File menu items remain disabled to avoid duplicates
+						main.getSaveMenu().setEnabled(false);
+						main.getSaveAsMenu().setEnabled(false);
 
 						queriesDoc = readQueries(queryFile);
 
@@ -463,193 +469,6 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		return ret;
 	}
 
-//	/**
-//	 * Adds menu items to the application's menu manager.
-//	 * <p>
-//	 * This method sets up the file, view, and advanced menu items in the
-//	 * application's menu bar. It configures their action listeners and
-//	 * enables/disables them based on the application's state.
-//	 *
-//	 * @param menuMan The menu manager to which menu items are added.
-//	 */
-//	public void addMenuItems(InterfaceMain.MenuManager menuMan) {
-//		final InterfaceMain main = InterfaceMain.getInstance();
-//		final JFrame parentFrame = main.getFrame();
-//		final ActionListener thisListener = this;
-//		addFileMenuItems(menuMan, main, parentFrame, thisListener);
-//		addViewMenuItems(menuMan, main, parentFrame);
-//		addAdvancedMenuItems(menuMan, main, parentFrame);
-//	}
-//
-//	/**
-//	 * Adds file menu items to the application's menu manager.
-//	 * <p>
-//	 * This method sets up the file-related menu items such as "Open DB", "Manage
-//	 * DB", and "Export Tabs as CSVs" in the application's menu bar. It also
-//	 * configures their action listeners and enables/disables them based on the
-//	 * application's state.
-//	 *
-//	 * @param menuMan      The menu manager to which menu items are added.
-//	 * @param main         The main interface instance.
-//	 * @param parentFrame  The parent JFrame for dialogs and listeners.
-//	 * @param thisListener The action listener for menu items.
-//	 */
-//	private void addFileMenuItems(InterfaceMain.MenuManager menuMan, InterfaceMain main, JFrame parentFrame,
-//			ActionListener thisListener) {
-//		JMenuItem menuItem = new JMenuItem("Open DB");
-//		menuItem.addActionListener(this);
-//		menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).addMenuItem(menuItem, 5);
-//
-//		final JMenuItem menuManage = makeMenuItem("Manage DB");
-//		menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).addMenuItem(menuManage, 10);
-//		menuManage.setEnabled(false);
-//
-//		parentFrame.addPropertyChangeListener(new PropertyChangeListener() {
-//			public void propertyChange(PropertyChangeEvent evt) {
-//				if (evt.getPropertyName().equals("Control")) {
-//					if (evt.getOldValue().equals(controlStr) || evt.getOldValue().equals(controlStr + "Same")) {
-//						menuManage.setEnabled(false);
-//						JMenuItem batchMenu = main.getBatchMenu();
-//						batchMenu.removeActionListener(thisListener);
-//						batchMenu.addActionListener(main);
-//					}
-//					if (evt.getNewValue().equals(controlStr)) {
-//						menuManage.setEnabled(true);
-//						JMenuItem batchMenu = main.getBatchMenu();
-//						batchMenu.removeActionListener(main);
-//						batchMenu.addActionListener(thisListener);
-//					}
-//				}
-//			}
-//		});
-//
-//		menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).addSeparator(InterfaceMain.FILE_MENU_SEPERATOR);
-//		menuExpPrn = makeMenuItem("Export Tabs as CSVs");
-//		menuExpPrn.setEnabled(false);
-//		menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).addMenuItem(menuExpPrn, 35);
-//		menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).addSeparator(37);
-//
-//		parentFrame.addPropertyChangeListener(new PropertyChangeListener() {
-//			private int numQueries = 0;
-//
-//			public void propertyChange(PropertyChangeEvent evt) {
-//				if (evt.getPropertyName().equals("Control")) {
-//					if (evt.getOldValue().equals(controlStr) || evt.getOldValue().equals(controlStr + "Same")) {
-//						menuExpPrn.setEnabled(false);
-//					}
-//				} else if (evt.getPropertyName().equals("Query") && evt.getOldValue() == null) {
-//					menuExpPrn.setEnabled(true);
-//					++numQueries;
-//				} else if (evt.getPropertyName().equals("Query") && evt.getNewValue() == null) {
-//					if (--numQueries == 0) {
-//						menuExpPrn.setEnabled(false);
-//					}
-//				}
-//			}
-//		});
-//	}
-//
-//	/**
-//	 * Adds view menu items to the application's menu manager.
-//	 * <p>
-//	 * This method sets up the view-related menu items such as "Close All Tabs",
-//	 * "Close All Windows", "Disable 3 Significant Digits", "Disable Unit
-//	 * Conversions", and "Select Years" in the application's menu bar. It also
-//	 * configures their action listeners and enables/disables them based on the
-//	 * application's state.
-//	 *
-//	 * @param menuMan     The menu manager to which menu items are added.
-//	 * @param main        The main interface instance.
-//	 * @param parentFrame The parent JFrame for dialogs and listeners.
-//	 */
-//	private void addViewMenuItems(InterfaceMain.MenuManager menuMan, InterfaceMain main, JFrame parentFrame) {
-//		// Close All Tabs
-//		JMenuItem tabCl = new JMenuItem("Close All Tabs");
-//		tabCl.addActionListener(e -> closeAllTabs());
-//		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addMenuItem(tabCl, 1);
-//
-//		// Close All Windows
-//		JMenuItem winCl = new JMenuItem("Close All Windows");
-//		winCl.addActionListener(e -> closeAllWindows());
-//		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addMenuItem(winCl, 2);
-//		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addSeparator(3);
-//
-//		// Significant Digits Toggle
-//		significantDigitsMenu = new JMenuItem("Disable 3 Significant Digits");
-//		significantDigitsMenu.addActionListener(this);
-//		significantDigitsMenu.setEnabled(true);
-//		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addMenuItem(significantDigitsMenu, 10);
-//
-//		// Unit Conversions Toggle
-//		enableUnitConversionsMenu = new JMenuItem("Disable Unit Conversions");
-//		enableUnitConversionsMenu.addActionListener(this);
-//		enableUnitConversionsMenu.setEnabled(true);
-//		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addMenuItem(enableUnitConversionsMenu, 11);
-//
-//		// Select Years
-//		JMenuItem yearsMn = new JMenuItem("Select Years");
-//		yearsMn.addActionListener(e -> new FilterTreePaneYears());
-//		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addSeparator(20);
-//		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addMenuItem(yearsMn, 21);
-//	}
-//
-//	private void addAdvancedMenuItems(InterfaceMain.MenuManager menuMan, InterfaceMain main, JFrame parentFrame) {
-//		// Query Tree Lock/Unlock
-//		queriesLockMenu = makeMenuItem(queryTreeLocked ? "Unlock Query Tree" : "Lock Query Tree");
-//		queriesLockMenu.addActionListener(this);
-//		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS)
-//				.getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addMenuItem(queriesLockMenu, 2);
-//
-//		// Query Update/Create/Edit/Remove
-//		queriesUpdateMenu = makeMenuItem("Update Single Query");
-//		queriesUpdateMenu.addActionListener(this);
-//		queriesUpdateMenu.setEnabled(false);
-//		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS)
-//				.getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addMenuItem(queriesUpdateMenu, 5);
-//
-//		queriesCreateMenu = makeMenuItem("Create");
-//		queriesCreateMenu.addActionListener(this);
-//		queriesCreateMenu.setEnabled(false);
-//		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS)
-//				.getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addMenuItem(queriesCreateMenu, 10);
-//
-//		queriesEditMenu = makeMenuItem("Edit");
-//		queriesEditMenu.addActionListener(this);
-//		queriesEditMenu.setEnabled(false);
-//		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS)
-//				.getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addMenuItem(queriesEditMenu, 15);
-//
-//		queriesRemoveMenu = makeMenuItem("Remove");
-//		queriesRemoveMenu.addActionListener(this);
-//		queriesRemoveMenu.setEnabled(false);
-//		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS)
-//				.getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addMenuItem(queriesRemoveMenu, 20);
-//
-//		// Favorites
-//		loadFavoritesMenu = makeMenuItem("Load Favorite Queries File");
-//		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS)
-//				.getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addMenuItem(loadFavoritesMenu, 45);
-//
-//		createFavoritesMenu = makeMenuItem("Create Favorite Queries File");
-//		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS)
-//				.getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addMenuItem(createFavoritesMenu, 45);
-//
-//		appendFavoritesMenu = makeMenuItem("Append Favorite Queries File");
-//		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS)
-//				.getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addMenuItem(appendFavoritesMenu, 48);
-//
-//		// Separator
-//		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS).addSeparator(99);
-//
-//		// Beta Features
-//		String betaText = (InterfaceMain.enableMapping || InterfaceMain.enableSankey) ? "Disable Beta Features"
-//				: "Enable Beta Features";
-//		betaMn = makeMenuItem(betaText);
-//		betaMn.addActionListener(this);
-//		menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS).addMenuItem(betaMn, 100);
-//	}
-
-
 	/**
 	 * Adds menu items to the application's menu manager.
 	 * <p>
@@ -668,19 +487,6 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		addAdvancedMenuItems(menuMan, main, parentFrame);
 	}
 
-	/**
-	 * Adds file menu items to the application's menu manager.
-	 * <p>
-	 * This method sets up the file-related menu items such as "Open DB", "Manage
-	 * DB", and "Export Tabs as CSVs" in the application's menu bar. It also
-	 * configures their action listeners and enables/disables them based on the
-	 * application's state.
-	 *
-	 * @param menuMan      The menu manager to which menu items are added.
-	 * @param main         The main interface instance.
-	 * @param parentFrame  The parent JFrame for dialogs and listeners.
-	 * @param thisListener The action listener for menu items.
-	 */
 	private void addFileMenuItems(InterfaceMain.MenuManager menuMan, InterfaceMain main, JFrame parentFrame,
 			ActionListener thisListener) {
 		JMenuItem menuItem = new JMenuItem("Open DB");
@@ -688,8 +494,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).addMenuItem(menuItem, 5);
 
 		final JMenuItem menuManage = makeMenuItem("Manage DB");
-		//DHL: Hiding menu item since there is a button with the same functionality  
-		//menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).addMenuItem(menuManage, 10);
+		// menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).addMenuItem(menuManage, 10);
 		menuManage.setEnabled(false);
 
 		parentFrame.addPropertyChangeListener(new PropertyChangeListener() {
@@ -782,49 +587,98 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	}
 
 	private void addAdvancedMenuItems(InterfaceMain.MenuManager menuMan, InterfaceMain main, JFrame parentFrame) {
+		// Ensure Tools > Queries submenu exists to avoid NPEs
+		InterfaceMain.MenuManager toolsMM = menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS);
+		if (toolsMM == null) {
+			// Create Tools menu if missing
+			JMenu toolsMenu = new JMenu("Tools");
+			menuMan.addMenuItem(toolsMenu, InterfaceMain.TOOLS_MENU_POS);
+			toolsMM = menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS);
+		}
+		InterfaceMain.MenuManager queriesMM = toolsMM.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS);
+		if (queriesMM == null) {
+			// Create Queries submenu under Tools if missing
+			toolsMM.addMenuItem(new JMenu("Queries"), InterfaceMain.TOOLS_SUBMENU1_POS);
+			queriesMM = toolsMM.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS);
+		}
+
 		// Query Tree Lock/Unlock
 		queriesLockMenu = makeMenuItem(queryTreeLocked ? "Unlock Query Tree" : "Lock Query Tree");
 		queriesLockMenu.addActionListener(this);
-		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS)
-				.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addMenuItem(queriesLockMenu, 2);
+		queriesMM.addMenuItem(queriesLockMenu, 2);
+
+		// Edit Submenu
+		JMenu editSubMenu = new JMenu("Edit");
+		queriesMM.addMenuItem(editSubMenu, 5);
+
+		// Favorites Submenu
+		JMenu favoritesSubMenu = new JMenu("Favorites");
+		queriesMM.addMenuItem(favoritesSubMenu, 25);
+		// Add a separator right after Favorites submenu
+		queriesMM.addSeparator(26);
+
+		// Move Save and Save As under Queries -> Edit
+		queriesSaveMenu = makeMenuItem("Save");
+		queriesSaveMenu.addActionListener(this);
+		queriesSaveMenu.setEnabled(!queryTreeLocked);
+		editSubMenu.add(queriesSaveMenu);
+
+		queriesSaveAsMenu = makeMenuItem("Save As");
+		queriesSaveAsMenu.addActionListener(this);
+		queriesSaveAsMenu.setEnabled(!queryTreeLocked);
+		editSubMenu.add(queriesSaveAsMenu);
+
+		// Move Undo and Redo from global Edit menu into Tools -> Queries -> Edit
+		// Place them after Save/Save As for consistency
+		JMenuItem undoItem = InterfaceMain.getInstance().getUndoMenu();
+		JMenuItem redoItem = InterfaceMain.getInstance().getRedoMenu();
+		// Ensure they use the same action listeners already set up in InterfaceMain
+		editSubMenu.addSeparator();
+		editSubMenu.add(undoItem);
+		editSubMenu.add(redoItem);
+
+		// Add Run Batch under Tools, positioned directly after the existing "CSV to XML" item
+		JMenuItem runBatchMenu = makeMenuItem("Run Batch...");
+		runBatchMenu.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+            	InterfaceMain.getInstance().runBatch();
+            }
+        });
+        // Insert a separator between "CSV to XML" and "Run Batch..."
+        // Use positions that follow the likely CSV to XML placement
+        toolsMM.addSeparator(51);
+        toolsMM.addMenuItem(runBatchMenu, 52);
 
 		// Query Update/Create/Edit/Remove
 		queriesUpdateMenu = makeMenuItem("Update Single Query");
 		queriesUpdateMenu.addActionListener(this);
 		queriesUpdateMenu.setEnabled(false);
-		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS)
-				.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addMenuItem(queriesUpdateMenu, 5);
+		editSubMenu.add(queriesUpdateMenu);
 
 		queriesCreateMenu = makeMenuItem("Create");
 		queriesCreateMenu.addActionListener(this);
 		queriesCreateMenu.setEnabled(false);
-		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS)
-				.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addMenuItem(queriesCreateMenu, 10);
+		editSubMenu.add(queriesCreateMenu);
 
 		queriesEditMenu = makeMenuItem("Edit");
 		queriesEditMenu.addActionListener(this);
 		queriesEditMenu.setEnabled(false);
-		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS)
-				.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addMenuItem(queriesEditMenu, 15);
+		editSubMenu.add(queriesEditMenu);
 
 		queriesRemoveMenu = makeMenuItem("Remove");
 		queriesRemoveMenu.addActionListener(this);
 		queriesRemoveMenu.setEnabled(false);
-		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS)
-				.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addMenuItem(queriesRemoveMenu, 20);
+		editSubMenu.add(queriesRemoveMenu);
 
 		// Favorites
 		loadFavoritesMenu = makeMenuItem("Load Favorite Queries File");
-		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS)
-				.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addMenuItem(loadFavoritesMenu, 45);
+		favoritesSubMenu.add(loadFavoritesMenu);
 
 		createFavoritesMenu = makeMenuItem("Create Favorite Queries File");
-		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS)
-				.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addMenuItem(createFavoritesMenu, 45);
+		favoritesSubMenu.add(createFavoritesMenu);
 
 		appendFavoritesMenu = makeMenuItem("Append Favorite Queries File");
-		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS)
-				.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS).addMenuItem(appendFavoritesMenu, 48);
+		favoritesSubMenu.add(appendFavoritesMenu);
 
 		/****Hiding menu option for hiding beta features since features are now reasonably stable
 		// Separator
@@ -979,6 +833,9 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		InterfaceMain main = InterfaceMain.getInstance();
 		main.getSaveMenu().setEnabled(false);
 		main.getSaveAsMenu().setEnabled(false);
+		// Disable Queries menu Save items as well
+		if (queriesSaveMenu != null) queriesSaveMenu.setEnabled(false);
+		if (queriesSaveAsMenu != null) queriesSaveAsMenu.setEnabled(false);
 		main.getUndoMenu().setEnabled(false);
 		main.getRedoMenu().setEnabled(false);
 		queryTreeLocked = true;
@@ -992,6 +849,9 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		queriesRemoveMenu.setEnabled(true);
 		queryTreeLocked = false;
 		queriesLockMenu.setText("Lock Query Tree");
+		// Enable Queries menu Save items when unlocked
+		if (queriesSaveMenu != null) queriesSaveMenu.setEnabled(true);
+		if (queriesSaveAsMenu != null) queriesSaveAsMenu.setEnabled(true);
 	}
 
 	private void handleSaveAs() {
@@ -1638,7 +1498,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		for (int i = 0; i < query_list.size(); i++) {
 			if (query_list.get(i) instanceof QueryGroup) {
 				QueryGroup group = (QueryGroup) query_list.get(i);
-				toRemove.addAll(getMatchingNodes(group, query));
+			 toRemove.addAll(getMatchingNodes(group, query));
 			}
 		}
 
@@ -1829,7 +1689,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
 	public void closeAllTabs() {
 		// need to disable the export tabs option
-		menuExpPrn.setEnabled(false);
+		if (menuExpPrn != null) menuExpPrn.setEnabled(false);
 
 		// grab the panel
 		if (tablesTabs.getTabCount() == 0) {
@@ -1954,7 +1814,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		for (String line; (line = br.readLine()) != null;) {
 			line = line.trim();
 			if (line.length() > 0) {
-				if (commentChar != null && !line.startsWith(commentChar)) {
+				if (commentChar != null && ! !line.startsWith(commentChar)) {
 					arrayList.add(line);
 				}
 			}
@@ -3715,7 +3575,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 				// a final check if we were not able to get the doc then do not scan
 				boolean wasInterrupted = doc == null;
 
-				// for each query that is enabled have the extension create and cache it's
+								// for each query that is enabled have the extension create and cache it's
 				// single query list. The cache will be set as metadata on the cache doc
 				// if we got interrupted we must stop now
 				for (Iterator<QueryGenerator> it = selQueries.iterator(); it.hasNext() && !wasInterrupted;) {
@@ -3725,10 +3585,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 					// could be null if the extension is not enabled
 					if (se != null) {
 						se.createSingleQueryListCache(doc, selScenarios, selRegions);
-					}
+						}
 					SwingUtilities.invokeLater(incProgress);
-					wasInterrupted = Thread.interrupted();
-				}
+				 wasInterrupted = Thread.interrupted();
+					}
 
 				// clean up and take down the progress bar
 				scanDialog.setVisible(false);
@@ -3767,7 +3627,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		// database
 		cancelButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				if (scanThread.isAlive()) {
+			 if (scanThread.isAlive()) {
 					progLabel.setText("Canceling Scan");
 					scanThread.interrupt();
 					// this is in effect interrupting all single queries create list

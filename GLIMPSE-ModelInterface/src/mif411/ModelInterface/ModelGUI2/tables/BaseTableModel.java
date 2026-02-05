@@ -375,10 +375,11 @@ public abstract class BaseTableModel extends AbstractTableModel {
 	JScrollPane scrollingList = new JScrollPane(list);
     		
     final JFrame parentFrame = InterfaceMain.getInstance().getFrame();
-	final JDialog filterDialog = new JDialog(parentFrame, tableTypeString + " for \'" + ((DOMmodel.DOMNodeAdapter)itemsObjs[itemsObjs.length-1]).getNode().getNodeName() + "\'. Please choose two headers:", true);
-	filterDialog.setSize(500,400);
-	filterDialog.setLocation(100,100);
-	filterDialog.setResizable(false);
+    final JDialog filterDialog = new JDialog(parentFrame, tableTypeString + " for '" + ((DOMmodel.DOMNodeAdapter)itemsObjs[itemsObjs.length-1]).getNode().getNodeName() + "'. Please choose two headers:", true);
+    filterDialog.setSize(500,400);
+    // Center over the main frame instead of top-left
+    filterDialog.setLocationRelativeTo(parentFrame);
+    filterDialog.setResizable(false);
 	
 	final JButton nextButton = new JButton(" Finished With Selection ");
 	nextButton.addActionListener(new ActionListener() {
@@ -454,7 +455,8 @@ public abstract class BaseTableModel extends AbstractTableModel {
         final JFrame parentFrame = InterfaceMain.getInstance().getFrame();
 		final JDialog filterDialog = new JDialog(parentFrame, title, true);
 		filterDialog.setSize(500,400);
-		filterDialog.setLocation(100,100);
+		// Center over the main frame instead of top-left
+		filterDialog.setLocationRelativeTo(parentFrame);
 		filterDialog.setResizable(false);
 
 		final JList list = new JList();
