@@ -94,11 +94,11 @@ public class ConfigurationEditor extends JFrame implements DOMDocumentEditor, Me
     public static final String ROOT_ELEMENT_NAME = "Configuration"; //$NON-NLS-1$
 	
     /**
-	 * Position of the "Configuration..." item in the Edit menu.
+	 * Position of the "Configuration..." item in the Tools menu.
 	 */
-	private static int EDIT_CONFIGURATION_MENUITEM_POS = 19;
+	private static int TOOLS_CONFIGURATION_MENUITEM_POS = 19;
     
-	/**
+    /**
      * The current parsed XML document.
      */
     private transient Document mCurrentDocument = null;
@@ -267,8 +267,9 @@ public class ConfigurationEditor extends JFrame implements DOMDocumentEditor, Me
                 setVisible(true);
             }
         });
-        aMenuManager.getSubMenuManager(InterfaceMain.EDIT_MENU_POS).addMenuItem(editConfMenuItem,
-                EDIT_CONFIGURATION_MENUITEM_POS);
+        // Move menu item under Tools instead of Edit
+        aMenuManager.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS).addMenuItem(editConfMenuItem,
+                TOOLS_CONFIGURATION_MENUITEM_POS);
     }
     
     /**

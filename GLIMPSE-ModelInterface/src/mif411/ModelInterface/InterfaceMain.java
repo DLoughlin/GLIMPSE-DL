@@ -59,7 +59,10 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.Vector;
 
+import javax.swing.JButton;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -112,7 +115,6 @@ import java.lang.reflect.Field;
 
 import java.awt.Font;
 import java.awt.Color;
-import javax.swing.JButton;
 
 public class InterfaceMain implements ActionListener {
 	private static final Font UNIFIED_FONT = new Font("Segoe UI", Font.PLAIN, 14);
@@ -713,7 +715,7 @@ public class InterfaceMain implements ActionListener {
 		// Ensure expected submenus exist for downstream menu adders
 		MenuManager toolsMM = menuMan.getSubMenuManager(TOOLS_MENU_POS);
 		if (toolsMM != null) {
-			toolsMM.addMenuItem(new JMenu("Queries"), TOOLS_SUBMENU1_POS);
+			// Removed empty "Queries" submenu under Tools
 			toolsMM.addMenuItem(new JMenu("Open Files"), TOOLS_SUBMENU2_POS);
 		}
 
@@ -752,10 +754,11 @@ public class InterfaceMain implements ActionListener {
 		undoManager = new UndoManager();
 		undoManager.setLimit(10);
 
+		// Create the Undo/Redo menu items but DO NOT register them with the global
+		// MenuManager here. DbViewer will place these items into the Edit -> Queries
+		// submenu to avoid duplicates and control ordering.
 		undoMenu = new JMenuItem("Undo");
-		menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(undoMenu, QUERIES_UNDO_MENUITEM_POS);
 		redoMenu = new JMenuItem("Redo");
-		menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(redoMenu, QUERIES_REDO_MENUITEM_POS);
 		// Add standard accelerators
 		undoMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, getMenuShortcutMask()));
 		if (isMac()) {
@@ -1281,11 +1284,18 @@ public class InterfaceMain implements ActionListener {
 		javax.swing.JTabbedPane tabs = new javax.swing.JTabbedPane();
 
 		// Queries tab
-		javax.swing.JPanel queriesPanel = new javax.swing.JPanel();
-		queriesPanel.setLayout(new javax.swing.BoxLayout(queriesPanel, javax.swing.BoxLayout.Y_AXIS));
+		javax.swing.JPanel queriesPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
+		queriesPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+		javax.swing.JPanel queriesInner = new javax.swing.JPanel();
+		queriesInner.setLayout(new java.awt.GridBagLayout());
+		java.awt.GridBagConstraints qc = new java.awt.GridBagConstraints();
+		qc.gridx = 0; qc.gridy = 0; qc.fill = java.awt.GridBagConstraints.HORIZONTAL; qc.weightx = 1.0;
+		qc.insets = new java.awt.Insets(6, 6, 6, 6);
 		javax.swing.JLabel qLbl = new javax.swing.JLabel("Default Query File: " + (savedProperties.getProperty("queryFile", "<none>")));
-		qLbl.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
-		javax.swing.JPanel qBtns = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+		queriesInner.add(qLbl, qc);
+
+		qc.gridy++;
+		JPanel qBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
 		JButton btnSetQuery = new JButton("Choose…");
 		btnSetQuery.setActionCommand("Select Query File");
 		btnSetQuery.addActionListener(this);
@@ -1295,68 +1305,91 @@ public class InterfaceMain implements ActionListener {
 		qBtns.add(btnSetQuery);
 		qBtns.add(btnEditQuery);
 		qBtns.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
-		queriesPanel.add(qLbl);
-		queriesPanel.add(qBtns);
+		queriesInner.add(qBtns, qc);
+
+		queriesPanel.add(queriesInner, java.awt.BorderLayout.NORTH);
 		tabs.addTab("Queries", queriesPanel);
 
 		// Units tab
-		javax.swing.JPanel unitsPanel = new javax.swing.JPanel();
-		unitsPanel.setLayout(new javax.swing.BoxLayout(unitsPanel, javax.swing.BoxLayout.Y_AXIS));
+		javax.swing.JPanel unitsPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
+		unitsPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+		javax.swing.JPanel unitsInner = new javax.swing.JPanel(new java.awt.GridBagLayout());
+		java.awt.GridBagConstraints uc = new java.awt.GridBagConstraints();
+		uc.gridx = 0; uc.gridy = 0; uc.fill = java.awt.GridBagConstraints.HORIZONTAL; uc.weightx = 1.0; uc.insets = new java.awt.Insets(6, 6, 6, 6);
 		javax.swing.JLabel uLbl = new javax.swing.JLabel("Units CSV: " + (savedProperties.getProperty("unitsFile", "<none>")));
-		uLbl.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
-		javax.swing.JPanel uBtns = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+		unitsInner.add(uLbl, uc);
+		uc.gridy++;
+		JPanel uBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
 		JButton btnUnits = new JButton("Choose…");
 		btnUnits.setActionCommand("Select Units File");
 		btnUnits.addActionListener(this);
 		uBtns.add(btnUnits);
-		uBtns.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
-		unitsPanel.add(uLbl);
-		unitsPanel.add(uBtns);
+		unitsInner.add(uBtns, uc);
+		unitsPanel.add(unitsInner, java.awt.BorderLayout.NORTH);
 		tabs.addTab("Units", unitsPanel);
 
 		// Regions tab
-		javax.swing.JPanel regionsPanel = new javax.swing.JPanel();
-		regionsPanel.setLayout(new javax.swing.BoxLayout(regionsPanel, javax.swing.BoxLayout.Y_AXIS));
+		javax.swing.JPanel regionsPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
+		regionsPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+		javax.swing.JPanel regionsInner = new javax.swing.JPanel(new java.awt.GridBagLayout());
+		java.awt.GridBagConstraints rc = new java.awt.GridBagConstraints();
+		rc.gridx = 0; rc.gridy = 0; rc.fill = java.awt.GridBagConstraints.HORIZONTAL; rc.weightx = 1.0; rc.insets = new java.awt.Insets(6, 6, 6, 6);
 		javax.swing.JLabel rLbl = new javax.swing.JLabel("Regions List: " + (savedProperties.getProperty("presetRegionList", "<none>")));
-		rLbl.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
-		javax.swing.JPanel rBtns = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+		regionsInner.add(rLbl, rc);
+		rc.gridy++;
+		JPanel rBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
 		JButton btnRegions = new JButton("Choose…");
 		btnRegions.setActionCommand("Select Regions File");
 		btnRegions.addActionListener(this);
 		rBtns.add(btnRegions);
-		rBtns.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
-		regionsPanel.add(rLbl);
-		regionsPanel.add(rBtns);
+		regionsInner.add(rBtns, rc);
+		regionsPanel.add(regionsInner, java.awt.BorderLayout.NORTH);
 		tabs.addTab("Regions", regionsPanel);
 
 		// Maps tab
-		javax.swing.JPanel mapsPanel = new javax.swing.JPanel();
-		mapsPanel.setLayout(new javax.swing.BoxLayout(mapsPanel, javax.swing.BoxLayout.Y_AXIS));
+		javax.swing.JPanel mapsPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
+		mapsPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+		javax.swing.JPanel mapsInner = new javax.swing.JPanel(new java.awt.GridBagLayout());
+		java.awt.GridBagConstraints mc = new java.awt.GridBagConstraints();
+		mc.gridx = 0; mc.gridy = 0; mc.fill = java.awt.GridBagConstraints.HORIZONTAL; mc.weightx = 1.0; mc.insets = new java.awt.Insets(6, 6, 6, 6);
 		javax.swing.JLabel mLbl = new javax.swing.JLabel("Map Resource Folder: " + (savedProperties.getProperty("mapResourceFolder", "<none>")));
-		mLbl.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
-		javax.swing.JPanel mBtns = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+		mapsInner.add(mLbl, mc);
+		mc.gridy++;
+		JPanel mBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
 		JButton btnMaps = new JButton("Choose…");
 		btnMaps.setActionCommand("Select Map Resource Folder");
 		btnMaps.addActionListener(this);
 		mBtns.add(btnMaps);
-		mBtns.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
-		mapsPanel.add(mLbl);
-		mapsPanel.add(mBtns);
+		mapsInner.add(mBtns, mc);
+		mapsPanel.add(mapsInner, java.awt.BorderLayout.NORTH);
 		tabs.addTab("Maps", mapsPanel);
 
+		// Main content
 		javax.swing.JPanel content = new javax.swing.JPanel(new java.awt.BorderLayout());
 		content.add(tabs, java.awt.BorderLayout.CENTER);
 
-		javax.swing.JPanel bottom = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT));
+		// Bottom buttons: Close and Apply (Apply will persist properties immediately)
+		javax.swing.JPanel bottom = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 8));
+		JButton apply = new JButton("Apply");
+		apply.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				persistProperties();
+				InterfaceMain.this.showMessageDialog("Preferences saved.", "Preferences", JOptionPane.INFORMATION_MESSAGE);
+			}
+		});
 		JButton close = new JButton("Close");
 		close.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) { dlg.dispose(); }
 		});
+		apply.setPreferredSize(new java.awt.Dimension(90, 26));
+		close.setPreferredSize(new java.awt.Dimension(90, 26));
+		bottom.add(apply);
 		bottom.add(close);
 		content.add(bottom, java.awt.BorderLayout.SOUTH);
 
 		dlg.setContentPane(content);
-		dlg.pack();
+		// Make dialog a bit larger to reduce cramped feeling, but not too large
+		dlg.setSize(Math.max(520, mainFrame.getWidth() / 2), Math.max(360, mainFrame.getHeight() / 3));
 		dlg.setLocationRelativeTo(mainFrame);
 		dlg.setVisible(true);
 	}

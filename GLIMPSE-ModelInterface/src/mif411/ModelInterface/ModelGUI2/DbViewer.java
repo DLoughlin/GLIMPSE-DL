@@ -587,90 +587,110 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	}
 
 	private void addAdvancedMenuItems(InterfaceMain.MenuManager menuMan, InterfaceMain main, JFrame parentFrame) {
-		// Ensure Tools > Queries submenu exists to avoid NPEs
-		InterfaceMain.MenuManager toolsMM = menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS);
-		if (toolsMM == null) {
-			// Create Tools menu if missing
-			JMenu toolsMenu = new JMenu("Tools");
-			menuMan.addMenuItem(toolsMenu, InterfaceMain.TOOLS_MENU_POS);
-			toolsMM = menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS);
-		}
-		InterfaceMain.MenuManager queriesMM = toolsMM.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS);
-		if (queriesMM == null) {
-			// Create Queries submenu under Tools if missing
-			toolsMM.addMenuItem(new JMenu("Queries"), InterfaceMain.TOOLS_SUBMENU1_POS);
-			queriesMM = toolsMM.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS);
+		// Move Queries menus under the global Edit menu instead of Tools
+		InterfaceMain.MenuManager editMM = menuMan.getSubMenuManager(InterfaceMain.EDIT_MENU_POS);
+		if (editMM == null) {
+			JMenu editMenu = new JMenu("Edit");
+			menuMan.addMenuItem(editMenu, InterfaceMain.EDIT_MENU_POS);
+			editMM = menuMan.getSubMenuManager(InterfaceMain.EDIT_MENU_POS);
 		}
 
+		// Ensure a Queries submenu exists under Edit
+		InterfaceMain.MenuManager queriesMM = editMM.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS);
+		if (queriesMM == null) {
+			editMM.addMenuItem(new JMenu("Queries"), InterfaceMain.TOOLS_SUBMENU1_POS);
+			queriesMM = editMM.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS);
+		}
+
+		// Move former Edit submenu items directly under Edit -> Queries
 		// Query Tree Lock/Unlock
 		queriesLockMenu = makeMenuItem(queryTreeLocked ? "Unlock Query Tree" : "Lock Query Tree");
 		queriesLockMenu.addActionListener(this);
-		queriesMM.addMenuItem(queriesLockMenu, 2);
+		queriesMM.addMenuItem(queriesLockMenu, 1);
 
-		// Edit Submenu
-		JMenu editSubMenu = new JMenu("Edit");
-		queriesMM.addMenuItem(editSubMenu, 5);
-
-		// Favorites Submenu
-		JMenu favoritesSubMenu = new JMenu("Favorites");
-		queriesMM.addMenuItem(favoritesSubMenu, 25);
-		// Add a separator right after Favorites submenu
-		queriesMM.addSeparator(26);
-
-		// Move Save and Save As under Queries -> Edit
+		// Save and Save As for Queries
 		queriesSaveMenu = makeMenuItem("Save");
 		queriesSaveMenu.addActionListener(this);
 		queriesSaveMenu.setEnabled(!queryTreeLocked);
-		editSubMenu.add(queriesSaveMenu);
+		queriesMM.addMenuItem(queriesSaveMenu, 2);
 
 		queriesSaveAsMenu = makeMenuItem("Save As");
 		queriesSaveAsMenu.addActionListener(this);
 		queriesSaveAsMenu.setEnabled(!queryTreeLocked);
-		editSubMenu.add(queriesSaveAsMenu);
+		queriesMM.addMenuItem(queriesSaveAsMenu, 3);
 
-		// Move Undo and Redo from global Edit menu into Tools -> Queries -> Edit
-		// Place them after Save/Save As for consistency
+		// Separator, then Undo/Redo
 		JMenuItem undoItem = InterfaceMain.getInstance().getUndoMenu();
 		JMenuItem redoItem = InterfaceMain.getInstance().getRedoMenu();
-		// Ensure they use the same action listeners already set up in InterfaceMain
-		editSubMenu.addSeparator();
-		editSubMenu.add(undoItem);
-		editSubMenu.add(redoItem);
+		// Explicitly remove Undo/Redo from any existing parent before re-adding to avoid duplicates
+		java.awt.Container undoParent = undoItem.getParent();
+		if (undoParent != null) {
+			if (undoParent instanceof javax.swing.JPopupMenu) {
+				((javax.swing.JPopupMenu) undoParent).remove(undoItem);
+			} else {
+				undoParent.remove(undoItem);
+			}
+		}
+		java.awt.Container redoParent = redoItem.getParent();
+		if (redoParent != null) {
+			if (redoParent instanceof javax.swing.JPopupMenu) {
+				((javax.swing.JPopupMenu) redoParent).remove(redoItem);
+			} else {
+				redoParent.remove(redoItem);
+			}
+		}
+		// Ensure Undo/Redo are placed after Save, Save As and the first separator
+		queriesMM.addSeparator(4);
+		queriesMM.addMenuItem(undoItem, 5);
+		queriesMM.addMenuItem(redoItem, 6);
 
-		// Add Run Batch under Tools, positioned directly after the existing "CSV to XML" item
+		// Separator, then Update/Create/Edit/Remove
+		queriesMM.addSeparator(7);
+		queriesUpdateMenu = makeMenuItem("Update Single Query");
+		queriesUpdateMenu.addActionListener(this);
+		queriesUpdateMenu.setEnabled(false);
+		queriesMM.addMenuItem(queriesUpdateMenu, 8);
+
+		queriesCreateMenu = makeMenuItem("Create");
+		queriesCreateMenu.addActionListener(this);
+		queriesCreateMenu.setEnabled(false);
+		queriesMM.addMenuItem(queriesCreateMenu, 9);
+
+		queriesEditMenu = makeMenuItem("Edit");
+		queriesEditMenu.addActionListener(this);
+		queriesEditMenu.setEnabled(false);
+		queriesMM.addMenuItem(queriesEditMenu, 10);
+
+		queriesRemoveMenu = makeMenuItem("Remove");
+		queriesRemoveMenu.addActionListener(this);
+		queriesRemoveMenu.setEnabled(false);
+		queriesMM.addMenuItem(queriesRemoveMenu, 11);
+
+		// Favorites submenu now lives directly under Edit (moved from Edit -> Queries)
+		JMenu favoritesSubMenu = new JMenu("Favorites List");
+		editMM.addMenuItem(favoritesSubMenu, 4);
+		// Add a separator between Favorites (4) and Preferences (5)
+		editMM.addSeparator(4);
+		// queriesMM.addMenuItem(favoritesSubMenu, 25);
+		// queriesMM.addSeparator(26);
+
+		// Add Run Batch under Tools (unchanged)
+		InterfaceMain.MenuManager toolsMM = menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS);
+		if (toolsMM == null) {
+			JMenu toolsMenu = new JMenu("Tools");
+			menuMan.addMenuItem(toolsMenu, InterfaceMain.TOOLS_MENU_POS);
+			toolsMM = menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS);
+		}
 		JMenuItem runBatchMenu = makeMenuItem("Run Batch...");
 		runBatchMenu.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
             	InterfaceMain.getInstance().runBatch();
             }
         });
-        // Insert a separator between "CSV to XML" and "Run Batch..."
-        // Use positions that follow the likely CSV to XML placement
         toolsMM.addSeparator(51);
         toolsMM.addMenuItem(runBatchMenu, 52);
 
-		// Query Update/Create/Edit/Remove
-		queriesUpdateMenu = makeMenuItem("Update Single Query");
-		queriesUpdateMenu.addActionListener(this);
-		queriesUpdateMenu.setEnabled(false);
-		editSubMenu.add(queriesUpdateMenu);
-
-		queriesCreateMenu = makeMenuItem("Create");
-		queriesCreateMenu.addActionListener(this);
-		queriesCreateMenu.setEnabled(false);
-		editSubMenu.add(queriesCreateMenu);
-
-		queriesEditMenu = makeMenuItem("Edit");
-		queriesEditMenu.addActionListener(this);
-		queriesEditMenu.setEnabled(false);
-		editSubMenu.add(queriesEditMenu);
-
-		queriesRemoveMenu = makeMenuItem("Remove");
-		queriesRemoveMenu.addActionListener(this);
-		queriesRemoveMenu.setEnabled(false);
-		editSubMenu.add(queriesRemoveMenu);
-
-		// Favorites
+		// Favorites under Queries
 		loadFavoritesMenu = makeMenuItem("Load Favorite Queries File");
 		favoritesSubMenu.add(loadFavoritesMenu);
 
@@ -3566,14 +3586,14 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 						doc = (ANode) res.next();
 					}
 				} catch (QueryException e) {
-					// TODO: put error to screen?
+				 // TODO: put error to screen?
 					e.printStackTrace();
 				} finally {
 					queryProc.close();
 				}
 
 				// a final check if we were not able to get the doc then do not scan
-				boolean wasInterrupted = doc == null;
+							boolean wasInterrupted = doc == null;
 
 								// for each query that is enabled have the extension create and cache it's
 				// single query list. The cache will be set as metadata on the cache doc
