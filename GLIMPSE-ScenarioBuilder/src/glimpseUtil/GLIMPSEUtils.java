@@ -92,6 +92,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
+import javafx.stage.FileChooser;
 
 import com.github.difflib.DiffUtils;
 import com.github.difflib.algorithm.DiffException;
@@ -925,6 +926,8 @@ public class GLIMPSEUtils {
 				button.setMinSize(size, size);
 				// No padding when using icon-only small buttons
 				button.setPadding(styles.getNoPadding());
+				// Prevent JavaFX default hover/pressed background from showing through transparent icon pixels
+				button.setStyle("-fx-background-color: transparent; -fx-background-radius: 0; -fx-padding: 0;");
 			} catch (Exception e) {
 				System.out.println("Could not create button images.");
 			}
@@ -1004,8 +1007,18 @@ public class GLIMPSEUtils {
 		FontLoader fontLoader = Toolkit.getToolkit().getFontLoader();
 		button.setFont(Font.font(size));
 		double font = button.getFont().getSize();
-		// Removed inline border styling to defer to CSS
-		button.setStyle("-fx-font-size:" + (font) + "px;");
+		// Preserve any existing style properties and replace/add only the font-size rule
+		String existingStyle = button.getStyle();
+		if (existingStyle == null)
+			existingStyle = "";
+		if (existingStyle.contains("-fx-font-size")) {
+			existingStyle = existingStyle.replaceAll("-fx-font-size:[^;]+;", "-fx-font-size:" + (font) + "px;");
+		} else {
+			if (!existingStyle.isEmpty() && !existingStyle.endsWith(";"))
+				existingStyle += ";";
+			existingStyle += "-fx-font-size:" + (font) + "px;";
+		}
+		button.setStyle(existingStyle);
 		button.applyCss();
 		button.layout();
 		button.setText(text);
@@ -1540,7 +1553,23 @@ public class GLIMPSEUtils {
 			buttonBox.setPadding(new Insets(4, 4, 4, 4));
 			buttonBox.setSpacing(5);
 			buttonBox.setAlignment(Pos.CENTER);
-			buttonBox.getChildren().addAll(closeButton);
+			// Export button added before Close
+            Button exportButton = createButton("Export", styles.getBigButtonWidth(), null);
+            exportButton.setOnAction(ev -> {
+                try {
+                    File initialDir = new File(vars.getGlimpseLogDir());
+                    FileChooser.ExtensionFilter csvFilter = FileChooserPlus.createExtensionFilter("CSV files (*.csv)", "csv");
+                    File chosen = FileChooserPlus.showSaveDialog(stage, "Save Scenario Report", initialDir, "scenario_report.csv", csvFilter);
+                    if (chosen != null) {
+                        files.saveFile(csvData, chosen.getPath());
+                        showInformationDialog("Information", "Export successful", "Saved report to: " + chosen.getPath());
+                    }
+                } catch (Exception ex) {
+                    showInformationDialog("Information", "Export failed", "Could not save report: " + ex.getMessage());
+                }
+            });
+
+            buttonBox.getChildren().addAll(exportButton, closeButton);
 
 			// root.getChildren().addAll(table, buttonBox);
 			border.setCenter(table);

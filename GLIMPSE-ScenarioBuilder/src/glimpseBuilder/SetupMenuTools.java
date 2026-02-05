@@ -73,6 +73,7 @@ public final class SetupMenuTools {
         menuTools.getItems().addAll(
             createMenuItem("Check Installation", () -> utils.displayString(vars.examineGLIMPSESetup(), "Analysis of GLIMPSE setup")),
             createMenuItem("Check Current DB Size", this::checkDatabaseSize),
+            createMenuItem("Scenario Report", () -> Client.buttonReport.fire()),
             createMenuItem("Archive Scenario", () -> Client.buttonArchiveScenario.fire()),
             createMenuItem("Fix Lost Handle", () -> {
                 utils.fixLostHandle();

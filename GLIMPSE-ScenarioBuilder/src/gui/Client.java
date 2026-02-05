@@ -156,7 +156,7 @@ public class Client extends Application {
     static Button buttonResults;
     static Button buttonResultsForSelected;
     public static Button buttonArchiveScenario;
-    static Button buttonReport;
+    public static Button buttonReport;
     public static Button buttonExamineScenario;
     // endregion
 
