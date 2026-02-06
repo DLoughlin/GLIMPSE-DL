@@ -1834,7 +1834,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		for (String line; (line = br.readLine()) != null;) {
 			line = line.trim();
 			if (line.length() > 0) {
-				if (commentChar != null && ! !line.startsWith(commentChar)) {
+				if (commentChar != null && !line.startsWith(commentChar)) {
 					arrayList.add(line);
 				}
 			}
