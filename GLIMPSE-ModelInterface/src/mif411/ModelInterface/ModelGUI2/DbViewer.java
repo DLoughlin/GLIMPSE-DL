@@ -2778,7 +2778,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
         // Done button closes dialog and refreshes scenario list if changes were made
         doneButton.addActionListener(new ActionListener() {
-
+            @Override
 	public void actionPerformed(ActionEvent e) {
 		if (dirtyBit.isDirty()) {
 			scns = getScenarios();
