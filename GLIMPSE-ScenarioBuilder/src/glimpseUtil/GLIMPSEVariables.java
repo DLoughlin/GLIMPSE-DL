@@ -1486,7 +1486,7 @@ public class GLIMPSEVariables {
     private void set(String param, String val) {
 
     	if ((val==null)||(param==null)) return;
-    	if ((val=="")||(param=="")) return;
+    	if (val.trim().isEmpty() || param.trim().isEmpty()) return;
     	
         param = param.toLowerCase().trim();
         if (val.indexOf("#") > -1){

@@ -771,6 +771,7 @@ public class InterfaceMain implements ActionListener {
         redoMenu.setEnabled(false);
 
         ActionListener undoListener = new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 String cmd = e.getActionCommand();
                 if (cmd.startsWith("Undo")) {
@@ -1034,11 +1035,13 @@ public class InterfaceMain implements ActionListener {
 					? new File(InterfaceMain.shapeFileLocationPrefix)
 					: new File(getProperties().getProperty("lastDirectory", "."));
 			javax.swing.filechooser.FileFilter dirFilter = new javax.swing.filechooser.FileFilter() {
+				@Override
 				public boolean accept(File f) { return f.isDirectory(); }
+				@Override
 				public String getDescription() { return "Directory (select folder)"; }
 			};
 			File[] dirs = fc.doFilePrompt(mainFrame, "Select Map Resource Folder", FileChooser.LOAD_DIALOG, start,
-					dirFilter);
+				dirFilter);
 			if (dirs != null && dirs.length > 0) {
 				File dir = dirs[0];
 				InterfaceMain.shapeFileLocationPrefix = dir.getAbsolutePath();
@@ -1055,7 +1058,7 @@ public class InterfaceMain implements ActionListener {
 					System.out.println("Found the US52Compact shape file: " + preset_shapefile.getAbsolutePath());
 				} else {
 					System.out.println("Could not find US52Compact shape file: " + preset_shapefile.getAbsolutePath()
-							+ " disabling mapping.");
+						+ " disabling mapping.");
 					InterfaceMain.enableMapping = false;
 				}
 
@@ -1156,7 +1159,20 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
-	public Properties getProperties() { return savedProperties; }
+	/**
+	 * Returns a defensive copy of the saved properties to avoid exposing
+	 * the internal representation. Callers can read and modify the returned
+	 * Properties without affecting the internal savedProperties field.
+	 *
+	 * @return a copy of the saved properties
+	 */
+	public Properties getProperties() {
+		Properties copy = new Properties();
+		if (savedProperties != null) {
+			copy.putAll(savedProperties);
+		}
+		return copy;
+	}
 
 	// Copied from DbViewer.java helper
 	protected Vector getRegions() {
@@ -1191,6 +1207,7 @@ public class InterfaceMain implements ActionListener {
 				new File(getProperties().getProperty("lastDirectory", ".")), new XMLFilter());
 		// these should be run off the GUI thread
 		new Thread(new Runnable() {
+			@Override
 			public void run() {
 				if (result != null) {
 					for (File file : result) {
@@ -1372,6 +1389,7 @@ public class InterfaceMain implements ActionListener {
 		javax.swing.JPanel bottom = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 8));
 		JButton apply = new JButton("Apply");
 		apply.addActionListener(new ActionListener() {
+			@Override
 			public void actionPerformed(ActionEvent e) {
 				persistProperties();
 				InterfaceMain.this.showMessageDialog("Preferences saved.", "Preferences", JOptionPane.INFORMATION_MESSAGE);
@@ -1379,6 +1397,7 @@ public class InterfaceMain implements ActionListener {
 		});
 		JButton close = new JButton("Close");
 		close.addActionListener(new ActionListener() {
+			@Override
 			public void actionPerformed(ActionEvent e) { dlg.dispose(); }
 		});
 		apply.setPreferredSize(new java.awt.Dimension(90, 26));

@@ -253,7 +253,8 @@ public class QueryGenerator implements java.io.Serializable{
 				} else {
 					group = false;
 				}
-				if( elem.getAttribute("buildList").equals("") || elem.getAttribute("buildList").equals("true")) {
+				// check for zero length rather than comparing to empty string for efficiency
+				if( elem.getAttribute("buildList").length() == 0 || elem.getAttribute("buildList").equals("true")) {
 					buildSingleQueryList = true;
 				} else {
 					buildSingleQueryList = false;
@@ -518,7 +519,7 @@ public class QueryGenerator implements java.io.Serializable{
 					if(tempComp != list[0]) {
 						list[0].removeSelectionListener(currListener[0]);
 						list[0] = tempComp;
-						listScroll.getViewport().setView(list[0].getModel());
+					 listScroll.getViewport().setView(list[0].getModel());
 						currListener[0] = qb.getListSelectionListener(list[0], nextButton, cancelButton);
 						list[0].addSelectionListener(currListener[0]);
 					}

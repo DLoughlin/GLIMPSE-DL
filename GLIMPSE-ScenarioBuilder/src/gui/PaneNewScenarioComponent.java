@@ -385,6 +385,7 @@ public class PaneNewScenarioComponent extends gui.ScenarioBuilder {
 		hBoxProgress.setPadding(new javafx.geometry.Insets(5, 0, 5, 0));
 
 		xmlListTab = new TabXMLList(TAB_XML_LIST, stageWithTabs, ComponentLibraryTable.getTableComponents());
+		xmlListTab.setClosable(false);
 		pollTaxCapTab = new TabPollutantTaxCap(TAB_POLLUTANT_TAX_CAP, stageWithTabs);
 		pollTaxCapTab.setClosable(false);
 		fuelPriceAdjTab = new TabFuelPriceAdj(TAB_FUEL_PRICE_ADJ, stageWithTabs);
@@ -601,7 +602,7 @@ public class PaneNewScenarioComponent extends gui.ScenarioBuilder {
 		if (fileContent.equals("use temp file")) {
 			useTempFile = true;
 		}
-		if ((filenameSuggestion != null) && (!filenameSuggestion.equals(""))) {
+		if ((filenameSuggestion != null) && (!filenameSuggestion.isEmpty())) {
 			enableButtons();
 			tab.resetFileContent();
 			tab.resetFilenameSuggestion();

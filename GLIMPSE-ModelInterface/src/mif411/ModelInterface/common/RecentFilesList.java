@@ -96,6 +96,7 @@ public class RecentFilesList implements MenuAdder {
 		});
 		// setup Clear Menu behavior
 		clearMenuItem.addActionListener(new ActionListener() {
+			@Override
 			public void actionPerformed(ActionEvent e) {
 				clearRecentFiles();
 			}
@@ -364,6 +365,7 @@ public class RecentFilesList implements MenuAdder {
 
 		
 		
+		@Override
 		public void actionPerformed(ActionEvent e) {
 			// this would be a good time to make sure the files exist
 			for(File file : files) {

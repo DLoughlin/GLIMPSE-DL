@@ -259,6 +259,7 @@ public class ConfigurationEditor extends JFrame implements DOMDocumentEditor, Me
              * Method called when the menu item is clicked.
              * @param aEvent The event received.
              */
+            @Override
             public void actionPerformed(ActionEvent aEvent) {
                 // Show the configuration editor.
                 pack();

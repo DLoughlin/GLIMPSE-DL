@@ -902,7 +902,11 @@ public class GLIMPSEUtils {
 	private Button createButtonInternal(String text, int wid, String tt, String imageName) {
 		Button button = new Button();
 		// Use centralized micro padding for buttons
-		button.setPadding(styles.getMicroPadding());
+		if (styles != null) {
+			button.setPadding(styles.getMicroPadding());
+		} else {
+			button.setPadding(new Insets(2, 2, 2, 2));
+		}
 		if (tt != null && styles != null) {
 			Tooltip tooltip = new Tooltip(tt);
 			tooltip.setFont(Font.font(styles.getFontStyle()));

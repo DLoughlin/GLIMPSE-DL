@@ -2147,8 +2147,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
          final java.util.Map<JButton, Boolean> prevStates = new java.util.HashMap();
          // Runnable to disable all dialog buttons on the EDT and remember their previous state
          final Runnable disableAllButtons = new Runnable() {
+             @Override
              public void run() {
                  SwingUtilities.invokeLater(new Runnable() {
+                     @Override
                      public void run() {
                          prevStates.put(addButton, addButton.isEnabled());
                          prevStates.put(removeButton, removeButton.isEnabled());
@@ -2168,8 +2170,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
          };
          // Runnable to restore buttons' enabled state using saved values
          final Runnable restoreAllButtons = new Runnable() {
+             @Override
              public void run() {
                  SwingUtilities.invokeLater(new Runnable() {
+                     @Override
                      public void run() {
                          Boolean b;
                          b = prevStates.get(addButton); if (b != null) addButton.setEnabled(b);
@@ -2209,6 +2213,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                         //disableAllButtons.run();
 
                         new Thread(new Runnable() {
+                             @Override
                              public void run() {
                                  for (int addFileIndex = 0; addFileIndex < xmlFiles.length; ++addFileIndex) {
                                      if (xmlFiles[addFileIndex] != null) {
@@ -2222,6 +2227,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                                  scns = getScenarios();
                                  // update UI on EDT and restore buttons
                                  SwingUtilities.invokeLater(new Runnable() {
+                                    @Override
                                     public void run() {
                                         list.setListData(scns);
                                         statusField.setText("Add complete");
@@ -2252,6 +2258,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                  
                  // Inform user and show busy glass, then perform removal off the EDT
                  SwingUtilities.invokeLater(new Runnable() {
+                     @Override
                      public void run() {
                          statusField.setText("Removing selected scenarios...");
                          filterDialog.getGlassPane().setVisible(true);
@@ -2262,6 +2269,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                  //disableAllButtons.run();
                  
                  new Thread(new Runnable() {
+                     @Override
                      public void run() {
                          try {
                              for (int i = 0; i < remList.length; ++i) {
@@ -2272,6 +2280,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                          } finally {
                              // Update UI on EDT when done and restore buttons
                              SwingUtilities.invokeLater(new Runnable() {
+                                 @Override
                                  public void run() {
                                      list.setListData(scns);
                                      filterDialog.getGlassPane().setVisible(false);
@@ -2418,15 +2427,19 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                      jd.setLocationRelativeTo(filterDialog);
                  }
                  final Runnable incProgress = (new Runnable() {
+                     @Override
                      public void run() {
                          progBar.setValue(progBar.getValue() + 1);
                      }
                  });
-                 jd.setVisible(true);
+                 if (jd != null) {
+                     jd.setVisible(true);
+                 }
 
                  // run the export off the gui thread which ensures progress updates correctly
                  // and keeps the gui responsive
                  new Thread(new Runnable() {
+                      @Override
                       public void run() {
                           boolean success = true;
                           for (int i = 0; i < selectedList.length; ++i) {
@@ -2443,9 +2456,12 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                              success = success && XMLDB.getInstance().exportDoc(currItem.getDocName(), exportFile);
                              SwingUtilities.invokeLater(incProgress);
                           }
-                          jd.setVisible(false);
+                          if (jd != null) {
+                             jd.setVisible(false);
+                          }
                           final boolean finalSuccess = success;
                           SwingUtilities.invokeLater(new Runnable() {
+                             @Override
                              public void run() {
                                  if (finalSuccess) {
                                      InterfaceMain.getInstance().showMessageDialog("Scenario export succeeded.",
@@ -2488,6 +2504,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                 // Disable UI while rebuilding
                 disableAllButtons.run();
                 SwingUtilities.invokeLater(new Runnable() {
+                    @Override
                     public void run() {
                         statusField.setText("Rebuilding database...");
                         filterDialog.getGlassPane().setVisible(true);
@@ -2495,6 +2512,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                     }
                 });
                 new Thread(new Runnable() {
+                    @Override
                     public void run() {
                         File tempDir = null;
                         File backupDir = null;
@@ -2511,7 +2529,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                                     currentScns.add((ScenarioListItem) el);
                                 }
                             }
-                            if (currentScns == null || currentScns.size() == 0) {
+                            if (currentScns.isEmpty()) {
                                 throw new Exception("No documents found in Manage Database list to export.");
                             }
                             // create temp dir
@@ -2528,6 +2546,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                                 System.out.println("Rebuild: exporting " + s.getDocName() + " -> " + out.getAbsolutePath());
                                 final String exportName = s.getDocName();
                                 SwingUtilities.invokeLater(new Runnable() {
+                                    @Override
                                     public void run() {
                                         statusField.setText("Exporting " + exportName + " (" + currNum + "/" + currentScns.size() + ")");
                                     }
@@ -2627,6 +2646,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                                         } catch (Exception ex3) {
                                             System.out.println("Rebuild: failed to re-open database: " + ex3);
                                             SwingUtilities.invokeLater(new Runnable() {
+                                                @Override
                                                 public void run() {
                                                     InterfaceMain.getInstance().showMessageDialog(
                                                             "Failed to re-open database after rebuild. Please restart the application.",
@@ -2659,6 +2679,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                                     copyDirectory(backupDir, dbDir);
                                     System.out.println("Rebuild: Database restore from backup completed.");
                                     SwingUtilities.invokeLater(new Runnable() {
+                                        @Override
                                         public void run() {
                                             statusField.setText("Rebuild failed. Database restored from backup.");
                                             InterfaceMain.getInstance().showMessageDialog(
@@ -2669,6 +2690,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                                 } catch (Exception restoreEx) {
                                     System.out.println("Rebuild: Failed to restore database from backup: " + restoreEx);
                                     SwingUtilities.invokeLater(new Runnable() {
+                                        @Override
                                         public void run() {
                                             statusField.setText("Rebuild failed. Restore from backup also failed.");
                                             InterfaceMain.getInstance().showMessageDialog(
@@ -2679,6 +2701,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                                 }
                             } else {
                                 SwingUtilities.invokeLater(new Runnable() {
+                                    @Override
                                     public void run() {
                                         statusField.setText("Rebuild failed. No backup available.");
                                         InterfaceMain.getInstance().showMessageDialog(
@@ -2697,6 +2720,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                                 try { deleteRecursive(backupDir); } catch (Exception ignored) {}
                             }
                             SwingUtilities.invokeLater(new Runnable() {
+                                @Override
                                 public void run() {
                                     filterDialog.getGlassPane().setVisible(false);
                                     filterDialog.getGlassPane().setCursor(Cursor.getDefaultCursor());
@@ -3539,10 +3563,12 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		final JLabel progLabel = new JLabel("Label");
 		// processing should be done off of the gui thread to ensure responsiveness
 		final Thread scanThread = new Thread(new Runnable() {
+			@Override
 			public void run() {
 				// increasing progress should be run on the gui thread so I will create
 				// this runnable and use the SwingUtilities.invokeLater to run it on there
 				final Runnable incProgress = new Runnable() {
+					@Override
 					public void run() {
 						scanProgress.setValue(scanProgress.getValue() + 1);
 					}
@@ -3593,9 +3619,9 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 				}
 
 				// a final check if we were not able to get the doc then do not scan
-							boolean wasInterrupted = doc == null;
+				boolean wasInterrupted = doc == null;
 
-								// for each query that is enabled have the extension create and cache it's
+				// for each query that is enabled have the extension create and cache it's
 				// single query list. The cache will be set as metadata on the cache doc
 				// if we got interrupted we must stop now
 				for (Iterator<QueryGenerator> it = selQueries.iterator(); it.hasNext() && !wasInterrupted;) {

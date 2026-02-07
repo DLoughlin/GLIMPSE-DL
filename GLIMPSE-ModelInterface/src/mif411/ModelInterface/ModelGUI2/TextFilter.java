@@ -8,6 +8,7 @@ public class TextFilter extends javax.swing.filechooser.FileFilter {
     /**
      * Accept only .txt files or directories
      */
+    @Override
     public boolean accept(File f) {
         return f.getName().toLowerCase().endsWith(".txt") || f.isDirectory();
     }
@@ -15,6 +16,7 @@ public class TextFilter extends javax.swing.filechooser.FileFilter {
     /**
      * Description shown in the file chooser
      */
+    @Override
     public String getDescription() {
         return "Text files (*.txt)";
     }

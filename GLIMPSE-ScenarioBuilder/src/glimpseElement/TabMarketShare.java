@@ -765,6 +765,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
      * UI selections and the currently selected regions. Auto-naming is only
      * performed when the "use auto names" checkbox is selected.
      */
+    @Override
     protected void setPolicyAndMarketNames() {
         Platform.runLater(() -> {
             if (checkBoxUseAutoNames.isSelected()) {
@@ -1286,14 +1287,18 @@ public class TabMarketShare extends PolicyTab implements Runnable {
      */
     private boolean validateTableDataYears() {
         List<Integer> listOfAllowableYears = vars.getAllowablePolicyYears();
-        ObservableList<DataPoint> data = paneForComponentDetails != null ? this.paneForComponentDetails.table.getItems()
-                : null;
-        if (data == null)
+        // paneForComponentDetails is always initialized; directly fetch items
+        ObservableList<DataPoint> data = this.paneForComponentDetails.table.getItems();
+        if (data == null || data.isEmpty())
             return false;
         for (DataPoint dp : data) {
-            Integer year = Integer.parseInt(dp.getYear().trim());
-            if (listOfAllowableYears.contains(year)) {
-                return true;
+            try {
+                Integer year = Integer.parseInt(dp.getYear().trim());
+                if (listOfAllowableYears.contains(year)) {
+                    return true;
+                }
+            } catch (NumberFormatException nfe) {
+                // ignore rows with invalid year formatting
             }
         }
         return false;
@@ -1358,12 +1363,14 @@ public class TabMarketShare extends PolicyTab implements Runnable {
                  error_count++;
              }
 
-             // Require non-empty names
-             if (textFieldMarketName.getText().equals("")) {
+             // Require non-empty names (null-safe and checks zero-length)
+             String marketNameText = textFieldMarketName.getText();
+             if (marketNameText == null || marketNameText.isEmpty()) {
                  message += "A market name must be provided" + vars.getEol();
                  error_count++;
              }
-             if (textFieldPolicyName.getText().equals("")) {
+             String policyNameText = textFieldPolicyName.getText();
+             if (policyNameText == null || policyNameText.isEmpty()) {
                  message += "A policy name must be provided" + vars.getEol();
                  error_count++;
              }

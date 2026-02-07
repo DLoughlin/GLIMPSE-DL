@@ -347,12 +347,14 @@ public class XMLDB {
 			jd.setSize(400, 250);
 
 			final Runnable incProgress = new Runnable() {
+                @Override
 				public void run() {
 					int lastVal = -1;
 					int curActiveProg = 1;
 					// Show the dialog on the EDT. If it's modal, this will present it and
 					// run a nested event loop so the dialog receives input until dismissed.
 					SwingUtilities.invokeLater(new Runnable() {
+					    @Override
 						public void run() {
 							jd.setModal(true);
 							jd.setVisible(true);
@@ -409,6 +411,7 @@ public class XMLDB {
 			// Ensure dialog is closed when work completes
 			if (jd.isVisible()) {
 				SwingUtilities.invokeLater(new Runnable() {
+				    @Override
 					public void run() {
 						jd.setVisible(false);
 						jd.dispose();
@@ -559,7 +562,7 @@ public class XMLDB {
 				ret += ","+currAttr.getKey()+"="+currAttr.getValue();
 			}
 		}
-		return !ret.equals("") ? ret.substring(1) : ret;
+		return !ret.isEmpty() ? ret.substring(1) : ret;
 	}
 	public String getQueryFunctionAsDistinctNames() {
 		return "declare function local:distinct-node-names ($args as node()*) as xs:string* { fn:distinct-values(for $nname in $args return fn:local-name($nname)) }; local:distinct-node-names";
@@ -754,7 +757,7 @@ public class XMLDB {
 					InterfaceMain.getInstance().showMessageDialog(message, "Get Variables", 
 							JOptionPane.INFORMATION_MESSAGE);
 					} catch(XmlException e) {
-						e.printStackTrace();
+					 e.printStackTrace();
 					}
 				}
 			})).start();
@@ -911,6 +914,7 @@ public class XMLDB {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton dismissButton = new JButton("Dismiss");
         dismissButton.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 // Hide the dialog but do not dispose it so background work can continue
                 filterDialog.setVisible(false);
@@ -972,6 +976,7 @@ public class XMLDB {
 			JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
 			JButton dismissButton = new JButton("Dismiss");
 			dismissButton.addActionListener(new ActionListener() {
+				@Override
 				public void actionPerformed(ActionEvent e) {
 					// Hide the dialog but do not dispose so background work can update it if needed
 					filterDialog.setVisible(false);
