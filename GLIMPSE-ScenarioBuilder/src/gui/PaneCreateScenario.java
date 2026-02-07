@@ -111,7 +111,7 @@ class PaneCreateScenario extends ScenarioBuilder {
     private static final String LABEL_COMPONENTS = "Components: ";
     private static final String LABEL_CREATE_SCENARIO = "Create Scenario";
     private static final String TOOLTIP_SCENARIO_NAME = "Enter name of scenario being constructed";
-    private static final String BUTTON_CREATE = "create";
+    private static final String BUTTON_CREATE = "Create";
     private static final String BUTTON_ICON_CREATE = "create";
     private static final String BUTTON_MOVE_UP = "Move selected item up in list";
     private static final String BUTTON_MOVE_DOWN = "Move selected item down in list";
