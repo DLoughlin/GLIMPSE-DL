@@ -174,33 +174,35 @@ public class RecentFilesList implements MenuAdder {
 		// remove all items then add back the Clear command
 		recentFilesMenu.removeAll();
 		recentFilesMenu.add(clearMenuItem);
-		// wipe properties for recent files using persistent API
-		InterfaceMain main = InterfaceMain.getInstance();
-		for(int i = 1; i <= recentFilesLength; ++i) {
-			main.removeProperty("RecentFile"+i);
-			main.removeProperty("RecentFileTarget"+i);
-		}
+		// wipe properties for recent files using persistent API with batch update
+		InterfaceMain.getInstance().updateProperties(prop -> {
+			for(int i = 1; i <= recentFilesLength; ++i) {
+				prop.remove("RecentFile"+i);
+				prop.remove("RecentFileTarget"+i);
+			}
+		});
 	}
 
 	/**
 	 * Sets the properties with the latest recent files.
 	 */
 	private void doSetProperties() {
-		InterfaceMain main = InterfaceMain.getInstance();
-		// first clear existing entries to avoid stale values
-		for(int i = 1; i <= recentFilesLength; ++i) {
-			main.removeProperty("RecentFile"+i);
-			main.removeProperty("RecentFileTarget"+i);
-		}
-		Component[] theFiles = recentFilesMenu.getMenuComponents();
-		int idx = 1;
-		for(int i = 0; i < theFiles.length; ++i) {
-			if(!(theFiles[i] instanceof RecentFile)) continue; // skip separators/clear
-			RecentFile f = (RecentFile)theFiles[i];
-			main.setProperty("RecentFile"+idx, f.getFilePaths());
-			main.setProperty("RecentFileTarget"+idx, f.getTargetName()+";"+f.getActionCommand());
-			idx++;
-		}
+		InterfaceMain.getInstance().updateProperties(prop -> {
+			// first clear existing entries to avoid stale values
+			for(int i = 1; i <= recentFilesLength; ++i) {
+				prop.remove("RecentFile"+i);
+				prop.remove("RecentFileTarget"+i);
+			}
+			Component[] theFiles = recentFilesMenu.getMenuComponents();
+			int idx = 1;
+			for(int i = 0; i < theFiles.length; ++i) {
+				if(!(theFiles[i] instanceof RecentFile)) continue; // skip separators/clear
+				RecentFile f = (RecentFile)theFiles[i];
+				prop.setProperty("RecentFile"+idx, f.getFilePaths());
+				prop.setProperty("RecentFileTarget"+idx, f.getTargetName()+";"+f.getActionCommand());
+				idx++;
+			}
+		});
 	}
 
 	/**
