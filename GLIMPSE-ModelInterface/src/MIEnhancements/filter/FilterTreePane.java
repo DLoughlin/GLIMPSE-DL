@@ -550,9 +550,17 @@ public class FilterTreePane {
     private void filterTree(JTree tree, String filterText) {
         DefaultMutableTreeNode originalRoot = (DefaultMutableTreeNode) tree.getModel().getRoot();
         DefaultMutableTreeNode filteredRoot = filterTreeBuildFilteredRoot(originalRoot, filterText);
-        tree.setModel(new javax.swing.tree.DefaultTreeModel(filteredRoot));
-        collapseAll(tree);
-        expandAllMatching(tree, filteredRoot, new TreePath(filteredRoot));
+        if (filteredRoot == null) {
+            // No matches found - restore original tree and notify user
+            if (originalRootNode != null) {
+                tree.setModel(new javax.swing.tree.DefaultTreeModel(deepCopyTree(originalRootNode)));
+            }
+            JOptionPane.showMessageDialog(dialog, "No matches found for: " + filterText, "Filter Results", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            tree.setModel(new javax.swing.tree.DefaultTreeModel(filteredRoot));
+            collapseAll(tree);
+            expandAllMatching(tree, filteredRoot, new TreePath(filteredRoot));
+        }
     }
 
     // Recursively build a filtered tree containing only matching leaves and their parent branches
