@@ -1462,6 +1462,7 @@ public class GLIMPSEUtils {
 			// Use flexible sizing so the display dialog can resize naturally
 			textArea.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
 			textArea.setMinHeight(0);
+			textArea.setWrapText(doWrap);
 			Button closeButton = createButton(LABEL_CLOSE, styles.getBigButtonWidth(), null);
 			closeButton.setOnAction(e -> stage.close());
 			StringBuilder text = new StringBuilder();
