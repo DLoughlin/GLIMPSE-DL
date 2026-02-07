@@ -2340,6 +2340,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                  renameButtonPanel.add(Box.createHorizontalStrut(10));
                  renameButtonPanel.add(renameCancel);
                  ActionListener renameButtonListener = new ActionListener() {
+                     @Override
                      public void actionPerformed(ActionEvent renameEvt) {
                          if (renameEvt.getSource() == renameOK) {
                              for (int i = 0; i < renameList.length; ++i) {
