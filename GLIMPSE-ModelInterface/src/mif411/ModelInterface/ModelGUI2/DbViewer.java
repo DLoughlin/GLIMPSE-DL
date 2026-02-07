@@ -2242,6 +2242,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
           });
          removeButton.addActionListener(new ActionListener() {
+             @Override
              public void actionPerformed(ActionEvent e) {
                  final Object[] remList = list.getSelectedValues();
                  if (remList == null || remList.length == 0) {
