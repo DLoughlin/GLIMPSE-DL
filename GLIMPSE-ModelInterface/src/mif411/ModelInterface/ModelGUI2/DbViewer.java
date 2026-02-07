@@ -2191,6 +2191,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
         final DirtyBit dirtyBit = new DirtyBit();
 
          addButton.addActionListener(new ActionListener() {
+             @Override
              public void actionPerformed(ActionEvent e) {
 
                  FileChooser fc = FileChooserFactory.getFileChooser();
