@@ -2393,10 +2393,12 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                      saveDialogTitle = "Save As XML";
                  } else {
                      fileFilter = new FileFilter() {
+                         @Override
                          public boolean accept(File f) {
                              return f.isDirectory();
                          }
 
+                         @Override
                          public String getDescription() {
                              return "Directory to export into";
                          }
