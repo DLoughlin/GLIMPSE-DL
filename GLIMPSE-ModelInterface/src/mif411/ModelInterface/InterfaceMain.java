@@ -1207,7 +1207,7 @@ public class InterfaceMain implements ActionListener {
 	 * Performs multiple property updates in a batch and persists them once.
 	 * This is more efficient than multiple individual setProperty/removeProperty calls.
 	 *
-	 * @param updates a runnable that performs updates on the provided Properties object
+	 * @param updates a consumer that performs updates on the provided Properties object
 	 */
 	public void updateProperties(java.util.function.Consumer<Properties> updates) {
 		if (savedProperties != null) {
