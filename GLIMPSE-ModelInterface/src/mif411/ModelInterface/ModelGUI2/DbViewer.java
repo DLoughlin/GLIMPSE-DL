@@ -2299,6 +2299,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
               }
           });
          renameButton.addActionListener(new ActionListener() {
+             @Override
              public void actionPerformed(ActionEvent e) {
                  final Object[] renameList = list.getSelectedValues();
                  if (renameList.length == 0) {
