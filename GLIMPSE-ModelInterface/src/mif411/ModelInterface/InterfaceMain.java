@@ -1174,6 +1174,35 @@ public class InterfaceMain implements ActionListener {
 		return copy;
 	}
 
+	/**
+	 * Sets a property and persists it to disk immediately.
+	 * This method should be used instead of modifying the defensive copy
+	 * returned by getProperties() when changes need to be saved.
+	 *
+	 * @param key the property key
+	 * @param value the property value
+	 */
+	public void setProperty(String key, String value) {
+		if (savedProperties != null) {
+			savedProperties.setProperty(key, value);
+			persistProperties();
+		}
+	}
+
+	/**
+	 * Removes a property and persists the change to disk immediately.
+	 * This method should be used instead of modifying the defensive copy
+	 * returned by getProperties() when changes need to be saved.
+	 *
+	 * @param key the property key to remove
+	 */
+	public void removeProperty(String key) {
+		if (savedProperties != null) {
+			savedProperties.remove(key);
+			persistProperties();
+		}
+	}
+
 	// Copied from DbViewer.java helper
 	protected Vector getRegions() {
 		Vector funcTemp = new Vector<String>(1, 0);
