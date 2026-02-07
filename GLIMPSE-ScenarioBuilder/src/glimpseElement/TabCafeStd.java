@@ -41,10 +41,8 @@ import org.controlsfx.control.CheckComboBox;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
-import javafx.scene.control.CheckBoxTreeItem.TreeModificationEvent;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
@@ -55,7 +53,7 @@ import javafx.stage.Stage;
  * automatic naming of policies and markets, and handles the export of scenario component data in a format
  * compatible with GLIMPSE.
  *
- * <b>Features:</b>
+ * <b>Main Features:</b>
  * <ul>
  *   <li>UI controls for subsector, technology, units, and modification type selection</li>
  *   <li>Automatic and manual naming of policy and market</li>
@@ -65,6 +63,7 @@ import javafx.stage.Stage;
  *   <li>Export of scenario component metadata and policy tables</li>
  *   <li>Support for loading and saving policy configurations</li>
  * </ul>
+ *
  * <b>Thread Safety:</b> This class is not thread-safe. All UI updates must be performed on the JavaFX Application Thread.
  *
  * <b>Usage:</b> Instantiate this class as a tab in the scenario builder UI. The user interacts with the controls to
@@ -80,10 +79,19 @@ import javafx.stage.Stage;
  *   <li>{@link #loadContent(ArrayList)} - Loads configuration from file</li>
  *   <li>{@link #qaInputs()} - Validates user input and table data</li>
  * </ul>
+ *
+ * <b>Class Structure:</b>
+ * <ul>
+ *   <li>UI component setup and layout methods</li>
+ *   <li>Event handler setup for user interaction</li>
+ *   <li>Methods for auto/manual naming, validation, and export</li>
+ *   <li>Helper methods for data processing and QA</li>
+ * </ul>
  */
 public class TabCafeStd extends PolicyTab implements Runnable {
     // === Constants for UI labels and options ===
     private static final String LABEL_SPECIFICATION = "Specification:";
+    private static final String LABEL_NAMES = "Names:";
     private static final String LABEL_SUBSECTOR = "Subsector:";
     private static final String LABEL_POPULATE = "Populate:";
     private static final String LABEL_FINAL_VAL = "Final Val: ";
@@ -116,6 +124,8 @@ public class TabCafeStd extends PolicyTab implements Runnable {
     private final CheckComboBox<String> checkComboBoxTech = utils.createCheckComboBox(PREF_WIDTH);
     private final Label labelWhichUnits = utils.createLabel(LABEL_UNITS, LABEL_WIDTH);
     private final ComboBox<String> comboBoxWhichUnits = utils.createComboBoxString(PREF_WIDTH);
+    // HBox for Auto and Unique checkboxes
+    private final HBox hBoxAutoUnique = new HBox(8); // spacing of 8
     
     /**
      * Constructs a new TabCafeStd instance and initializes the UI components for the CAFE Standard tab.
@@ -131,20 +141,18 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 
         // Set up initial state of check box and policy and market textfields
         checkBoxUseAutoNames.setSelected(true);
+        checkBoxUseUniqueNames.setSelected(true);
         textFieldPolicyName.setDisable(true);
         textFieldMarketName.setDisable(true);
 
-        // Setup UI controls (now split into column setup methods)
-        setupUIControls();
-        setupUIComponents();
-        setupUILayout();
-        setComponentWidths();
-        setupEventHandlers();
-        setPolicyAndMarketNames();
-        setUnitsLabel();
-        VBox tabLayout = new VBox();
-        tabLayout.getChildren().addAll(gridPanePresetModification);
-        this.setContent(tabLayout);
+        // Setup UI controls and layout
+        setupUIControls(); // Populate combo boxes and set initial selections
+        setupUIComponents(); // Add controls to layout
+        setupUILayout(); // Arrange panes and layout
+        setComponentWidths(); // Set preferred/min/max widths
+        setupEventHandlers(); // Set up listeners and handlers
+        setPolicyAndMarketNames(); // Auto-generate names
+        setUnitsLabel(); // Set units label based on tech selection
         
         // Update policy and market names when region tree changes
         paneForCountryStateTree.getTree().addEventHandler(ActionEvent.ACTION, e -> {
@@ -157,9 +165,9 @@ public class TabCafeStd extends PolicyTab implements Runnable {
      * Calls setupLeftColumn, setupCenterColumn, and setupRightColumn.
      */
     public void setupUIComponents() {
-        setupLeftColumn();
-        setupCenterColumn();
-        setupRightColumn();   	
+        setupLeftColumn(); // Left column: labels and controls
+        setupCenterColumn(); // Center column: details table
+        setupRightColumn(); // Right column: region tree
     }
     
     /**
@@ -171,11 +179,11 @@ public class TabCafeStd extends PolicyTab implements Runnable {
         comboBoxSubsector.getItems().addAll(SUBSECTOR_OPTIONS);
         comboBoxSubsector.getSelectionModel().select(SELECT_ONE);
         checkComboBoxTech.getItems().addAll(TECH_OPTIONS);
-        checkComboBoxTech.getCheckModel().checkAll();
-        checkComboBoxTech.setDisable(true);
+        checkComboBoxTech.getCheckModel().checkAll(); // Default: all techs selected
+        checkComboBoxTech.setDisable(true); // Disabled until subsector selected
         comboBoxWhichUnits.getItems().addAll(UNITS_OPTIONS);
         comboBoxWhichUnits.getSelectionModel().select("MPG");
-        comboBoxWhichUnits.setDisable(true);
+        comboBoxWhichUnits.setDisable(true); // Disabled until tech selected
         comboBoxModificationType.getItems().addAll(MOD_TYPE_OPTIONS);
         comboBoxModificationType.getSelectionModel().selectFirst();
     }
@@ -186,17 +194,21 @@ public class TabCafeStd extends PolicyTab implements Runnable {
      */
     private void setupLeftColumn() {
         gridPaneLeft.add(utils.createLabel(LABEL_SPECIFICATION), 0, 0, 2, 1);
+        // Add checkboxes to HBox for auto/unique naming
+        hBoxAutoUnique.getChildren().clear();
+        hBoxAutoUnique.getChildren().addAll(checkBoxUseAutoNames, checkBoxUseUniqueNames);
+        // Add labels and controls to grid
         gridPaneLeft.addColumn(0, labelComboBoxSubsector, labelCheckComboBoxTech,  
-                labelWhichUnits, new Label(),  new Separator(), labelUseAutoNames, labelPolicyName, labelMarketName,
+                labelWhichUnits, new Label(),  new Separator(), utils.createLabel(LABEL_NAMES), labelPolicyName, labelMarketName,
                 new Label(), new Separator(), utils.createLabel(LABEL_POPULATE), labelModificationType, labelStartYear,
                 labelEndYear, labelInitialAmount, labelGrowth);
         gridPaneLeft.addColumn(1, comboBoxSubsector, checkComboBoxTech,  
-                comboBoxWhichUnits, new Label(), new Separator(), checkBoxUseAutoNames, textFieldPolicyName,
+                comboBoxWhichUnits, new Label(), new Separator(), hBoxAutoUnique, textFieldPolicyName,
                 textFieldMarketName, new Label(), new Separator(), new Label(), comboBoxModificationType,
                 textFieldStartYear, textFieldEndYear, textFieldInitialAmount, textFieldGrowth);
         gridPaneLeft.setAlignment(Pos.TOP_LEFT);
         gridPaneLeft.setVgap(3.);
-        gridPaneLeft.setStyle(styles.getStyle2());
+        //gridPaneLeft.setStyle(styles.getStyle2());
         scrollPaneLeft.setContent(gridPaneLeft);
     }
 
@@ -235,9 +247,9 @@ public class TabCafeStd extends PolicyTab implements Runnable {
                 boolean isFirstItemChecked = checkComboBoxTech.getCheckModel().isChecked(0);
                 if (e.getClickCount() == 2) {
                     if (isFirstItemChecked) {
-                        checkComboBoxTech.getCheckModel().clearChecks();
+                        checkComboBoxTech.getCheckModel().clearChecks(); // Uncheck all
                     } else {
-                        checkComboBoxTech.getCheckModel().checkAll();
+                        checkComboBoxTech.getCheckModel().checkAll(); // Check all
                     }
                 }
             }
@@ -245,11 +257,11 @@ public class TabCafeStd extends PolicyTab implements Runnable {
         // Enable/disable tech selection based on subsector
         comboBoxSubsector.setOnAction(e -> {
             if (comboBoxSubsector.getSelectionModel().getSelectedIndex() > 0) {
-                checkComboBoxTech.setDisable(false);
+                checkComboBoxTech.setDisable(false); // Enable tech selection
             } else {
-                checkComboBoxTech.setDisable(true);
+                checkComboBoxTech.setDisable(true); // Disable tech selection
             }
-            setPolicyAndMarketNames();
+            setPolicyAndMarketNames(); // Update names when subsector changes
         });
     }
 
@@ -284,6 +296,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
                         }
                     }
                     String name = policyType + "_" + sector + "_" + state ;
+                    // Clean up name string
                     name = name.replaceAll(" ", "_").replaceAll("-", "_").replaceAll("--", "_").replaceAll("_-_", "_").replaceAll("---", "");
                     textFieldMarketName.setText(name + MARKET_SUFFIX);
                     textFieldPolicyName.setText(name);
@@ -320,11 +333,16 @@ public class TabCafeStd extends PolicyTab implements Runnable {
      */
     private void saveScenarioComponent(TreeView<String> tree) {
         if (!qaInputs()) {
-            Thread.currentThread().destroy();
+            // QA failed - abort save
             return;
         }
 
-        String ID = utils.getUniqueString();
+        String ID = null;
+        if (checkBoxUseUniqueNames.isSelected()) { 
+            ID = utils.getUniqueString(); // Generate unique string for names
+        } else {
+            ID="";
+        }
         String policyName = textFieldPolicyName.getText() + ID;
         String marketName = textFieldMarketName.getText() + ID;
         filenameSuggestion = textFieldPolicyName.getText().replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
@@ -347,6 +365,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
         // Loop through regions and data to build CSV rows
         for (String region : listOfSelectedLeaves) {
             String subsector = comboBoxSubsector.getValue();
+            // Determine sector based on subsector
             String sector = (subsector.equals("Light Truck") || subsector.equals("Medium Truck") || subsector.equals("Heavy Truck"))
                 ? "trn_freight_road" : "trn_pass_road_LDV_4W";
 
@@ -370,6 +389,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
                     String outputRatio = Double.toString((1.0 / value / 1.61 * 131.76 / 1e6));
                     String pMultiplier = Double.toString(load * 1e9);
 
+                    // Add row to CAFE targets table
                     contentP1.append(region).append(",").append(sector).append(",").append(subsector).append(",")
                         .append(tech).append(",").append(year).append(",").append(io).append(",")
                         .append(coef).append(",").append(io).append(",").append(outputRatio).append(",")
@@ -469,8 +489,8 @@ public class TabCafeStd extends PolicyTab implements Runnable {
                 }
             }
         }
-        setUnitsLabel();
-        paneForComponentDetails.updateTable();
+        setUnitsLabel(); // Update units label after loading
+        paneForComponentDetails.updateTable(); // Refresh table
     }
 
     /**
@@ -484,9 +504,13 @@ public class TabCafeStd extends PolicyTab implements Runnable {
         ObservableList<DataPoint> data = paneForComponentDetails != null ? this.paneForComponentDetails.table.getItems() : null;
         if (data == null) return false;
         for (DataPoint dp : data) {
-            Integer year = Integer.parseInt(dp.getYear().trim());
-            if (listOfAllowableYears.contains(year)) {
-                return true;
+            try {
+                Integer year = Integer.parseInt(dp.getYear().trim());
+                if (listOfAllowableYears.contains(year)) {
+                    return true;
+                }
+            } catch (NumberFormatException nfe) {
+                // ignore invalid year entries
             }
         }
         return false;
@@ -520,26 +544,28 @@ public class TabCafeStd extends PolicyTab implements Runnable {
                 }
             }
             // Check subsector selection
-            if (comboBoxSubsector.getSelectionModel().getSelectedItem().equals(SELECT_ONE)) {
+            String selectedSubsector = comboBoxSubsector.getSelectionModel().getSelectedItem();
+            if (selectedSubsector == null || selectedSubsector.equals(SELECT_ONE)) {
                 message.append("Sector comboBox must have a selection").append(vars.getEol());
                 errorCount++;
             }
             // Check tech selection
-            if (checkComboBoxTech != null && ((checkComboBoxTech.getCheckModel().getCheckedItems().size() == 0))) {
+            if (checkComboBoxTech == null || checkComboBoxTech.getCheckModel().getCheckedItems().isEmpty()) {
                 message.append("Tech checkComboBox must have at least one selection").append(vars.getEol());
                 errorCount++;
             }
             // Check units selection
-            if (comboBoxWhichUnits.getSelectionModel().getSelectedItem().equals(SELECT_ONE)) {
+            String selectedUnits = comboBoxWhichUnits.getSelectionModel().getSelectedItem();
+            if (selectedUnits == null || selectedUnits.equals(SELECT_ONE)) {
                 message.append("Treatment comboBox must have a selection").append(vars.getEol());
                 errorCount++;
             }
             // Check market and policy name fields
-            if (textFieldMarketName.getText().isEmpty()) {
+            if (textFieldMarketName.getText() == null || textFieldMarketName.getText().isEmpty()) {
                 message.append("A market name must be provided").append(vars.getEol());
                 errorCount++;
             }
-            if (textFieldPolicyName.getText().isEmpty()) {
+            if (textFieldPolicyName.getText() == null || textFieldPolicyName.getText().isEmpty()) {
                 message.append("A policy name must be provided").append(vars.getEol());
                 errorCount++;
             }

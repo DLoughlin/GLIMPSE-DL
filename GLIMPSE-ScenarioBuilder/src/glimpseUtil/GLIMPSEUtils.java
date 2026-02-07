@@ -74,6 +74,7 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.CheckBoxTreeItem;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.Separator;
@@ -91,6 +92,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
+import javafx.stage.FileChooser;
 
 import com.github.difflib.DiffUtils;
 import com.github.difflib.algorithm.DiffException;
@@ -330,7 +332,9 @@ public class GLIMPSEUtils {
 		String title = descriptionType;
 		TextArea textArea = new TextArea();
 		textArea.setEditable(true);
-		textArea.setPrefSize(385, 375);
+		// Allow the dialog text area to grow with its container instead of using a fixed preferred size
+		textArea.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+		textArea.setMinHeight(0);
 
 		try {
 			Stage stage = new Stage();
@@ -349,7 +353,8 @@ public class GLIMPSEUtils {
 			});
 
 			VBox root = new VBox();
-			root.setPadding(new Insets(4, 4, 4, 4));
+			// Use centralized small padding for dialog roots
+			root.setPadding(styles.getSmallPadding());
 			root.setSpacing(5);
 			root.setAlignment(Pos.TOP_LEFT);
 
@@ -358,7 +363,8 @@ public class GLIMPSEUtils {
 			textArea.setText(text);
 
 			HBox buttonBox = new HBox();
-			buttonBox.setPadding(new Insets(4, 4, 4, 4));
+			// Use centralized small padding for dialog button areas
+			buttonBox.setPadding(styles.getSmallPadding());
 			buttonBox.setSpacing(5);
 			buttonBox.setAlignment(Pos.CENTER);
 			buttonBox.getChildren().addAll(okButton);
@@ -814,8 +820,8 @@ public class GLIMPSEUtils {
 		if (styles == null)
 			return new Label(txt); // null check for styles
 		Label label = new Label(txt);
-		label.setStyle(styles.getFontStyle());
-		label.setPadding(new Insets(1, 1, 1, 1));
+		// Use centralized micro padding for labels
+		label.setPadding(styles.getMicroPadding());
 		return label;
 	}
 
@@ -858,8 +864,6 @@ public class GLIMPSEUtils {
 	 */
 	public TextField createTextField() {
 		TextField tf = new TextField();
-		if (styles != null)
-			tf.setStyle(styles.getFontStyle());
 		return tf;
 	}
 
@@ -870,8 +874,6 @@ public class GLIMPSEUtils {
 	 */
 	public ComboBox<String> createComboBoxString() {
 		ComboBox<String> comboBox = new ComboBox<>();
-		if (styles != null)
-			comboBox.setStyle(styles.getFontStyle());
 		return comboBox;
 	}
 
@@ -882,8 +884,6 @@ public class GLIMPSEUtils {
 	 */
 	public CheckComboBox<String> createCheckComboBox() {
 		CheckComboBox<String> checkComboBox = new CheckComboBox<>();
-		if (styles != null)
-			checkComboBox.setStyle(styles.getFontStyle());
 		checkComboBox.setPrefWidth(Double.MAX_VALUE);
 		return checkComboBox;
 	}
@@ -896,14 +896,17 @@ public class GLIMPSEUtils {
 	 */
 	public CheckBox createCheckBox(String s) {
 		CheckBox checkBox = new CheckBox(s);
-		if (styles != null)
-			checkBox.setStyle(styles.getFontStyle());
 		return checkBox;
 	}
 
 	private Button createButtonInternal(String text, int wid, String tt, String imageName) {
 		Button button = new Button();
-		button.setPadding(new Insets(1, 1, 1, 1));
+		// Use centralized micro padding for buttons
+		if (styles != null) {
+			button.setPadding(styles.getMicroPadding());
+		} else {
+			button.setPadding(new Insets(2, 2, 2, 2));
+		}
 		if (tt != null && styles != null) {
 			Tooltip tooltip = new Tooltip(tt);
 			tooltip.setFont(Font.font(styles.getFontStyle()));
@@ -915,22 +918,28 @@ public class GLIMPSEUtils {
 		if (imageName != null && vars != null && styles != null
 				&& (vars.getUseIcons().toLowerCase().equals("true") || text == null)) {
 			try {
+				double size = styles.getSmallButtonWidth();
 				String imagePath = "file:" + vars.getResourceDir() + File.separator + imageName + ".png";
-				Image image = new Image(imagePath, 25, 25, false, true);
+				Image image = new Image(imagePath, size, size, false, true);
 				ImageView imageView = new ImageView(image);
 				imageView.autosize();
 				button.setGraphic(imageView);
-				button.setPrefSize(styles.getSmallButtonWidth(), 35);
-				button.setMaxSize(styles.getSmallButtonWidth(), 35);
-				button.setMinSize(styles.getSmallButtonWidth(), 35);
-				button.setPadding(new Insets(2, 2, 2, 2));
+				button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+				button.setPrefSize(size, size);
+				button.setMaxSize(size, size);
+				button.setMinSize(size, size);
+				// No padding when using icon-only small buttons
+				button.setPadding(styles.getNoPadding());
+				// Prevent JavaFX default hover/pressed background from showing through transparent icon pixels
+				button.setStyle("-fx-background-color: transparent; -fx-background-radius: 0; -fx-padding: 0;");
 			} catch (Exception e) {
 				System.out.println("Could not create button images.");
 			}
 		} else if (wid > 0 && styles != null) {
-			button.setPrefSize(wid, 35);
-			button.setMaxSize(wid, 35);
-			button.setMinSize(wid, 35);
+			double height = styles.getSmallButtonWidth();
+			button.setPrefSize(wid, height);
+			button.setMaxSize(wid, height);
+			button.setMinSize(wid, height);
 		}
 		if (styles != null)
 			button = resizeButtonText(button);
@@ -1002,7 +1011,18 @@ public class GLIMPSEUtils {
 		FontLoader fontLoader = Toolkit.getToolkit().getFontLoader();
 		button.setFont(Font.font(size));
 		double font = button.getFont().getSize();
-		button.setStyle("-fx-font-size:" + (font) + "px;");
+		// Preserve any existing style properties and replace/add only the font-size rule
+		String existingStyle = button.getStyle();
+		if (existingStyle == null)
+			existingStyle = "";
+		if (existingStyle.contains("-fx-font-size")) {
+			existingStyle = existingStyle.replaceAll("-fx-font-size:[^;]+;", "-fx-font-size:" + (font) + "px;");
+		} else {
+			if (!existingStyle.isEmpty() && !existingStyle.endsWith(";"))
+				existingStyle += ";";
+			existingStyle += "-fx-font-size:" + (font) + "px;";
+		}
+		button.setStyle(existingStyle);
 		button.applyCss();
 		button.layout();
 		button.setText(text);
@@ -1439,7 +1459,9 @@ public class GLIMPSEUtils {
 			stage.setResizable(true);
 			TextArea textArea = new TextArea();
 			textArea.setEditable(false);
-			textArea.setPrefSize(785, 775);
+			// Use flexible sizing so the display dialog can resize naturally
+			textArea.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+			textArea.setMinHeight(0);
 			textArea.setWrapText(doWrap);
 			Button closeButton = createButton(LABEL_CLOSE, styles.getBigButtonWidth(), null);
 			closeButton.setOnAction(e -> stage.close());
@@ -1507,7 +1529,9 @@ public class GLIMPSEUtils {
 
 			TableView<List<Object>> table = new TableView<>();
 			table.setEditable(false);
-			table.setPrefSize(wd - 15, ht - 25);
+			// Avoid fixed preferred size; allow table to grow and shrink with its container
+			table.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+			table.setMinHeight(0);
 			TableUtils.installCopyPasteHandler(table);
 			table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
@@ -1534,7 +1558,23 @@ public class GLIMPSEUtils {
 			buttonBox.setPadding(new Insets(4, 4, 4, 4));
 			buttonBox.setSpacing(5);
 			buttonBox.setAlignment(Pos.CENTER);
-			buttonBox.getChildren().addAll(closeButton);
+			// Export button added before Close
+            Button exportButton = createButton("Export", styles.getBigButtonWidth(), null);
+            exportButton.setOnAction(ev -> {
+                try {
+                    File initialDir = new File(vars.getGlimpseLogDir());
+                    FileChooser.ExtensionFilter csvFilter = FileChooserPlus.createExtensionFilter("CSV files (*.csv)", "csv");
+                    File chosen = FileChooserPlus.showSaveDialog(stage, "Save Scenario Report", initialDir, "scenario_report.csv", csvFilter);
+                    if (chosen != null) {
+                        files.saveFile(csvData, chosen.getPath());
+                        showInformationDialog("Information", "Export successful", "Saved report to: " + chosen.getPath());
+                    }
+                } catch (Exception ex) {
+                    showInformationDialog("Information", "Export failed", "Could not save report: " + ex.getMessage());
+                }
+            });
+
+            buttonBox.getChildren().addAll(exportButton, closeButton);
 
 			// root.getChildren().addAll(table, buttonBox);
 			border.setCenter(table);
@@ -2833,23 +2873,4 @@ public class GLIMPSEUtils {
 		return policyType;
 	}
 
-	/**
-     * Removes duplicate entries from the provided ArrayList of strings.
-     * <p>
-     * This method returns a new ArrayList containing only the first occurrence of each string
-     * from the input list, preserving the original order. If the input list is null, null is returned.
-     *
-     * @param stringList the ArrayList of strings from which to remove duplicates
-     * @return a new ArrayList with duplicates removed, or null if the input is null
-     */
-    public ArrayList<String> removeDuplicateStringsFromArrayList(ArrayList<String> stringList) {
-        if (stringList == null) return null;
-        ArrayList<String> resultList = new ArrayList<>();
-        for (String str : stringList) {
-            if (!resultList.contains(str)) {
-                resultList.add(str);
-            }
-        }
-        return resultList;
-    }
 }

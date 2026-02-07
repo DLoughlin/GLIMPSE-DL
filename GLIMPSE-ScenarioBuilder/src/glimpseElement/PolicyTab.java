@@ -54,12 +54,17 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Button;
 import javafx.event.EventHandler;
 import javafx.event.ActionEvent;
 import org.controlsfx.control.CheckComboBox;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.geometry.Insets;
+import javafx.beans.binding.Bindings;
+import javafx.beans.binding.DoubleBinding;
 
 /**
  * Abstract base class for policy-related tabs in the GLIMPSE Scenario Builder.
@@ -112,10 +117,11 @@ public abstract class PolicyTab extends Tab {
     protected final GLIMPSEUtils utils = GLIMPSEUtils.getInstance();
 
     // === Constants for UI Texts and Options ===
-    protected static final double LABEL_WIDTH = 125;
-    protected static final double MAX_WIDTH = 175;
-    protected static final double MIN_WIDTH = 105;
-    protected static final double PREF_WIDTH = 175;
+    // Reduced widths to create a more compact, wrap-friendly layout (option 2)
+    protected static final double LABEL_WIDTH = 100; // was 125
+    protected static final double MAX_WIDTH = 140;   // was 175
+    protected static final double MIN_WIDTH = 90;    // was 105
+    protected static final double PREF_WIDTH = 140;  // was 175
     protected static final String NONE = "None";
     protected static final String DEFAULT_START_YEAR = "2025";
     protected static final String DEFAULT_END_YEAR = "2050";
@@ -131,7 +137,8 @@ public abstract class PolicyTab extends Tab {
     protected static final String LABEL_USE_AUTO_NAMES = "Names: ";
     protected static final String LABEL_MODIFICATION_TYPE = "Type: ";
     protected static final String LABEL_VALUES = "Values: ";
-    protected static final String CHECKBOX_AUTO = "Auto?";
+    protected static final String CHECKBOX_AUTO = "Auto";
+    protected static final String CHECKBOX_UNIQUE = "Unique";
     
     // === Constants for default values and labels ===
     protected static final String[] MODIFICATION_TYPE_OPTIONS = {
@@ -144,20 +151,20 @@ public abstract class PolicyTab extends Tab {
         
     // GUI elements shared across all policy tabs
     protected final Label labelStartYear = utils.createLabel("Start Year: ", LABEL_WIDTH);
-    protected final TextField textFieldStartYear = new TextField(DEFAULT_START_YEAR);
+    protected final TextField textFieldStartYear = createTextField(MIN_WIDTH);
     protected final Label labelEndYear = utils.createLabel("End Year: ", LABEL_WIDTH);
-    protected final TextField textFieldEndYear = new TextField(DEFAULT_END_YEAR);
+    protected final TextField textFieldEndYear = createTextField(MIN_WIDTH);
     protected final Label labelInitialAmount = utils.createLabel("Initial Val:   ", LABEL_WIDTH);
     protected final TextField textFieldInitialAmount = utils.createTextField();
     protected final Label labelGrowth = utils.createLabel("Growth (%): ", LABEL_WIDTH);
     protected final TextField textFieldGrowth = utils.createTextField();
     protected final Label labelPeriodLength = utils.createLabel("Period Length: ", LABEL_WIDTH);
-    protected final TextField textFieldPeriodLength = new TextField(DEFAULT_PERIOD_LENGTH);
+    protected final TextField textFieldPeriodLength = createTextField(MIN_WIDTH);
     protected final Label labelConvertFrom = utils.createLabel("Convert $s from: ", LABEL_WIDTH);
     protected final ComboBox<String> comboBoxConvertFrom = utils.createComboBoxString(CONVERT_FROM_OPTIONS);	
     protected final Label labelModificationType = utils.createLabel("Type: ", LABEL_WIDTH);
     protected final ComboBox<String> comboBoxModificationType = utils.createComboBoxString(MODIFICATION_TYPE_OPTIONS);
-    protected final Label labelUnits2 = utils.createLabel(LABEL_UNITS_DEFAULT, 225.);
+    protected final Label labelUnits2 = utils.createLabel(LABEL_UNITS_DEFAULT, 160.);
 
     protected final Button buttonPopulate = createButton(BUTTON_POPULATE, styles.getBigButtonWidth(), null);
 	protected final Button buttonFill = createButton(BUTTON_FILL, styles.getBigButtonWidth(), null);
@@ -182,8 +189,10 @@ public abstract class PolicyTab extends Tab {
     protected final TextField textFieldPolicyName = createTextField(PREF_WIDTH);
     protected final Label labelMarketName = createLabel(LABEL_MARKET_NAME, LABEL_WIDTH);
     protected final TextField textFieldMarketName = createTextField(PREF_WIDTH);
-    protected final Label labelUseAutoNames = createLabel(LABEL_USE_AUTO_NAMES, LABEL_WIDTH);
-    protected final CheckBox checkBoxUseAutoNames = createCheckBox(CHECKBOX_AUTO,PREF_WIDTH);
+    //protected final Label labelUseAutoNames = createLabel(LABEL_USE_AUTO_NAMES, LABEL_WIDTH);
+    //protected final Label labelUseUniqueNames = createLabel(CHECKBOX_UNIQUE, LABEL_WIDTH);
+    protected final CheckBox checkBoxUseAutoNames = createCheckBox(CHECKBOX_AUTO);
+    protected final CheckBox checkBoxUseUniqueNames = createCheckBox(CHECKBOX_UNIQUE);
     protected final Label labelValue = createLabel(LABEL_VALUES);
 
     
@@ -203,33 +212,57 @@ public abstract class PolicyTab extends Tab {
          * @return A new TextField with the given width
          */
         TextField textField = utils.createTextField();
-        textField.setPrefWidth(width);
+        // Use minimum width so widgets in gridPaneLeft occupy their minimum space
+        textField.setMinWidth(width);
         return textField;
     }
 
-    private CheckBox createCheckBox(String checkboxAuto, double width) {
+    private CheckBox createCheckBox(String checkboxName, double width) {
         /**
          * Create a new CheckBox instance with the specified label and preferred width.
-         * @param checkboxAuto The label for the CheckBox
+         * @param checkbox The label for the CheckBox
          * @param width The preferred width for the CheckBox
          * @return A new CheckBox with the given label and width
          */
-        CheckBox checkBox = utils.createCheckBox(checkboxAuto);
-        checkBox.setPrefWidth(width);
+        CheckBox checkBox = utils.createCheckBox(checkboxName);
+        // Use minimum width so the checkbox does not expand beyond its minimum in the left grid
+        checkBox.setMinWidth(width);
         return checkBox;
     }
 
-    private ComboBox createComboBox(String comboBoxAuto, double width) {
+    private ComboBox createComboBox(String comboBoxName, double width) {
         /**
          * Create a new ComboBox instance with the specified initial item and preferred width.
-         * @param comboBoxAuto The initial item to add to the ComboBox
+         * @param comboBox The initial item to add to the ComboBox
          * @param width The preferred width for the ComboBox
          * @return A new ComboBox with the given item and width
          */
         ComboBox comboBox = utils.createComboBox();
-        comboBox.getItems().add(comboBoxAuto);
-        comboBox.setPrefWidth(width);
+        comboBox.getItems().add(comboBoxName);
+        // Use minimum width to keep controls compact inside gridPaneLeft
+        comboBox.setMinWidth(width);
         return comboBox;
+    }
+
+    // Border style applied to the three main scroll panes to visually separate columns
+    protected static final String SCROLLPANE_BORDER_STYLE = "-fx-border-color: #A9A9A9; -fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4;";
+
+    /**
+     * Apply the standard scroll pane style (base style from styles.getStyle2()) and the column border.
+     */
+    private void applyScrollPaneBorder(ScrollPane sp) {
+        if (sp == null) return;
+        String base = styles != null ? styles.getStyle2() : "";
+        String existing = sp.getStyle();
+        String combined = "";
+        if (existing != null && !existing.isEmpty()) {
+            combined = existing + " " + SCROLLPANE_BORDER_STYLE;
+        } else if (base != null && !base.isEmpty()) {
+            combined = base + " " + SCROLLPANE_BORDER_STYLE;
+        } else {
+            combined = SCROLLPANE_BORDER_STYLE;
+        }
+        sp.setStyle(combined);
     }
 
     /**
@@ -237,19 +270,132 @@ public abstract class PolicyTab extends Tab {
      * Organizes controls into left (inputs), center (table), and right (region tree) columns.
      */
     public void setupUILayout() {
-    	//System.out.println("Setting up UI layout in PolicyTab");
-        gridPanePresetModification.addColumn(0, scrollPaneLeft);
-        gridPanePresetModification.addColumn(1, scrollPaneCenter);
-        gridPanePresetModification.addColumn(2, scrollPaneRight);
-        gridPaneLeft.setPrefWidth(325);
-        gridPaneLeft.setMinWidth(325);
-        vBoxCenter.setPrefWidth(300);
-        vBoxRight.setPrefWidth(300);
-		VBox tabLayout = new VBox();
-		tabLayout.getChildren().addAll(gridPanePresetModification);
-		this.setContent(tabLayout);
-    }
-	
+       	//System.out.println("Setting up UI layout in PolicyTab");
+         gridPanePresetModification.addColumn(0, scrollPaneLeft);
+         gridPanePresetModification.addColumn(1, scrollPaneCenter);
+         gridPanePresetModification.addColumn(2, scrollPaneRight);
+         
+         ColumnConstraints col1 = new ColumnConstraints();
+         col1.setPercentWidth(33.33);
+         ColumnConstraints col2 = new ColumnConstraints();
+         col2.setPercentWidth(33.33);
+         ColumnConstraints col3 = new ColumnConstraints();
+         col3.setPercentWidth(33.33);
+         
+         gridPanePresetModification.getColumnConstraints().addAll(col1, col2, col3);
+         
+         scrollPaneLeft.setFitToWidth(true);
+         scrollPaneCenter.setFitToWidth(true);
+         scrollPaneRight.setFitToWidth(true);
+
+         // Prefer to disable horizontal scrollbars and keep content sized to the viewport
+         scrollPaneLeft.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+         scrollPaneCenter.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+         scrollPaneRight.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+
+         // Bind each scroll pane viewport width to one third of the grid pane width so the
+         // content will be sized to the visible area (prevents horizontal scrollbars).
+         scrollPaneLeft.prefViewportWidthProperty().bind(gridPanePresetModification.widthProperty().multiply(0.3333));
+         scrollPaneCenter.prefViewportWidthProperty().bind(gridPanePresetModification.widthProperty().multiply(0.3333));
+         scrollPaneRight.prefViewportWidthProperty().bind(gridPanePresetModification.widthProperty().multiply(0.3333));
+
+         // Bind viewport height to the grid pane height so the viewport matches available vertical space
+         scrollPaneLeft.prefViewportHeightProperty().bind(gridPanePresetModification.heightProperty());
+         scrollPaneCenter.prefViewportHeightProperty().bind(gridPanePresetModification.heightProperty());
+         scrollPaneRight.prefViewportHeightProperty().bind(gridPanePresetModification.heightProperty());
+
+         // Ensure content nodes resize to fit the viewport width (prevents horizontal scrollbars)
+         gridPaneLeft.prefWidthProperty().bind(scrollPaneLeft.prefViewportWidthProperty());
+         vBoxCenter.prefWidthProperty().bind(scrollPaneCenter.prefViewportWidthProperty());
+         vBoxRight.prefWidthProperty().bind(scrollPaneRight.prefViewportWidthProperty());
+
+         // Limit content max height to the viewport height to reduce vertical scrolling at the target size
+         gridPaneLeft.maxHeightProperty().bind(scrollPaneLeft.prefViewportHeightProperty());
+         vBoxCenter.maxHeightProperty().bind(scrollPaneCenter.prefViewportHeightProperty());
+         vBoxRight.maxHeightProperty().bind(scrollPaneRight.prefViewportHeightProperty());
+
+         gridPaneLeft.setStyle(styles.getStyle2() + "; -fx-background-color: white;");
+        // Ensure the second column (index 1) of gridPaneLeft expands to fill remaining horizontal space.
+        // Set up three column constraints: label column (fixed/min), middle column (growable), and optional third column (min).
+        ColumnConstraints gc0 = new ColumnConstraints();
+        gc0.setMinWidth(LABEL_WIDTH);
+        gc0.setHgrow(Priority.NEVER);
+
+        ColumnConstraints gc1 = new ColumnConstraints();
+        gc1.setHgrow(Priority.ALWAYS);
+        gc1.setFillWidth(true);
+
+        ColumnConstraints gc2 = new ColumnConstraints();
+        gc2.setMinWidth(0);
+        gc2.setHgrow(Priority.NEVER);
+
+        gridPaneLeft.getColumnConstraints().clear();
+        gridPaneLeft.getColumnConstraints().addAll(gc0, gc1, gc2);
+
+        // Ensure any existing or future Region nodes placed in column 1 can expand to fill the available width.
+        // Some subclasses actively call setMaxWidth(...) later. To be robust we attach a listener that
+        // forces maxWidth back to Double.MAX_VALUE whenever it's changed, and also set Hgrow to ALWAYS.
+        java.util.function.Consumer<javafx.scene.Node> enforceGrow = node -> {
+            Integer colIndex = GridPane.getColumnIndex(node);
+            if (colIndex == null) colIndex = 0;
+            if (colIndex == 1 && node instanceof javafx.scene.layout.Region) {
+                javafx.scene.layout.Region r = (javafx.scene.layout.Region) node;
+                // Ensure the region can grow without arbitrary caps
+                r.setMaxWidth(Double.MAX_VALUE);
+                GridPane.setHgrow(r, Priority.ALWAYS);
+                // If a subclass later calls setMaxWidth, this listener will re-assert our desired value.
+                r.maxWidthProperty().addListener((obs, oldV, newV) -> {
+                    if (newV == null || newV.doubleValue() != Double.MAX_VALUE) {
+                        // Schedule to re-apply to avoid modifying property on the calling stack
+                        Platform.runLater(() -> r.setMaxWidth(Double.MAX_VALUE));
+                    }
+                });
+            }
+        };
+
+        gridPaneLeft.getChildren().forEach(enforceGrow::accept);
+
+        // Also listen for children added later and apply the same enforcement.
+        gridPaneLeft.getChildren().addListener((ListChangeListener<javafx.scene.Node>) change -> {
+            while (change.next()) {
+                for (javafx.scene.Node added : change.getAddedSubList()) {
+                    enforceGrow.accept(added);
+                }
+            }
+        });
+
+        // Final pass after layout completes to override any late size-setting done by subclasses.
+        Platform.runLater(() -> gridPaneLeft.getChildren().forEach(enforceGrow::accept));
+ 		VBox tabLayout = new VBox();
+	// Centralized styling: apply default padding and background style so all tabs inherit consistent look
+	tabLayout.setPadding(styles.getDefaultPadding());
+	tabLayout.setSpacing(6.0);
+	tabLayout.setStyle(styles.getStyle2());
+	// Let the grid pane grow to fill the available vertical space in the VBox
+	tabLayout.getChildren().addAll(gridPanePresetModification);
+	VBox.setVgrow(gridPanePresetModification, Priority.ALWAYS);
+	// Bind the grid pane height to the tab layout so child columns can size to it
+	gridPanePresetModification.prefHeightProperty().bind(tabLayout.heightProperty());
+	gridPanePresetModification.prefWidthProperty().bind(tabLayout.widthProperty());
+
+	// Make the scroll panes expand vertically to fill their column
+	scrollPaneLeft.setFitToHeight(true);
+	scrollPaneCenter.setFitToHeight(true);
+	scrollPaneRight.setFitToHeight(true);
+	// Ensure scroll panes use centralized style and padding; add subtle border to separate columns
+	applyScrollPaneBorder(scrollPaneLeft);
+	applyScrollPaneBorder(scrollPaneCenter);
+	applyScrollPaneBorder(scrollPaneRight);
+ 		scrollPaneLeft.setPadding(styles.getDefaultPadding());
+ 		scrollPaneCenter.setPadding(styles.getDefaultPadding());
+ 		scrollPaneRight.setPadding(styles.getDefaultPadding());
+ 		scrollPaneLeft.prefHeightProperty().bind(gridPanePresetModification.heightProperty());
+ 		scrollPaneCenter.prefHeightProperty().bind(gridPanePresetModification.heightProperty());
+ 		scrollPaneRight.prefHeightProperty().bind(gridPanePresetModification.heightProperty());
+ 	 
+   	this.setContent(tabLayout);
+     }
+ 	
     /**
      * Creates a new ComboBox<String> with the specified preferred width.
      *
@@ -258,9 +404,10 @@ public abstract class PolicyTab extends Tab {
      */
     protected ComboBox<String> createComboBoxString(double prefWidth) {
 		ComboBox<String> comboBox = new ComboBox<>();
-		comboBox.setPrefWidth(prefWidth);
-		return comboBox;
-	}
+		// Use minimum width so combo boxes align to their minimum widths in gridPaneLeft
+		comboBox.setMinWidth(prefWidth);
+         return comboBox;
+     }
 	
 	/**
      * Load content into the tab. Implemented by subclasses to define how content is loaded.
@@ -295,28 +442,68 @@ public abstract class PolicyTab extends Tab {
      * </p>
      */
     public void setupCenterColumn() {
-    	hBoxHeaderCenter.getChildren().clear();
-    	hBoxHeaderCenter.getChildren().addAll(buttonPopulate, buttonFill, buttonDelete, buttonClear);
-    	hBoxHeaderCenter.setSpacing(2.);
-    	hBoxHeaderCenter.setStyle(styles.getStyle3());
-    	vBoxCenter.getChildren().clear();
-    	vBoxCenter.getChildren().addAll(labelValue, hBoxHeaderCenter, paneForComponentDetails);
-    	vBoxCenter.setStyle(styles.getStyle2());
-    	scrollPaneCenter.setContent(vBoxCenter);
-    }
+       	hBoxHeaderCenter.getChildren().clear();
+       	hBoxHeaderCenter.getChildren().addAll(buttonPopulate, buttonFill, buttonDelete, buttonClear);
+       	hBoxHeaderCenter.setSpacing(2.);
+       	hBoxHeaderCenter.setStyle(styles.getStyle2()); //DHL was 3
+       	vBoxCenter.getChildren().clear();
+       	vBoxCenter.getChildren().addAll(labelValue, hBoxHeaderCenter, paneForComponentDetails);
+       	// Ensure the center VBox fills width and can size to the ScrollPane viewport
+       	vBoxCenter.setFillWidth(true);
+       	// Use the scroll pane's viewportBounds (updated after layout) to get an actual viewport height
+       	DoubleBinding viewportHeight = Bindings.createDoubleBinding(() ->
+       		(scrollPaneCenter.getViewportBounds() == null) ? 0.0 : scrollPaneCenter.getViewportBounds().getHeight(),
+       		scrollPaneCenter.viewportBoundsProperty());
 
-	/**
-	 * Sets up the right column of the UI with the country/state tree for region selection.
-	 * <p>
-	 * Adds the region selection tree to the right VBox and applies styling.
-	 * </p>
-	 */
-	public void setupRightColumn() {
-        vBoxRight.getChildren().clear();
-        vBoxRight.getChildren().addAll(paneForCountryStateTree);
-        vBoxRight.setStyle(styles.getStyle2());
-        scrollPaneRight.setContent(vBoxRight);
-	}
+       	// Bind vBoxCenter height to the actual viewport height so it receives a non-zero value when layout completes
+       	vBoxCenter.prefHeightProperty().bind(viewportHeight);
+
+       	// Allow the details pane to grow inside the center VBox
+       	VBox.setVgrow(paneForComponentDetails, Priority.ALWAYS);
+       	paneForComponentDetails.setMaxHeight(Double.MAX_VALUE);
+       	paneForComponentDetails.setMinHeight(0);
+
+       	// Bind the details pane preferred height explicitly to the viewport height minus header rows and padding
+       	paneForComponentDetails.prefHeightProperty().bind(
+       		viewportHeight
+       			.subtract(labelValue.heightProperty())
+       			.subtract(hBoxHeaderCenter.heightProperty())
+       			.subtract(8.0)
+       	);
+          	// Apply centralized standard light background so center column matches dialog button area
+          	vBoxCenter.setStyle(styles.getStyle2());
+           	scrollPaneCenter.setContent(vBoxCenter);
+      }
+
+ 	/**
+ 	 * Sets up the right column of the UI with the country/state tree for region selection.
+ 	 * <p>
+ 	 * Adds the region selection tree to the right VBox and applies styling.
+ 	 * </p>
+ 	 */
+     public void setupRightColumn() {
+         vBoxRight.getChildren().clear();
+         // Put the region tree pane directly into the right column VBox
+         vBoxRight.getChildren().addAll(paneForCountryStateTree);
+         // Apply centralized standard light background so right column matches dialog button area
+         vBoxRight.setStyle(styles.getStyle2());
+         // Make the VBox allow its children to grow and fill width
+         vBoxRight.setFillWidth(true);
+         vBoxRight.setMaxHeight(Double.MAX_VALUE);
+         vBoxRight.setMinHeight(0);
+         // Place the VBox into the right scroll pane and have the scroll pane size content to its viewport
+         scrollPaneRight.setContent(vBoxRight);
+         scrollPaneRight.setFitToHeight(true);
+
+         // Bind the vBox height to the scroll pane viewport height so the VBox fills the visible area
+         vBoxRight.prefHeightProperty().bind(scrollPaneRight.prefViewportHeightProperty());
+
+         // Allow the country/state tree pane to grow inside the VBox to occupy remaining vertical space
+         VBox.setVgrow(paneForCountryStateTree, Priority.ALWAYS);
+         paneForCountryStateTree.setMaxHeight(Double.MAX_VALUE);
+         paneForCountryStateTree.setMinHeight(0);
+         // Let the pane size be governed by VBox layout (no direct binding to scroll pane height)
+    	}
     
     /**
      * Get the file content for the scenario component.
@@ -363,7 +550,32 @@ public abstract class PolicyTab extends Tab {
      */
     protected PolicyTab() {
         // No-op constructor for subclassing
-    }
+        // Ensure left grid pane has consistent padding across all policy tabs
+        //gridPaneLeft.setPadding(styles.getDefaultPadding());
+        //gridPaneLeft.setStyle(styles.getBackgroundStyle());
+    
+        scrollPaneLeft.setPadding(styles.getDefaultPadding());
+        scrollPaneLeft.setStyle(styles.getBackgroundStyle());
+        scrollPaneCenter.setPadding(styles.getDefaultPadding());
+        scrollPaneCenter.setStyle(styles.getBackgroundStyle());
+        scrollPaneRight.setPadding(styles.getDefaultPadding());
+        scrollPaneRight.setStyle(styles.getBackgroundStyle());
+        
+        // Centralize default styling for scroll panes and main center/right containers
+        applyScrollPaneBorder(scrollPaneLeft);
+        applyScrollPaneBorder(scrollPaneCenter);
+        applyScrollPaneBorder(scrollPaneRight);
+         // Apply padding to center/right VBoxes so contents align consistently
+         vBoxCenter.setPadding(styles.getDefaultPadding());
+         vBoxRight.setPadding(styles.getDefaultPadding());
+         hBoxHeaderCenter.setPadding(styles.getDefaultPadding());
+         // Set default text values for fields created via helper so initial values are preserved
+        textFieldStartYear.setText(DEFAULT_START_YEAR);
+        textFieldEndYear.setText(DEFAULT_END_YEAR);
+        textFieldPeriodLength.setText(DEFAULT_PERIOD_LENGTH);
+          
+      }
+
 
     /**
      * Generate a unique market name if the given name already exists in the market list.
@@ -507,7 +719,7 @@ public abstract class PolicyTab extends Tab {
     protected ComboBox<String> createComboBoxString(String seedTxt, double width) {
         ComboBox<String> comboBox = utils.createComboBoxString();
         comboBox.getItems().add(seedTxt);
-        comboBox.setPrefWidth(width);
+        comboBox.setMinWidth(width);
         return comboBox;
     }
     

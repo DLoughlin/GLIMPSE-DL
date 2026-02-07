@@ -94,11 +94,11 @@ public class ConfigurationEditor extends JFrame implements DOMDocumentEditor, Me
     public static final String ROOT_ELEMENT_NAME = "Configuration"; //$NON-NLS-1$
 	
     /**
-	 * Position of the "Configuration..." item in the Edit menu.
+	 * Position of the "Configuration..." item in the Tools menu.
 	 */
-	private static int EDIT_CONFIGURATION_MENUITEM_POS = 19;
+	private static int TOOLS_CONFIGURATION_MENUITEM_POS = 19;
     
-	/**
+    /**
      * The current parsed XML document.
      */
     private transient Document mCurrentDocument = null;
@@ -250,24 +250,30 @@ public class ConfigurationEditor extends JFrame implements DOMDocumentEditor, Me
 		// Add a menu item to launch the configuration editor.
 		final JMenuItem editConfMenuItem = new JMenuItem(
 				"Configuration...");  //YD edits, changed back to "Configuration..." 
-		editConfMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E,
-				ActionEvent.CTRL_MASK));
+		// Removed accelerator so no "Cntl-E" shortcut is shown.
+		// editConfMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E,
+		// 		ActionEvent.CTRL_MASK));
 		// Add an action listener which will launch the configuration editor.
 		editConfMenuItem.addActionListener(new ActionListener() {
-			/**
-			 * Method called when the menu item is clicked.
-			 * @param aEvent The event received.
-			 */
-			public void actionPerformed(ActionEvent aEvent) {
-				// Show the configuration editor.
-				pack();
-				setVisible(true);
-			}
-		});
-		aMenuManager.getSubMenuManager(InterfaceMain.EDIT_MENU_POS).addMenuItem(editConfMenuItem,
-				EDIT_CONFIGURATION_MENUITEM_POS);
-	}
-	
+            /**
+             * Method called when the menu item is clicked.
+             * @param aEvent The event received.
+             */
+            @Override
+            public void actionPerformed(ActionEvent aEvent) {
+                // Show the configuration editor.
+                pack();
+                // Center over the main ModelInterface window if available
+                JFrame owner = InterfaceMain.getInstance() != null ? InterfaceMain.getInstance().getFrame() : null;
+                setLocationRelativeTo(owner);
+                setVisible(true);
+            }
+        });
+        // Move menu item under Tools instead of Edit
+        aMenuManager.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS).addMenuItem(editConfMenuItem,
+                TOOLS_CONFIGURATION_MENUITEM_POS);
+    }
+    
     /**
      * This method initializes the main window.
      * 

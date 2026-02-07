@@ -53,6 +53,7 @@ import javafx.scene.control.cell.CheckBoxTreeCell;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.Priority;
 
 /**
  * PaneForCountryStateTree is a JavaFX VBox component that displays a tree view of regions and subregions (such as countries and states),
@@ -108,6 +109,18 @@ public class PaneForCountryStateTree extends VBox {
             rootItem.setExpanded(true); // Expand root node
         }
         StackPane treePane = new StackPane(treeView);
+        // Ensure this VBox and the internal tree pane expand to fill available space
+        this.setFillWidth(true);
+        this.setMaxHeight(Double.MAX_VALUE);
+        this.setMaxWidth(Double.MAX_VALUE);
+        treePane.setMaxHeight(Double.MAX_VALUE);
+        treePane.setMinHeight(0);
+        treePane.setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(treePane, Priority.ALWAYS);
+        // Let the TreeView itself be resizeable inside the pane
+        treeView.setMaxHeight(Double.MAX_VALUE);
+        treeView.setMinHeight(0);
+        treeView.setMaxWidth(Double.MAX_VALUE);
         labelAppliedTo.setStyle(styles.getStyle3());
 
         comboBoxPresetRegions = utils.createComboBoxString();
@@ -123,12 +136,15 @@ public class PaneForCountryStateTree extends VBox {
 
         HBox presetRegionHBox = new HBox();
         presetRegionHBox.setSpacing(5.);
-        presetRegionHBox.setPadding(new Insets(3., 0., 0., 0.));
+        // Use centralized default padding from styles
+        presetRegionHBox.setPadding(styles.getDefaultPadding());
         presetRegionHBox.getChildren().addAll(labelPresetRegions, comboBoxPresetRegions);
         presetRegionHBox.setStyle(styles.getStyle2());
 
         this.getChildren().addAll(labelAppliedTo, treePane, presetRegionHBox);
         this.setStyle(styles.getStyle2());
+        // Apply the centralized default padding to this pane as well
+        this.setPadding(styles.getDefaultPadding());
         this.setAlignment(javafx.geometry.Pos.TOP_LEFT);
     }
 

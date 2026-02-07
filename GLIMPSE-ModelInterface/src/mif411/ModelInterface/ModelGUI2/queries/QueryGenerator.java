@@ -192,63 +192,74 @@ public class QueryGenerator implements java.io.Serializable{
 		}
 		NodeList nl = queryIn.getChildNodes();
 		for(int i = 0; i < nl.getLength(); ++i) {
-			if(nl.item(i).getNodeName().equals("axis1")) {
-				nodeLevel = parseAxisLevel(nl.item(i).getFirstChild().getNodeValue());
-				axis1Name = ((Element)nl.item(i)).getAttribute("name");
-			} else if(nl.item(i).getNodeName().equals("axis2")) {
-				yearLevel = parseAxisLevel(nl.item(i).getFirstChild().getNodeValue());
-				axis2Name = ((Element)nl.item(i)).getAttribute("name");
-			} else if(nl.item(i).getNodeName().equals("chartLabelColumn")) {
-				labelColumnName = nl.item(i).getFirstChild().getNodeValue();
-			} else if(nl.item(i).getNodeName().equals("comments")) {
-				Node cmtNodeTemp = nl.item(i).getFirstChild();
+			Node n = nl.item(i);
+			// skip text/whitespace nodes
+			if (n.getNodeType() != Node.ELEMENT_NODE) continue;
+			Element elem = (Element) n;
+			String nodeName = elem.getNodeName();
+			if(nodeName.equals("axis1")) {
+				// use textContent to safely get text
+				nodeLevel = parseAxisLevel(elem.getTextContent());
+				axis1Name = elem.getAttribute("name");
+			} else if(nodeName.equals("axis2")) {
+				yearLevel = parseAxisLevel(elem.getTextContent());
+				axis2Name = elem.getAttribute("name");
+			} else if(nodeName.equals("chartLabelColumn")) {
+				labelColumnName = elem.getTextContent();
+			} else if(nodeName.equals("comments")) {
+				String cmtNodeTemp = elem.getTextContent();
 				if(cmtNodeTemp != null) {
-					comments = cmtNodeTemp.getNodeValue();
+					comments = cmtNodeTemp;
 				}
-			} else if(nl.item(i).getNodeName().equals("labelRewriteList")) {
-				doAppendRewriteValues = Boolean.valueOf(((Element)nl.item(i)).getAttribute("append-values"));
-				NodeList rewriteLevelList = nl.item(i).getChildNodes();
+			} else if(nodeName.equals("labelRewriteList")) {
+				doAppendRewriteValues = Boolean.valueOf(elem.getAttribute("append-values"));
+				NodeList rewriteLevelList = elem.getChildNodes();
 				labelRewriteMap = new HashMap<String, Map<String, String>>(rewriteLevelList.getLength());
 				for(int levelNum = 0; levelNum < rewriteLevelList.getLength(); ++levelNum) {
-					NodeList currLevelRewrites = rewriteLevelList.item(levelNum).getChildNodes();
+					Node rlNode = rewriteLevelList.item(levelNum);
+					if (rlNode.getNodeType() != Node.ELEMENT_NODE) continue;
+					Element rlElem = (Element) rlNode;
+					NodeList currLevelRewrites = rlElem.getChildNodes();
 					Map<String, String> currMap = 
-						new HashMap<String, String>(currLevelRewrites.getLength());
+						new HashMap<String, String>(Math.max(1, currLevelRewrites.getLength()));
 					for(int rewriteNum = 0; rewriteNum < currLevelRewrites.getLength(); ++rewriteNum) {
-						Element rewriteItem = (Element)currLevelRewrites.item(rewriteNum);
+						Node rewriteNode = currLevelRewrites.item(rewriteNum);
+						if (rewriteNode.getNodeType() != Node.ELEMENT_NODE) continue;
+						Element rewriteItem = (Element)rewriteNode;
 						currMap.put(rewriteItem.getAttribute("from"),
 								rewriteItem.getAttribute("to"));
 					}
-					labelRewriteMap.put(((Element)rewriteLevelList.item(levelNum)).getAttribute("name"),
-							currMap);
+					labelRewriteMap.put(rlElem.getAttribute("name"), currMap);
 				}
-			} else if (nl.item(i).getNodeName().equals("showAttribute")) {
-				String level = ((Element)nl.item(i)).getAttribute("level");
-                List<String> attrNames;
-                if(showAttrMap.containsKey(level)) {
-                    attrNames = showAttrMap.get(level);
-                } else {
-                    attrNames = new Vector<String>();
-                    showAttrMap.put(level, attrNames);
-                }
-				attrNames.add(((Element)nl.item(i)).getAttribute("attribute-name"));
-			} else if (nl.item(i).getNodeName().equals("xPath")) {
-				var = ((Element)nl.item(i)).getAttribute("dataName");
-				if( ((Element)nl.item(i)).getAttribute("sumAll").equals("true")) {
+			} else if (nodeName.equals("showAttribute")) {
+				String level = elem.getAttribute("level");
+				List<String> attrNames;
+				if(showAttrMap.containsKey(level)) {
+					attrNames = showAttrMap.get(level);
+				} else {
+					attrNames = new Vector<String>();
+					showAttrMap.put(level, attrNames);
+				}
+				attrNames.add(elem.getAttribute("attribute-name"));
+			} else if (nodeName.equals("xPath")) {
+				var = elem.getAttribute("dataName");
+				if( elem.getAttribute("sumAll").equals("true")) {
 					sumAll = true;
 				} else {
 					sumAll = false;
 				}
-				if( ((Element)nl.item(i)).getAttribute("group").equals("true")) {
+				if( elem.getAttribute("group").equals("true")) {
 					group = true;
 				} else {
 					group = false;
 				}
-				if( ((Element)nl.item(i)).getAttribute("buildList").equals("") || ((Element)nl.item(i)).getAttribute("buildList").equals("true")) {
+				// check for zero length rather than comparing to empty string for efficiency
+				if( elem.getAttribute("buildList").length() == 0 || elem.getAttribute("buildList").equals("true")) {
 					buildSingleQueryList = true;
 				} else {
 					buildSingleQueryList = false;
 				}
-				xPath = nl.item(i).getFirstChild().getNodeValue();
+				xPath = elem.getTextContent();
 			}
 		}
 		setIsRunFunction();
@@ -258,7 +269,8 @@ public class QueryGenerator implements java.io.Serializable{
         final JFrame parentFrame = InterfaceMain.getInstance().getFrame();
 		final JDialog filterDialog = new JDialog(parentFrame, "Create Query", true);
 		filterDialog.setSize(500,400);
-		filterDialog.setLocation(100,100);
+		// Center over the main frame
+		filterDialog.setLocationRelativeTo(parentFrame);
 		filterDialog.setResizable(false);
 
 		final Map typeMap = new LinkedHashMap();
@@ -507,7 +519,7 @@ public class QueryGenerator implements java.io.Serializable{
 					if(tempComp != list[0]) {
 						list[0].removeSelectionListener(currListener[0]);
 						list[0] = tempComp;
-						listScroll.getViewport().setView(list[0].getModel());
+					 listScroll.getViewport().setView(list[0].getModel());
 						currListener[0] = qb.getListSelectionListener(list[0], nextButton, cancelButton);
 						list[0].addSelectionListener(currListener[0]);
 					}
@@ -1037,7 +1049,8 @@ public class QueryGenerator implements java.io.Serializable{
 		String oldTitle = title;
 		final JDialog editDialog = new JDialog(InterfaceMain.getInstance().getFrame(), "Edit Query", false);
 		final QueryGenerator thisGen = this;
-		//editDialog.setLocation(100,100);
+		// Center over the main frame
+		editDialog.setLocationRelativeTo(InterfaceMain.getInstance().getFrame());
 		editDialog.setResizable(false);
 		JButton cancelButton = new JButton("Cancel");
 		JButton okButton = new JButton("  OK  ");

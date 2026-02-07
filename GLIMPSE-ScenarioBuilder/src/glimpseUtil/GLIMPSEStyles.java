@@ -35,6 +35,8 @@
  */
 package glimpseUtil;
 
+import javafx.geometry.Insets;
+
 /**
  * A singleton class that holds style information and layout constants for the application's GUI.
  * This version has been refactored to ensure styles are generated dynamically and to improve encapsulation.
@@ -42,8 +44,8 @@ package glimpseUtil;
 public final class GLIMPSEStyles {
     private static final GLIMPSEStyles INSTANCE = new GLIMPSEStyles();
 
-    private final int bigButtonWidth = 65;
-    private final int smallButtonWidth = 35;
+    private final int bigButtonWidth = 78;
+    private final int smallButtonWidth = 42;
 
     private int fontSize = 12;
 
@@ -88,17 +90,17 @@ public final class GLIMPSEStyles {
     // --- Style Getters ---
 
     public String getStyle1() {
-        return String.format("-fx-padding: 10; -fx-border-style: solid inside; -fx-border-width: 2; " +
-            "-fx-border-insets: 5; -fx-border-radius: 5; -fx-border-color: blue; %s", getFontStyle());
+        return String.format("-fx-padding: 10; -fx-border-style: solid inside; -fx-border-width: 1; " +
+            "-fx-border-insets: 5; -fx-border-radius: 4; -fx-border-color: #90caf9; -fx-background-color: white; -fx-background-radius: 4; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 3, 0, 0, 1); %s", getFontStyle());
     }
 
     public String getStyle1b() {
-        return String.format("-fx-padding: 3; -fx-border-style: solid inside; -fx-border-width: 2; " +
-            "-fx-border-insets: 3; -fx-border-radius: 5; -fx-border-color: red; %s", getFontStyle());
+        return String.format("-fx-padding: 3; -fx-border-style: solid inside; -fx-border-width: 1; " +
+            "-fx-border-insets: 3; -fx-border-radius: 4; -fx-border-color: #ef9a9a; %s", getFontStyle());
     }
 
     public String getStyle2() {
-        return String.format("-fx-padding: 10; %s", getFontStyle());
+        return String.format("-fx-padding: 10; -fx-background-color: white; %s", getFontStyle());
     }
 
     public String getStyle3() {
@@ -111,6 +113,104 @@ public final class GLIMPSEStyles {
 
     public String getStyle5() {
         return String.format("-fx-alignment: CENTER-RIGHT; -fx-padding: 5 20 5 5; %s", getFontStyle());
+    }
+
+    /**
+     * Returns a reusable Insets instance for default pane padding used across the application.
+     * Use this to set Node.setPadding(...) so Java code and CSS-based padding stay consistent.
+     */
+    public Insets getDefaultPadding() {
+        return new Insets(10, 10, 10, 10);
+    }
+
+    /**
+     * Medium padding (use for grouped control areas)
+     */
+    public Insets getMediumPadding() {
+        return new Insets(5, 5, 5, 5);
+    }
+
+    /**
+     * Small top padding used for compact horizontal input rows
+     */
+    public Insets getSmallTopPadding() {
+        return new Insets(3, 0, 0, 0);
+    }
+
+    /**
+     * Tiny padding for tight containers
+     */
+    public Insets getTinyPadding() {
+        return new Insets(2, 2, 2, 2);
+    }
+
+    /**
+     * Horizontal padding with 10px left/right; 0 top/bottom (used for grids)
+     */
+    public Insets getHorizontalPadding10() {
+        return new Insets(0, 10, 0, 10);
+    }
+
+    /**
+     * Standard button box padding
+     */
+    public Insets getButtonBoxPadding() {
+        return new Insets(3, 3, 3, 3);
+    }
+
+    /**
+     * Small padding (4px) for compact panels
+     */
+    public Insets getSmallPadding() {
+        return new Insets(4, 4, 4, 4);
+    }
+
+    /**
+     * Small bottom padding used where only bottom spacing is required
+     */
+    public Insets getSmallBottomPadding() {
+        return new Insets(0, 0, 5, 0);
+    }
+
+    /**
+     * Top padding of 5px
+     */
+    public Insets getTopPadding5() {
+        return new Insets(5, 0, 0, 0);
+    }
+
+    /**
+     * Very small padding (1px)
+     */
+    public Insets getMicroPadding() {
+        return new Insets(1, 1, 1, 1);
+    }
+
+    /**
+     * No padding
+     */
+    public Insets getNoPadding() {
+        return new Insets(0, 0, 0, 0);
+    }
+
+    /**
+     * Returns the standard application pane background style (shared gray color).
+     * Use this to keep panel background color consistent across the UI.
+     * The string includes a leading space so it can be concatenated with other style fragments.
+     * @return CSS fragment for background color
+     */
+    public String getBackgroundStyle() {
+        // Match the effective background used by gridPaneLeft (use explicit white)
+        return " -fx-background-color: white;";
+    }
+
+    /**
+     * Returns a lighter gray background style for panels that should be visually lighter.
+     * Use this for specific panels (e.g., Tech Avail left panel) that need a lighter background.
+     * @return CSS fragment for light background color
+     */
+    public String getLightBackgroundStyle() {
+        return " -fx-background-color: #F2F2F2;";
     }
 
     // --- Layout Constant Getters ---

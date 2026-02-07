@@ -68,7 +68,9 @@ public class RecentFilesList implements MenuAdder {
 	 * The menu this class will add.  This menu will contain a
 	 * menu item for each recent file available.
 	 */
-	private final JMenu recentFilesMenu = new JMenu("Open Recent DB"); //YD edits
+	private final JMenu recentFilesMenu = new JMenu("Open Recent DB"); // renamed to DB-specific
+	// A persistent "Clear Menu" item at the end of the list
+	private final JMenuItem clearMenuItem = new JMenuItem("Clear Menu");
 
 	/**
 	 * The number of recent files this list will keep track of.
@@ -92,6 +94,15 @@ public class RecentFilesList implements MenuAdder {
 				}
 			}
 		});
+		// setup Clear Menu behavior
+		clearMenuItem.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				clearRecentFiles();
+			}
+		});
+		// mnemonic for submenu
+		recentFilesMenu.setMnemonic(java.awt.event.KeyEvent.VK_D);
 	}
 
 	/**
@@ -116,6 +127,7 @@ public class RecentFilesList implements MenuAdder {
 		}
 
 		// should I add these through the menu manager?
+		recentFilesMenu.removeAll();
 		for(int i = 1; i <= recentFilesLength; ++i) {
 			String filesStr = prop.getProperty("RecentFile"+i);
 			String targetStr = prop.getProperty("RecentFileTarget"+i);
@@ -133,6 +145,10 @@ public class RecentFilesList implements MenuAdder {
 			if(filesSplit.length < 1 || targetSplit.length != 2) {
 				continue;
 			}
+			// Only include DB entries (actionCommand must be "Open DB")
+			if(!"Open DB".equals(targetSplit[1])) {
+				continue;
+			}
 			File[] files = new File[filesSplit.length];
 			for(int j = 0; j < files.length; ++j) {
 				files[j] = new File(filesSplit[j]);
@@ -141,21 +157,52 @@ public class RecentFilesList implements MenuAdder {
 			recentFilesMenu.add(new RecentFile(files, targetSplit[0], targetSplit[1]));
 		}
 
+		// add Clear Menu with separator at the end
+		if(recentFilesMenu.getItemCount() > 0) {
+			recentFilesMenu.addSeparator();
+		}
+		recentFilesMenu.add(clearMenuItem);
+
 		menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).
 			addMenuItem(recentFilesMenu, InterfaceMain.FILE_OPEN_SUBMENU_POS);
+	}
+
+	/**
+	 * Reset recent list and clear corresponding properties.
+	 */
+	private void clearRecentFiles() {
+		// remove all items then add back the Clear command
+		recentFilesMenu.removeAll();
+		recentFilesMenu.add(clearMenuItem);
+		// wipe properties for recent files using persistent API with batch update
+		InterfaceMain.getInstance().updateProperties(prop -> {
+			for(int i = 1; i <= recentFilesLength; ++i) {
+				prop.remove("RecentFile"+i);
+				prop.remove("RecentFileTarget"+i);
+			}
+		});
 	}
 
 	/**
 	 * Sets the properties with the latest recent files.
 	 */
 	private void doSetProperties() {
-		Properties prop = InterfaceMain.getInstance().getProperties();
-		Component[] theFiles = recentFilesMenu.getMenuComponents();
-		for(int i = 0; i < theFiles.length; ++i) {
-			RecentFile f = (RecentFile)theFiles[i];
-			prop.setProperty("RecentFile"+(i+1), f.getFilePaths());
-			prop.setProperty("RecentFileTarget"+(i+1), f.getTargetName()+";"+f.getActionCommand());
-		}
+		InterfaceMain.getInstance().updateProperties(prop -> {
+			// first clear existing entries to avoid stale values
+			for(int i = 1; i <= recentFilesLength; ++i) {
+				prop.remove("RecentFile"+i);
+				prop.remove("RecentFileTarget"+i);
+			}
+			Component[] theFiles = recentFilesMenu.getMenuComponents();
+			int idx = 1;
+			for(int i = 0; i < theFiles.length; ++i) {
+				if(!(theFiles[i] instanceof RecentFile)) continue; // skip separators/clear
+				RecentFile f = (RecentFile)theFiles[i];
+				prop.setProperty("RecentFile"+idx, f.getFilePaths());
+				prop.setProperty("RecentFileTarget"+idx, f.getTargetName()+";"+f.getActionCommand());
+				idx++;
+			}
+		});
 	}
 
 	/**
@@ -168,12 +215,16 @@ public class RecentFilesList implements MenuAdder {
 	 * @param actionCommand The command for the event so it gets opened. 
 	 */ 
 	public void addFile(File[] files, ActionListener source, String actionCommand) {
+		// Only track databases in this menu
+		if(!"Open DB".equals(actionCommand)) {
+			return;
+		}
 		JMenuItem temp = new RecentFile(files, source, actionCommand);
 		int pos;
 		if((pos = doesMenuContain(temp)) != -1) {
 			recentFilesMenu.remove(pos);
-		} else if(recentFilesMenu.getItemCount() == recentFilesLength) {
-			recentFilesMenu.remove(recentFilesLength-1);
+		} else if(getRecentFileCount() >= recentFilesLength) {
+			removeLastRecentFile();
 		}
 		recentFilesMenu.insert(temp, 0);
 		doSetProperties();
@@ -189,17 +240,43 @@ public class RecentFilesList implements MenuAdder {
 	 * @param actionCommand The command for the event so it gets opened. 
 	 */ 
 	public void addFile(File[] files, String source, String actionCommand) {
+		// Only track databases in this menu
+		if(!"Open DB".equals(actionCommand)) {
+			return;
+		}
 		JMenuItem temp = new RecentFile(files, source, actionCommand);
 		int pos;
 		if((pos = doesMenuContain(temp)) != -1) {
 			recentFilesMenu.remove(pos);
-		} else if(recentFilesMenu.getItemCount() == recentFilesLength) {
-			recentFilesMenu.remove(recentFilesLength-1);
+		} else if(getRecentFileCount() >= recentFilesLength) {
+			removeLastRecentFile();
 		}
 		recentFilesMenu.insert(temp, 0);
 		doSetProperties();
 	}
 	
+	/**
+	 * Count only RecentFile items in the menu (exclude separators and the Clear item).
+	 */
+	private int getRecentFileCount() {
+		int count = 0;
+		for (java.awt.Component c : recentFilesMenu.getMenuComponents()) {
+			if (c instanceof RecentFile) count++;
+		}
+		return count;
+	}
+	/**
+	 * Remove the last (oldest) RecentFile entry, keeping the Clear item/separators intact.
+	 */
+	private void removeLastRecentFile() {
+		java.awt.Component[] comps = recentFilesMenu.getMenuComponents();
+		for (int i = comps.length - 1; i >= 0; i--) {
+			if (comps[i] instanceof RecentFile) {
+				recentFilesMenu.remove(i);
+				break;
+			}
+		}
+	}
 
 	/**
 	 * Looks at the subelements of the recent files list menu and 
@@ -208,8 +285,13 @@ public class RecentFilesList implements MenuAdder {
 	 * @return The position in which it was found, or -1 if not found
 	 */
 	private int doesMenuContain(JMenuItem item) {
-		for(int i = 0; i < recentFilesMenu.getItemCount(); ++i) {
-			if(recentFilesMenu.getItem(i).equals(item)) {
+		java.awt.Component[] comps = recentFilesMenu.getMenuComponents();
+		for (int i = 0; i < comps.length; ++i) {
+			if (!(comps[i] instanceof JMenuItem)) continue;
+			JMenuItem mi = (JMenuItem) comps[i];
+			// mi may be null for separators when using getItem; using components avoids that,
+			// but keep a null guard just in case
+			if (mi != null && mi.equals(item)) {
 				return i;
 			}
 		}
@@ -285,6 +367,7 @@ public class RecentFilesList implements MenuAdder {
 
 		
 		
+		@Override
 		public void actionPerformed(ActionEvent e) {
 			// this would be a good time to make sure the files exist
 			for(File file : files) {

@@ -61,8 +61,8 @@ public class GLIMPSEVariables {
 
     // --- Constants ---
     private final String DEFAULT_GLIMPSE_VERSION = "GLIMPSE-CE v1.0";
-    public final int DEFAULT_SCENARIO_BUILDER_WIDTH = 1200;
-    public final int DEFAULT_SCENARIO_BUILDER_HEIGHT = 800;
+    public final int DEFAULT_SCENARIO_BUILDER_WIDTH = 1600;
+    public final int DEFAULT_SCENARIO_BUILDER_HEIGHT = 900;
     private final float DEFAULT_MAX_DATABASE_SIZE_GB = 40f;
     private final List<Integer> DEFAULT_ALLOWABLE_POLICY_YEARS_LIST = new ArrayList<>(Arrays.asList(2025,2030,2035,2040,2045,2050,2055,2060,2065,2070,2075,2080,2085,2090,2095,2100));
     private final List<Integer> DEFAULT_ALL_YEARS_LIST = new ArrayList<>(Arrays.asList(1990,2005,2010,2015,2021,2025,2030,2035,2040,2045,2050,2055,2060,2065,2070,2075,2080,2085,2090,2095,2100));
@@ -122,7 +122,6 @@ public class GLIMPSEVariables {
     private String debugRename = "0";
     private String startYearForShare = "2010";
     private String[][] techInfo = null;
-    //private String[][] sectorInfo = null;
    
     private boolean isGcamUSA = false;
     private String glimpseDir = null;
@@ -133,12 +132,14 @@ public class GLIMPSEVariables {
     private String scenarioBuilderDir = null;
     private String scenarioBuilderJar = null;
     private String scenarioBuilderJarDir = null;
+    private String scenarioBuilderConfigDir = null;
     private String gCamExecutable = null;
     private String gCamExecutableArgs = " -C ";
     private String gCamExecutableDir = null;
     private String modelInterfaceJar = null;
     private String modelInterfaceJarDir = null;
     private String modelInterfaceDir = null;
+    private String modelInterfaceConfigDir = null;
     private String filesToSave = null;
     private String scenarioComponentsDir = null;
     private String scenarioDir = null;
@@ -233,6 +234,42 @@ public class GLIMPSEVariables {
      */
     public String getGLIMPSEVersion() {
         return glimpseVersion;
+    }
+
+    /**
+     * Returns the scenario builder configuration directory.
+     *
+     * @return the scenario builder configuration directory
+     */
+    public String getScenarioBuilderConfigDir() {
+        return scenarioBuilderConfigDir;
+    }
+
+    /**
+     * Sets the scenario builder configuration directory.
+     *
+     * @param s the scenario builder configuration directory
+     */
+    public void setScenarioBuilderConfigDir(String s) {
+        this.scenarioBuilderConfigDir = s;
+    }
+
+    /**
+     * Returns the model interface configuration directory.
+     *
+     * @return the model interface configuration directory
+     */
+    public String getModelInterfaceConfigDir() {
+        return modelInterfaceConfigDir;
+    }
+
+    /**
+     * Sets the model interface configuration directory.
+     *
+     * @param s the model interface configuration directory
+     */
+    public void setModelInterfaceConfigDir(String s) {
+        this.modelInterfaceConfigDir = s;
     }
 
     /**
@@ -1448,6 +1485,9 @@ public class GLIMPSEVariables {
      */
     private void set(String param, String val) {
 
+    	if ((val==null)||(param==null)) return;
+    	if (val.trim().isEmpty() || param.trim().isEmpty()) return;
+    	
         param = param.toLowerCase().trim();
         if (val.indexOf("#") > -1){
             val = fixDir(val);
@@ -1469,6 +1509,12 @@ public class GLIMPSEVariables {
             break;  
         case "scenariobuilderjardir":
             scenarioBuilderJarDir = fixDir(val);
+            break;
+        case "scenariobuilderconfigdir":
+            scenarioBuilderConfigDir = fixDir(val);
+            break;
+        case "modelinterfaceconfigdir":
+            modelInterfaceConfigDir = fixDir(val);
             break;
         case "scenariobuilderjar":
             scenarioBuilderJar = val;
@@ -1623,6 +1669,12 @@ public class GLIMPSEVariables {
         case "allyearslist":
             setAllYears(val);
             break; 
+        case "allyear":
+            setAllYears(val);
+            break;      
+        case "allyearlist":
+            setAllYears(val);
+            break; 
         case "runqueuestr":
             runQueueStr = fixDir(val);
             break;
@@ -1683,7 +1735,7 @@ public class GLIMPSEVariables {
 			setPollutantList(val);
 			break;
         default:
-			System.out.println("No match for " + param);
+			System.out.println("No match for " + param+ getEol() +"   ->param:" + param + " val:" + val);
 			break;
         }
 
@@ -1695,12 +1747,20 @@ public class GLIMPSEVariables {
     }
 
     private void setRegionList(String val) {
-		regionList = utils.getStringListFromString(val,",");	
-	}
+        /**
+         * Sets the region list from a comma-separated string.
+         * @param val Comma-separated region list
+         */
+        regionList = utils.getStringListFromString(val, ",");
+    }
 
     private void setSubRegionList(String val) {
-		subRegionList = utils.getStringListFromString(val,",");	
-	}
+        /**
+         * Sets the subregion list from a comma-separated string.
+         * @param val Comma-separated subregion list
+         */
+        subRegionList = utils.getStringListFromString(val, ",");
+    }
     
 	/**
      * Fixes directory paths in the options file for backward compatibility.
@@ -1708,6 +1768,11 @@ public class GLIMPSEVariables {
      * @return Fixed filename
      */
     private String fixDir(String filename) {
+        /**
+         * Fixes directory paths in the options file for backward compatibility.
+         * @param filename Original filename
+         * @return Fixed filename
+         */
 
         //for backwards compatibility on options file... wildcards surrounded by #
         if (filename.indexOf("#glimpseDir#") > -1) {
@@ -1748,6 +1813,11 @@ public class GLIMPSEVariables {
      * @return True if the directory exists, false otherwise
      */
     private boolean testDirExists(String pathName) {
+        /**
+         * Tests if a directory exists.
+         * @param pathName Directory path
+         * @return True if the directory exists, false otherwise
+         */
         return testDirExists(pathName, false);
     }
 
@@ -1758,6 +1828,13 @@ public class GLIMPSEVariables {
      * @return True if the directory exists, false otherwise
      */
     private boolean testDirExists(String pathName, boolean isFatal) {
+        /**
+         * Tests if a directory exists, with optional fatal error handling.
+         * @param pathName Directory path
+         * @param isFatal True for fatal error, false otherwise
+         * @return True if the directory exists, false otherwise
+         */
+
         boolean b = true;
 
         try {
@@ -1781,6 +1858,12 @@ public class GLIMPSEVariables {
      * @return True if the file exists, false otherwise
      */
     private boolean testFileExists(String pathName) {
+        /**
+         * Tests if a file exists.
+         * @param pathName File path
+         * @return True if the file exists, false otherwise
+         */
+
         boolean b = true;
 
         try {
@@ -1946,6 +2029,10 @@ public class GLIMPSEVariables {
      * @return Technology information matrix
      */
     private String[][] getTechInfoAsMatrix() {
+        /**
+         * Returns the technology information as a matrix from the file content.
+         * @return Technology information matrix
+         */
 
         String[][] returnStringMatrix = null;
         String text="";

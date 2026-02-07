@@ -412,8 +412,10 @@ public class DOMTreeBuilder {
 		// get all the immediate children of e1 and compare them to e2
 		NodeList list1 = e1.getChildNodes();
 		for(int i=0; i<list1.getLength(); i++){
-			if(list1.item(i).getNodeType() != Element.TEXT_NODE){
-				if(compareHelper((Element)list1.item(i), e2)){
+			// only consider element nodes
+			if(list1.item(i).getNodeType() == Node.ELEMENT_NODE) {
+				Element childElem = (Element) list1.item(i);
+				if(compareHelper(childElem, e2)){
 					return list1.item(i);
 				}
 			}
@@ -489,7 +491,7 @@ public class DOMTreeBuilder {
 			//System.out.println("in makeTree: Header: "+currHeader);
 			// get the column which the current header will read from
 			// if any and get the data out from that pos
-			int colPos = currHeader.getReadColumnPos(); //DAN!!
+			int colPos = currHeader.getReadColumnPos(); 
 			String currColVal = null;
 			if(colPos != -1) {
 				currColVal = dataArr.get(colPos);
@@ -497,13 +499,6 @@ public class DOMTreeBuilder {
 				if(currHeader.getChildEntity().doesSpecifyParamValue()) {
 					currColVal=currHeader.getChildEntity().getParamVal();
 				} 
-				//DAN!! Non-working attempt to specify a value w/o reading it in from a column
-//				else {
-//					if (count!=1) { 
-//						currHeader.getChildEntity().
-//						currColVal="1e6";
-//					}
-//				}
 			}
 			//System.out.println("  colPos:"+colPos+" colVal:"+currColVal);
 			for(Iterator<DataPair<List<Header>, Node>> multiIter = multiList.iterator(); multiIter.hasNext(); ) {

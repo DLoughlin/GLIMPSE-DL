@@ -58,6 +58,7 @@ import javafx.scene.input.MouseDragEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.Priority;
 import javafx.util.Callback;
 
 /**
@@ -74,7 +75,6 @@ import javafx.util.Callback;
  *   <li>Support for adding, deleting, and reordering rows</li>
  *   <li>Copy-paste and drag selection support</li>
  *   <li>Configurable enforcement of year-value pair input</li>
- *   <li>Utility methods for extracting and setting data</li>
  * </ul>
  * <b>Usage:</b> Instantiate and add to a JavaFX scene. Use provided methods to manipulate table contents.
  *
@@ -163,7 +163,8 @@ public class PaneForComponentDetails extends VBox {
         
         inputHBox.getChildren().addAll(textFieldYear, textFieldValue, buttonAdd);
         inputHBox.setSpacing(3.);
-        inputHBox.setPadding(new Insets(3., 0., 0., 0.));
+        // Use centralized small top padding
+        inputHBox.setPadding(styles.getSmallTopPadding());
 
         // Add button action: add new DataPoint if valid
         buttonAdd.setOnAction(e -> {
@@ -173,6 +174,34 @@ public class PaneForComponentDetails extends VBox {
         });
 
         this.getChildren().addAll(table, inputHBox);
+
+        // Make table grow to fill remaining vertical space inside this VBox
+        this.setFillWidth(true);
+        VBox.setVgrow(table, Priority.ALWAYS);
+        table.setMaxHeight(Double.MAX_VALUE);
+        // Also allow the table to use unlimited preferred height and use constrained column resizing
+        table.setPrefHeight(Double.MAX_VALUE);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setMinHeight(0);
+        this.setMaxHeight(Double.MAX_VALUE);
+        this.setMinHeight(0);
+
+        // When this PaneForComponentDetails is added to a parent VBox, allow it to grow vertically
+        VBox.setVgrow(this, Priority.ALWAYS);
+
+        // Bind the table's prefHeight to this VBox height minus the inputHBox height so it expands to fill
+        table.prefHeightProperty().bind(this.heightProperty().subtract(inputHBox.heightProperty()).subtract(4));
+
+        // Runtime layout listener to help debugging actual heights while resizing
+        // this.heightProperty().addListener((obs, oldH, newH) -> {
+        //     System.out.println("[PaneForComponentDetails] VBox height=" + newH +
+        //             " table.height=" + table.getHeight() +
+        //             " inputHBox.height=" + inputHBox.getHeight());
+        // });
+        // table.heightProperty().addListener((obs, oldH, newH) -> {
+        //     System.out.println("[PaneForComponentDetails] table prefHeight=" + table.getPrefHeight() +
+        //             " actual=" + newH);
+        // });
         // echoData("end of constructor");
     }
 

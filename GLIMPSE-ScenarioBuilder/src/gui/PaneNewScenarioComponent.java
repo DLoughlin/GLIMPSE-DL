@@ -184,7 +184,6 @@ public class PaneNewScenarioComponent extends gui.ScenarioBuilder {
 	 * The pane is styled and sized to fit within the Scenario Builder's main window.
 	 */
 	public PaneNewScenarioComponent() {
-		mainVBox.setStyle(styles.getFontStyle());
 		initializeButtons();
 		initializeComponentLibraryTable();
 		setupEventHandlers();
@@ -370,19 +369,20 @@ public class PaneNewScenarioComponent extends gui.ScenarioBuilder {
 	private void showComponentDialog(String name, String filename, Stage mainStage, String whichTab,
 			ArrayList<String> contentToLoad) {
 		stageWithTabs = new Stage();
-		double dialogWidth = 950;
-		double dialogHeight = 635;
+		double dialogWidth = 1150;
+		double dialogHeight = 720;
 
 		hBoxButtons = createButtonHBox();
 		buttonSaveComponent = createDialogButton(BUTTON_LABEL_SAVE);
 		buttonClose = createDialogButton(BUTTON_LABEL_CLOSE);
 		hBoxButtons.getChildren().addAll(buttonSaveComponent, buttonClose);
-		hBoxButtons.setStyle(styles.getStyle4());
-		hBoxButtons.setSpacing(5.);
+		hBoxButtons.setSpacing(15.);
 		hBoxButtons.setAlignment(javafx.geometry.Pos.CENTER);
+		hBoxButtons.setPadding(new javafx.geometry.Insets(0, 10, 10, 10));
 
-		progressBar = createProgressBar(dialogWidth - 25);
+		progressBar = createProgressBar(dialogWidth - 50);
 		hBoxProgress = createProgressHBox(progressBar);
+		hBoxProgress.setPadding(new javafx.geometry.Insets(5, 0, 5, 0));
 
 		xmlListTab = new TabXMLList(TAB_XML_LIST, stageWithTabs, ComponentLibraryTable.getTableComponents());
 		xmlListTab.setClosable(false);
@@ -408,17 +408,34 @@ public class PaneNewScenarioComponent extends gui.ScenarioBuilder {
 		fixedDemandTab.setClosable(false);
 
 		TabPane addComponentTabPane = new TabPane();
+		addComponentTabPane.setStyle(styles.getStyle2());
 		addComponentTabPane.getTabs().addAll(pollTaxCapTab, techMarketShareTab, /*techBoundTab,*/ techBound2Tab,
 				techTaxTab, cafeStdTab, techParamTab, fuelPriceAdjTab, fixedDemandTab, techAvailTab, xmlListTab);
-		addComponentTabPane.setStyle(styles.getStyle1b());
-		addComponentTabPane.setPrefHeight(dialogHeight - 25);
+		javafx.scene.layout.VBox.setVgrow(addComponentTabPane, javafx.scene.layout.Priority.ALWAYS);
+		// Allow the TabPane to expand fully and bind its height to the dialog so tab content fills available space
+		addComponentTabPane.setMaxHeight(Double.MAX_VALUE);
+		addComponentTabPane.setPrefHeight(Double.MAX_VALUE);
+		// When dialogPane is created below we bind the tab pane height to the dialog height minus the progress and button bars
 
 		VBox dialogPane = new VBox();
 		dialogPane.getChildren().addAll(addComponentTabPane, hBoxProgress, hBoxButtons);
+		dialogPane.setSpacing(5);
+		// Ensure the dialog and tab pane can grow; bind tab pane height to remaining space in dialog
+		dialogPane.setMaxHeight(Double.MAX_VALUE);
+		dialogPane.setMinHeight(0);
+		addComponentTabPane.prefHeightProperty().bind(dialogPane.heightProperty().subtract(hBoxProgress.heightProperty()).subtract(hBoxButtons.heightProperty()).subtract(10));
 
 		stageWithTabs.initOwner(mainStage);
 		stageWithTabs.initModality(APPLICATION_MODAL);
-		stageWithTabs.setScene(new Scene(dialogPane, dialogWidth, dialogHeight));
+		Scene scene = new Scene(dialogPane, dialogWidth, dialogHeight);
+		try {
+			if (getClass().getResource("/resources/modern.css") != null) {
+				scene.getStylesheets().add(getClass().getResource("/resources/modern.css").toExternalForm());
+			}
+		} catch (Exception e) {
+			System.out.println("Error loading modern.css: " + e);
+		}
+		stageWithTabs.setScene(scene);
 		stageWithTabs.setTitle(DIALOG_TITLE_NEW_COMPONENT);
 
 		stageWithTabs.setOnCloseRequest(new EventHandler<WindowEvent>() {
@@ -486,7 +503,7 @@ public class PaneNewScenarioComponent extends gui.ScenarioBuilder {
 					super.failed();
 					Platform.runLater(() -> {
 						System.out.println("Failed!");
-						utils.warningMessage(WARNING_PROCESS_FAILED);
+					 utils.warningMessage(WARNING_PROCESS_FAILED);
 						enableButtons();
 						currentTab.resetFileContent();
 						currentTab.resetFilenameSuggestion();
@@ -507,7 +524,8 @@ public class PaneNewScenarioComponent extends gui.ScenarioBuilder {
 			}
 		}
 
-		stageWithTabs.setResizable(false);
+		// Allow dialog to be resized so tab content (tables, panes) can expand vertically
+		stageWithTabs.setResizable(true);
 		stageWithTabs.show();
 	}
 
@@ -584,7 +602,7 @@ public class PaneNewScenarioComponent extends gui.ScenarioBuilder {
 		if (fileContent.equals("use temp file")) {
 			useTempFile = true;
 		}
-		if ((filenameSuggestion != null) && (!filenameSuggestion.equals(""))) {
+		if ((filenameSuggestion != null) && (!filenameSuggestion.isEmpty())) {
 			enableButtons();
 			tab.resetFileContent();
 			tab.resetFilenameSuggestion();
@@ -715,7 +733,6 @@ public class PaneNewScenarioComponent extends gui.ScenarioBuilder {
 	 */
 	private VBox createMainVBox() {
 		VBox vbox = new VBox(1);
-		vbox.setStyle(styles.getFontStyle());
 		return vbox;
 	}
 

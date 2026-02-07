@@ -168,7 +168,7 @@ public class RunMIQuery extends QueryModule {
                     // skip this data since a rewrite list set the value
                     // to an empty string indicating the user wanted to
                     // delete it
-                    skip = skip || currRow.value.equals("");
+                    skip = skip || currRow.value.isEmpty();
                 }
             }
             if(!skip) {

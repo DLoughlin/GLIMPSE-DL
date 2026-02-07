@@ -497,7 +497,9 @@ public class NewDataTableModel extends BaseTableModel{
 	private Node checkPath(Node parent, String nodeName, String attrKey, String attrVal) {
 		NodeList nl = parent.getChildNodes();
 		for(int i = 0; i < nl.getLength(); ++i) {
-			Element temp = (Element)nl.item(i);
+			Node child = nl.item(i);
+			if (child.getNodeType() != Node.ELEMENT_NODE) continue;
+			Element temp = (Element) child;
 			if(temp.getNodeName().equals(nodeName) && attrVal == null) {
 				return temp;
 			} else if(temp.getNodeName().equals(nodeName) && temp.getAttribute(attrKey).equals(attrVal)) {

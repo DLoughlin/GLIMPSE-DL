@@ -191,12 +191,14 @@ public class WorldMapPanel extends JFrame implements ComponentListener {
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
         frame.setAlwaysOnTop(true);
+        /*
         frame.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
                 RedrawWorldMapLayout();        
             }
         });
+        */
         DbViewer.openWindows.add(frame);
     }
     
@@ -559,22 +561,38 @@ public class WorldMapPanel extends JFrame implements ComponentListener {
             double maxCustom = ((Number) maxField.getValue()).doubleValue();
             useMapColor = new MapColor(usePalette, minCustom, maxCustom);    
         }
-        // Double buffering: create an offscreen image and draw the map to it
-        BufferedImage offscreen = new BufferedImage(frame.getWidth(), frame.getHeight(), BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2d = offscreen.createGraphics();
-        // Remove panels before drawing
-        frame.remove(sectorDisplayPanel);
-        frame.remove(addLegendPanel);
-        stateMap.layers().clear();
-        frame.getContentPane().add(createWorldMapContent(), BorderLayout.CENTER);
-        frame.getContentPane().add(createFooter(), BorderLayout.PAGE_END);
-        frame.getContentPane().add(addLegendPanel(), BorderLayout.EAST);
-        frame.revalidate();
-        // Paint the frame to the offscreen buffer
-        frame.paintAll(g2d);
-        g2d.dispose();
-        // Now repaint the frame (the buffer is not shown, but this ensures double buffering is used)
-        frame.repaint();
+        
+        // Update Map Content
+        if (stateMap != null) {
+            stateMap.dispose();
+        }
+        stateMap = createWorldBoundaryMapLayer();
+        jmap.setMapContent(stateMap);
+        jmap.repaint();
+
+        // Update Legend
+        if (addLegendPanel != null) {
+            addLegendPanel.removeAll();
+            if (legendLabel == null) {
+                legendLabel = new JLabel("Legend");
+                legendLabel.setFont(new Font("Dialog",Font.PLAIN,14));
+                legendLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            }
+            addLegendPanel.add(legendLabel);
+            int unitColIdx = FilteredTable.getColumnByName(jtable, "Units");
+            String unitForLegend = (String) jtable.getValueAt(0, unitColIdx);
+            LegendPanel useLegend = new LegendPanel(useMapColor, unitForLegend);
+            addLegendPanel.add(useLegend);
+            addLegendPanel.revalidate();
+            addLegendPanel.repaint();
+        }
+
+        // Update Footer Info
+        if (sectorText != null) {
+             String mapSectorInfo = MapOptionsUtil.getSectorPlusInfo(jtable);
+             sectorText.setText("Displayed in this map:" + mapSectorInfo);
+             sectorText.setVisible(mapSectorInfo.length() > 0);
+        }
     }
 
     /**

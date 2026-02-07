@@ -1,0 +1,145 @@
+﻿INPUT_TABLE,,,,,,,
+Variable ID,,,,,,,
+GLIMPSEInputEmissCoef,,,,,,,
+,,,,,,,
+region,supplysector,tranSubsector,stub-technology,year,pollutant,value,type
+all states,trn_freight,Freight Rail,Liquids,2015,NOx,1.16470289,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2015,NOx,1.16470289,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2015,NOx,1.16470289,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2015,NOx,1.16470289,input-driver
+all states,trn_freight,Freight Rail,Liquids,2015,SO2_1,0.000812762,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2015,SO2_1,0.000812762,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2015,SO2_1,0.000812762,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2015,SO2_1,0.000812762,input-driver
+all states,trn_freight,Freight Rail,Liquids,2015,PM2.5,0.034532622,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2015,PM2.5,0.034532622,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2015,PM2.5,0.034532622,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2015,PM2.5,0.034532622,input-driver
+all states,trn_freight,Freight Rail,Liquids,2015,PM10,0.035696726,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2015,PM10,0.035696726,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2015,PM10,0.035696726,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2015,PM10,0.035696726,input-driver
+all states,trn_freight,Freight Rail,Liquids,2015,NMVOC,0.056880845,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2015,NMVOC,0.056880845,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2015,NMVOC,0.056880845,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2015,NMVOC,0.056880845,input-driver
+all states,trn_freight,Freight Rail,Liquids,2015,CO,0.184852855,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2015,CO,0.184852855,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2015,CO,0.184852855,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2015,CO,0.184852855,input-driver
+all states,trn_freight,Freight Rail,Liquids,2015,NH3,0.00057691,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2015,NH3,0.00057691,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2015,NH3,0.00057691,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2015,NH3,0.00057691,input-driver
+all states,trn_freight,Freight Rail,Liquids,2020,NOx,0.926514536,input-driver
+all states,trn_freight,Freight Rail,Liquids,2025,NOx,0.701380163,input-driver
+all states,trn_freight,Freight Rail,Liquids,2030,NOx,0.519540861,input-driver
+all states,trn_freight,Freight Rail,Liquids,2035,NOx,0.372337617,input-driver
+all states,trn_freight,Freight Rail,Liquids,2040,NOx,0.277088459,input-driver
+all states,trn_freight,Freight Rail,Liquids,2045,NOx,0.277088459,input-driver
+all states,trn_freight,Freight Rail,Liquids,2050,NOx,0.277088459,input-driver
+all states,trn_freight,Freight Rail,Liquids,2020,PM10,0.027134688,input-driver
+all states,trn_freight,Freight Rail,Liquids,2025,PM10,0.019536976,input-driver
+all states,trn_freight,Freight Rail,Liquids,2030,PM10,0.01302465,input-driver
+all states,trn_freight,Freight Rail,Liquids,2035,PM10,0.0086831,input-driver
+all states,trn_freight,Freight Rail,Liquids,2040,PM10,0.005426938,input-driver
+all states,trn_freight,Freight Rail,Liquids,2045,PM10,0.005426938,input-driver
+all states,trn_freight,Freight Rail,Liquids,2050,PM10,0.005426938,input-driver
+all states,trn_freight,Freight Rail,Liquids,2020,PM2.5,0.025540282,input-driver
+all states,trn_freight,Freight Rail,Liquids,2025,PM2.5,0.018389003,input-driver
+all states,trn_freight,Freight Rail,Liquids,2030,PM2.5,0.012259335,input-driver
+all states,trn_freight,Freight Rail,Liquids,2035,PM2.5,0.00817289,input-driver
+all states,trn_freight,Freight Rail,Liquids,2040,PM2.5,0.005108056,input-driver
+all states,trn_freight,Freight Rail,Liquids,2045,PM2.5,0.005108056,input-driver
+all states,trn_freight,Freight Rail,Liquids,2050,PM2.5,0.005108056,input-driver
+all states,trn_freight,Freight Rail,Liquids,2020,NMVOC,0.055633251,input-driver
+all states,trn_freight,Freight Rail,Liquids,2025,NMVOC,0.041062638,input-driver
+all states,trn_freight,Freight Rail,Liquids,2030,NMVOC,0.030465828,input-driver
+all states,trn_freight,Freight Rail,Liquids,2035,NMVOC,0.022518221,input-driver
+all states,trn_freight,Freight Rail,Liquids,2040,NMVOC,0.017219816,input-driver
+all states,trn_freight,Freight Rail,Liquids,2045,NMVOC,0.017219816,input-driver
+all states,trn_freight,Freight Rail,Liquids,2050,NMVOC,0.017219816,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2020,NOx,0.84217428,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2025,NOx,0.615783344,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2030,NOx,0.443726233,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2035,NOx,0.298836035,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2040,NOx,0.208279661,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2045,NOx,0.208279661,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2050,NOx,0.208279661,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2020,PM10,0.026404885,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2025,PM10,0.017603257,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2030,PM10,0.010059004,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2035,PM10,0.006286877,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2040,PM10,0.003772126,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2045,PM10,0.003772126,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2050,PM10,0.003772126,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2020,PM2.5,0.022084957,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2025,PM2.5,0.014723305,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2030,PM2.5,0.008413317,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2035,PM2.5,0.005258323,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2040,PM2.5,0.003154994,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2045,PM2.5,0.003154994,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2050,PM2.5,0.003154994,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2020,NMVOC,0.045834175,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2025,NMVOC,0.029570436,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2030,NMVOC,0.017742261,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2035,NMVOC,0.010349653,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2040,NMVOC,0.007392609,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2045,NMVOC,0.007392609,input-driver
+all states,trn_pass,Passenger Rail,Liquids,2050,NMVOC,0.007392609,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2020,NOx,0.926514536,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2025,NOx,0.701380163,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2030,NOx,0.519540861,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2035,NOx,0.372337617,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2040,NOx,0.277088459,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2045,NOx,0.277088459,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2050,NOx,0.277088459,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2020,PM10,0.027134688,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2025,PM10,0.019536976,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2030,PM10,0.01302465,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2035,PM10,0.0086831,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2040,PM10,0.005426938,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2045,PM10,0.005426938,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2050,PM10,0.005426938,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2020,PM2.5,0.025540282,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2025,PM2.5,0.018389003,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2030,PM2.5,0.012259335,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2035,PM2.5,0.00817289,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2040,PM2.5,0.005108056,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2045,PM2.5,0.005108056,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2050,PM2.5,0.005108056,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2020,NMVOC,0.055633251,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2025,NMVOC,0.041062638,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2030,NMVOC,0.030465828,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2035,NMVOC,0.022518221,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2040,NMVOC,0.017219816,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2045,NMVOC,0.017219816,input-driver
+all states,trn_freight,Freight Rail,Hybrid Liquids,2050,NMVOC,0.017219816,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2020,NOx,0.84217428,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2025,NOx,0.615783344,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2030,NOx,0.443726233,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2035,NOx,0.298836035,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2040,NOx,0.277088459,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2045,NOx,0.277088459,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2050,NOx,0.277088459,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2020,PM10,0.026404885,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2025,PM10,0.017603257,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2030,PM10,0.010059004,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2035,PM10,0.006286877,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2040,PM10,0.003772126,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2045,PM10,0.003772126,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2050,PM10,0.003772126,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2020,PM2.5,0.022084957,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2025,PM2.5,0.014723305,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2030,PM2.5,0.008413317,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2035,PM2.5,0.005258323,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2040,PM2.5,0.003154994,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2045,PM2.5,0.003154994,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2050,PM2.5,0.003154994,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2020,NMVOC,0.045834175,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2025,NMVOC,0.029570436,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2030,NMVOC,0.017742261,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2035,NMVOC,0.010349653,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2040,NMVOC,0.007392609,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2045,NMVOC,0.007392609,input-driver
+all states,trn_pass,Passenger Rail,Hybrid Liquids,2050,NMVOC,0.007392609,input-driver

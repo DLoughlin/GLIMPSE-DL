@@ -72,7 +72,7 @@ tchBndListFilename = $scenarioBuilderDir$/config/v8.2/tech_bnd_list_USA_8.2.txt
 
 #table with load factors for transportation technologies
 #TODO: Need to update for 8.2
-tranLoadFactorsFilename = $scenarioBuilderDir$/config/v8.2/trn_veh_info_8p2.csv
+tranLoadFactorsFilename = $scenarioBuilderDir$/config/v8.2/trn_veh_info_8.2.csv
 
 #files include specifications used in generating xml files
 xmlHeaderFilename = $scenarioBuilderDir$/config/v8.2/glimpseXMLHeaders_v8.2.txt

@@ -72,10 +72,13 @@ public class QueryTreeModel implements TreeModel, MiUndoableEditListener {
 		ArrayList ret = new ArrayList(nl.getLength());
 		QueryGenerator qg;
 		for(int i = 0; i < nl.getLength(); ++i) {
-			if(nl.item(i).getNodeName().equals("queryGroup")) {
-				ret.add(new QueryGroup(((Element)nl.item(i)).getAttribute("name"), recCreateTree(nl.item(i))));
+			Node curr = nl.item(i);
+			if (curr.getNodeType() != Node.ELEMENT_NODE) continue;
+			if(curr.getNodeName().equals("queryGroup")) {
+				Element e = (Element) curr;
+				ret.add(new QueryGroup(e.getAttribute("name"), recCreateTree(curr)));
 			} else {
-				qg = new QueryGenerator(nl.item(i));
+				qg = new QueryGenerator(curr);
 				if(qg.isValid()) {
 					ret.add(qg);
 				}
@@ -465,4 +468,3 @@ public class QueryTreeModel implements TreeModel, MiUndoableEditListener {
 		}
 	}
 }
-

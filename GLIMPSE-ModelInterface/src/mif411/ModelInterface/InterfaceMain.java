@@ -48,6 +48,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -58,7 +59,10 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.Vector;
 
+import javax.swing.JButton;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -109,7 +113,17 @@ import joptsimple.OptionSet;
 import com.sun.media.imageioimpl.common.PackageUtil;
 import java.lang.reflect.Field;
 
+import java.awt.Font;
+import java.awt.Color;
+
 public class InterfaceMain implements ActionListener {
+	private static final Font UNIFIED_FONT = new Font("Segoe UI", Font.PLAIN, 14);
+	private static final Color UNIFIED_BG = new Color(245, 245, 250); // Soft background
+	private static final Color UNIFIED_PANEL_BG = new Color(255, 255, 255); // Panel background
+	private static final Color UNIFIED_BTN_BG = new Color(230, 235, 245); // Button background
+	private static final Color UNIFIED_BTN_FG = new Color(30, 30, 60); // Button foreground
+	private static final Color UNIFIED_BORDER = new Color(200, 200, 220); // Border color
+
 	/**
 	 * Unique identifier used for serializing.
 	 */
@@ -119,10 +133,10 @@ public class InterfaceMain implements ActionListener {
 	public static final int EDIT_MENU_POS = 1;
 	public static final int VIEW_MENU_POS = 2;
 	// public static final int TOOLS_MENU_POS = 80; // YD added
-	public static final int ADVANCED_MENU_POS = 90; // YD added
-	public static final int ADVANCED_SUBMENU1_POS = 0; // YD added
-	public static final int ADVANCED_SUBMENU15_POS = 2; // YD added
-	public static final int ADVANCED_SUBMENU2_POS = 5; // YD added
+	public static final int TOOLS_MENU_POS = 90; // YD added
+	public static final int TOOLS_SUBMENU1_POS = 0; // YD added
+	public static final int TOOLS_SUBMENU15_POS = 2; // YD added
+	public static final int TOOLS_SUBMENU2_POS = 5; // YD added
 	public static final int QUERIES_UNDO_MENUITEM_POS = 25; // YD added
 	public static final int QUERIES_REDO_MENUITEM_POS = 30; // YD added
 	public static final int HELP_MENU_POS = 100;
@@ -144,6 +158,9 @@ public class InterfaceMain implements ActionListener {
 	public static final int SANKEY_DISPLAY_MENUITEM_POS = 70; // YD added
 	public static final String REGION_LIST_NAME = "region list"; // YD added
 
+	// New menu position for Config (between Tools and Help)
+	public static final int CONFIG_MENU_POS = 95;
+
 	private static File propertiesFile;
 	private static String oldControl;
 	private static InterfaceMain main;
@@ -158,13 +175,23 @@ public class InterfaceMain implements ActionListener {
 	private JMenuItem batchMenu;
 	private JMenuItem toolsCSVMenu; // YD added
 	private JMenuItem toolsUnitMenu; // YD added
+	private JMenuItem editRegionsMenu; // Added: Edit Regions menu item
 	// private JMenuItem toolsSankeyMenu; // YD moved to "DbViewer.java"
+
+	// New Config menu items
+	private JMenuItem selectQueryFileMenu;
+	private JMenuItem selectUnitsFileMenu;
+	private JMenuItem selectRegionsFileMenu;
+	private JMenuItem selectMapResourceFolderMenu;
 
 	private JMenuItem editQuerySubMenu; // YD added
 	private JMenu advancedSubMenu1;// YD added
 	private JMenu advancedSubMenu2;// YD added
 	private Properties savedProperties;
 	private UndoManager undoManager;
+
+	// New: Help menu primary item
+	private JMenuItem helpItem;
 
 	private MenuAdder dbView = null;
 
@@ -203,6 +230,16 @@ public class InterfaceMain implements ActionListener {
 		// we want this to always be in root of run environment
 		propertiesFile = new File("model_interface.properties");
 		System.out.println("Getting model properties from " + propertiesFile.getAbsolutePath());
+
+		// Load properties early so we can apply precedence (CLI > properties > defaults)
+		Properties bootProps = new Properties();
+		if (propertiesFile.exists()) {
+			try (FileInputStream fis = new FileInputStream(propertiesFile)) {
+				bootProps.loadFromXML(fis);
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+			}
+		}
 
 		Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
 			public void uncaughtException(Thread t, Throwable e) {
@@ -281,6 +318,15 @@ public class InterfaceMain implements ActionListener {
 		if (opts.has("o")) {
 			path = (String) opts.valueOf("o");
 			System.out.println("InterfaceMain: DB Path: " + path + " exists: " + new File(path).exists());
+			// Persist last DB path so it is available on next launch
+			bootProps.setProperty("paramPath", path);
+		} else {
+			// use value from properties if available
+			String propPath = bootProps.getProperty("paramPath", null);
+			if (propPath != null) {
+				path = propPath;
+				System.out.println("InterfaceMain: DB Path (from properties): " + path + " exists: " + new File(path).exists());
+			}
 		}
 
 		// added by Dan to allow query file to be specified as runtime argument
@@ -288,6 +334,15 @@ public class InterfaceMain implements ActionListener {
 			queryFilename = (String) opts.valueOf("q");
 			System.out.println("InterfaceMain: Query File Path: " + queryFilename + " exists: "
 					+ new File(queryFilename).exists());
+			bootProps.setProperty("queryFile", queryFilename);
+		} else {
+			// use value from properties if available
+			String propQuery = bootProps.getProperty("queryFile", null);
+			if (propQuery != null) {
+				queryFilename = propQuery;
+				System.out.println("InterfaceMain: Query File Path (from properties): " + queryFilename + " exists: "
+						+ new File(queryFilename).exists());
+			}
 		}
 
 		if (opts.has("b")) {
@@ -319,127 +374,122 @@ public class InterfaceMain implements ActionListener {
 			return;
 		}
 
+		// Units file precedence
 		if (opts.has("u")) {
 			unitFileLocation = (String) opts.valueOf("u");
 			System.out.println("InterfaceMain: unitsFile: " + unitFileLocation + " exists: "
 					+ new File(unitFileLocation).exists());
+			bootProps.setProperty("unitsFile", unitFileLocation);
 		} else {
-			// also look in the current directory
-			File f = new File("config" + File.separator + "units_rules.csv");
-			if (f.exists()) {
-				unitFileLocation = f.getAbsolutePath();
+			String propUnits = bootProps.getProperty("unitsFile", null);
+			if (propUnits != null) {
+				unitFileLocation = propUnits;
+				System.out.println("InterfaceMain: unitsFile (from properties): " + unitFileLocation + " exists: "
+						+ new File(unitFileLocation).exists());
+			} else {
+				// also look in the current directory
+				File f = new File("config" + File.separator + "units_rules.csv");
+				if (f.exists()) {
+					unitFileLocation = f.getAbsolutePath();
+				}
+				System.out.println("    --> attempting to use default unitsFile: " + unitFileLocation + " exists: "
+						+ new File(unitFileLocation).exists());
 			}
-			System.out.println("    --> attempting to use default unitsFile: " + unitFileLocation + " exists: "
-					+ new File(unitFileLocation).exists());
 		}
 
-		// YD added,Feb-2024
-		// For preset regions in ModelInterface
+		// Preset regions precedence (-p)
 		if (opts.has("p")) {
 			presetRegionListLocation = (String) opts.valueOf("p");
 			System.out.println("InterfaceMain: presetRegionListLocation: " + presetRegionListLocation + " exists: "
 					+ new File(presetRegionListLocation).exists());
-
-			// System.out.println("found the preset region list file from the command line:
-			// " + presetRegionListLocation);
+			bootProps.setProperty("presetRegionList", presetRegionListLocation);
 		} else {
-			// also look in the current config directory
-			File f_preset = new File("config" + File.separator + "preset_region_list.txt");
-
-			if (f_preset.exists()) {
-				presetRegionListLocation = f_preset.getAbsolutePath();
-				// System.out.println("found the region list file: " +
-				// presetRegionListLocation);
+			String propPreset = bootProps.getProperty("presetRegionList", null);
+			if (propPreset != null) {
+				presetRegionListLocation = propPreset;
+				System.out.println("InterfaceMain: presetRegionListLocation (from properties): "
+						+ presetRegionListLocation + " exists: " + new File(presetRegionListLocation).exists());
+			} else {
+				// also look in the current config directory
+				File f_preset = new File("config" + File.separator + "preset_region_list.txt");
+				if (f_preset.exists()) {
+					presetRegionListLocation = f_preset.getAbsolutePath();
+				}
+				System.out.println(
+						"    --> attempting to use default presetRegionListLocation: " + presetRegionListLocation
+								+ " exists: " + new File(presetRegionListLocation).exists());
 			}
-			System.out.println("    --> attempting to use default presetRegionListLocation: " + presetRegionListLocation
-					+ " exists: " + new File(presetRegionListLocation).exists());
 		}
-		// For favorite queries in ModelInterface
+
+		// Favorite queries precedence (-f)
 		if (opts.has("f")) {
 			favoriteQueriesFileLocation = (String) opts.valueOf("f");
 			System.out.println("InterfaceMain: favoriteQueriesFileLocation: " + favoriteQueriesFileLocation
 					+ " exists: " + new File(favoriteQueriesFileLocation).exists());
-			// System.out.println("found the favorite queries file from the command line: "
-			// + favoriteQueriesFileLocation);
+			bootProps.setProperty("favoriteQueriesFile", favoriteQueriesFileLocation);
 		} else {
-			// also look in the current directory
-			File f_favorite = new File("config" + File.separator + "favorite_queries_list.txt");
-			if (f_favorite.exists()) {
-				favoriteQueriesFileLocation = f_favorite.getAbsolutePath();
-				// System.out.println("found the favorite queries file: " +
-				// favoriteQueriesFileLocation);
+			String propFav = bootProps.getProperty("favoriteQueriesFile", null);
+			if (propFav != null) {
+				favoriteQueriesFileLocation = propFav;
+				System.out.println("InterfaceMain: favoriteQueriesFileLocation (from properties): "
+						+ favoriteQueriesFileLocation + " exists: "
+						+ new File(favoriteQueriesFileLocation).exists());
+			} else {
+				File f_favorite = new File("config" + File.separator + "favorite_queries_list.txt");
+				if (f_favorite.exists()) {
+					favoriteQueriesFileLocation = f_favorite.getAbsolutePath();
+				}
+				System.out.println("    --> attempting to use default favoriteQueriesFileLocation: "
+						+ favoriteQueriesFileLocation + " exists: "
+						+ new File(favoriteQueriesFileLocation).exists());
 			}
-			System.out.println("    --> attempting to use default favoriteQueriesFileLocation: "
-					+ favoriteQueriesFileLocation + " exists: " + new File(favoriteQueriesFileLocation).exists());
 		}
 
-		// For mapUS52Compact shape files in ModelInterface
-
+		// Mapping folder precedence (-m)
 		if (opts.has("m")) {
 			shapeFileLocationPrefix = (String) opts.valueOf("m");
 			System.out.println("InterfaceMain: shapeFileLocationPrefix: " + shapeFileLocationPrefix + " exists: "
 					+ new File(shapeFileLocationPrefix).exists());
 			enableMapping = true;
+			bootProps.setProperty("mapResourceFolder", shapeFileLocationPrefix);
 		} else {
-			// now check the path
-			File loc = new File("map_resources");
-			if (loc.exists() && loc.isDirectory()) {
-				System.out.println("Found absolute map path at " + loc.getAbsolutePath());
-				shapeFileLocationPrefix = loc.getAbsolutePath();
+			String propMap = bootProps.getProperty("mapResourceFolder", null);
+			if (propMap != null) {
+				shapeFileLocationPrefix = propMap;
 				enableMapping = true;
+				System.out.println("InterfaceMain: shapeFileLocationPrefix (from properties): "
+						+ shapeFileLocationPrefix + " exists: " + new File(shapeFileLocationPrefix).exists());
 			} else {
-				System.out.println("Could not find any maps, disabling mapping option");
-				enableMapping = false;
-			}
-			System.out.println("    --> attempting to use default shapeFileLocationPrefix: " + shapeFileLocationPrefix
-					+ " exists: " + new File(shapeFileLocationPrefix).exists());
-		}
-
-		if (enableMapping) {
-
-			// go ahead and try to load files even if mapping is disabled, may be enabled
-			// later
-			File preset_shapefile = new File(shapeFileLocationPrefix + File.separator + "mapUS52Compact_from_rmap.shp");
-			if (preset_shapefile.exists()) {
-				stateShapeFileLocation = preset_shapefile.getAbsolutePath();
-				System.out.println("Found the US52Compact shape file: " + preset_shapefile.getAbsolutePath());
-			} else {
-				System.out.println("Could not find US52Compact shape file: " + preset_shapefile.getAbsolutePath()
-						+ " disabling mapping.");
-				enableMapping = false;
-			}
-
-			File preset_reg32_shapefile = new File(
-					shapeFileLocationPrefix + File.separator + "mapGCAMReg32_from_rmap.shp");
-			if (preset_reg32_shapefile.exists()) {
-				gcamReg32ShapeFileLocation = preset_reg32_shapefile.getAbsolutePath();
-				System.out
-						.println("Found the global 32 region shape file: " + preset_reg32_shapefile.getAbsolutePath());
-			} else {
-				System.out
-						.println("Found the global 32 region shape file: " + preset_reg32_shapefile.getAbsolutePath());
-				enableMapping = false;
-			}
-
-			File preset_reg32US52_shapefile = new File(
-					shapeFileLocationPrefix + File.separator + "mapGCAMReg32US52_from_rmap.shp");
-			if (preset_reg32US52_shapefile.exists()) {
-				gcamReg32US52ShapeFileLocation = preset_reg32US52_shapefile.getAbsolutePath();
-				System.out.println("Found the global shapefile with US state-level detail shape file: "
-						+ preset_reg32US52_shapefile.getAbsolutePath());
-			} else {
-				System.out.println("Found the global shapefile with US state-level detail shape file: "
-						+ preset_reg32US52_shapefile.getAbsolutePath());
-
+				// now check the path
+				File loc = new File("map_resources");
+				if (loc.exists() && loc.isDirectory()) {
+					System.out.println("Found absolute map path at " + loc.getAbsolutePath());
+					shapeFileLocationPrefix = loc.getAbsolutePath();
+					enableMapping = true;
+				} else {
+					System.out.println("Could not find any maps, disabling mapping option");
+					enableMapping = false;
+				}
+				System.out.println(
+						"    --> attempting to use default shapeFileLocationPrefix: " + shapeFileLocationPrefix
+								+ " exists: " + new File(shapeFileLocationPrefix).exists());
 			}
 		}
 
+		// Legend bundle precedence (legend_bundle)
 		if (opts.has("legend_bundle")) {
 			legendBundlesLoc = (String) opts.valueOf("legend_bundle");
 			System.out.println("InterfaceMain: legendBundlesLoc: " + legendBundlesLoc + " exists: "
 					+ new File(legendBundlesLoc).exists());
+			bootProps.setProperty("legend_bundle", legendBundlesLoc);
 		}
 		File legendBundleFile = null;
+		if (legendBundlesLoc == null) {
+			String propLegend = bootProps.getProperty("legend_bundle", null);
+			if (propLegend != null) {
+				legendBundlesLoc = propLegend;
+			}
+		}
 		if (legendBundlesLoc != null) {
 			legendBundleFile = new File(legendBundlesLoc);
 		}
@@ -449,7 +499,13 @@ public class InterfaceMain implements ActionListener {
 			if (!legendBundleFile.exists()) {
 				legendBundlesLoc = "LegendBundle.properties";
 			}
+		}
 
+		// Persist any updated properties from CLI back to the properties file
+		try (FileOutputStream fos = new FileOutputStream(propertiesFile)) {
+			bootProps.storeToXML(fos, "ModelInterface properties (boot updated)");
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
 		}
 
 		try {
@@ -513,10 +569,11 @@ public class InterfaceMain implements ActionListener {
 		main = null;
 		main = new InterfaceMain();
 		main.mainFrame = new JFrame("Model Interface");
-
 		String image_str = ".\\results.png";
 		main.mainFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(image_str));
-
+		main.mainFrame.getContentPane().setBackground(UNIFIED_BG);
+		main.mainFrame.getContentPane().setFont(UNIFIED_FONT);
+		main.mainFrame.getRootPane().setBorder(javax.swing.BorderFactory.createLineBorder(UNIFIED_BORDER, 1));
 		if (Boolean.parseBoolean(main.savedProperties.getProperty("isMaximized", "false"))) {
 			main.mainFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
 		}
@@ -546,9 +603,8 @@ public class InterfaceMain implements ActionListener {
 		main.mainFrame.setSize(Integer.parseInt(lastWidth), Integer.parseInt(lastHeight));
 
 		main.mainFrame.setLayout(new BorderLayout());
-
 		main.initialize();
-//		// main.pack();
+		// main.pack();
 		main.mainFrame.setVisible(false);
 		if (path != null) {
 			main.fireControlChange("DbViewer");
@@ -598,6 +654,23 @@ public class InterfaceMain implements ActionListener {
 		addMenuItems(menuMan);
 		addMenuAdderMenuItems(menuMan);
 		finalizeMenu(menuMan);
+		// Set font for menu bar and items
+		JMenuBar menuBar = mainFrame.getJMenuBar();
+		if (menuBar != null) {
+			menuBar.setFont(UNIFIED_FONT);
+			for (int i = 0; i < menuBar.getMenuCount(); i++) {
+				JMenu menu = menuBar.getMenu(i);
+				if (menu != null) {
+					menu.setFont(UNIFIED_FONT);
+					for (int j = 0; j < menu.getItemCount(); j++) {
+						JMenuItem item = menu.getItem(j);
+						if (item != null) {
+							item.setFont(UNIFIED_FONT);
+						}
+					}
+				}
+			}
+		}
 		// if path to DB was provided, dispatch to DBViewer to open database
 //		  if (path != null) fireControlChange("DbViewer");		 
 	}
@@ -607,173 +680,123 @@ public class InterfaceMain implements ActionListener {
 	}
 
 	private void addMenuItems(MenuManager menuMan) {
-		JMenu m = new JMenu("File");
-		menuMan.addMenuItem(m, FILE_MENU_POS);
-		// YD edits, August-2023
-		// JMenu submenu; //YD commented out
-		// submenu = new JMenu("Open"); //YD commented out, changed "Open" to "Open DB"
-		// in "DbViewer.java"
-		// submenu.setMnemonic(KeyEvent.VK_S); //YD commented out
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(submenu,
-		// FILE_OPEN_SUBMENU_POS); //YD commented out
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(FILE_OPEN_SUBMENU_POS +
-		// 2); //YD commented out
-		// m.add(submenu);
-		// m.addSeparator();
+        JMenu fileMenu = new JMenu("File");
+        fileMenu.setMnemonic(KeyEvent.VK_F);
+        menuMan.addMenuItem(fileMenu, FILE_MENU_POS);
+        // Add Save / Save As to File menu
+        saveMenu = new JMenuItem("Save");
+        saveMenu.setEnabled(false);
+        // Removed accelerator: saveMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, getMenuShortcutMask()));
+        // menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveMenu, 20);
+        saveAsMenu = new JMenuItem("Save As…");
+        saveAsMenu.setEnabled(false);
+        // Removed accelerator: saveAsMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, getMenuShortcutMask() | java.awt.event.InputEvent.SHIFT_DOWN_MASK));
+        // menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveAsMenu, 25);
+        // menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(FILE_MENU_SEPERATOR);
 
-		// m.add(makeMenuItem("Quit"));
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(newMenu = new
-		// JMenuItem("New"), FILE_NEW_MENUITEM_POS); //YD commented out
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(FILE_NEW_MENUITEM_POS);
-		// //YD commented out
-		// newMenu.setEnabled(false); //YD commented out
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveMenu = new
-		// JMenuItem("Save")/* makeMenuItem("Save") */, FILE_SAVE_MENUITEM_POS); //YD
-		// commented out
-		// saveMenu.setEnabled(false); //YD commented out
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveAsMenu = new
-		// JMenuItem("Save As"), FILE_SAVEAS_MENUITEM_POS);//YD commented out
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(FILE_SAVEAS_MENUITEM_POS);//YD
-		// commented out
-		// saveAsMenu.setEnabled(false);//YD commented out
-		menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(quitMenu = makeMenuItem("Quit"), FILE_QUIT_MENUITEM_POS);
+        quitMenu = makeMenuItem("Quit");
+        quitMenu.setMnemonic(KeyEvent.VK_Q);
+        // Removed accelerator: quitMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, getMenuShortcutMask()));
+        menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(quitMenu, FILE_QUIT_MENUITEM_POS);
 
-		menuMan.addMenuItem(new JMenu("Edit"), EDIT_MENU_POS);
-		// YD edits, August-2023
-		// copyMenu = new JMenuItem("Copy");//YD commented out
-		// key stroke is system dependent
-		// copyMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C,
-		// ActionEvent.CTRL_MASK));
-		// menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(copyMenu,
-		// EDIT_COPY_MENUITEM_POS);//YD commented out
-		// pasteMenu = new JMenuItem("Paste");//YD commented out
-		// key stroke is system dependent
-		// pasteMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_V,
-		// ActionEvent.CTRL_MASK));
-		// menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(pasteMenu,
-		// EDIT_PASTE_MENUITEM_POS);//YD commented out
-		// menuMan.getSubMenuManager(EDIT_MENU_POS).addSeparator(EDIT_PASTE_MENUITEM_POS);//YD
-		// commented out
+        JMenu editMenu = new JMenu("Edit");
+        editMenu.setMnemonic(KeyEvent.VK_E);
+        menuMan.addMenuItem(editMenu, EDIT_MENU_POS);
 
-		// copyMenu.setEnabled(false);//YD commented out
-		// pasteMenu.setEnabled(false);//YD commented out
-		// YD commented lines 392-396 out because this "Batch File" menuItem needs to be
-		// re-arranged to be under "Advanced" >> "Open Files"
-		// batchMenu = new JMenuItem("Batch File");
-		// batchMenu.setEnabled(true);
-		// batchMenu.addActionListener(this);
-		// menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(batchMenu,
-		// FILE_OPEN_SUBMENU_POS);
+        // Remove Config menu (replaced by Preferences… under Edit)
+        // menuMan.addMenuItem(new JMenu("Config"), CONFIG_MENU_POS);
 
-		// YD added lines to add "Tools" and "Advanced" to the main menu bar
-		menuMan.addMenuItem(new JMenu("View"), VIEW_MENU_POS);
-		// menuMan.addMenuItem(new JMenu("Tools"), TOOLS_MENU_POS);
-		menuMan.addMenuItem(new JMenu("Advanced"), ADVANCED_MENU_POS);
-		menuMan.addMenuItem(new JMenu("Help"), HELP_MENU_POS);
-		// YD added the following lines to add "Query File" under "Edit" dropdown menu
-		editQuerySubMenu = new JMenuItem("Query File");
-		editQuerySubMenu.setEnabled(true);
-		editQuerySubMenu.addActionListener(this);
-		editQuerySubMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, ActionEvent.CTRL_MASK));
-		menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(editQuerySubMenu, EDIT_QUERY_SUBMENU_POS);
+        JMenu viewMenu = new JMenu("View");
+        viewMenu.setMnemonic(KeyEvent.VK_V);
+        menuMan.addMenuItem(viewMenu, VIEW_MENU_POS);
+        JMenu toolsMenu = new JMenu("Tools");
+        toolsMenu.setMnemonic(KeyEvent.VK_T);
+        menuMan.addMenuItem(toolsMenu, TOOLS_MENU_POS);
+        // Ensure expected submenus exist for downstream menu adders
+        MenuManager toolsMM = menuMan.getSubMenuManager(TOOLS_MENU_POS);
+        if (toolsMM != null) {
+            // Removed empty "Queries" submenu under Tools
+            toolsMM.addMenuItem(new JMenu("Open Files"), TOOLS_SUBMENU2_POS);
+        }
 
-		// YD added the following lines to add items under "Tools" dropdown menu
-		// second round YD edits, commented it out and moved this block to
-		// "InputViewer.java"
-		/*
-		 * toolsCSVMenu = new JMenuItem("CSV to XML"); toolsCSVMenu.setEnabled(true);
-		 * toolsCSVMenu.addActionListener(this);
-		 * menuMan.getSubMenuManager(TOOLS_MENU_POS).addMenuItem(toolsCSVMenu,
-		 * TOOLS_CSV_MENUITEM_POS);
-		 */
-		toolsUnitMenu = new JMenuItem("Unit Conversions");
-		toolsUnitMenu.setEnabled(true);
-		toolsUnitMenu.addActionListener(this);
-		toolsUnitMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_U, ActionEvent.CTRL_MASK));
+        // Move Run Batch… under Tools (position 10). A separator is already added
+        // before CSV to XML at position 19, keeping a separator between them.
+        batchMenu = new JMenuItem("Run Batch…");
+        // Removed accelerator: batchMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, getMenuShortcutMask()));
+        batchMenu.addActionListener(this);
+        // menuMan.getSubMenuManager(TOOLS_MENU_POS).addMenuItem(batchMenu, 10);
 
-		menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(toolsUnitMenu, EDIT_QUERY_SUBMENU_POS);
+        JMenu helpMenu = new JMenu("Help");
+        helpMenu.setMnemonic(KeyEvent.VK_H);
+        menuMan.addMenuItem(helpMenu, HELP_MENU_POS);
 
-		// YD commented these lines out, moved "Sankey Diagrams" to "DbViewer.java"
-		// toolsSankeyMenu= new JMenu("Sankey Diagrams");
-		// menuMan.getSubMenuManager(TOOLS_MENU_POS).addMenuItem(toolsSankeyMenu,
-		// TOOLS_SANKEY_MENUITEM_POS);
+        // Preferences… under Edit
+        JMenuItem preferences = new JMenuItem("Preferences…");
+        preferences.setMnemonic(KeyEvent.VK_P);
+        // Removed accelerator: preferences.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, getMenuShortcutMask()));
+        preferences.addActionListener(this);
+        menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(preferences, 5);
 
-		// YD added the following lines to create two sub-menus under "Advanced"
-		// dropdown menu
-		advancedSubMenu1 = new JMenu("Queries");
-		advancedSubMenu1.setMnemonic(KeyEvent.VK_S);
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).addMenuItem(advancedSubMenu1, ADVANCED_SUBMENU1_POS);
-		advancedSubMenu2 = new JMenu("Open Files");
-		advancedSubMenu2.setMnemonic(KeyEvent.VK_O);
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).addMenuItem(advancedSubMenu2, ADVANCED_SUBMENU2_POS);
-		// YD added the following lines to re-arrange "Batch File" from "File" dropdown
-		// menu to be under "Advanced" >> "Open Files"
+        // Add Help (F1) under Help menu
+        helpItem = new JMenuItem("Help");
+        helpItem.setMnemonic(KeyEvent.VK_H);
+        // Removed accelerator: helpItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));
+        helpItem.addActionListener(this);
+        menuMan.getSubMenuManager(HELP_MENU_POS).addMenuItem(helpItem, 0);
 
-		batchMenu = new JMenuItem("Batch Query File");
-		batchMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, ActionEvent.ALT_MASK));
-		batchMenu.addActionListener(this);
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).getSubMenuManager(ADVANCED_SUBMENU2_POS).addMenuItem(batchMenu, 5);
-		// YD moved these lines because "Save" and "Save as" are moved to be "Advanced"
-		// >> "Queries"
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).getSubMenuManager(ADVANCED_SUBMENU1_POS)
-				.addMenuItem(saveMenu = new JMenuItem("Save"), QUERIES_SAVE_MENUITEM_POS);
-		saveMenu.setEnabled(false);
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).getSubMenuManager(ADVANCED_SUBMENU1_POS)
-				.addMenuItem(saveAsMenu = new JMenuItem("Save As"), QUERIES_SAVEAS_MENUITEM_POS);
-		saveAsMenu.setEnabled(false);
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).getSubMenuManager(ADVANCED_SUBMENU1_POS)
-				.addSeparator(QUERIES_SAVEAS_MENUITEM_POS);
+        setupUndo(menuMan);
+    }
 
-		setupUndo(menuMan);
+    // second round YD edited the following lines to move "Undo" and "Redo" to be
+    // under "Advanced" >> "Queries"
 
-	}
+    private void setupUndo(MenuManager menuMan) {
+        undoManager = new UndoManager();
+        undoManager.setLimit(10);
 
-	// second round YD edited the following lines to move "Undo" and "Redo" to be
-	// under "Advanced" >> "Queries"
+        // Create the Undo/Redo menu items but DO NOT register them with the global
+        // MenuManager here. DbViewer will place these items into the Edit -> Queries
+        // submenu to avoid duplicates and control ordering.
+        undoMenu = new JMenuItem("Undo");
+        redoMenu = new JMenuItem("Redo");
+        // Add standard accelerators - removed to disable shortcuts
+        // undoMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, getMenuShortcutMask()));
+        if (isMac()) {
+            // Removed accelerator for mac redo: redoMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, getMenuShortcutMask() | java.awt.event.InputEvent.SHIFT_DOWN_MASK));
+        } else {
+            // Removed accelerator for non-mac redo: redoMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, getMenuShortcutMask()));
+        }
 
-	private void setupUndo(MenuManager menuMan) {
-		undoManager = new UndoManager();
-		undoManager.setLimit(10);
+        undoMenu.setEnabled(false);
+        redoMenu.setEnabled(false);
 
-		undoMenu = new JMenuItem("Undo");
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).getSubMenuManager(ADVANCED_SUBMENU1_POS).addMenuItem(undoMenu,
-				QUERIES_UNDO_MENUITEM_POS);
-		// menuMan.getSubMenuManager(InterfaceMain.ADVANCED_MENU_POS).getSubMenuManager(InterfaceMain.ADVANCED_SUBMENU1_POS).addSeparator(QUERIES_UNDO_MENUITEM_POS);
-		redoMenu = new JMenuItem("Redo");
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).getSubMenuManager(ADVANCED_SUBMENU1_POS).addMenuItem(redoMenu,
-				QUERIES_REDO_MENUITEM_POS);
-		menuMan.getSubMenuManager(ADVANCED_MENU_POS).getSubMenuManager(ADVANCED_SUBMENU1_POS)
-				.addSeparator(QUERIES_REDO_MENUITEM_POS);
+        ActionListener undoListener = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String cmd = e.getActionCommand();
+                if (cmd.startsWith("Undo")) {
+                    try {
+                        undoManager.undo();
+                        refreshUndoRedo();
+                    } catch (CannotUndoException cue) {
+                        cue.printStackTrace();
+                    }
+                } else if (cmd.startsWith("Redo")) {
+                    try {
+                        undoManager.redo();
+                        refreshUndoRedo();
+                    } catch (CannotRedoException cre) {
+                        cre.printStackTrace();
+                    }
+                } else {
+                    System.out.println("Didn't recognize: " + cmd);
+                }
+            }
+        };
 
-		undoMenu.setEnabled(false);
-		redoMenu.setEnabled(false);
-
-		ActionListener undoListener = new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				String cmd = e.getActionCommand();
-				if (cmd.startsWith("Undo")) {
-					try {
-						undoManager.undo();
-						refreshUndoRedo();
-					} catch (CannotUndoException cue) {
-						cue.printStackTrace();
-					}
-				} else if (cmd.startsWith("Redo")) {
-					try {
-						undoManager.redo();
-						refreshUndoRedo();
-					} catch (CannotRedoException cre) {
-						cre.printStackTrace();
-					}
-				} else {
-					System.out.println("Didn't recognize: " + cmd);
-				}
-			}
-		};
-
-		undoMenu.addActionListener(undoListener);
-		redoMenu.addActionListener(undoListener);
-	}
+        undoMenu.addActionListener(undoListener);
+        redoMenu.addActionListener(undoListener);
+    }
 
 	public UndoManager getUndoManager() {
 		return undoManager;
@@ -823,7 +846,21 @@ public class InterfaceMain implements ActionListener {
 	}
 
 	private void finalizeMenu(MenuManager menuMan) {
-		JMenuBar mb = menuMan.createMenu(); // new JMenuBar();
+		JMenuBar mb = menuMan.createMenu();
+		// Keep system Look & Feel colors; avoid forcing custom colors
+		mb.setFont(UNIFIED_FONT);
+		for (int i = 0; i < mb.getMenuCount(); i++) {
+			JMenu menu = mb.getMenu(i);
+			if (menu != null) {
+				menu.setFont(UNIFIED_FONT);
+				for (int j = 0; j < menu.getItemCount(); j++) {
+					JMenuItem item = menu.getItem(j);
+					if (item != null) {
+						item.setFont(UNIFIED_FONT);
+					}
+				}
+			}
+		}
 		mainFrame.setJMenuBar(mb);
 	}
 
@@ -894,6 +931,14 @@ public class InterfaceMain implements ActionListener {
 			// YD edits second round, when user choose "Query File", check the query file
 			// saved in the savedProperties file
 			// and open the system editor, allowing user to edit it
+		} else if (e.getActionCommand().equals("Preferences…")) {
+			showPreferencesDialog();
+		} else if (e.getActionCommand().equals("Help")) {
+			try {
+				Desktop.getDesktop().browse(new URI("https://github.com/USEPA/GLIMPSE"));
+			} catch (Exception ex) {
+				JOptionPane.showMessageDialog(mainFrame, "Unable to open help page.", "Help", JOptionPane.INFORMATION_MESSAGE);
+			}
 		} else if (e.getActionCommand().equals("Query File")) {
 			if (propertiesFile.exists()) {
 				String theCurrentQueryFile = savedProperties.getProperty("queryFile", null);
@@ -918,85 +963,151 @@ public class InterfaceMain implements ActionListener {
 					JOptionPane.showMessageDialog(null, "No unit file specified, please add to launch arguments");
 				}
 			}
-		} else if (e.getActionCommand().equals("Batch File")) {
-			// TODO: make it so recent files could work with this
-			FileChooser fc = FileChooserFactory.getFileChooser();
-			final File[] result = fc.doFilePrompt(mainFrame, "Open Batch File", FileChooser.LOAD_DIALOG,
-					new File(getProperties().getProperty("lastDirectory", ".")), new XMLFilter());
-			// these should be run off the GUI thread
-			new Thread(new Runnable() {
-				public void run() {
-					if (result != null) {
-						for (File file : result) {
-							Document doc = FileUtils.loadDocument(file, null);
-							// Only run if the batch file was parsed correctly
-							// note an error would have already been given if it wasn't
-							// parsed correctly
-							if (doc != null) {
-								runBatch(doc.getDocumentElement());
-							}
-						}
+		} else if (e.getActionCommand().equals("Edit Regions")) {
+			if (propertiesFile.exists()) {
+				String regionsFileName = InterfaceMain.presetRegionListLocation;
+				if (regionsFileName != null && regionsFileName.length() > 0) {
+					try {
+						Desktop.getDesktop().edit(new File(regionsFileName));
+					} catch (IOException ioe) {
+						ioe.printStackTrace();
 					}
-					// TODO: message that all were run
+				} else {
+					JOptionPane.showMessageDialog(null, "No regions file specified, please set one in Config > Select Regions File");
 				}
-			}).start();
+			}
+		} else if (e.getActionCommand().equals("Batch File") || e.getActionCommand().equals("Run Batch…")) {
+			runBatch();
+		} else if (e.getActionCommand().equals("Select Query File")) {
+			FileChooser fc = FileChooserFactory.getFileChooser();
+			File start = new File(getProperties().getProperty("queryFile",
+					getProperties().getProperty("lastDirectory", ".")));
+			File[] files = fc.doFilePrompt(mainFrame, "Open Query File", FileChooser.LOAD_DIALOG, start,
+					new XMLFilter());
+			if (files != null && files.length > 0) {
+				File file = files[0];
+				// update runtime and persist for next launch
+				queryFilename = file.getAbsolutePath();
+				savedProperties.setProperty("queryFile", queryFilename);
+				savedProperties.setProperty("lastDirectory", file.getParent());
+				System.out.println("Selected query file: " + file.getAbsolutePath());
+				persistProperties();
+			}
+		} else if (e.getActionCommand().equals("Select Units File")) {
+			FileChooser fc = FileChooserFactory.getFileChooser();
+			File start = InterfaceMain.unitFileLocation != null ? new File(InterfaceMain.unitFileLocation)
+					: new File(getProperties().getProperty("lastDirectory", "."));
+			File[] files = fc.doFilePrompt(mainFrame, "Select Units File", FileChooser.LOAD_DIALOG, start,
+					new CSVFilter());
+			if (files != null && files.length > 0) {
+				File file = files[0];
+				String oldUnits = InterfaceMain.unitFileLocation;
+				InterfaceMain.unitFileLocation = file.getAbsolutePath();
+				// persist selection for next launch
+				savedProperties.setProperty("unitsFile", InterfaceMain.unitFileLocation);
+				savedProperties.setProperty("lastDirectory", file.getParent());
+				System.out.println("Selected units file: " + file.getAbsolutePath());
+				// ensure conversions are enabled for upcoming queries
+				ModelInterface.ModelGUI2.DbViewer.enableUnitConversions = true;
+				persistProperties();
+				// notify listeners so UI can react (e.g., show info)
+				fireProperty("UnitsFileChanged", oldUnits, InterfaceMain.unitFileLocation);
+			}
+		} else if (e.getActionCommand().equals("Select Regions File")) {
+			FileChooser fc = FileChooserFactory.getFileChooser();
+			File start = InterfaceMain.presetRegionListLocation != null
+					? new File(InterfaceMain.presetRegionListLocation)
+					: new File(getProperties().getProperty("lastDirectory", "."));
+			// no specific filter; allow any file
+			File[] files = fc.doFilePrompt(mainFrame, "Select Regions File", FileChooser.LOAD_DIALOG, start, null);
+			if (files != null && files.length > 0) {
+				File file = files[0];
+				InterfaceMain.presetRegionListLocation = file.getAbsolutePath();
+				// persist selection for next launch
+				savedProperties.setProperty("presetRegionList", InterfaceMain.presetRegionListLocation);
+				savedProperties.setProperty("lastDirectory", file.getParent());
+				System.out.println("Selected regions file: " + file.getAbsolutePath());
+				persistProperties();
+			}
+		} else if (e.getActionCommand().equals("Select Map Resource Folder")) {
+			FileChooser fc = FileChooserFactory.getFileChooser();
+			File start = InterfaceMain.shapeFileLocationPrefix != null
+					? new File(InterfaceMain.shapeFileLocationPrefix)
+					: new File(getProperties().getProperty("lastDirectory", "."));
+			javax.swing.filechooser.FileFilter dirFilter = new javax.swing.filechooser.FileFilter() {
+				@Override
+				public boolean accept(File f) { return f.isDirectory(); }
+				@Override
+				public String getDescription() { return "Directory (select folder)"; }
+			};
+			File[] dirs = fc.doFilePrompt(mainFrame, "Select Map Resource Folder", FileChooser.LOAD_DIALOG, start,
+				dirFilter);
+			if (dirs != null && dirs.length > 0) {
+				File dir = dirs[0];
+				InterfaceMain.shapeFileLocationPrefix = dir.getAbsolutePath();
+				// persist selection for next launch
+				savedProperties.setProperty("mapResourceFolder", InterfaceMain.shapeFileLocationPrefix);
+				savedProperties.setProperty("lastDirectory", dir.getAbsolutePath());
+				InterfaceMain.enableMapping = true;
+				System.out.println("Selected map resources folder: " + dir.getAbsolutePath());
+
+				// Attempt to locate expected shapefiles, mirroring startup logic
+				File preset_shapefile = new File(dir, "mapUS52Compact_from_rmap.shp");
+				if (preset_shapefile.exists()) {
+					stateShapeFileLocation = preset_shapefile.getAbsolutePath();
+					System.out.println("Found the US52Compact shape file: " + preset_shapefile.getAbsolutePath());
+				} else {
+					System.out.println("Could not find US52Compact shape file: " + preset_shapefile.getAbsolutePath()
+						+ " disabling mapping.");
+					InterfaceMain.enableMapping = false;
+				}
+
+				File preset_reg32_shapefile = new File(dir, "mapGCAMReg32_from_rmap.shp");
+				if (preset_reg32_shapefile.exists()) {
+					gcamReg32ShapeFileLocation = preset_reg32_shapefile.getAbsolutePath();
+					System.out.println("Found the global 32 region shape file: " + preset_reg32_shapefile.getAbsolutePath());
+				} else {
+					System.out.println("Could not find the global 32 region shape file: " + preset_reg32_shapefile.getAbsolutePath());
+					InterfaceMain.enableMapping = false;
+				}
+
+				File preset_reg32US52_shapefile = new File(dir, "mapGCAMReg32US52_from_rmap.shp");
+				if (preset_reg32US52_shapefile.exists()) {
+					gcamReg32US52ShapeFileLocation = preset_reg32US52_shapefile.getAbsolutePath();
+					System.out.println("Found the global shapefile with US state-level detail shape file: "
+							+ preset_reg32US52_shapefile.getAbsolutePath());
+				} else {
+					System.out.println("Could not find the global shapefile with US state-level detail shape file: "
+							+ preset_reg32US52_shapefile.getAbsolutePath());
+				}
+
+				// reflect enableMapping in saved properties for future sessions
+				savedProperties.setProperty("enableMapping", Boolean.toString(InterfaceMain.enableMapping));
+				persistProperties();
+			}
 		}
 	}
 
-	public static InterfaceMain getInstance() {
-		return main;
-	}
+	// Re-add previously existing methods and inner classes removed by accident
+	public static InterfaceMain getInstance() { return main; }
 
-	// YD commented lines 526-536 out because we removed "New","Save","Save As" from
-	// "File" dropdown menu
-	// public JMenuItem getNewMenu() {
-	// return newMenu;
-	// }
+	// YD commented lines 526-536 out because we removed "New","Save","Save As" from "File" dropdown menu
+	// public JMenuItem getNewMenu() { return newMenu; }
 
-	public JMenuItem getSaveMenu() {
-		return saveMenu;
-	}
-
-	public JMenuItem getSaveAsMenu() {
-		return saveAsMenu;
-	}
-
-	public JMenuItem getQuitMenu() {
-		return quitMenu;
-	}
-
-	// YD commented lines 542-548 out because we removed "Copy","Paste" from "Edit"
-	// dropdown menu
-	// public JMenuItem getCopyMenu() {
-	// return copyMenu;
-	// }
-
-	// public JMenuItem getPasteMenu() {
-	// return pasteMenu;
-	// }
-
-	// YD edits, these two methods are called in "DbViewer.java"
-	public JMenuItem getUndoMenu() {
-		return undoMenu;
-	}
-
-	public JMenuItem getRedoMenu() {
-		return redoMenu;
-	}
-
-	public JMenuItem getBatchMenu() {
-		return batchMenu;
-	}
+	public JMenuItem getSaveMenu() { return saveMenu; }
+	public JMenuItem getSaveAsMenu() { return saveAsMenu; }
+	public JMenuItem getQuitMenu() { return quitMenu; }
+	// public JMenuItem getCopyMenu() { return copyMenu; }
+	// public JMenuItem getPasteMenu() { return pasteMenu; }
+	public JMenuItem getUndoMenu() { return undoMenu; }
+	public JMenuItem getRedoMenu() { return redoMenu; }
+	public JMenuItem getBatchMenu() { return batchMenu; }
 
 	public void fireControlChange(String newValue) {
-		// System.out.println("Going to change controls");
-		if (newValue.equals(oldControl)) {
-			oldControl += "Same";
-		}
+		if (newValue.equals(oldControl)) { oldControl += "Same"; }
 		fireProperty("Control", oldControl, newValue);
 		oldControl = newValue;
 	}
-
 	public void fireProperty(String propertyName, Object oldValue, Object newValue) {
 		final PropertyChangeEvent event = new PropertyChangeEvent(this, propertyName, oldValue, newValue);
 		for (PropertyChangeListener listener : mainFrame.getPropertyChangeListeners()) {
@@ -1008,150 +1119,104 @@ public class InterfaceMain implements ActionListener {
 		private JMenuItem menuValue;
 		private Map<Integer, MenuManager> subItems;
 		private SortedSet<Integer> sepList;
-
 		MenuManager(JMenuItem menuValue) {
 			this.menuValue = menuValue;
 			sepList = null;
 			if (menuValue == null || menuValue instanceof JMenu) {
 				subItems = new TreeMap<Integer, MenuManager>();
-			} else {
-				subItems = null;
-			}
+			} else { subItems = null; }
 		}
-
-		/*
-		 * public JMenuItem getMenuValue() { return menuValue; } public Map
-		 * getSubItems() { return subItems; }
-		 */
 		public void addSeparator(int where) {
-			if (sepList == null) {
-				sepList = new TreeSet<Integer>();
-			}
+			if (sepList == null) { sepList = new TreeSet<Integer>(); }
 			sepList.add(where);
 		}
-
 		public int addMenuItem(JMenuItem menu, int where) {
-			if (subItems.containsKey(where)) {
-				return addMenuItem(menu, where + 1);
-			} else {
-				subItems.put(where, new MenuManager(menu));
-				return where;
-			}
+			if (subItems.containsKey(where)) { return addMenuItem(menu, where + 1); }
+			subItems.put(where, new MenuManager(menu));
+			return where;
 		}
-
 		public MenuManager getSubMenuManager(int where) {
-			if (!subItems.containsKey(where)) {
-				// throw exception or just return null?
-				return null;
-			}
-			return ((MenuManager) subItems.get(where));
+			if (!subItems.containsKey(where)) { return null; }
+			return subItems.get(where);
 		}
-
 		JMenuBar createMenu() {
 			JMenuBar ret = new JMenuBar();
 			Object[] keys = subItems.keySet().toArray();
-			for (int i = 0; i < keys.length; ++i) {
-				ret.add(((MenuManager) subItems.get(keys[i])).createSubMenu());
-			}
+			for (int i = 0; i < keys.length; ++i) { ret.add(subItems.get(keys[i]).createSubMenu()); }
 			return ret;
 		}
-
 		private JMenuItem createSubMenu() {
-			if (subItems == null) {
-				return menuValue;
-			} else {
-				Object[] keys = subItems.keySet().toArray();
-				for (int i = 0; i < keys.length; ++i) {
-					if (sepList != null && !sepList.isEmpty()
-							&& ((Integer) keys[i]).intValue() > ((Integer) sepList.first()).intValue()) {
-						((JMenu) menuValue).addSeparator();
-						sepList.remove(sepList.first());
-					}
-					menuValue.add(((MenuManager) subItems.get(keys[i])).createSubMenu());
+			if (subItems == null) { return menuValue; }
+			Object[] keys = subItems.keySet().toArray();
+			for (int i = 0; i < keys.length; ++i) {
+				if (sepList != null && !sepList.isEmpty() && ((Integer) keys[i]).intValue() > ((Integer) sepList.first()).intValue()) {
+					((JMenu) menuValue).addSeparator();
+					sepList.remove(sepList.first());
 				}
-				return menuValue;
+				menuValue.add(subItems.get(keys[i]).createSubMenu());
 			}
+			return menuValue;
 		}
 	}
 
+	/**
+	 * Returns a defensive copy of the saved properties to avoid exposing
+	 * the internal representation. Callers can read and modify the returned
+	 * Properties without affecting the internal savedProperties field.
+	 *
+	 * @return a copy of the saved properties
+	 */
 	public Properties getProperties() {
-		return savedProperties;
+		Properties copy = new Properties();
+		if (savedProperties != null) {
+			copy.putAll(savedProperties);
+		}
+		return copy;
 	}
 
-	/*
-	 * //YD added line 679-722 private void doSankey(MenuManager menuMan) { loadMenu
-	 * = new JMenuItem("Load");
-	 * menuMan.getSubMenuManager(TOOLS_MENU_POS).getSubMenuManager(
-	 * TOOLS_SANKEY_MENUITEM_POS).addMenuItem(loadMenu, SANKEY_LOAD_MENUITEM_POS);
-	 * displayMenu = new JMenuItem("Display");
-	 * menuMan.getSubMenuManager(TOOLS_MENU_POS).getSubMenuManager(
-	 * TOOLS_SANKEY_MENUITEM_POS).addMenuItem(displayMenu,
-	 * SANKEY_DISPLAY_MENUITEM_POS); ActionListener sankeyListener = new
-	 * ActionListener() { public void actionPerformed(ActionEvent e) { String cmd =
-	 * e.getActionCommand(); if (cmd.equals("Load")) { FileChooser fc =
-	 * FileChooserFactory.getFileChooser(); final File[] result =
-	 * fc.doFilePrompt(mainFrame, "Load a csv File", FileChooser.LOAD_DIALOG, new
-	 * File(getProperties().getProperty("lastDirectory", ".")), new CSVFilter());
-	 * System.out.println("Check load actionEvent now!!!! "); if (result != null) {
-	 * File file = result[0]; System.out.println("the uploaded csv file name is:");
-	 * System.out.println(file.getAbsolutePath()); if
-	 * ((file.getAbsolutePath().endsWith(".csv"))) { energyNameList =
-	 * files.getStringArrayFromFile(file.getAbsolutePath(), "#");
-	 * utils.printArrayList(energyNameList); }else {
-	 * utils.warningMessage("Only CSV file is acceptted!!!");
-	 * System.out.println("Only CSV file is acceptted!!!"); }
-	 * 
-	 * } // TODO: read the loaded csv file and save it to memory,YD added }else
-	 * if(cmd.equals("Display")) { //run the queries String
-	 * q1="End-use energy consumption in buildings"; //read through tree getting
-	 * object
-	 * 
-	 * //get the years
-	 * 
-	 * //make a list Object[] possibilities =
-	 * {"2015","2020","2025","2030","2035","2040","2045","2050"};
-	 * 
-	 * //show options window String s = (String)JOptionPane.showInputDialog(
-	 * main.mainFrame, "Please select a year", "Year Selection",
-	 * JOptionPane.PLAIN_MESSAGE, null, possibilities, "ham");
-	 * 
-	 * //If a string was returned, say so. if ((s != null) && (s.length() > 0)) {
-	 * return; }
-	 * 
-	 * 
-	 * 
-	 * 
-	 * System.out.println("Check display actionEvent now!!!! ");
-	 * 
-	 * DefaultFlowDataset dataset = new DefaultFlowDataset(); dataset.setFlow(1,
-	 * "Work 1", "house", 30); dataset.setFlow(1, "Work 1", "food", 50);
-	 * dataset.setFlow(1, "Work 2", "food",50); dataset.setFlow(1, "Work 3",
-	 * "Clothing", 100); dataset.setFlow(1, "work 4", "house", 70);
-	 * 
-	 * System.out.println("Check stageCount now:");
-	 * System.out.println(dataset.getStageCount());
-	 * System.out.println("Check all nodes:");
-	 * System.out.println(dataset.getAllNodes());
-	 * 
-	 * FlowPlot myPlot = new FlowPlot(dataset);
-	 * 
-	 * /* regions = getRegions(); regionList = new JList(regions);
-	 * regionList.setName(REGION_LIST_NAME); Object[] regionSel =
-	 * regionList.getSelectedValuesList().toArray();
-	 * 
-	 * if (regionSel.length == 0) { InterfaceMain.getInstance().
-	 * showMessageDialog("Please select Regions to run the query against",
-	 * "Run Sankey Error", JOptionPane.ERROR_MESSAGE); }else {
-	 * System.out.println("some regions are selected.");
-	 * System.out.println(regionSel); }
-	 * 
-	 * >>>>>>> 8d731d5a2756344729c46c80d82ba5c1a127c654 } } }; //actionListener end
-	 * loadMenu.addActionListener(sankeyListener);
-	 * displayMenu.addActionListener(sankeyListener); }
+	/**
+	 * Sets a property and persists it to disk immediately.
+	 * This method should be used instead of modifying the defensive copy
+	 * returned by getProperties() when changes need to be saved.
+	 *
+	 * @param key the property key
+	 * @param value the property value
 	 */
+	public void setProperty(String key, String value) {
+		if (savedProperties != null) {
+			savedProperties.setProperty(key, value);
+			persistProperties();
+		}
+	}
 
-	// YD added, 07-05-2023,line 703-723 this method "getRegions()" was copied from
-	// "DbViewer.java"
+	/**
+	 * Removes a property and persists the change to disk immediately.
+	 * This method should be used instead of modifying the defensive copy
+	 * returned by getProperties() when changes need to be saved.
+	 *
+	 * @param key the property key to remove
+	 */
+	public void removeProperty(String key) {
+		if (savedProperties != null) {
+			savedProperties.remove(key);
+			persistProperties();
+		}
+	}
+
+	/**
+	 * Performs multiple property updates in a batch and persists them once.
+	 * This is more efficient than multiple individual setProperty/removeProperty calls.
+	 *
+	 * @param updates a consumer that performs updates on the provided Properties object
+	 */
+	public void updateProperties(java.util.function.Consumer<Properties> updates) {
+		if (savedProperties != null) {
+			updates.accept(savedProperties);
+			persistProperties();
+		}
+	}
+
+	// Copied from DbViewer.java helper
 	protected Vector getRegions() {
 		Vector funcTemp = new Vector<String>(1, 0);
 		funcTemp.add("distinct-values");
@@ -1162,52 +1227,52 @@ public class InterfaceMain implements ActionListener {
 		try {
 			Iter res = queryProc.iter();
 			Item temp;
-			while ((temp = res.next()) != null) {
-				ret.add(temp.toJava());
-			}
-		} catch (QueryException e) {
-			e.printStackTrace();
-		} finally {
-			queryProc.close();
-		}
+			while ((temp = res.next()) != null) { ret.add(temp.toJava()); }
+		} catch (QueryException e) { e.printStackTrace(); }
+		finally { queryProc.close(); }
 		ret.add("Global");
 		return ret;
 	}
 
-	/**
-	 * Get the menu adder with the specified class name. Used to get the instance of
-	 * the menu adder that could open a recent file.
-	 * 
-	 * @param classname The class that is requested.
-	 * @return The instance of the class or null if not found.
-	 */
 	public MenuAdder getMenuAdder(String classname) {
 		for (Iterator<MenuAdder> it = menuAdders.iterator(); it.hasNext();) {
 			MenuAdder curr = it.next();
-			if (curr.getClass().getName().equals(classname)) {
-				return curr;
-			}
+			if (curr.getClass().getName().equals(classname)) { return curr; }
 		}
 		return null;
 	}
 
-	/**
-	 * Runs the given batch file. Relies on the menuAdders list and if any of the
-	 * class implements BatchRunner it will pass it off the command to that class.
-	 * 
-	 * @param doc The batch file parsed into a DOM document which contains the
-	 *            commands to run.
-	 * @see BatchRunner
-	 */
+	public void runBatch() {
+		// TODO: make it so recent files could work with this
+		FileChooser fc = FileChooserFactory.getFileChooser();
+		final File[] result = fc.doFilePrompt(mainFrame, "Open Batch File", FileChooser.LOAD_DIALOG,
+				new File(getProperties().getProperty("lastDirectory", ".")), new XMLFilter());
+		// these should be run off the GUI thread
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				if (result != null) {
+					for (File file : result) {
+						Document doc = FileUtils.loadDocument(file, null);
+						// Only run if the batch file was parsed correctly
+						// note an error would have already been given if it wasn't
+						// parsed correctly
+						if (doc != null) {
+							runBatch(doc.getDocumentElement());
+						}
+					}
+				}
+				// TODO: message that all were run
+			}
+		}).start();
+	}
+
 	private void runBatch(Node doc) {
-		// TODO: remove this check once batch queries get merged
 		if (doc.getNodeName().equals("queries")) {
 			System.out.println("Batch queries are not yet merged with this functionality.");
 			System.out.println("Please open a database then run the batch file.");
-			// TODO: print this on the screen
 			return;
 		}
-
 		NodeList commands = doc.getChildNodes();
 		for (int i = 0; i < commands.getLength(); ++i) {
 			if (commands.item(i).getNodeName().equals("class")) {
@@ -1217,107 +1282,195 @@ public class InterfaceMain implements ActionListener {
 				if (runner != null && runner instanceof BatchRunner) {
 					((BatchRunner) runner).runBatch(currClass);
 				} else {
-					showMessageDialog("Could not find batch runner for class " + className, "Batch File Error",
-							JOptionPane.ERROR_MESSAGE);
+					showMessageDialog("Could not find batch runner for class " + className, "Batch File Error", JOptionPane.ERROR_MESSAGE);
 				}
 			}
 		}
 		showMessageDialog("Finished running batch file", "Batch File Complete", JOptionPane.INFORMATION_MESSAGE);
 	}
 
-	/**
-	 * Convert JOptionPane message types to string so that they can be logged to the
-	 * console.
-	 * 
-	 * @param messageType The JOptionPane message type.
-	 * @return A string representing the meaning of messageType.
-	 */
 	private static String convertMessageTypeToString(int messageType) {
 		switch (messageType) {
-		case JOptionPane.ERROR_MESSAGE:
-			return "ERROR";
-		case JOptionPane.INFORMATION_MESSAGE:
-			return "INFO";
-		case JOptionPane.PLAIN_MESSAGE:
-			return "PLAIN";
-		case JOptionPane.QUESTION_MESSAGE:
-			return "QUESTION";
-		case JOptionPane.WARNING_MESSAGE:
-			return "WARNING";
-		default:
-			return "UNKNOWN";
+		case JOptionPane.ERROR_MESSAGE: return "ERROR";
+		case JOptionPane.INFORMATION_MESSAGE: return "INFO";
+		case JOptionPane.PLAIN_MESSAGE: return "PLAIN";
+		case JOptionPane.QUESTION_MESSAGE: return "QUESTION";
+		case JOptionPane.WARNING_MESSAGE: return "WARNING";
+		default: return "UNKNOWN";
 		}
 	}
 
-	/**
-	 * Wrapper for JOptionPane.showMessageDialog which checks if we are running
-	 * headless. If we are running headless a message is just written to stdout
-	 * instead of popping up on screen.
-	 * 
-	 * @param message     The message to show.
-	 * @param title       The title of the dialog.
-	 * @param messageType The message type.
-	 */
 	public void showMessageDialog(Object message, String title, int messageType) {
-		// Dan: Message dialog seemed to cause threading issues. Now just prints to
-		// stdout
-		// if (GraphicsEnvironment.isHeadless()) {
-		// Convert the message dialog to a console log
 		System.out.print(convertMessageTypeToString(messageType));
 		System.out.print("; ");
 		System.out.println(message);
-		/*
-		 * } else { // Just forward to JOptionPane
-		 * JOptionPane.showMessageDialog(mainFrame, message, title, messageType); }
-		 */
 	}
 
-	/**
-	 * Convert JOptionPane option types to string so that they can be logged to the
-	 * console.
-	 * 
-	 * @param optionType The JOptionPane option type.
-	 * @return A string representing the meaning of optionType.
-	 */
 	private static String convertOptionTypeToString(int optionType) {
 		switch (optionType) {
-		case JOptionPane.CANCEL_OPTION:
-			return "CANCEL";
-		case JOptionPane.CLOSED_OPTION:
-			return "CLOSED";
-		case JOptionPane.NO_OPTION:
-			return "NO";
-		case JOptionPane.YES_OPTION:
-			return "YES";
-		default:
-			return "UNKNOWN";
+		case JOptionPane.CANCEL_OPTION: return "CANCEL";
+		case JOptionPane.CLOSED_OPTION: return "CLOSED";
+		case JOptionPane.NO_OPTION: return "NO";
+		case JOptionPane.YES_OPTION: return "YES";
+		default: return "UNKNOWN";
 		}
 	}
 
-	/**
-	 * Wrapper for JOptionPane.showConfirmDialog which checks if we are running
-	 * headless. If we are running headless a message is just written to stdout
-	 * instead of popping up on screen and the defaultOption will be selected.
-	 * 
-	 * @param message       The message to show.
-	 * @param title         The title of the dialog.
-	 * @param optionType    The option types to choose from.
-	 * @param messageType   The message type.
-	 * @param defaultOption The default option to choose when running headless.
-	 * @return The option chosen.
-	 */
 	public int showConfirmDialog(Object message, String title, int optionType, int messageType, int defaultOption) {
 		if (GraphicsEnvironment.isHeadless()) {
-			// Convert the message dialog to a console log
 			System.out.print("YES/NO/CANCEL");
 			System.out.print("; ");
 			System.out.print(message);
 			System.out.print("; ");
 			System.out.println(convertOptionTypeToString(defaultOption));
 			return defaultOption;
-		} else {
-			// Just forward to JOptionPane
-			return JOptionPane.showConfirmDialog(mainFrame, message, title, optionType, messageType);
+		}
+		return JOptionPane.showConfirmDialog(mainFrame, message, title, optionType, messageType);
+	}
+
+	// Persist properties to model_interface.properties immediately after changes
+	private void persistProperties() {
+		try (FileOutputStream fos = new FileOutputStream(propertiesFile)) {
+			savedProperties.storeToXML(fos, "ModelInterface properties");
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+		}
+	}
+
+	// Preferences dialog implementation
+	private void showPreferencesDialog() {
+		javax.swing.JDialog dlg = new javax.swing.JDialog(mainFrame, "Preferences", true);
+		javax.swing.JTabbedPane tabs = new javax.swing.JTabbedPane();
+
+		// Queries tab
+		javax.swing.JPanel queriesPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
+		queriesPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+		javax.swing.JPanel queriesInner = new javax.swing.JPanel();
+		queriesInner.setLayout(new java.awt.GridBagLayout());
+		java.awt.GridBagConstraints qc = new java.awt.GridBagConstraints();
+		qc.gridx = 0; qc.gridy = 0; qc.fill = java.awt.GridBagConstraints.HORIZONTAL; qc.weightx = 1.0;
+		qc.insets = new java.awt.Insets(6, 6, 6, 6);
+		javax.swing.JLabel qLbl = new javax.swing.JLabel("Default Query File: " + (savedProperties.getProperty("queryFile", "<none>")));
+		queriesInner.add(qLbl, qc);
+
+		qc.gridy++;
+		JPanel qBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
+		JButton btnSetQuery = new JButton("Choose…");
+		btnSetQuery.setActionCommand("Select Query File");
+		btnSetQuery.addActionListener(this);
+		JButton btnEditQuery = new JButton("Edit…");
+		btnEditQuery.setActionCommand("Query File");
+		btnEditQuery.addActionListener(this);
+		qBtns.add(btnSetQuery);
+		qBtns.add(btnEditQuery);
+		qBtns.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
+		queriesInner.add(qBtns, qc);
+
+		queriesPanel.add(queriesInner, java.awt.BorderLayout.NORTH);
+		tabs.addTab("Queries", queriesPanel);
+
+		// Units tab
+		javax.swing.JPanel unitsPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
+		unitsPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+		javax.swing.JPanel unitsInner = new javax.swing.JPanel(new java.awt.GridBagLayout());
+		java.awt.GridBagConstraints uc = new java.awt.GridBagConstraints();
+		uc.gridx = 0; uc.gridy = 0; uc.fill = java.awt.GridBagConstraints.HORIZONTAL; uc.weightx = 1.0; uc.insets = new java.awt.Insets(6, 6, 6, 6);
+		javax.swing.JLabel uLbl = new javax.swing.JLabel("Units CSV: " + (savedProperties.getProperty("unitsFile", "<none>")));
+		unitsInner.add(uLbl, uc);
+		uc.gridy++;
+		JPanel uBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
+		JButton btnUnits = new JButton("Choose…");
+		btnUnits.setActionCommand("Select Units File");
+		btnUnits.addActionListener(this);
+		uBtns.add(btnUnits);
+		unitsInner.add(uBtns, uc);
+		unitsPanel.add(unitsInner, java.awt.BorderLayout.NORTH);
+		tabs.addTab("Units", unitsPanel);
+
+		// Regions tab
+		javax.swing.JPanel regionsPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
+		regionsPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+		javax.swing.JPanel regionsInner = new javax.swing.JPanel(new java.awt.GridBagLayout());
+		java.awt.GridBagConstraints rc = new java.awt.GridBagConstraints();
+		rc.gridx = 0; rc.gridy = 0; rc.fill = java.awt.GridBagConstraints.HORIZONTAL; rc.weightx = 1.0; rc.insets = new java.awt.Insets(6, 6, 6, 6);
+		javax.swing.JLabel rLbl = new javax.swing.JLabel("Regions List: " + (savedProperties.getProperty("presetRegionList", "<none>")));
+		regionsInner.add(rLbl, rc);
+		rc.gridy++;
+		JPanel rBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
+		JButton btnRegions = new JButton("Choose…");
+		btnRegions.setActionCommand("Select Regions File");
+		btnRegions.addActionListener(this);
+		rBtns.add(btnRegions);
+		regionsInner.add(rBtns, rc);
+		regionsPanel.add(regionsInner, java.awt.BorderLayout.NORTH);
+		tabs.addTab("Regions", regionsPanel);
+
+		// Maps tab
+		javax.swing.JPanel mapsPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
+		mapsPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+		javax.swing.JPanel mapsInner = new javax.swing.JPanel(new java.awt.GridBagLayout());
+		java.awt.GridBagConstraints mc = new java.awt.GridBagConstraints();
+		mc.gridx = 0; mc.gridy = 0; mc.fill = java.awt.GridBagConstraints.HORIZONTAL; mc.weightx = 1.0; mc.insets = new java.awt.Insets(6, 6, 6, 6);
+		javax.swing.JLabel mLbl = new javax.swing.JLabel("Map Resource Folder: " + (savedProperties.getProperty("mapResourceFolder", "<none>")));
+		mapsInner.add(mLbl, mc);
+		mc.gridy++;
+		JPanel mBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
+		JButton btnMaps = new JButton("Choose…");
+		btnMaps.setActionCommand("Select Map Resource Folder");
+		btnMaps.addActionListener(this);
+		mBtns.add(btnMaps);
+		mapsInner.add(mBtns, mc);
+		mapsPanel.add(mapsInner, java.awt.BorderLayout.NORTH);
+		tabs.addTab("Maps", mapsPanel);
+
+		// Main content
+		javax.swing.JPanel content = new javax.swing.JPanel(new java.awt.BorderLayout());
+		content.add(tabs, java.awt.BorderLayout.CENTER);
+
+		// Bottom buttons: Close and Apply (Apply will persist properties immediately)
+		javax.swing.JPanel bottom = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 8));
+		JButton apply = new JButton("Apply");
+		apply.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				persistProperties();
+				InterfaceMain.this.showMessageDialog("Preferences saved.", "Preferences", JOptionPane.INFORMATION_MESSAGE);
+			}
+		});
+		JButton close = new JButton("Close");
+		close.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) { dlg.dispose(); }
+		});
+		apply.setPreferredSize(new java.awt.Dimension(90, 26));
+		close.setPreferredSize(new java.awt.Dimension(90, 26));
+		bottom.add(apply);
+		bottom.add(close);
+		content.add(bottom, java.awt.BorderLayout.SOUTH);
+
+		dlg.setContentPane(content);
+		// Make dialog a bit larger to reduce cramped feeling, but not too large
+		dlg.setSize(Math.max(520, mainFrame.getWidth() / 2), Math.max(360, mainFrame.getHeight() / 3));
+		dlg.setLocationRelativeTo(mainFrame);
+		dlg.setVisible(true);
+	}
+
+	private static boolean isMac() {
+		String os = System.getProperty("os.name", "").toLowerCase();
+		return os.contains("mac");
+	}
+
+	private int getMenuShortcutMask() {
+		try {
+			// Java 9+
+			return (Integer) Toolkit.class.getMethod("getMenuShortcutKeyMaskEx").invoke(Toolkit.getDefaultToolkit());
+		} catch (Exception ex) {
+			try {
+				// Java 8 fallback
+				return (Integer) Toolkit.class.getMethod("getMenuShortcutKeyMask").invoke(Toolkit.getDefaultToolkit());
+			} catch (Exception ex2) {
+				return java.awt.event.InputEvent.CTRL_DOWN_MASK;
+			}
 		}
 	}
 }

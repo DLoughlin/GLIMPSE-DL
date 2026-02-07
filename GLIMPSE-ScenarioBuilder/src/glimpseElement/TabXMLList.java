@@ -38,14 +38,15 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import javafx.application.Platform;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import javafx.application.Platform;
 
 /**
  * TabXMLList provides the user interface and logic for managing lists of XML files
@@ -104,8 +105,8 @@ public class TabXMLList extends PolicyTab {
     private static final String BUTTON_ADD_TEXT = "Add";
     private static final String BUTTON_DELETE_TEXT = "Delete";
     private static final String BUTTON_CLEAR_TEXT = "Clear";
-    private static final String BUTTON_MOVE_UP_TEXT = "Move Up";
-    private static final String BUTTON_MOVE_DOWN_TEXT = "Move Down";
+    private static final String BUTTON_MOVE_UP_TEXT = "Up";
+    private static final String BUTTON_MOVE_DOWN_TEXT = "Down";
     private static final String XML_LIST_FILENAME = "xml_list.txt";
     private static final String XML_LIST_TYPE = "@type=xmllist";
     private static final String XML_FILE_EXTENSION = "*.xml";
@@ -115,17 +116,17 @@ public class TabXMLList extends PolicyTab {
     private static final String COLUMN_FORMAT = "-fx-alignment: CENTER-LEFT; -fx-padding: 5 20 5 5;";
 
     // === UI Components ===
-    private final TableView<ComponentRow> tableIncludeXMLList = new TableView<>(ComponentLibraryTable.getListOfFiles());
-    private final VBox paneIncludeXMLList = new VBox();
-    private final VBox vBoxCenter = new VBox();
-    private final HBox hBoxHeaderCenter = new HBox();
-    private final Label labelValue = utils.createLabel(LABEL_XML_FILES);
-    private final Button buttonAdd = utils.createButton(BUTTON_ADD_TEXT, styles.getBigButtonWidth(), null);
-    private final Button buttonDelete = utils.createButton(BUTTON_DELETE_TEXT, styles.getBigButtonWidth(), null);
-    private final Button buttonClear = utils.createButton(BUTTON_CLEAR_TEXT, styles.getBigButtonWidth(), null);
-    private final Button buttonMoveUp = utils.createButton(BUTTON_MOVE_UP_TEXT, styles.getBigButtonWidth(), null);
-    private final Button buttonMoveDown = utils.createButton(BUTTON_MOVE_DOWN_TEXT, styles.getBigButtonWidth(), null);
-    private final PaneForComponentDetails paneForXMLList = new PaneForComponentDetails();
+    // Note: the table field was unused; removed to keep the class focused on the details pane.
+     private final VBox paneIncludeXMLList = new VBox();
+     private final VBox vBoxCenter = new VBox();
+     private final HBox hBoxHeaderCenter = new HBox();
+     private final Label labelValue = utils.createLabel(LABEL_XML_FILES);
+     private final Button buttonAdd = utils.createButton(BUTTON_ADD_TEXT, styles.getBigButtonWidth(), null);
+     private final Button buttonDelete = utils.createButton(BUTTON_DELETE_TEXT, styles.getBigButtonWidth(), null);
+     private final Button buttonClear = utils.createButton(BUTTON_CLEAR_TEXT, styles.getBigButtonWidth(), null);
+     private final Button buttonMoveUp = utils.createButton(BUTTON_MOVE_UP_TEXT, styles.getBigButtonWidth(), null);
+     private final Button buttonMoveDown = utils.createButton(BUTTON_MOVE_DOWN_TEXT, styles.getBigButtonWidth(), null);
+     private final PaneForComponentDetails paneForXMLList = new PaneForComponentDetails();
 
     /**
      * Constructs a new TabXMLList instance and initializes the UI components for the XML list tab.
@@ -175,6 +176,27 @@ public class TabXMLList extends PolicyTab {
         setupVBoxCenter();
         setupMainPane();
         VBox tabLayout = new VBox();
+        // Apply centralized default padding, spacing and background style so the tab
+        // visually matches other PolicyTab-based tabs
+        tabLayout.setPadding(styles.getDefaultPadding());
+        tabLayout.setSpacing(6.0);
+        //tabLayout.setStyle(styles.getStyle2());
+
+        // Ensure the main pane uses the standard style and padding
+        //paneIncludeXMLList.setStyle(styles.getStyle2());
+        paneIncludeXMLList.setPadding(styles.getDefaultPadding());
+        // Allow the main pane to grow vertically to fill available space
+        VBox.setVgrow(paneIncludeXMLList, Priority.ALWAYS);
+        paneIncludeXMLList.setMaxHeight(Double.MAX_VALUE);
+
+        // Ensure center VBox uses standard padding so header/buttons align with other tabs
+        //vBoxCenter.setStyle(styles.getStyle2());
+        vBoxCenter.setPadding(styles.getDefaultPadding());
+
+        // Allow the center VBox to grow and expand vertically
+        VBox.setVgrow(vBoxCenter, Priority.ALWAYS);
+        vBoxCenter.setMaxHeight(Double.MAX_VALUE);
+
         tabLayout.getChildren().addAll(paneIncludeXMLList);
         this.setContent(tabLayout);
     }
@@ -196,7 +218,7 @@ public class TabXMLList extends PolicyTab {
     private void setupHeaderButtons() {
         hBoxHeaderCenter.getChildren().addAll(buttonAdd, buttonMoveUp, buttonMoveDown, buttonDelete, buttonClear);
         hBoxHeaderCenter.setSpacing(2.0);
-        hBoxHeaderCenter.setStyle(styles.getStyle3());
+        //hBoxHeaderCenter.setStyle(styles.getStyle3());
     }
 
     /**
@@ -205,8 +227,13 @@ public class TabXMLList extends PolicyTab {
      */
     private void setupVBoxCenter() {
         vBoxCenter.getChildren().addAll(labelValue, hBoxHeaderCenter, paneForXMLList);
-        vBoxCenter.setStyle(styles.getStyle2());
+        // Apply default padding/background so the center matches other tabs
+        //vBoxCenter.setStyle(styles.getStyle2());
+        vBoxCenter.setPadding(styles.getDefaultPadding());
         vBoxCenter.setFillWidth(true);
+        // Allow the details pane to expand vertically within the center VBox
+        VBox.setVgrow(paneForXMLList, Priority.ALWAYS);
+        paneForXMLList.setMaxHeight(Double.MAX_VALUE);
     }
 
     /**
@@ -215,6 +242,8 @@ public class TabXMLList extends PolicyTab {
      */
     private void setupMainPane() {
         paneIncludeXMLList.getChildren().addAll(vBoxCenter);
+        // Ensure the center VBox can grow inside the main pane
+        VBox.setVgrow(vBoxCenter, Priority.ALWAYS);
     }
 
     /**
@@ -228,38 +257,36 @@ public class TabXMLList extends PolicyTab {
         buttonClear.setOnAction(e -> Platform.runLater(() -> paneForXMLList.clearTable()));
         // Add XML files to the list when Add button is pressed
         buttonAdd.setOnAction(e -> Platform.runLater(() -> {
-            File initialDir = new File(vars.getXmlLibrary());
             FileChooser fileChooser = new FileChooser();
-            try {
-                // Set initial directory for file chooser
-                if (initialDir != null && initialDir.exists() && initialDir.isDirectory()) {
-                    fileChooser.setInitialDirectory(initialDir);
-                } else {
-                    throw new Exception("Initial directory is invalid");
-                }
-            } catch (Exception e1) {
-                // Fallback to GCAM executable directory if xmlLibrary is not found
+            // Prefer xmlLibrary; fall back to GCAM executable dir if not available
+            File initialDir = new File(vars.getXmlLibrary());
+            if (initialDir.exists() && initialDir.isDirectory()) {
+                fileChooser.setInitialDirectory(initialDir);
+            } else {
                 utils.warningMessage("Could not find xmlLibrary.");
                 System.out.println("Could not find xmlLibrary " + vars.getXmlLibrary() + ". Defaulting to " + vars.getgCamExecutableDir());
                 File fallbackDir = new File(vars.getgCamExecutableDir());
-                if (fallbackDir != null && fallbackDir.exists() && fallbackDir.isDirectory()) {
+                if (fallbackDir.exists() && fallbackDir.isDirectory()) {
                     fileChooser.setInitialDirectory(fallbackDir);
                 }
             }
+
             // Set file extension filter for XML files
             FileChooser.ExtensionFilter filter = new FileChooser.ExtensionFilter(XML_FILE_DESCRIPTION, XML_FILE_EXTENSION);
-            fileChooser.setSelectedExtensionFilter(filter);
+            fileChooser.getExtensionFilters().add(filter);
             fileChooser.setTitle(FILECHOOSER_TITLE);
+
             // Show file chooser dialog for multiple file selection
             List<File> filesSelected = fileChooser.showOpenMultipleDialog(stageX);
             if (filesSelected != null && !filesSelected.isEmpty()) {
                 for (File file : filesSelected) {
-                    if (file != null && file.toString() != null) {
-                        // Convert absolute path to relative path for storage
-                        String relPath = files.getRelativePath(vars.getgCamExecutableDir(), file.toString().trim());
-                        if (relPath != null) {
-                            paneForXMLList.addItem(relPath);
-                        }
+                    if (file == null) continue;
+                    String path = file.toString().trim();
+                    if (path.isEmpty()) continue;
+                    // Convert absolute path to relative path for storage
+                    String relPath = files.getRelativePath(vars.getgCamExecutableDir(), path);
+                    if (relPath != null) {
+                        paneForXMLList.addItem(relPath);
                     }
                 }
             }

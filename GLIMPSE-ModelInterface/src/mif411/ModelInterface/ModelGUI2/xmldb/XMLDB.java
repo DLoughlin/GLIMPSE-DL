@@ -34,6 +34,7 @@ import java.awt.Container;
 import java.awt.Dimension;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileSystemNotFoundException;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -53,6 +54,10 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.SwingUtilities;
+import javax.swing.JButton;
+import java.awt.FlowLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
 import org.basex.core.BaseXException;
 import org.basex.core.Context;
@@ -86,6 +91,18 @@ public class XMLDB {
      * The database context need to run commands on the DB.
      */
     private Context context = null;
+    // single object to serialize write/update operations against the BaseX context
+    private final Object writeLock = new Object();
+    /**
+     * Public accessor for the BaseX context. Other classes may need the
+     * Context to execute BaseX commands. Returning the Context allows
+     * callers to run commands without exposing the field directly.
+     *
+     * @return the BaseX Context or null if the DB is not open.
+     */
+    public Context getContext() {
+        return context;
+    }
 
     /**
      * The name of the currently open database.
@@ -140,7 +157,13 @@ public class XMLDB {
 			throw new Exception("Could not open databse because "+xmldbInstance.contName+
 					" is still open");
 		}
+		try {
 		xmldbInstance = new XMLDB(contextIn);
+		} 
+		catch (FileSystemNotFoundException e) {
+		    System.err.println("BaseX initialization issue. Likely OK. Continuing...");
+		    throw e;
+		}
 	}
 
 	/**
@@ -150,17 +173,20 @@ public class XMLDB {
 		// WARNING: not thread safe
 		if(xmldbInstance != null) {
 			try {
-                if(!xmldbInstance.wasContextAdopted) {
-                    new Close().execute(xmldbInstance.context);
+                // ensure no concurrent writers are active while closing
+                synchronized(xmldbInstance.writeLock) {
+                    if(!xmldbInstance.wasContextAdopted) {
+                        new Close().execute(xmldbInstance.context);
+                    }
                 }
-            } catch (BaseXException e) {
-                e.printStackTrace();
-			} finally {
+             } catch (BaseXException e) {
+                 e.printStackTrace();
+ 			} finally {
                 xmldbInstance.context = null;
                 xmldbInstance.contName = null;
-				xmldbInstance = null;
-			}
-		}
+ 				xmldbInstance = null;
+ 			}
+ 		}
 	}
 
 	/**
@@ -205,9 +231,9 @@ public class XMLDB {
         System.out.println("Container name="+containerNameUnmodified);
         
         //workaround
-        //contName = containerNameUnmodified;
+        contName = containerNameUnmodified;
         //Dan: This code seems to be generating false warnings, commenting out for now
-        contName = IO.get( containerNameUnmodified ).dbName();
+        //contName = IO.get( containerNameUnmodified ).dbName();
         if( !containerNameUnmodified.equals( contName ) ) {
             System.out.println( "WARNING: "+containerNameUnmodified+" contains invalid characters, it has been changed to: "+contName );
             System.out.println( "WARNING: container name '"+containerNameUnmodified+
@@ -258,9 +284,9 @@ public class XMLDB {
                new Open(contName).execute(context);
         	} catch (Exception e) {
         		//show a message
-        		System.out.println("Cannot open database: "+contName);
-        		System.out.println("  error: "+e);
-        		return false;
+        	 System.out.println("Cannot open database: "+contName);
+        	 System.out.println("  error: "+e);
+        	 return false;
         		
         	}
         } else {
@@ -273,8 +299,8 @@ public class XMLDB {
         		}
         	} catch (Exception e) {
         		System.out.println("Cannot create database: "+contName);
-        		System.out.println("  error: "+e); 
-        		return false;
+        	 System.out.println("  error: "+e); 
+        	 return false;
         	}
         }
         return true;
@@ -295,113 +321,137 @@ public class XMLDB {
 	 * @param fileName the file to import
 	 */
     public void addFile(String docName, String fileName, int myCount, int total) {
-    	try {
-           Add myAdd= new Add(docName, fileName);
-           //final JProgressBar progBar = new JProgressBar(0, 100);
-           //final JLabel curStatus=new JLabel("Importing single run into the database . . phase 1");
-			//final JDialog jd = XMLDB.createProgressBarGUI(progBar, "Adding Single Run", curStatus);
-           final JProgressBar progBarOverall = new JProgressBar(0, total);
-           progBarOverall.setValue(myCount);
-           File f=new File(fileName);
-			final JLabel overallLabel = new JLabel("Importing "+f.getName());
+		// Delegate to new overload without an owner (maintain API)
+		addFile(docName, fileName, myCount, total, null);
+	}
+
+	/**
+	 * Overloaded addFile that accepts an owner dialog so the import dialog can be
+	 * positioned relative to the owner (e.g. Manage Database dialog).
+	 */
+	public void addFile(String docName, String fileName, int myCount, int total, final JDialog owner) {
+		try {
+			final Add myAdd = new Add(docName, fileName);
+			final JProgressBar progBarOverall = new JProgressBar(0, total);
+			progBarOverall.setValue(myCount);
+			final File f = new File(fileName);
+			final JLabel overallLabel = new JLabel("Importing " + f.getName());
 			final JProgressBar StepOneProgBar = new JProgressBar(0, 100);
 			final JLabel StepOneLabel = new JLabel("Copying to Database . . .");
 			StepOneProgBar.setIndeterminate(true);
-			//final JProgressBar StepTwoProgBar = new JProgressBar(0, 100);
-			//final JLabel StepTwoLabel = new JLabel("Step two . . not started");
-			//final JProgressBar finalizingProgBar = new JProgressBar(0, 100);
-			//final JLabel finalizingLabel = new JLabel("Flushing cache . . . not started.");
-			//final JLabel curLabel = new JLabel("Importing scenarios into the database");
-			final JDialog jd = XMLDB.createProgressBarGUIAddScenario("Importing Scenarios into Database", 
-					overallLabel,progBarOverall,
-					StepOneLabel,StepOneProgBar
-					);
+
+			final JDialog jd = XMLDB.createProgressBarGUIAddScenario("Importing Scenarios into Database",
+					overallLabel, progBarOverall,
+					StepOneLabel, StepOneProgBar,
+					owner);
 			jd.setSize(400, 250);
-			
-			final Runnable incProgress = (new Runnable() {
+
+			final Runnable incProgress = new Runnable() {
+                @Override
 				public void run() {
-					int lastVal=-1;
-					int curActivePRog=1;
-					jd.setModal(false);
-					jd.setVisible(true);
-					//there is actually a 0th step, that finishes fast, so just let it get done
+					int lastVal = -1;
+					int curActiveProg = 1;
+					// Show the dialog on the EDT. If it's modal, this will present it and
+					// run a nested event loop so the dialog receives input until dismissed.
+					SwingUtilities.invokeLater(new Runnable() {
+					    @Override
+						public void run() {
+							jd.setModal(true);
+							jd.setVisible(true);
+							jd.toFront();
+							jd.requestFocusInWindow();
+						}
+					});
+					// small initial pause to let UI settle
 					try {
 						Thread.sleep(2000);
 					} catch (InterruptedException e1) {
-						// TODO Auto-generated catch block
 						e1.printStackTrace();
 					}
-					while(myAdd.progressInfo()<1) {
+					while (myAdd.progressInfo() < 1) {
 						StepOneProgBar.setIndeterminate(false);
-						int myVal=(int)(myAdd.progressInfo()*100.0);
-						//System.out.println(new Timestamp(System.currentTimeMillis()).toString()+" New val: "+myVal);
-						if(curActivePRog==1) {
-							StepOneProgBar.setValue(myVal/2);
-							if(myVal<lastVal) {
-								//StepOneLabel.setText("Step one . . complete");
-								//StepOneProgBar.setValue(100);
-								curActivePRog=2;
+						int myVal = (int) (myAdd.progressInfo() * 100.0);
+						if (curActiveProg == 1) {
+							StepOneProgBar.setValue(myVal / 2);
+							if (myVal < lastVal) {
+								curActiveProg = 2;
 							}
 						}
-						if(curActivePRog==2) {
-							StepOneProgBar.setValue(50+(myVal/2));
+						if (curActiveProg == 2) {
+							StepOneProgBar.setValue(50 + (myVal / 2));
 						}
-						
-						lastVal=myVal;
+						lastVal = myVal;
 						jd.repaint();
 						try {
 							Thread.yield();
 							Thread.sleep(500);
-						}catch(Exception e) {
-							System.out.println("Error sleeping on import: "+e.toString());
+						} catch (Exception e) {
+							System.out.println("Error sleeping on import: " + e.toString());
 						}
-						
 					}
-					
-					
-					//progBar.setValue(98);
 					StepOneLabel.setText("Writing to disk . . . ");
 					StepOneProgBar.setIndeterminate(true);
-					//curStatus.setText("Importing single run into the database . . finalizing");
-					//try {
-					//	myAdd.
-					//}catch(Exception e) {}
-					//jd.dispose();
 				}
-			});
-			Thread w=new Thread(incProgress);
-			w.start();
-			//SwingUtilities.invokeLater(incProgress);
-			//final Runnable goExe = (new Runnable() {
-			//	public void run() {
-					try{ 
-						myAdd.execute(context);
-					}catch(Exception e) {
-						System.out.println("Problem running import: "+e.toString());
-						System.out.println("For file "+fileName);
-						JOptionPane.showMessageDialog(jd, "The import for "+fileName+" failed.  Note that this may leave your database in a brokens state.");
+			};
+			Thread progressThread = new Thread(incProgress);
+			progressThread.start();
+
+			try {
+				// serialize Add execution to avoid concurrent BaseX writes interfering
+				synchronized(writeLock) {
+					myAdd.execute(context);
+				}
+ 			} catch (Exception e) {
+ 				System.out.println("Problem running import: " + e.toString());
+ 				System.out.println("For file " + fileName);
+ 				JOptionPane.showMessageDialog(jd,
+ 					"The import for " + fileName + " failed.  Note that this may leave your database in a brokens state.");
+ 			}
+
+			// Ensure dialog is closed when work completes
+			if (jd.isVisible()) {
+				SwingUtilities.invokeLater(new Runnable() {
+				    @Override
+					public void run() {
+						jd.setVisible(false);
+						jd.dispose();
 					}
-			//	}
-			//});
-			
-			//Thread T=new Thread(goExe);
-			//T.start();
+				});
+			} else {
+				jd.dispose();
+			}
 
-			jd.dispose();
-            
-			//System.out.println("Done adding.");
-           
-
-	    } catch(Exception e) {
-		    e.printStackTrace();
-	    }
+		} catch (Exception e) {
+		 e.printStackTrace();
+		}
 	}
 	public void removeDoc(String docName) {
-		try {
-			System.out.println("Removing :"+docName);
-            new Delete(docName).execute(context);
-		} catch(BaseXException e) {
-			e.printStackTrace();
+		final int maxAttempts = 4;
+		int attempt = 0;
+		while (true) {
+			attempt++;
+			try {
+				// synchronize deletes with other writers
+				synchronized(writeLock) {
+					System.out.println("Removing :"+docName+" attempt "+attempt);
+					new Delete(docName).execute(context);
+				}
+				break; // success
+			} catch (BaseXException | RuntimeException e) {
+				String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
+				// if this looks like the transient lock-file issue, retry a few times
+				if (attempt >= maxAttempts || !(msg.contains("lock file does not exist") || msg.contains("lock"))) {
+					e.printStackTrace();
+					break;
+				}
+				// short exponential backoff then retry
+				try {
+					Thread.sleep(200L * attempt);
+				} catch (InterruptedException ie) {
+					Thread.currentThread().interrupt();
+					break;
+				}
+			}
 		}
 	}
 	
@@ -512,7 +562,7 @@ public class XMLDB {
 				ret += ","+currAttr.getKey()+"="+currAttr.getValue();
 			}
 		}
-		return !ret.equals("") ? ret.substring(1) : ret;
+		return !ret.isEmpty() ? ret.substring(1) : ret;
 	}
 	public String getQueryFunctionAsDistinctNames() {
 		return "declare function local:distinct-node-names ($args as node()*) as xs:string* { fn:distinct-values(for $nname in $args return fn:local-name($nname)) }; local:distinct-node-names";
@@ -527,19 +577,22 @@ public class XMLDB {
 		// simple XQuery update query to replace the value of the given val
 		final String setValueXQuery = "declare variable $newValue as xs:string external; replace value of node self::node() with $newValue";
         QueryProcessor queryProc = new QueryProcessor(setValueXQuery, context);
-		try {
-            // set val as the context so that it knows which node to update
-            queryProc.context(val);
-			// setting the new value through the variable is safer and allows us to use
-			// the same query
-			queryProc.bind("newValue", content, "xs:string");
-			// not expecting anything to be in the results
-			queryProc.iter();
-		} catch(QueryException e) {
-			e.printStackTrace();
-		} finally {
+        try {
+            // ensure updates are serialized with other DB writers
+            synchronized(writeLock) {
+                // set val as the context so that it knows which node to update
+                queryProc.context(val);
+                // setting the new value through the variable is safer and allows us to use
+                // the same query
+                queryProc.bind("newValue", content, "xs:string");
+                // not expecting anything to be in the results
+                queryProc.iter();
+            }
+        } catch(QueryException e) {
+            e.printStackTrace();
+        } finally {
             queryProc.close();
-		}
+        }
 	}
 	/**
 	 * Inserts a single query cache onto the cache document.
@@ -550,20 +603,23 @@ public class XMLDB {
 	public void updateSingleCacheValue(ANode doc, int hash, String content) {
 		// simple XQuery update query to replace the value of the given val
 		final String setValueXQuery = "declare variable $hashId as xs:integer external; declare variable $newCacheValue as xs:string external; if(exists(self::node()/cache[@id=$hashId])) then replace value of node self::node()/cache[@id=$hashId] with $newCacheValue else insert node element cache{ attribute id { $hashId }, text { $newCacheValue } } into self::node()";
-        QueryProcessor queryProc = new QueryProcessor(setValueXQuery, context);
+		QueryProcessor queryProc = new QueryProcessor(setValueXQuery, context);
 		try {
-            // set doc as the context so that it knows which node to update
-            queryProc.context(doc);
-			// setting the new value through the variable is safer and allows us to use
-			// the same query
-			queryProc.bind("hashId", hash, "xs:integer");
-			queryProc.bind("newCacheValue", content, "xs:string");
-			// not expecting anything to be in the results
-			queryProc.iter();
+			// serialize updates to avoid lock-file races
+			synchronized(writeLock) {
+				// set doc as the context so that it knows which node to update
+				queryProc.context(doc);
+				// setting the new value through the variable is safer and allows us to use
+				// the same query
+				queryProc.bind("hashId", hash, "xs:integer");
+				queryProc.bind("newCacheValue", content, "xs:string");
+				// not expecting anything to be in the results
+				queryProc.iter();
+			}
 		} catch(QueryException e) {
-			e.printStackTrace();
+		 e.printStackTrace();
 		} finally {
-            queryProc.close();
+			queryProc.close();
 		}
 	}
 	public void addVarMetaData() {
@@ -701,12 +757,12 @@ public class XMLDB {
 					InterfaceMain.getInstance().showMessageDialog(message, "Get Variables", 
 							JOptionPane.INFORMATION_MESSAGE);
 					} catch(XmlException e) {
-						e.printStackTrace();
+					 e.printStackTrace();
 					}
 				}
 			})).start();
 		} catch(XmlException e) {
-			e.printStackTrace();
+		 e.printStackTrace();
 			//closeDB();
 		}
         */
@@ -728,7 +784,7 @@ public class XMLDB {
 			XmlQueryExpression qe = manager.prepare(queryStr, qc);
 			return qe.execute(contextVal, qc);
 		} catch(XmlException e) {
-			e.printStackTrace();
+		 e.printStackTrace();
 			return null;
 		}
 	}
@@ -796,7 +852,7 @@ public class XMLDB {
 				}
 			}
 		} catch(XmlException e) {
-			e.printStackTrace();
+		 e.printStackTrace();
 		}
 		res.delete();
 		// maybe this should be somewhere else..
@@ -820,7 +876,7 @@ public class XMLDB {
 			}
 			res.delete();
 		} catch(XmlException e) {
-			e.printStackTrace();
+		 e.printStackTrace();
 		}
 	}
     */
@@ -837,55 +893,110 @@ public class XMLDB {
 	 */
 	public static JDialog createProgressBarGUI(JProgressBar progBar, String title, JLabel label) {
         final JFrame parentFrame = InterfaceMain.getInstance().getFrame();
-		if(progBar.getMaximum() == 0) {
-			return null;
-		}
-		JDialog filterDialog = new JDialog(parentFrame, title, false);
-		filterDialog.setAlwaysOnTop(true);
-		JPanel all = new JPanel();
-		all.setLayout( new BoxLayout(all, BoxLayout.Y_AXIS));
-		progBar.setPreferredSize(new Dimension(200, 20));
-		//JLabel label = new JLabel(labelStr);
-		Container contentPane = filterDialog.getContentPane();
-		all.add(label, BorderLayout.PAGE_START);
-		all.add(Box.createVerticalStrut(10));
-		all.add(progBar);
-		all.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-		contentPane.add(all, BorderLayout.PAGE_START);
-		filterDialog.pack();
-		filterDialog.setVisible(true);
-		return filterDialog;
-	}
+        if(progBar.getMaximum() == 0) {
+            return null;
+        }
+        // non-modal dialog so background work can continue
+        JDialog filterDialog = new JDialog(parentFrame, title, false);
+        filterDialog.setAlwaysOnTop(true);
+        filterDialog.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
+        JPanel all = new JPanel();
+        all.setLayout( new BoxLayout(all, BoxLayout.Y_AXIS));
+        progBar.setPreferredSize(new Dimension(200, 20));
+        //JLabel label = new JLabel(labelStr);
+        Container contentPane = filterDialog.getContentPane();
+        all.add(label, BorderLayout.PAGE_START);
+        all.add(Box.createVerticalStrut(10));
+        all.add(progBar);
+        all.add(Box.createVerticalStrut(10));
+
+        // Add a dismiss button so the user can hide the dialog while the task continues
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton dismissButton = new JButton("Dismiss");
+        dismissButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // Hide the dialog but do not dispose it so background work can continue
+                filterDialog.setVisible(false);
+            }
+        });
+        buttonPanel.add(dismissButton);
+        all.add(buttonPanel);
+        dismissButton.setVisible(false); // Hide for now, may re-enable later
+
+        all.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        contentPane.add(all, BorderLayout.PAGE_START);
+        filterDialog.pack();
+
+        // Center over the ModelInterface main frame
+        filterDialog.setLocationRelativeTo(parentFrame);
+
+        // Ensure the dialog gets focus/visibility when shown
+        filterDialog.setVisible(true);
+        filterDialog.toFront();
+        filterDialog.requestFocusInWindow();
+        return filterDialog;
+    }
 	
-	public static JDialog createProgressBarGUIAddScenario(String title, JLabel overallLabel, JProgressBar overallProgBar, 
-			JLabel StepOneLabel, JProgressBar StepOneProgBar ) {
-        final JFrame parentFrame = InterfaceMain.getInstance().getFrame();
-		
-		JDialog filterDialog = new JDialog(parentFrame, title, true);
-		filterDialog.setAlwaysOnTop(true);
-		JPanel all = new JPanel();
-		all.setLayout( new BoxLayout(all, BoxLayout.Y_AXIS));
-		Container contentPane = filterDialog.getContentPane();
-		
-		overallProgBar.setPreferredSize(new Dimension(200, 20));
-		all.add(overallLabel, BorderLayout.PAGE_START);
-		all.add(Box.createVerticalStrut(10));
-		all.add(overallProgBar);
-		all.add(Box.createVerticalStrut(20));
-		
-		StepOneProgBar.setPreferredSize(new Dimension(200, 20));
-		all.add(StepOneLabel);
-		all.add(Box.createVerticalStrut(10));
-		all.add(StepOneProgBar);
-		all.add(Box.createVerticalStrut(20));
-		
-		
-		
-		
-		all.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-		contentPane.add(all, BorderLayout.PAGE_START);
-		filterDialog.pack();
-		//filterDialog.setVisible(true);
-		return filterDialog;
+	public static JDialog createProgressBarGUIAddScenario(String title, JLabel overallLabel, JProgressBar overallProgBar,
+				JLabel StepOneLabel, JProgressBar StepOneProgBar) {
+		// delegate to new overload without an owner
+		return createProgressBarGUIAddScenario(title, overallLabel, overallProgBar, StepOneLabel, StepOneProgBar, null);
 	}
-}
+
+	public static JDialog createProgressBarGUIAddScenario(String title, JLabel overallLabel, JProgressBar overallProgBar,
+			JLabel StepOneLabel, JProgressBar StepOneProgBar, JDialog owner) {
+			final JFrame parentFrame = InterfaceMain.getInstance().getFrame();
+
+			// If an owner dialog is provided, use it as the owner. Otherwise center on main frame.
+			JDialog filterDialog = (owner != null) ? new JDialog(owner, title, true) : new JDialog(parentFrame, title, true);
+			filterDialog.setAlwaysOnTop(true);
+			filterDialog.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
+			JPanel all = new JPanel();
+			all.setLayout(new BoxLayout(all, BoxLayout.Y_AXIS));
+			Container contentPane = filterDialog.getContentPane();
+
+			// Only show the overall progress bar when importing multiple scenarios
+			if (overallProgBar != null && overallProgBar.getMaximum() > 1) {
+				overallProgBar.setPreferredSize(new Dimension(200, 20));
+				all.add(overallLabel, BorderLayout.PAGE_START);
+				all.add(Box.createVerticalStrut(10));
+				all.add(overallProgBar);
+				all.add(Box.createVerticalStrut(20));
+			}
+
+			// Always show the step/progress for the single-file import operations
+			StepOneProgBar.setPreferredSize(new Dimension(200, 20));
+			all.add(StepOneLabel);
+			all.add(Box.createVerticalStrut(10));
+			all.add(StepOneProgBar);
+			all.add(Box.createVerticalStrut(20));
+
+			// Add a dismiss button so the user can hide the dialog while the import continues
+			JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+			JButton dismissButton = new JButton("Dismiss");
+			dismissButton.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					// Hide the dialog but do not dispose so background work can update it if needed
+					filterDialog.setVisible(false);
+				}
+			});
+			buttonPanel.add(dismissButton);
+			all.add(buttonPanel);
+        	dismissButton.setVisible(false); // Hide for now, may re-enable later
+			
+			all.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+			contentPane.add(all, BorderLayout.PAGE_START);
+			filterDialog.pack();
+
+			// Center relative to owner if provided, otherwise center over main frame
+			if (owner != null) {
+				filterDialog.setLocationRelativeTo(owner);
+			} else {
+				filterDialog.setLocationRelativeTo(parentFrame);
+			}
+
+			return filterDialog;
+		}
+ }

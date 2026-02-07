@@ -223,6 +223,20 @@ public class MyChartFactory {
 				(String[][]) null, // no annotations for transpose chart
 				transposedData, // transposed data
 				-1); // relativeColIndex not used in transpose chart
+		if (units != null && units.length > 0) {
+			java.util.HashMap<String, String> unitLookup = new java.util.HashMap<>();
+			// In a transposed chart, the 'series' are what was originally the column headers (or similar)
+			// 'units' passed here corresponds to the units for the new series.
+			// The length of 'units' should match 'newSeriesNames'.
+			
+			for (int i = 0; i < newSeriesNames.length; i++) {
+				if (i < units.length) {
+					// Normalize key just like in ThumbnailUtilNew
+					unitLookup.put(newSeriesNames[i].trim().replace(",", "-"), units[i]);
+				}
+			}
+			chart.setUnitsLookup(unitLookup);
+		}
 		return chart;
 	}
 }

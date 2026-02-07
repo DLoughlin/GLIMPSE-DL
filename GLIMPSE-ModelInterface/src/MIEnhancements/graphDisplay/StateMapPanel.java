@@ -201,6 +201,7 @@ public class StateMapPanel extends JFrame implements ComponentListener {
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
         frame.setAlwaysOnTop(true);
+        /*
         frame.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
@@ -209,6 +210,7 @@ public class StateMapPanel extends JFrame implements ComponentListener {
                 }
             }
         });
+        */
         DbViewer.openWindows.add(frame);
     }
 
@@ -519,15 +521,38 @@ public class StateMapPanel extends JFrame implements ComponentListener {
             double maxCustom = ((Number) maxField.getValue()).doubleValue();
             useMapColor = new MapColor(usePalette, minCustom, maxCustom);
         }
-        frame.remove(sectorDisplayPanel);
-        frame.remove(addLegendPanel);
-        stateMap.layers().clear();
-        frame.remove(jmap);
-        frame.getContentPane().add(createMapContent(), BorderLayout.CENTER);
-        frame.getContentPane().add(createFooter(), BorderLayout.PAGE_END);
-        frame.getContentPane().add(addLegendPanel(), BorderLayout.EAST);
-        frame.revalidate();
-        frame.repaint();
+
+        // Update Map Content
+        if (stateMap != null) {
+            stateMap.dispose();
+        }
+        stateMap = createStateBoundaryMapLayer2();
+        jmap.setMapContent(stateMap);
+        jmap.repaint();
+
+        // Update Legend
+        if (addLegendPanel != null) {
+            addLegendPanel.removeAll();
+            if (legendLabel == null) {
+                legendLabel = new JLabel("Legend");
+                legendLabel.setFont(new Font("Dialog",Font.PLAIN,14));
+                legendLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            }
+            addLegendPanel.add(legendLabel);
+            int unitColIdx = FilteredTable.getColumnByName(jtable, "Units");
+            String unitForLegend = (String) jtable.getValueAt(0, unitColIdx);
+            LegendPanel useLegend = new LegendPanel(useMapColor, unitForLegend);
+            addLegendPanel.add(useLegend);
+            addLegendPanel.revalidate();
+            addLegendPanel.repaint();
+        }
+
+        // Update Footer Info
+        if (sectorText != null) {
+             String mapSectorInfo = MapOptionsUtil.getSectorPlusInfo(jtable);
+             sectorText.setText("Displayed in this map:" + mapSectorInfo);
+             sectorText.setVisible(mapSectorInfo.length() > 0);
+        }
     }
 
     /**

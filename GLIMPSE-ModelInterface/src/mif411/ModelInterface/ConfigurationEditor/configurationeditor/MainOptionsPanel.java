@@ -31,6 +31,8 @@ package ModelInterface.ConfigurationEditor.configurationeditor;
 
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Color;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -65,6 +67,10 @@ public class MainOptionsPanel extends AbstractEditorPanel {
      */
     private static final long serialVersionUID = 7827035762215557234L;
 
+    private static final Font UNIFIED_FONT = new Font("Segoe UI", Font.PLAIN, 14);
+    private static final Dimension BUTTON_SIZE = new Dimension(100, 30);
+    private static final Color BUTTON_BG = new Color(230, 230, 230);
+
     /**
      * Constructor
      */
@@ -92,7 +98,11 @@ public class MainOptionsPanel extends AbstractEditorPanel {
      */
     private void initialize() {
         setLayout(new GridBagLayout());
-        setBorder(BorderFactory.createBevelBorder(BevelBorder.RAISED));
+        setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createBevelBorder(BevelBorder.RAISED),
+            BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
+        setBackground(Color.WHITE);
 
         // Now setup the layout constraints.
         final GridBagConstraints cons = new GridBagConstraints();
@@ -122,6 +132,7 @@ public class MainOptionsPanel extends AbstractEditorPanel {
         // Create a label for the scenario name field.
         final JLabel scenNameLabel = new JLabel(Messages
                 .getString("ConfigurationEditor.112")); //$NON-NLS-1$
+        scenNameLabel.setFont(UNIFIED_FONT);
         add(scenNameLabel, cons);
 
         // Put the labels in increasing rows.
@@ -130,11 +141,13 @@ public class MainOptionsPanel extends AbstractEditorPanel {
         // Create a label for the input file field.
         final JLabel inputFileLabel = new JLabel(Messages
                 .getString("ConfigurationEditor.115")); //$NON-NLS-1$
+        inputFileLabel.setFont(UNIFIED_FONT);
         add(inputFileLabel, cons);
 
         // Create a label for the output file field.
         final JLabel outputFileLabel = new JLabel(Messages
                 .getString("ConfigurationEditor.118")); //$NON-NLS-1$
+        outputFileLabel.setFont(UNIFIED_FONT);
         add(outputFileLabel, cons);
 
         // Add the text fields in column 2.
@@ -153,6 +166,7 @@ public class MainOptionsPanel extends AbstractEditorPanel {
         final JTextField scenNameField = textFieldFactory.createTextField(
                 "Strings", "scenarioName"); //$NON-NLS-1$ //$NON-NLS-2$
         scenNameField.setPreferredSize(new Dimension(200, 20));
+        scenNameField.setFont(UNIFIED_FONT);
         add(scenNameField, cons);
 
         // Put the fields in increasing rows.
@@ -162,12 +176,14 @@ public class MainOptionsPanel extends AbstractEditorPanel {
         final JTextField inputFileField = textFieldFactory.createTextField(
                 "Files", "xmlInputFileName"); //$NON-NLS-1$ //$NON-NLS-2$
         inputFileField.setPreferredSize(new Dimension(200, 20));
+        inputFileField.setFont(UNIFIED_FONT);
         add(inputFileField, cons);
 
         // Add the output file field.
         final JTextField outputFileField = textFieldFactory.createTextField(
                 "Files", "xmlOutputFileName"); //$NON-NLS-1$ //$NON-NLS-2$
         outputFileField.setPreferredSize(new Dimension(200, 20));
+        outputFileField.setFont(UNIFIED_FONT);
         add(outputFileField, cons);
 
         // Put the list panel in column 3.
@@ -200,6 +216,7 @@ public class MainOptionsPanel extends AbstractEditorPanel {
     private JCheckBox createCalibrationCheckBox() {
         final JCheckBox calCheckBox = new JCheckBox(Messages
                 .getString("ConfigurationEditor.13")); //$NON-NLS-1$
+        calCheckBox.setFont(UNIFIED_FONT);
         final String parentXPath = "/" + ConfigurationEditor.ROOT_ELEMENT_NAME
                 + "/Bools";
         final DOMButtonModel model = new DOMButtonModel(null, parentXPath,
@@ -224,6 +241,7 @@ public class MainOptionsPanel extends AbstractEditorPanel {
     private JCheckBox createCalcCostCheckBox() {
         final JCheckBox calcCosts = new JCheckBox(Messages
                 .getString("ConfigurationEditor.128")); //$NON-NLS-1$
+        calcCosts.setFont(UNIFIED_FONT);
 
         final String parentXPath = "/" + ConfigurationEditor.ROOT_ELEMENT_NAME
                 + "/Bools";

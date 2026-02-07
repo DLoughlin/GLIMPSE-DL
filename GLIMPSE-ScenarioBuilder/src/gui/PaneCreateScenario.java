@@ -112,10 +112,11 @@ class PaneCreateScenario extends ScenarioBuilder {
     private static final String LABEL_CREATE_SCENARIO = "Create Scenario";
     private static final String TOOLTIP_SCENARIO_NAME = "Enter name of scenario being constructed";
     private static final String BUTTON_CREATE = "Create";
+    private static final String BUTTON_ICON_CREATE = "create";
     private static final String BUTTON_MOVE_UP = "Move selected item up in list";
     private static final String BUTTON_MOVE_DOWN = "Move selected item down in list";
-    private static final String BUTTON_ICON_UP = "upArrow7";
-    private static final String BUTTON_ICON_DOWN = "downArrow7";
+    private static final String BUTTON_ICON_UP = "move_up";
+    private static final String BUTTON_ICON_DOWN = "move_down";
     private static final String BUTTON_ICON_ADD = "add2";
     private static final String WARNING_INVALID_NAME = "Please specify a name for the scenario. The name should not include any of these special characters: [! @#$%&*()+=|<>?{}[]~]\\//";
     private static final String DIALOG_TITLE_CREATE = "Creating Scenario";
@@ -151,15 +152,18 @@ class PaneCreateScenario extends ScenarioBuilder {
         vBox = new VBox(1);
         textFieldScenarioName = utils.createTextField(2.5 * styles.getBigButtonWidth());
         textFieldScenarioName.setTooltip(new Tooltip(TOOLTIP_SCENARIO_NAME));
-        vBox.setStyle(styles.getFontStyle());
+        // Removed manual font style setting is handled by CSS
+        // vBox.setStyle(styles.getFontStyle());
 
         labelScenarioName = utils.createLabel(LABEL_CREATE_SCENARIO, 1.5 * styles.getBigButtonWidth());
         HBox hBox = new HBox(30);
         hBox.getChildren().addAll(labelScenarioName, textFieldScenarioName);
-        hBox.setPadding(new Insets(0, 0, 5, 0));
+        // Use centralized small bottom padding
+        hBox.setPadding(styles.getSmallBottomPadding());
 
         HBox hBoxRun = new HBox();
-        hBoxRun.setPadding(new Insets(5, 0, 0, 0));
+        // Use centralized top padding 5px
+        hBoxRun.setPadding(styles.getTopPadding5());
         hBoxRun.setAlignment(Pos.CENTER);
 
         setupButtons();
@@ -177,7 +181,7 @@ class PaneCreateScenario extends ScenarioBuilder {
     private void setupButtons() {
         Client.buttonMoveComponentUp = utils.createButton(null, styles.getSmallButtonWidth(), BUTTON_MOVE_UP, BUTTON_ICON_UP);
         Client.buttonMoveComponentDown = utils.createButton(null, styles.getSmallButtonWidth(), BUTTON_MOVE_DOWN, BUTTON_ICON_DOWN);
-        Client.buttonCreateScenarioConfigFile = utils.createButton(BUTTON_CREATE, styles.getBigButtonWidth(), BUTTON_CREATE, BUTTON_ICON_ADD);
+        Client.buttonCreateScenarioConfigFile = utils.createButton(BUTTON_CREATE, styles.getBigButtonWidth(), BUTTON_CREATE, BUTTON_ICON_CREATE);
 
         Client.buttonCreateScenarioConfigFile.setDisable(true);
         Client.buttonMoveComponentUp.setDisable(true);
@@ -606,13 +610,16 @@ class PaneCreateScenario extends ScenarioBuilder {
         Label commentLabel = new Label("Comments:");
         TextArea textArea = new TextArea();
         textArea.setEditable(true);
-        textArea.setPrefSize(385, 375);
+        // Allow the text area to grow with its container instead of using a fixed preferred size
+        textArea.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        textArea.setMinHeight(0);
 
         // Layout grid
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
-        grid.setPadding(new Insets(0, 10, 0, 10));
+        // Use centralized horizontal padding for grids
+        grid.setPadding(styles.getHorizontalPadding10());
         grid.add(scenarioNameLabel, 0, 0);
         grid.add(scenarioName, 1, 0);
         grid.add(databaseNameLabel, 0, 1);
@@ -659,18 +666,20 @@ class PaneCreateScenario extends ScenarioBuilder {
 
         // Layout root and button box
         VBox root = new VBox();
-        root.setPadding(new Insets(4, 4, 4, 4));
+        // Use centralized small padding for dialog roots
+        root.setPadding(styles.getSmallPadding());
         root.setSpacing(5);
         root.setAlignment(Pos.TOP_LEFT);
         String text = "";
         textArea.setText(text);
         HBox buttonBox = new HBox();
-        buttonBox.setPadding(new Insets(4, 4, 4, 4));
+        // Use centralized button/small padding
+        buttonBox.setPadding(styles.getSmallPadding());
         buttonBox.setSpacing(5);
         buttonBox.setAlignment(Pos.CENTER);
-        buttonBox.getChildren().addAll(okButton, cancelButton);
-        root.getChildren().addAll(grid, buttonBox);
-        scene.setRoot(root);
+         buttonBox.getChildren().addAll(okButton, cancelButton);
+         root.getChildren().addAll(grid, buttonBox);
+         scene.setRoot(root);
         stage.setScene(scene);
         stage.showAndWait();
 

@@ -464,7 +464,11 @@ public class FilteredTable {
                         tData[i][j] = toSigFigs(val, sigfigs);
                     }
                 } else {
-                    tData[i][j] = (String) jtable.getValueAt(i, col[j]);
+                    String s = (String) jtable.getValueAt(i, col[j]);
+                    if (s == null || s.trim().isEmpty())
+                        tData[i][j] = "NA";
+                    else
+                        tData[i][j] = s;
                 }
             }
         }
@@ -501,12 +505,23 @@ public class FilteredTable {
      * @param jpc JPanel to set
      */
     public void setRightComponent(JPanel jpc) {
-        JScrollPane chartScrollPane = new JScrollPane(jpc);
-        chartScrollPane.getViewport().setBackground(Color.cyan);
-        if (sp.getRightComponent() != null)
-            sp.remove(sp.getRightComponent());
-        sp.setRightComponent(chartScrollPane);
-        sp.setDividerLocation(0.678);
+        Component currentRight = sp.getRightComponent();
+        boolean isExistingGraph = false;
+        int currentWidth = 0;
+
+        if (currentRight instanceof JComponent) {
+            Boolean prop = (Boolean) ((JComponent) currentRight).getClientProperty("isGraph");
+            isExistingGraph = prop != null && prop;
+            currentWidth = currentRight.getWidth();
+        }
+
+        if (currentRight != null)
+            sp.remove(currentRight);
+        sp.setRightComponent(jpc);
+        
+        if (!isExistingGraph || currentWidth < 50) {
+            sp.setDividerLocation(0.678);
+        }
         sp.updateUI();
     }
 
@@ -519,20 +534,26 @@ public class FilteredTable {
     private String[][] getfilterTableData(String[][] source, ArrayList<String[]> filter) {
         ArrayList<String[]> al = new ArrayList<>();
         for (int i = 0; i < source.length; i++) {
-            boolean found = false;
+            boolean found = true;
             for (int j = 0; j < filter.size(); j++) {
+                if (filter.get(j).length == 0) continue;
+                
+                boolean match = false;
                 for (int k = 0; k < filter.get(j).length; k++) {
                     if (j == filter.size() - 1) {
-                        if (source[i][source[0].length - 1].trim().equals(filter.get(j)[k].trim())) {
-                            found = true;
+                        if (source[i][source[0].length - 1].trim().equalsIgnoreCase(filter.get(j)[k].trim())) {
+                            match = true;
                             break;
-                        } else found = false;
-                    } else if (source[i][j].trim().equals(filter.get(j)[k].trim())) {
-                        found = true;
+                        }
+                    } else if (source[i][j].trim().equalsIgnoreCase(filter.get(j)[k].trim())) {
+                        match = true;
                         break;
-                    } else found = false;
+                    }
                 }
-                if (!found) break;
+                if (!match) {
+                    found = false;
+                    break;
+                }
             }
             if (found) {
                 al.add(source[i]);
