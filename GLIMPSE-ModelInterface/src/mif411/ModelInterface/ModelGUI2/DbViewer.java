@@ -2485,6 +2485,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
          // Rebuild DB button - export current docs, drop DB files, recreate DB and re-import docs
          rebuildButton.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 // verify DB is open
                 if (XMLDB.getInstance() == null) {
