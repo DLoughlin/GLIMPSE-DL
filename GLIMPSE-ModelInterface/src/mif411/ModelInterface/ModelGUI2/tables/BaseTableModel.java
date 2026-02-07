@@ -829,7 +829,7 @@ public abstract class BaseTableModel extends AbstractTableModel {
    	   	   		   Properties globalProperties = InterfaceMain.getInstance().getProperties();
 
 					yearList = globalProperties.getProperty("allYearList");
-					System.out.println("BaseTableModel830: Using allYearList from properties: "+yearList);
+					//System.out.println("BaseTableModel830: Using allYearList from properties: "+yearList);
 			       if(yearList!=null && yearList.length()>0) {
 						String[] setYearListArr = yearList.split(";");
 				      

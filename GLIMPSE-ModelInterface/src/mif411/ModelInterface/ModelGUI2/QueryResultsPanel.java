@@ -131,6 +131,9 @@ public class QueryResultsPanel extends JPanel {
 					}
 				} catch (Exception e) {
 					errorMessage = e.getMessage();
+				} finally {
+					// Ensure we always mark this query as completed so the progress UI stays in sync
+					DbViewer.registerQueryCompleted();
 				}
 				// Stop process if the user terminated the process
 				if (isInterrupted())

@@ -140,42 +140,47 @@ public class DiffResultsPanel extends QueryResultsPanel {
 		final DiffResultsPanel thisThread = this;
 		runThread = new Thread() {
 			public void run() {
-				JComponent ret = null;
-				String errorMessage = null;
-				// do computations, return a JComponent
 				try {
-					ret = createSingleTableContent(qg, singleBinding, scenarioListValues, regionListValues,
+					JComponent ret = null;
+					String errorMessage = null;
+					// do computations, return a JComponent
+					try {
+						ret = createSingleTableContent(qg, singleBinding, scenarioListValues, regionListValues,
 							generateTotals);
-				} catch (Exception e) {
-					System.out.println("Error creating diff table:" + e);
-					errorMessage = e.getMessage();
-				}
-				// Stop process if the user terminated the process
-				if (isInterrupted()) {
-					return;
-				}
+					} catch (Exception e) {
+						System.out.println("Error creating diff table:" + e);
+						errorMessage = e.getMessage();
+					}
+					// Stop process if the user terminated the process
+					if (isInterrupted()) {
+						return;
+					}
 
-				// clear the text box in preparation of adding the new component
-				removeAll();
+					// clear the text box in preparation of adding the new component
+					removeAll();
 
-				// icon is changed to the finished state
-				icon.finishedLoading();
+					// icon is changed to the finished state
+					icon.finishedLoading();
 
-				// error message displayed
-				if (ret == null) {
-					JPanel tempPanel = new JPanel();
-					tempPanel.setLayout(new BoxLayout(tempPanel, BoxLayout.X_AXIS));
-					tempPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-					tempPanel.add(new JLabel(errorMessage));
-					add(tempPanel);
+					// error message displayed
+					if (ret == null) {
+						JPanel tempPanel = new JPanel();
+						tempPanel.setLayout(new BoxLayout(tempPanel, BoxLayout.X_AXIS));
+						tempPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+						tempPanel.add(new JLabel(errorMessage));
+						add(tempPanel);
+					}
+					// the new JPanel is added where the text box was
+					else {
+						setLayout(new BoxLayout(thisThread, BoxLayout.X_AXIS));
+						add(ret);
+					}
+					// the panel is refreshed to show the changes
+					revalidate();
+				} finally {
+					// Notify DbViewer that this query has completed regardless of outcome
+					DbViewer.registerQueryCompleted();
 				}
-				// the new JPanel is added where the text box was
-				else {
-					setLayout(new BoxLayout(thisThread, BoxLayout.X_AXIS));
-					add(ret);
-				}
-				// the panel is refreshed to show the changes
-				revalidate();
 			}
 		};
 		runThread.start();

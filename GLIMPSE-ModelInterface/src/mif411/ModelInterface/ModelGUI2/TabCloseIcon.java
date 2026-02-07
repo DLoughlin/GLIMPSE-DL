@@ -52,6 +52,10 @@ public class TabCloseIcon implements Icon {
 	private JTabbedPane tabPane = null;
 	private Icon showingIcon;
 	private transient Rectangle position = null;
+	// Tracks whether the query/tab has finished loading. Only when finished
+	// do we allow the close icon to display pressed/close states (including the
+	// red pressed icon).
+	private volatile boolean finished = false;
 	
 	public TabCloseIcon(JTabbedPane tabPaneIn) {
 		showingIcon = loadingIcon;
@@ -97,7 +101,14 @@ public class TabCloseIcon implements Icon {
 			   */
 			@Override public void mouseExited( MouseEvent e ) {
 				if ( !e.isConsumed() /* &&   position.contains( e.getX(), e.getY() )*/ ) {
-					showingIcon = closeIcon;
+					// Only switch to the closeIcon once the query has finished. Otherwise
+					// keep showing the loading icon so the tab does not appear clickable
+					// (and to avoid showing the red pressed icon while loading).
+					if (finished) {
+						showingIcon = closeIcon;
+					} else {
+						showingIcon = loadingIcon;
+					}
 					//showingIcon.paintIcon(c, g, x, y );
 				}
 			}
@@ -108,8 +119,12 @@ public class TabCloseIcon implements Icon {
 				   System.out.println("("+e.getX()+", "+e.getY()+")");
 				   */
 				if ( !e.isConsumed()  &&   position.contains( e.getX(), e.getY() ) ) {
-					//System.out.println("Pressed IF");
-					showingIcon = mPressCloseIcon;
+					// Only show the pressed/close state if the tab has finished loading.
+					// While loading we keep the loading icon regardless of mouse presses so
+					// it does not appear red/pressable.
+					if (finished) {
+						showingIcon = mPressCloseIcon;
+					}
 					//showingIcon.paintIcon(c, g, x, y );
 				}
 			}
@@ -117,6 +132,8 @@ public class TabCloseIcon implements Icon {
 	}
 	
 	public void finishedLoading() {
+		// mark finished so mouse events will start showing the close/pressed icons
+		finished = true;
 		showingIcon = closeIcon;
 		tabPane.repaint();
 	}

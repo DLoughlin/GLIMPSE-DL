@@ -97,6 +97,7 @@ import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.ToolTipManager;
 import javax.swing.TransferHandler;
 import javax.swing.event.ListSelectionEvent;
@@ -251,7 +252,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	private static Map<String, String> selectedYears = null;
 
 	public static ArrayList openWindows = new ArrayList();
-
+	
+	private static JProgressBar queryProgressBar; 
+	private static int totalQueries = 0; 
+	private static int completedQueries = 0;
 	private JFrame parentFrame = null;
 
 	ArrayList<Object> windowList = new ArrayList<>();
@@ -261,6 +265,12 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		final JFrame parentFrame = main.getFrame();
 		this.parentFrame = parentFrame;
 		final DbViewer thisViewer = this;
+		
+		queryProgressBar = new JProgressBar(0, 100);
+		queryProgressBar.setVisible(false);
+		queryProgressBar.setStringPainted(false); // cleaner look
+		queryProgressBar.setPreferredSize(new Dimension(120, 16));
+
 
 		try {
 			DOMImplementationRegistry reg = DOMImplementationRegistry.newInstance();
@@ -1151,14 +1161,42 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		queryFilterButton = new JButton("Search");
 		//final JButton 
 		favoriteQueryButton = new JButton("Favorites");
+		
 		queriesEditMenu.setEnabled(false);
 		runQueryButton.setEnabled(false);
 		diffQueryButton.setEnabled(false);
-		buttonPanel.add(runQueryButton);
-		buttonPanel.add(diffQueryButton);
-		buttonPanel.add(listCollapseButton);
-		buttonPanel.add(queryFilterButton);
-		buttonPanel.add(favoriteQueryButton);
+
+		// Ensure the button panel matches the standard bottom pane height used in Manage DB
+		buttonPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, BOTTOM_PANE_HEIGHT));
+		buttonPanel.setPreferredSize(new Dimension(100, BOTTOM_PANE_HEIGHT));
+
+		// Determine a good button width based on the Run Query button's preferred size
+		int preferredBtnWidth = 90;
+		Font referenceFont = null;
+		Dimension ref = runQueryButton.getPreferredSize();
+		if (ref != null && ref.width > 0) preferredBtnWidth = ref.width;
+		referenceFont = runQueryButton.getFont();
+		final Dimension btnDim = new Dimension(preferredBtnWidth, BOTTOM_PANE_HEIGHT - 8);
+
+		// Apply consistent sizing to each primary button so the row height remains fixed
+		JButton[] buttons = new JButton[] { runQueryButton, diffQueryButton, listCollapseButton, queryFilterButton, favoriteQueryButton };
+		for (JButton b : buttons) {
+			b.setPreferredSize(btnDim);
+			b.setMaximumSize(new Dimension(preferredBtnWidth, BOTTOM_PANE_HEIGHT));
+			b.setAlignmentY(Component.CENTER_ALIGNMENT);
+			if (referenceFont != null) b.setFont(referenceFont);
+			buttonPanel.add(b);
+		}
+
+		// Add a 20px buffer between the Favorites button and the progress bar
+		buttonPanel.add(Box.createHorizontalStrut(20));
+		// Ensure the progress bar keeps its preferred size and does not expand vertically
+		queryProgressBar.setMaximumSize(queryProgressBar.getPreferredSize());
+		buttonPanel.add(queryProgressBar);
+		// Add a 20px buffer between the progress bar and the right edge of the panel
+		buttonPanel.add(Box.createHorizontalStrut(20));
+		// Add glue so any extra space is consumed to the right of the progress bar
+		buttonPanel.add(Box.createHorizontalGlue());
 		queryPanel.add(buttonPanel);
 		this.queryFilterButton = queryFilterButton;
 		this.favoriteQueryButton = favoriteQueryButton;
@@ -1175,7 +1213,49 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		queryPanel.add(listScrollQueries);
 		queriesSplit.setRightComponent(queryPanel);
 	}
+	
+	public static void registerNewQuery() {
+	    totalQueries++;
+	    updateProgressBar();
+	}
 
+	public static void registerQueryCompleted() {
+	    completedQueries++;
+	    updateProgressBar();
+
+	    if (completedQueries == totalQueries) {
+	        finishProgressBar();
+	    }
+	}
+
+	private static void updateProgressBar() {
+	    if (totalQueries > 1) {
+	        if (queryProgressBar != null) {
+	            queryProgressBar.setVisible(true);
+	            int percent = (int) (((double) completedQueries / totalQueries) * 100);
+	            queryProgressBar.setValue(percent);
+	        }
+	    }
+	}
+
+	private static void finishProgressBar() {
+	    if (queryProgressBar != null) {
+	        queryProgressBar.setValue(100);
+
+	        Timer timer = new Timer(1000, e -> {
+	            queryProgressBar.setVisible(false);
+	            totalQueries = 0;
+	            completedQueries = 0;
+	        });
+	        timer.setRepeats(false);
+	        timer.start();
+	    } else {
+	        totalQueries = 0;
+	        completedQueries = 0;
+	    }
+	}
+
+	
 //	private void setupSplitPanes() {
 //		JPanel listPane = new JPanel();
 //		listPane.setLayout(new BoxLayout(listPane, BoxLayout.Y_AXIS));
@@ -1403,6 +1483,8 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 							}
 							// add loading icon to QueryResultsPanel
 							TabCloseIcon loadingIcon = new TabCloseIcon(tablesTabs);
+							// Register that a new query is starting so the progress UI can track it
+                            registerNewQuery();
 							// creating new panel for holding the results of the queries
 							JComponent ret = new QueryResultsPanel(qg, singleBinding, scnList.getSelectedValues(),
 									regionList.getSelectedValues(), loadingIcon, doTotalCheckBox.isSelected());
@@ -1458,6 +1540,8 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 							}
 							// add loading icon to QueryResultsPanel
 							TabCloseIcon loadingIcon = new TabCloseIcon(tablesTabs);
+							// Register that a new diff query is starting so the progress UI can track it
+                            registerNewQuery();
 							// creating new panel for holding the results of the queries
 							JComponent ret = new DiffResultsPanel(qg, singleBinding, scnList.getSelectedValues(),
 									regionList.getSelectedValues(), loadingIcon, doTotalCheckBox.isSelected());
@@ -3104,7 +3188,12 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		Vector<String> allRegions = new Vector<String>(regions);
 		allRegions.remove("Global");
 
-		new BatchWindow(excelFile, toRunScns, allRegions, singleSheetCheckBox.isSelected(),
+		// Register each query that will be run by the batch so the progress UI has the correct total
+        int totalToRegister = numQueries * toRunScns.size();
+        for (int qi = 0; qi < totalToRegister; ++qi) {
+            registerNewQuery();
+        }
+         new BatchWindow(excelFile, toRunScns, allRegions, singleSheetCheckBox.isSelected(),
 				drawPicsCheckBox.isSelected(), numQueries, res, overwriteCheckBox.isSelected(), defaultNumCoresToUse);
 	}
 
@@ -3503,14 +3592,16 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 				// Arbitrarily define a 5-pixel shift as the
 				// official beginning of a drag.
 				if (dx > 5 || dy > 5) {
-					JComponent c = (JComponent) e.getSource();
-					c.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+				 {
+						JComponent c = (JComponent) e.getSource();
+						c.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 
-					tablesTabs.getTransferHandler().exportAsDrag(tablesTabs, firstMouseEvent, action);
-					firstMouseEvent = null;
-					c.setCursor(Cursor.getDefaultCursor());
+						tablesTabs.getTransferHandler().exportAsDrag(tablesTabs, firstMouseEvent, action);
+						firstMouseEvent = null;
+						c.setCursor(Cursor.getDefaultCursor());
+					}
+
 				}
-
 			}
 		}
 
@@ -3911,6 +4002,11 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 					Vector<String> allRegions = getRegions();
 					allRegions.remove("Global");
 					// Run the batch window
+					// Register total queries to run so the progress UI can track them
+					int totalToRegister = numQueries * toRunScns.size();
+					for (int qi = 0; qi < totalToRegister; ++qi) {
+						registerNewQuery();
+					}
 					BatchWindow runner = new BatchWindow(outFile, toRunScns, allRegions, singleSheet, includeCharts,
 							numQueries, res, replaceResults, numCoresToUse);
 					if (runner != null) {
