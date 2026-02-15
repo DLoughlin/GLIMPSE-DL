@@ -867,9 +867,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                     }
                 });
                 boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
+                System.out.println("OS detected as Windows: " + isWindows);
                 String cmdStr = isWindows
-                    ? "cmd.exe /C start ./" + vars.getgCamExecutable() + " " + vars.getgCamExecutableArgs() + " " + scenarioConfigFile
+                    ? "cmd.exe /C start \"\" ./" + vars.getgCamExecutable() + " " + vars.getgCamExecutableArgs() + " " + scenarioConfigFile
                     : "xterm -e " + vars.getgCamExecutableDir() + File.separator + vars.getgCamExecutable() + " " + vars.getgCamExecutableArgs() + " " + scenarioConfigFile ;
+                System.out.println("Command to run: " + cmdStr);
                 Future f = Client.gCAMExecutionThread.submitCommandWithDirectory(cmdStr, vars.getgCamExecutableDir());
                  
                 Client.gCAMExecutionThread.executeCallableCmd(new Callable<String>() {
