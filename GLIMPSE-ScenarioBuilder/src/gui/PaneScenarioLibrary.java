@@ -713,7 +713,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 for (ScenarioRow s : ScenarioTable.listOfScenarioRuns) {
                     if (s.getScenarioName().equals(scenarioName)) {
                         match = true;
-                        s.setStatus(status);
+                        if (!s.getStatus().equals("In queue") || !status.isEmpty()) {
+                            s.setStatus(status);
+                        }
                         s.setCreatedDate(createdDateStr);
                         s.setCompletedDate(completedDateStr);
                         s.setComponents(components);
@@ -726,7 +728,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                     sr.setComponents(components);
                     sr.setCreatedDate(createdDateStr);
                     sr.setCompletedDate(completedDateStr);
-                    sr.setStatus(status);
+                    if (!"In queue".equals(sr.getStatus()) || !status.isEmpty()) {
+                        sr.setStatus(status);
+                    }
                     sr.setRuntime(runtime);
                     sr.setUnsolvedMarkets(unsolved);
                     ScenarioTable.listOfScenarioRuns.add(sr);
@@ -811,8 +815,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                     File archiveConfigFile = new File(archiveConfigFilename);
                     if (archiveConfigFile.exists()) {
                         String s = "Run " + scenName + " from archive?";
-                        if (utils.selectYesOrNoDialog(s))
+                        if (utils.selectYesOrNoDialog(s)) {
                             configFiles[idx] = archiveConfigFilename;
+                            mfr.setCreatedDate(new Date(archiveConfigFile.lastModified()));
+                        }
                     }
                 }
             } catch (Exception e) {
@@ -1053,7 +1059,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         try {
             for (ScenarioRow row : selectedScenarioRows) {
                 String scenarioName = "";
-                String scenarioMainLog = vars.getgCamExecutableDir() + File.separator + "logs" + File.separator + "main_log.txt";
+                String scenarioMainLog = vars.getgCamOutputDatabase() + File.separator + "logs" + File.separator + "main_log.txt";
                 File mainlogfile = new File(scenarioMainLog);
                 if (mainlogfile.exists()) {
                     ArrayList error_lines = utils.generateErrorReport(scenarioMainLog, scenarioName);

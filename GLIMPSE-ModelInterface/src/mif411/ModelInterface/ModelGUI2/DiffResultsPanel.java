@@ -177,9 +177,55 @@ public class DiffResultsPanel extends QueryResultsPanel {
 					}
 					// the panel is refreshed to show the changes
 					revalidate();
+					
+					final JComponent finalRet = ret;
+					javax.swing.SwingUtilities.invokeLater(new Runnable() {
+						public void run() {
+							if (InterfaceMain.autoGenerateGraphics) {
+								if (finalRet instanceof JSplitPane) {
+									JSplitPane sp = (JSplitPane) finalRet;
+									// Check if we should graph based on row count
+									boolean shouldGraph = true;
+									
+									// Try to inspect the table to get row count
+									JTable table = thisThread.getJTableFromComponent(thisThread);
+									if (table != null && table.getRowCount() >= 150) {
+										shouldGraph = false;
+										System.out.println("Auto-graphics skipped: Result has " + table.getRowCount() + " rows (limit is 30).");
+									} else if (table != null) {
+										System.out.println("Auto-graphics proceeding: Result has " + table.getRowCount() + " rows.");
+									}
+
+									if (shouldGraph && sp.getLeftComponent() instanceof JPanel) {
+										JPanel jp = (JPanel) sp.getLeftComponent();
+										clickGraphButton(jp);
+									} else {
+										//System.out.println("Auto-graphics: Left component is not JPanel or shoudGraph is false.");
+									}
+								} else {
+									//System.out.println("Auto-graphics: result is not JSplitPane");
+								}
+							}
+						}
+					});
 				} finally {
 					// Notify DbViewer that this query has completed regardless of outcome
 					DbViewer.registerQueryCompleted();
+				}
+			}
+
+			private void clickGraphButton(java.awt.Container container) {
+				for (java.awt.Component comp : container.getComponents()) {
+					if (comp instanceof JButton) {
+						JButton button = (JButton) comp;
+						if ("Graph".equals(button.getText())) {
+							System.out.println("Auto-graphics: Found Graph button, clicking...");
+							button.doClick();
+							return;
+						}
+					} else if (comp instanceof java.awt.Container) {
+						clickGraphButton((java.awt.Container) comp);
+					}
 				}
 			}
 		};

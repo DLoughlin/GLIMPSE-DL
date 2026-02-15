@@ -327,22 +327,25 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 						Properties prop = main.getProperties();
 						String queryFileName = prop.getProperty("queryFile", null);
 						File queryFile = queryFileName != null ? new File(queryFileName) : null;
-						if (queryFile == null || !queryFile.exists()) {
-							FileChooser fc = FileChooserFactory.getFileChooser();
-							final FileFilter xmlFilter = new XMLFilter();
-							File[] xmlFiles = fc.doFilePrompt(parentFrame,
-									"Could not find query file.  Please select one.", FileChooser.LOAD_DIALOG,
-									new File(main.getProperties().getProperty("lastDirectory", ".")), xmlFilter);
-							if (xmlFiles == null && xmlFiles.length > 0) {
-								// user hit cancel just create a new query file
-								queryFileName = "Main_queries.xml";
-								queryFile = new File(queryFileName);
-							} else {
-								queryFile = xmlFiles[0];
-								queryFileName = queryFile.getAbsolutePath();
-							}
-							prop.setProperty("queryFile", queryFileName);
+						if (queryFile == null) {
+							System.out.println("No query file specified in properties. Select query file via ModelInterface file menu.");
 						}
+//						if (queryFile == null || !queryFile.exists()) {
+//							FileChooser fc = FileChooserFactory.getFileChooser();
+//							final FileFilter xmlFilter = new XMLFilter();
+//							File[] xmlFiles = fc.doFilePrompt(parentFrame,
+//									"Could not find query file.  Please select one.", FileChooser.LOAD_DIALOG,
+//									new File(main.getProperties().getProperty("lastDirectory", ".")), xmlFilter);
+//							if (xmlFiles == null && xmlFiles.length > 0) {
+//								// user hit cancel just create a new query file
+//								queryFileName = "Main_queries.xml";
+//								queryFile = new File(queryFileName);
+//							} else {
+//								queryFile = xmlFiles[0];
+//								queryFileName = queryFile.getAbsolutePath();
+//							}
+//							prop.setProperty("queryFile", queryFileName);
+//						}
 
 						// TODO: move to load preferences
 						scenarioRegionSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true);
@@ -372,6 +375,22 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
 						queriesDoc = readQueries(queryFile);
 
+					}
+				} else if (evt.getPropertyName().equals("SelectQuery")) {
+					FileChooser fc = FileChooserFactory.getFileChooser();
+					File start = new File(main.getProperties().getProperty("queryFile",
+							main.getProperties().getProperty("lastDirectory", ".")));
+					File[] files = fc.doFilePrompt(parentFrame, "Open Query File", FileChooser.LOAD_DIALOG, start,
+							new XMLFilter());
+					if (files != null && files.length > 0) {
+						File file = files[0];
+						// update runtime and persist for next launch
+						String oldFile = main.getProperties().getProperty("queryFile");
+						main.setProperty("queryFile", file.getAbsolutePath());
+						main.setProperty("lastDirectory", file.getParent());
+						System.out.println("Selected query file: " + file.getAbsolutePath());
+						updateQueryTree(file);
+						main.fireProperty("QueryFileChanged", oldFile, file.getAbsolutePath());
 					}
 				}
 			}
@@ -685,6 +704,8 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		// queriesMM.addSeparator(26);
 
 		// Add Run Batch under Tools (unchanged)
+        // Dan: Commented out because this is already added in InterfaceMain.java
+        /*
 		InterfaceMain.MenuManager toolsMM = menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS);
 		if (toolsMM == null) {
 			JMenu toolsMenu = new JMenu("Tools");
@@ -699,6 +720,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
         });
         toolsMM.addSeparator(51);
         toolsMM.addMenuItem(runBatchMenu, 52);
+        */
 
 		// Favorites under Queries
 		loadFavoritesMenu = makeMenuItem("Load Favorite Queries File");
@@ -800,6 +822,46 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		}
 	}
 
+	/**
+	 * Exports all open tabs to CSV files.
+	 */
+	public void exportTabs() {
+		final InterfaceMain main = InterfaceMain.getInstance();
+		final JFrame parentFrame = main.getFrame();
+		FileChooser fc = FileChooserFactory.getFileChooser();
+		final FileFilter csvFilter = new javax.swing.filechooser.FileFilter() {
+			public boolean accept(File f) {
+				return f.getName().toLowerCase().endsWith(".csv") || f.isDirectory();
+			}
+
+			public String getDescription() {
+				return "CSV File (*.csv)";
+			}
+		};
+		File[] csvFiles = fc.doFilePrompt(parentFrame, "Export Tabs as CSVs", FileChooser.SAVE_DIALOG,
+				new File(main.getProperties().getProperty("lastDirectory", ".")), csvFilter);
+		if (csvFiles == null) {
+			return;
+		} else {
+			main.getProperties().setProperty("lastDirectory", csvFiles[0].getParent());
+			for (int i = 0; i < tablesTabs.getTabCount(); ++i) {
+				File file = new File(csvFiles[0].getParentFile(),
+						tablesTabs.getTitleAt(i).replaceAll("[^a-zA-Z0-9.-]", "_") + ".csv");
+				try {
+					PrintWriter pw = new PrintWriter(file);
+					BaseTableModel btm = getTableModelFromComponent(tablesTabs.getComponentAt(i));
+					if (btm != null) {
+						btm.print(pw);
+					}
+					pw.close();
+				} catch (FileNotFoundException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
+	
 	private void handleEnableBetaFeatures() {
 		betaMn.setText("Disable Beta Features");
 		InterfaceMain.enableMapping = true;
@@ -1171,11 +1233,12 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		buttonPanel.setPreferredSize(new Dimension(100, BOTTOM_PANE_HEIGHT));
 
 		// Determine a good button width based on the Run Query button's preferred size
-		int preferredBtnWidth = 90;
-		Font referenceFont = null;
-		Dimension ref = runQueryButton.getPreferredSize();
-		if (ref != null && ref.width > 0) preferredBtnWidth = ref.width;
-		referenceFont = runQueryButton.getFont();
+		int btnPadding = 15;
+		int runQueryWidth = runQueryButton.getPreferredSize().width + btnPadding;
+		int diffQueryWidth = diffQueryButton.getPreferredSize().width + btnPadding;
+		int preferredBtnWidth = Math.max(runQueryWidth, diffQueryWidth);
+
+		Font referenceFont = runQueryButton.getFont();
 		final Dimension btnDim = new Dimension(preferredBtnWidth, BOTTOM_PANE_HEIGHT - 8);
 
 		// Apply consistent sizing to each primary button so the row height remains fixed
@@ -1709,7 +1772,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
 	// this method is to get the full tree path for a query group name
 	// considering that the same query group name can appear multiple times in the
-	// same tree
+// same tree
 	// but at different locations,YD added
 	public static ArrayList<TreePath> getFullTreePath2(JTree tree, String groupName, int pathCount) {
 		Enumeration<TreePath> allPath = tree.getExpandedDescendants(new TreePath(tree.getModel().getRoot()));
@@ -2522,6 +2585,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
                          progBar.setValue(progBar.getValue() + 1);
                      }
                  });
+
                  if (jd != null) {
                      jd.setVisible(true);
                  }
@@ -2928,6 +2992,18 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
     }
 }
 	
+	private boolean writeFile(File file, Document doc) {
+		LSSerializer serializer = implls.createLSSerializer();
+		LSOutput lsOutput = implls.createLSOutput();
+		try {
+			lsOutput.setByteStream(new FileOutputStream(file));
+			serializer.write(doc, lsOutput);
+			return true;
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
 	
 	/**
 	 * Writes the current queries document to the file specified in properties. If
@@ -2953,273 +3029,21 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	}
 
 	/**
-	 * Exports all open tabs as CSV files to the selected directory.
-	 */
-	public void exportTabs() {
-		final InterfaceMain main = InterfaceMain.getInstance();
-
-		if (tablesTabs.getTabCount() == 0) {
-			// error?
-			return;
-		}
-
-		// select export location
-		String exportDialogTitle = "Select Export Directory";
-		FileFilter fileFilter = new FileFilter() {
-			public boolean accept(File f) {
-				return f.isDirectory();
-			}
-
-			public String getDescription() {
-				return "Directory to export into";
-			}
-		};
-
-		FileChooser fc = FileChooserFactory.getFileChooser();
-		final File[] exportLocation = fc.doFilePrompt(null, exportDialogTitle, FileChooser.SAVE_DIALOG,
-				new File(main.getProperties().getProperty("lastDirectory", ".")), fileFilter);
-
-		if (exportLocation == null) {
-			// user canceled, nothing to do
-			return;
-		}
-
-		ArrayList<String> tab_titles = new ArrayList<String>();
-
-		int tab_count = tablesTabs.getTabCount();
-		for (int i = 0; i < tab_count; i++) {
-			String tab_title = tablesTabs.getTitleAt(i).replaceAll(" ", "_").replaceAll(":", "");
-
-			// System.out.println("Title:" + tab_title);
-
-			int k = 0;
-			for (int j = 0; j < tab_titles.size(); j++) {
-				if (tab_titles.get(j).equals(tab_title))
-					k++;
-			}
-			tab_titles.add(tab_title);
-			if (k > 0)
-				tab_title += ("_" + k);
-
-			Component c = tablesTabs.getComponentAt(i);
-
-			JTable jTable = getJTableFromComponent(c);
-
-			TableModel tm = jTable.getModel();
-
-			if (tm != null) {
-				String filename = exportLocation[0].getAbsolutePath() + File.separator + tab_title + ".csv";
-				writeTableModelToFile(filename, tm);
-			}
-
-		}
-		JOptionPane.showMessageDialog(null,
-				tab_titles.size() + " files exported to " + exportLocation[0].getAbsolutePath());
-	}
-
-	protected boolean arrayListIncludes(ArrayList<String> array, String val) {
-		for (int i = 0; i < array.size(); i++) {
-			if (val.equals(array.get(i)))
-				return true;
-		}
-		return false;
-	}
-
-	/**
-	 * Writes the specified TableModel to a CSV file.
-	 * <p>
-	 * This method writes the column names and all rows of the TableModel to the
-	 * given filename in CSV format.
+	 * Updates the query tree with the queries from the specified file.
 	 *
-	 * @param filename The file to write to.
-	 * @param tm       The TableModel to export.
+	 * @param queryFile The query file to load.
 	 */
-	protected void writeTableModelToFile(String filename, TableModel tm) {
-		try {
-			PrintWriter pw = new PrintWriter(new FileOutputStream(filename));
-
-			int no_rows = tm.getRowCount();
-			int no_cols = tm.getColumnCount();
-
-			String s = "";
-			for (int j = 0; j < no_cols; j++) {
-				if (s != "")
-					s += ",";
-				s += tm.getColumnName(j);
-			}
-			pw.println(s);
-
-			for (int i = 0; i < no_rows; i++) {
-				s = "";
-				for (int j = 0; j < no_cols; j++) {
-					if (s != "")
-						s += ",";
-					s += tm.getValueAt(i, j);
-				}
-				pw.println(s);
-			}
-
-			pw.close();
-
-		} catch (Exception e) {
-			System.out.println("Problem writing tab to CSV file:" + e);
-		}
-
-	}
-
-	protected void batchQuery(File queryFile, final File excelFile) {
-		final JFrame parentFrame = InterfaceMain.getInstance().getFrame();
-		final Vector<ScenarioListItem> tempScns = getScenarios();
-		final String singleSheetCheckBoxPropName = "batchQueryResultsInDifferentSheets";
-		final String includeChartsPropName = "batchQueryIncludeCharts";
-		final String splitRunsPropName = "batchQuerySplitRunsInDifferentSheets";
-		final String replaceResultsPropName = "batchQueryReplaceResults";
-		Properties prop = InterfaceMain.getInstance().getProperties();
-
-		final String coresToUsePropertyName = "coresToUse";
-		Runtime.getRuntime().availableProcessors();
-		final int defaultNumCoresToUse = Integer.valueOf(prop.getProperty(coresToUsePropertyName, Integer.toString(2)));
-		prop.setProperty(coresToUsePropertyName, Integer.toString(defaultNumCoresToUse));
-
-		// Create a Select Scenarios dialog to get which scenarios to run
-		final JList scenarioList = new JList(tempScns);
-		final JDialog scenarioDialog = new JDialog(parentFrame, "Select Scenarios to Run", true);
-		JPanel listPane = new JPanel();
-		JPanel buttonPane = new JPanel();
-		final JCheckBox singleSheetCheckBox = new JCheckBox("Place all results in different sheets",
-				Boolean.parseBoolean(prop.getProperty(singleSheetCheckBoxPropName, "false")));
-		final JCheckBox drawPicsCheckBox = new JCheckBox("Include charts with results",
-				Boolean.parseBoolean(prop.getProperty(includeChartsPropName, "true")));
-		final JCheckBox seperateRunsCheckBox = new JCheckBox("Split runs into different sheets",
-				Boolean.parseBoolean(prop.getProperty(splitRunsPropName, "false")));
-		final JButton okButton = new JButton("Ok");
-		okButton.setEnabled(false);
-		JButton cancelButton = new JButton("Cancel");
-		listPane.setLayout(new BoxLayout(listPane, BoxLayout.Y_AXIS));
-		Container contentPane = scenarioDialog.getContentPane();
-		final JCheckBox overwriteCheckBox = new JCheckBox("Overwrite selected file if it exists",
-				Boolean.parseBoolean(prop.getProperty(replaceResultsPropName, "false")));
-
-		scenarioList.addListSelectionListener(new ListSelectionListener() {
-			public void valueChanged(ListSelectionEvent e) {
-				if (scenarioList.isSelectionEmpty()) {
-					okButton.setEnabled(false);
-				} else {
-					okButton.setEnabled(true);
+	public void updateQueryTree(File queryFile) {
+		queriesDoc = readQueries(queryFile);
+		if (queriesDoc != null) {
+			queries = getQueries();
+			if (queryList != null) {
+				queryList.setModel(queries);
+				for (int i = 0; i < queryList.getRowCount(); ++i) {
+					queryList.expandRow(i);
 				}
 			}
-		});
-
-		okButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				scenarioDialog.dispose();
-			}
-		});
-
-		cancelButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				scenarioList.clearSelection();
-				scenarioDialog.dispose();
-			}
-		});
-
-		buttonPane.setLayout(new BoxLayout(buttonPane, BoxLayout.X_AXIS));
-		buttonPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-		buttonPane.add(Box.createHorizontalGlue());
-		buttonPane.add(okButton);
-		buttonPane.add(Box.createHorizontalStrut(10));
-		buttonPane.add(cancelButton);
-
-		JScrollPane sp = new JScrollPane(scenarioList);
-		sp.setPreferredSize(new Dimension(300, 300));
-		listPane.add(new JLabel("Select Scenarios:"));
-		listPane.add(Box.createVerticalStrut(10));
-		listPane.add(sp);
-		listPane.add(singleSheetCheckBox);
-		listPane.add(overwriteCheckBox);
-		listPane.add(drawPicsCheckBox);
-		listPane.add(seperateRunsCheckBox);
-		listPane.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-		contentPane.add(listPane, BorderLayout.PAGE_START);
-		contentPane.add(buttonPane, BorderLayout.PAGE_END);
-		scenarioDialog.pack();
-		scenarioDialog.setVisible(true);
-
-		if (scenarioList.isSelectionEmpty()) {
-			return;
 		}
-		// save the check box options back into the properties
-		prop.setProperty(singleSheetCheckBoxPropName, Boolean.toString(singleSheetCheckBox.isSelected()));
-		prop.setProperty(includeChartsPropName, Boolean.toString(drawPicsCheckBox.isSelected()));
-		prop.setProperty(splitRunsPropName, Boolean.toString(seperateRunsCheckBox.isSelected()));
-		prop.setProperty(replaceResultsPropName, Boolean.toString(overwriteCheckBox.isSelected()));
-
-		// read the batch query file
-		Document queries = readQueries(queryFile);
-		final NodeList res;
-		try {
-			res = (NodeList) XPathFactory.newInstance().newXPath().evaluate("/queries/node()", queries,
-					XPathConstants.NODESET);
-		} catch (Exception e) {
-			InterfaceMain.getInstance().showMessageDialog("Could not find queries to run in batch file:\n" + queryFile,
-					"Batch Query Error", JOptionPane.ERROR_MESSAGE);
-			e.printStackTrace();
-			return;
-		}
-		final int numQueries = res.getLength();
-		if (numQueries == 0) {
-			InterfaceMain.getInstance().showMessageDialog("Could not find queries to run in batch file:\n" + queryFile,
-					"Batch Query Error", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-		final Vector<Object[]> toRunScns = new Vector<Object[]>();
-		if (!seperateRunsCheckBox.isSelected()) {
-			toRunScns.add(scenarioList.getSelectedValuesList().toArray());
-		} else {
-			for (Object scn : scenarioList.getSelectedValuesList().toArray()) {
-				Object[] temp = new Object[1];
-				temp[0] = scn;
-				toRunScns.add(temp);
-			}
-		}
-		// create window
-
-		// Provide the default set of all regions which does not include Global
-		Vector<String> allRegions = new Vector<String>(regions);
-		allRegions.remove("Global");
-
-		// Register each query that will be run by the batch so the progress UI has the correct total
-        int totalToRegister = numQueries * toRunScns.size();
-        for (int qi = 0; qi < totalToRegister; ++qi) {
-            registerNewQuery();
-        }
-         new BatchWindow(excelFile, toRunScns, allRegions, singleSheetCheckBox.isSelected(),
-				drawPicsCheckBox.isSelected(), numQueries, res, overwriteCheckBox.isSelected(), defaultNumCoresToUse);
-	}
-
-	/**
-	 * Writes the specified Document to a file.
-	 * 
-	 * @param file   The file to write to.
-	 * @param theDoc The Document to write.
-	 * @return True if successful, false otherwise.
-	 */
-	public boolean writeFile(File file, Document theDoc) {
-		LSSerializer serializer = implls.createLSSerializer();
-		DOMConfiguration domConfig = serializer.getDomConfig();
-		boolean prettyPrint = Boolean.parseBoolean(System.getProperty("ModelInterface.pretty-print", "true"));
-		domConfig.setParameter("format-pretty-print", prettyPrint);
-		// create the serializer and have it print the document
-
-		try {
-			LSOutput lsOut = implls.createLSOutput();
-			lsOut.setByteStream(new FileOutputStream(file));
-			serializer.write(theDoc, lsOut);
-		} catch (Exception e) {
-			System.err.println("Error outputting tree: " + e);
-			return false;
-		}
-		return true;
 	}
 
 	/**
@@ -3495,10 +3319,32 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 			if (c instanceof JSplitPane) {
 				// Dan-Debug - Causes error javax.swing.JPanel cannot be cast to
 				// javax.swing.JScrollPane
-				return (BaseTableModel) ((TableSorter) ((JTable) ((JScrollPane) ((JSplitPane) c).getLeftComponent())
-						.getViewport().getView()).getModel()).getTableModel();
+				Component leftComponent = ((JSplitPane) c).getLeftComponent();
+				JTable table = null;
+				if (leftComponent instanceof JScrollPane) {
+					table = (JTable) ((JScrollPane) leftComponent).getViewport().getView();
+				} else if (leftComponent instanceof JPanel) {
+					// Assuming the table is within a JScrollPane which is the second component of the JPanel
+					JScrollPane scrollPane = (JScrollPane) ((JPanel) leftComponent).getComponent(1);
+					table = (JTable) scrollPane.getViewport().getView();
+				}
+
+				if (table != null) {
+					TableModel model = table.getModel();
+					if (model instanceof TableSorter) {
+						return (BaseTableModel) ((TableSorter) model).getTableModel();
+					} else if (model instanceof BaseTableModel) {
+						return (BaseTableModel) model;
+					}
+				}
+				return null;
 			} else {
-				return (BaseTableModel) ((JTable) ((JScrollPane) c).getViewport().getView()).getModel();
+				JTable table = (JTable) ((JScrollPane) c).getViewport().getView();
+				TableModel model = table.getModel();
+				if (model instanceof TableSorter) {
+					return (BaseTableModel) ((TableSorter) model).getTableModel();
+				}
+				return (BaseTableModel) model;
 			}
 		} catch (ClassCastException e) {
 			return null;
@@ -3760,7 +3606,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		// buttons need to be layouted out horizontally
 		final JPanel buttonPanel = new JPanel();
 		buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.X_AXIS));
-		buttonPanel.add(Box.createHorizontalGlue());
+			buttonPanel.add(Box.createHorizontalGlue());
 		buttonPanel.add(scanButton);
 		buttonPanel.add(seperator);
 		buttonPanel.add(cancelButton);
@@ -4041,5 +3887,31 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		parentFrame.setLocationRelativeTo(null);
 		parentFrame.setVisible(true);
 		parentFrame.getGlassPane().setVisible(false);
+	}
+
+
+	/**
+	 * Runs a batch query from a file and saves the output.
+	 * 
+	 * @param batchFile The batch query file.
+	 * @param outFile   The output file.
+	 */
+	public void batchQuery(File batchFile, File outFile) {
+		try {
+			final Document doc = readQueries(batchFile);
+			final NodeList res = (NodeList) XPathFactory.newInstance().newXPath().evaluate("./aQuery",
+					doc.getDocumentElement(), XPathConstants.NODESET);
+			final int numQueries = res.getLength();
+			if (numQueries == 0) {
+				throw new Exception("Could not find queries to run.");
+			}
+			Vector<Object[]> toRunScns = new Vector<Object[]>();
+			toRunScns.add(scnList.getSelectedValues());
+			Vector<String> allRegions = getRegions();
+			allRegions.remove("Global");
+			new BatchWindow(outFile, toRunScns, allRegions, false, true, numQueries, res, false, 2);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 }

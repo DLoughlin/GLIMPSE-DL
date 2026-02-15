@@ -176,6 +176,7 @@ public class InterfaceMain implements ActionListener {
 	private JMenuItem toolsCSVMenu; // YD added
 	private JMenuItem toolsUnitMenu; // YD added
 	private JMenuItem editRegionsMenu; // Added: Edit Regions menu item
+	private JMenuItem selectQueryMenu;
 	// private JMenuItem toolsSankeyMenu; // YD moved to "DbViewer.java"
 
 	// New Config menu items
@@ -185,6 +186,7 @@ public class InterfaceMain implements ActionListener {
 	private JMenuItem selectMapResourceFolderMenu;
 
 	private JMenuItem editQuerySubMenu; // YD added
+	private JMenuItem toggleAutoGraphicsMenu;
 	private JMenu advancedSubMenu1;// YD added
 	private JMenu advancedSubMenu2;// YD added
 	private Properties savedProperties;
@@ -209,6 +211,7 @@ public class InterfaceMain implements ActionListener {
 	public static String gcamReg32US52ShapeFileLocation = null; // YD added,July-2024
 	public static boolean enableMapping = false; // YD added,August-2024
 	public static boolean enableSankey = false; // YD added,August-2024
+	public static boolean autoGenerateGraphics = false; // DPL added, Feb-2026
 	public static String shapeFileLocationPrefix = null;
 	public static String legendBundlesLoc = null;
 
@@ -229,6 +232,20 @@ public class InterfaceMain implements ActionListener {
 
 		// we want this to always be in root of run environment
 		propertiesFile = new File("model_interface.properties");
+		if (!propertiesFile.exists()) {
+			try {
+				if (propertiesFile.createNewFile()) {
+					System.out.println("Created new properties file: " + propertiesFile.getAbsolutePath());
+					// Write a default empty properties XML to the new file
+					try (FileOutputStream fos = new FileOutputStream(propertiesFile)) {
+						new Properties().storeToXML(fos, "ModelInterface properties");
+					}
+				}
+			} catch (IOException e) {
+				System.err.println("Could not create properties file. Proceeding with defaults.");
+				e.printStackTrace();
+			}
+		}
 		System.out.println("Getting model properties from " + propertiesFile.getAbsolutePath());
 
 		// Load properties early so we can apply precedence (CLI > properties > defaults)
@@ -265,6 +282,7 @@ public class InterfaceMain implements ActionListener {
 		parser.accepts("f", "Path to favorite queries file").withOptionalArg(); // YD added,Feb-2024
 		parser.accepts("m", "Path to mapping directory").withOptionalArg();// YD added,May-2024
 		parser.accepts("legend_bundle", "Path to the LegendBundle.properties file").withOptionalArg();
+		parser.accepts("auto-generate-graphics", "Automatically generate graphics when a scenario is run.");
 
 		OptionSet opts = null;
 		try {
@@ -393,7 +411,7 @@ public class InterfaceMain implements ActionListener {
 					unitFileLocation = f.getAbsolutePath();
 				}
 				System.out.println("    --> attempting to use default unitsFile: " + unitFileLocation + " exists: "
-						+ new File(unitFileLocation).exists());
+						+ (unitFileLocation != null && new File(unitFileLocation).exists()));
 			}
 		}
 
@@ -417,7 +435,7 @@ public class InterfaceMain implements ActionListener {
 				}
 				System.out.println(
 						"    --> attempting to use default presetRegionListLocation: " + presetRegionListLocation
-								+ " exists: " + new File(presetRegionListLocation).exists());
+								+ " exists: " + (presetRegionListLocation != null && new File(presetRegionListLocation).exists()));
 			}
 		}
 
@@ -441,10 +459,25 @@ public class InterfaceMain implements ActionListener {
 				}
 				System.out.println("    --> attempting to use default favoriteQueriesFileLocation: "
 						+ favoriteQueriesFileLocation + " exists: "
-						+ new File(favoriteQueriesFileLocation).exists());
+						+ (favoriteQueriesFileLocation != null && new File(favoriteQueriesFileLocation).exists()));
 			}
 		}
 
+		// auto-generate-graphics precedence
+		if (opts.has("auto-generate-graphics")) {
+			autoGenerateGraphics = true;
+			System.out.println("InterfaceMain: auto-generate-graphics is set to true from command line");
+			bootProps.setProperty("autoGenerateGraphics", "true");
+		} else {
+			String propAutoGraphics = bootProps.getProperty("autoGenerateGraphics", "false");
+			if (propAutoGraphics.equalsIgnoreCase("true")) {
+				autoGenerateGraphics = true;
+				System.out.println("InterfaceMain: auto-generate-graphics is set to true from properties");
+			} else {
+				autoGenerateGraphics = false;
+			}
+		}
+		
 		// Mapping folder precedence (-m)
 		if (opts.has("m")) {
 			shapeFileLocationPrefix = (String) opts.valueOf("m");
@@ -472,7 +505,7 @@ public class InterfaceMain implements ActionListener {
 				}
 				System.out.println(
 						"    --> attempting to use default shapeFileLocationPrefix: " + shapeFileLocationPrefix
-								+ " exists: " + new File(shapeFileLocationPrefix).exists());
+								+ " exists: " + (shapeFileLocationPrefix != null && new File(shapeFileLocationPrefix).exists()));
 			}
 		}
 
@@ -526,6 +559,31 @@ public class InterfaceMain implements ActionListener {
 					files[0] = f;
 					RecentFilesList.getInstance().addFile(files, "ModelInterface.ModelGUI2.DbViewer", "Open DB");
 
+				}
+				else {
+					// if no path is specified, ask the user what to do
+					String[] options = { "Choose Database", "Open without Database", "Quit" };
+					int response = JOptionPane.showOptionDialog(main.mainFrame,
+							"No database specified. What would you like to do?", "Database not specified",
+							JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+					switch (response) {
+					case 0:
+						// "Choose Database"
+						// This will trigger the file chooser and then the rest of the UI will be built
+						((ActionListener)main.dbView).actionPerformed(new ActionEvent(main.mainFrame, ActionEvent.ACTION_PERFORMED, "Open DB"));
+						break;
+					case 1:
+						// "Open without Database" - just show the GUI
+						break;
+					case 2:
+						// "Quit"
+						System.exit(0);
+						break;
+					default:
+						// User closed dialog, so quit
+						System.exit(0);
+						break;
+					}
 				}
 				showGUI();
 			}
@@ -637,6 +695,32 @@ public class InterfaceMain implements ActionListener {
 				ioe.printStackTrace();
 			}
 		}
+
+		// Ensure required properties exist
+		if (!savedProperties.containsKey("allYearList")) {
+			savedProperties.setProperty("allYearList", "1990,2005,2010,2015,2020,2021,2025,2030,2035,2040,2045,2050,2055,2060,2065,2070,2075,2080,2085,2090,2095,2100");
+		}
+		if (!savedProperties.containsKey("lastWidth")) {
+			savedProperties.setProperty("lastWidth", "800");
+		}
+		if (!savedProperties.containsKey("lastHeight")) {
+			savedProperties.setProperty("lastHeight", "800");
+		}
+		if (!savedProperties.containsKey("scenarioRegionsSplit")) {
+			savedProperties.setProperty("scenarioRegionsSplit", "200");
+		}
+		if (!savedProperties.containsKey("remove1975")) {
+			savedProperties.setProperty("remove1975", "true");
+		}
+		if (!savedProperties.containsKey("tableCreatorSplit")) {
+			savedProperties.setProperty("tableCreatorSplit", "400");
+		}
+		if (!savedProperties.containsKey("queriesSplit")) {
+			savedProperties.setProperty("queriesSplit", "400");
+		}
+		// Persist if any defaults were added
+		persistProperties();
+
 		oldControl = "ModelInterface";
 		if (path != null)
 			savedProperties.setProperty("paramPath", path);
@@ -694,6 +778,11 @@ public class InterfaceMain implements ActionListener {
         // menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveAsMenu, 25);
         // menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(FILE_MENU_SEPERATOR);
 
+        selectQueryMenu = makeMenuItem("Select Query File");
+        menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(25);
+        menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(selectQueryMenu, 26);
+        menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(27);
+
         quitMenu = makeMenuItem("Quit");
         quitMenu.setMnemonic(KeyEvent.VK_Q);
         // Removed accelerator: quitMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, getMenuShortcutMask()));
@@ -709,6 +798,10 @@ public class InterfaceMain implements ActionListener {
         JMenu viewMenu = new JMenu("View");
         viewMenu.setMnemonic(KeyEvent.VK_V);
         menuMan.addMenuItem(viewMenu, VIEW_MENU_POS);
+
+        toggleAutoGraphicsMenu = makeMenuItem(autoGenerateGraphics ? "Disable Auto Graphics" : "Enable Auto Graphics");
+        menuMan.getSubMenuManager(VIEW_MENU_POS).addMenuItem(toggleAutoGraphicsMenu, 9);
+
         JMenu toolsMenu = new JMenu("Tools");
         toolsMenu.setMnemonic(KeyEvent.VK_T);
         menuMan.addMenuItem(toolsMenu, TOOLS_MENU_POS);
@@ -724,7 +817,8 @@ public class InterfaceMain implements ActionListener {
         batchMenu = new JMenuItem("Run Batch…");
         // Removed accelerator: batchMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, getMenuShortcutMask()));
         batchMenu.addActionListener(this);
-        // menuMan.getSubMenuManager(TOOLS_MENU_POS).addMenuItem(batchMenu, 10);
+        menuMan.getSubMenuManager(TOOLS_MENU_POS).addMenuItem(batchMenu, 18);
+        menuMan.getSubMenuManager(TOOLS_MENU_POS).addSeparator(19);
 
         JMenu helpMenu = new JMenu("Help");
         helpMenu.setMnemonic(KeyEvent.VK_H);
@@ -933,6 +1027,13 @@ public class InterfaceMain implements ActionListener {
 			// and open the system editor, allowing user to edit it
 		} else if (e.getActionCommand().equals("Preferences…")) {
 			showPreferencesDialog();
+		} else if (e.getActionCommand().equals("Disable Auto Graphics") || e.getActionCommand().equals("Enable Auto Graphics")) {
+			autoGenerateGraphics = !autoGenerateGraphics;
+			toggleAutoGraphicsMenu.setText(autoGenerateGraphics ? "Disable Auto Graphics" : "Enable Auto Graphics");
+			setProperty("autoGenerateGraphics", Boolean.toString(autoGenerateGraphics));
+		} else if (e.getActionCommand().equals("Select Query File")) {
+			// Let DbViewer handle this
+			fireProperty("SelectQuery", null, null);
 		} else if (e.getActionCommand().equals("Help")) {
 			try {
 				Desktop.getDesktop().browse(new URI("https://github.com/USEPA/GLIMPSE"));
@@ -1301,9 +1402,13 @@ public class InterfaceMain implements ActionListener {
 	}
 
 	public void showMessageDialog(Object message, String title, int messageType) {
-		System.out.print(convertMessageTypeToString(messageType));
-		System.out.print("; ");
-		System.out.println(message);
+		if (GraphicsEnvironment.isHeadless()) {
+			System.out.print(convertMessageTypeToString(messageType));
+			System.out.print("; ");
+			System.out.println(message);
+			return;
+		}
+		JOptionPane.showMessageDialog(mainFrame, message, title, messageType);
 	}
 
 	private static String convertOptionTypeToString(int optionType) {

@@ -98,11 +98,16 @@ public class OptionsArea {
 	protected void setOptionsArea() {
 		Box box = Box.createHorizontalBox();
 		box.add(Box.createHorizontalStrut(5));
-		JButton jb = new JButton("More");
+		JButton jb = new JButton("Options");
 		jb.setBackground(LegendUtil.getRGB(-8205574));
 		java.awt.event.MouseListener ml1 = new MouseAdapter() {
 			public void mouseClicked(MouseEvent e) {
-				ThumbnailBoxPopup popup = new ThumbnailBoxPopup(chart, w, gridWidth, sameScale, sp);
+				Runnable refreshAction = new Runnable() {
+					public void run() {
+						setChartPane();
+					}
+				};
+				ThumbnailBoxPopup popup = new ThumbnailBoxPopup(chart, w, gridWidth, sameScale, sp, refreshAction);
 				popup.show(jp, e.getX(), e.getY());
 			}
 		};
@@ -127,7 +132,7 @@ public class OptionsArea {
 		box.add(scaleCheckBox());
 		box.add(Box.createHorizontalStrut(10));
 
-		jb = new JButton("Refresh");
+		/*jb = new JButton("Refresh");
 		jb.setBackground(LegendUtil.getRGB(-8205574));
 		java.awt.event.MouseListener ml = new MouseAdapter() {
 			public void mouseClicked(MouseEvent e) {
@@ -135,7 +140,7 @@ public class OptionsArea {
 			}
 		};
 		jb.addMouseListener(ml);
-		box.add(jb);
+		box.add(jb);*/
 		box.add(Box.createHorizontalStrut(10));
 
 		jp.add(box, BorderLayout.NORTH);

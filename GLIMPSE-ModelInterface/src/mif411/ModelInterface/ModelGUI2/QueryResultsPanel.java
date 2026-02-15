@@ -46,8 +46,10 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -161,6 +163,48 @@ public class QueryResultsPanel extends JPanel {
 
 				// the panel is refreshed to show the changes
 				revalidate();
+
+				final JComponent finalRet = ret;
+				javax.swing.SwingUtilities.invokeLater(new Runnable() {
+					public void run() {
+						if (InterfaceMain.autoGenerateGraphics) {
+							if (finalRet instanceof JSplitPane) {
+								JSplitPane sp = (JSplitPane) finalRet;
+								
+								// Check if we should graph based on row count
+								boolean shouldGraph = true;
+								
+								// Try to inspect the table to get row count
+								JTable table = getJTableFromComponent(thisThread);
+								if (table != null && table.getRowCount() >= 150) {
+									shouldGraph = false;
+									System.out.println("Auto-graphics skipped: Result has " + table.getRowCount() + " rows (limit is 30).");
+								} else if (table != null) {
+									System.out.println("Auto-graphics proceeding: Result has " + table.getRowCount() + " rows.");
+								}
+
+								if (shouldGraph && sp.getLeftComponent() instanceof JPanel) {
+									JPanel jp = (JPanel) sp.getLeftComponent();
+									clickGraphButton(jp);
+								}
+							}
+						}
+					}
+
+					private void clickGraphButton(java.awt.Container container) {
+						for (java.awt.Component comp : container.getComponents()) {
+							if (comp instanceof JButton) {
+								JButton button = (JButton) comp;
+								if ("Graph".equals(button.getText())) {
+									button.doClick();
+									return;
+								}
+							} else if (comp instanceof java.awt.Container) {
+								clickGraphButton((java.awt.Container) comp);
+							}
+						}
+					}
+				});
 			}
 		};
 		runThread.start();
@@ -828,6 +872,26 @@ public class QueryResultsPanel extends JPanel {
 		}
 
 		return rtn_list;
+	}
+
+	/**
+	 * recursive method to find the JTable in the component
+	 * 
+	 * @param comp
+	 * @return
+	 */
+	public JTable getJTableFromComponent(JComponent comp) {
+		if (comp instanceof JTable)
+			return (JTable) comp;
+		for (int i = 0; i < comp.getComponentCount(); i++) {
+			java.awt.Component child = comp.getComponent(i);
+			if (child instanceof JComponent) {
+				JTable ret = getJTableFromComponent((JComponent) child);
+				if (ret != null)
+					return ret;
+			}
+		}
+		return null;
 	}
 
 }

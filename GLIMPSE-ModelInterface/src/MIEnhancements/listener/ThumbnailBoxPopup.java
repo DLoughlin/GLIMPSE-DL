@@ -63,6 +63,7 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
     private int gridWidth;
     private boolean useSameScale;
     private JSplitPane splitPane;
+    private Runnable refreshAction;
 
     /**
      * Constructs the popup menu for thumbnail chart operations.
@@ -73,11 +74,25 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
      * @param splitPane JSplitPane containing chart panel
      */
     public ThumbnailBoxPopup(Chart[] charts, int thumbnailWidth, int gridWidth, boolean useSameScale, JSplitPane splitPane) {
+        this(charts, thumbnailWidth, gridWidth, useSameScale, splitPane, null);
+    }
+
+    /**
+     * Constructs the popup menu for thumbnail chart operations, with refresh capability.
+     * @param charts Array of Chart objects
+     * @param thumbnailWidth Width of chart thumbnails
+     * @param gridWidth Number of columns in grid
+     * @param useSameScale Whether to use same scale for all charts
+     * @param splitPane JSplitPane containing chart panel
+     * @param refreshAction Action to run when Refresh is clicked
+     */
+    public ThumbnailBoxPopup(Chart[] charts, int thumbnailWidth, int gridWidth, boolean useSameScale, JSplitPane splitPane, Runnable refreshAction) {
         this.charts = charts;
         this.thumbnailWidth = thumbnailWidth;
         this.gridWidth = gridWidth;
         this.useSameScale = useSameScale;
         this.splitPane = splitPane;
+        this.refreshAction = refreshAction;
         createMenuItems();
     }
 
@@ -90,6 +105,12 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
             menuItem.addActionListener(this);
             this.add(menuItem);
         }
+        
+        if (refreshAction != null) {
+            JMenuItem refreshItem = new JMenuItem("Refresh");
+            refreshItem.addActionListener(this);
+            this.add(refreshItem);
+        }
     }
 
     /**
@@ -99,23 +120,29 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
      */
     @Override
     public void actionPerformed(ActionEvent e) {
-        JMenuItem source = (JMenuItem) e.getSource();
-        try {
-            if (charts != null) {
-                String selected = source.getText();
-                if (selected.equalsIgnoreCase("Difference")) {
-                    // Show difference chart
-                    new AChartDisplay(new DifferenceChartPane(charts).getChart());
-                } else if (selected.equalsIgnoreCase("Transpose")) {
-                    // Show transposed chart
-                    new Transpose(charts.clone(), thumbnailWidth, gridWidth, useSameScale, splitPane);
-                }
+        if ("Refresh".equals(e.getActionCommand())) {
+            if (refreshAction != null) {
+                refreshAction.run();
             }
-        } catch (ClassNotFoundException | NullPointerException ex) {
-            ex.printStackTrace();
-        } catch (Exception ex) {
-            System.out.println("Other error!");
-            ex.printStackTrace();
+        } else {
+            JMenuItem source = (JMenuItem) e.getSource();
+            try {
+                if (charts != null) {
+                    String selected = source.getText();
+                    if (selected.equalsIgnoreCase("Difference")) {
+                        // Show difference chart
+                        new AChartDisplay(new DifferenceChartPane(charts).getChart());
+                    } else if (selected.equalsIgnoreCase("Transpose")) {
+                        // Show transposed chart
+                        new Transpose(charts.clone(), thumbnailWidth, gridWidth, useSameScale, splitPane);
+                    }
+                }
+            } catch (ClassNotFoundException | NullPointerException ex) {
+                ex.printStackTrace();
+            } catch (Exception ex) {
+                System.out.println("Other error!");
+                ex.printStackTrace();
+            }
         }
         this.setVisible(false); // Hide popup after action
     }

@@ -125,6 +125,8 @@ public class TabMarketShare extends PolicyTab implements Runnable {
     private static final String METADATA_REGIONS = "#Regions: ";
     private static final String METADATA_TABLE_DATA = "#Table data:";
 
+    private boolean isEditing = false;
+
     /**
      * Constructs a TabMarketShare instance for the given scenario builder tab.
      * @param title  the tab title
@@ -336,7 +338,9 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 				if ((selectedItem.contains("RPS")) || (selectedItem.contains("CES"))) {
 					//showInfo("For RPS and CES options:\nTechnology selections chosen automatically. Modify as needed.",
 					//		"Information");
-					utils.warningMessage("For RPS and CES options:\nTechnology selections chosen automatically. Modify as needed");	
+					if (!isEditing) {
+						utils.warningMessage("For RPS and CES options:\nTechnology selections chosen automatically. Modify as needed");
+					}
 					this.comboBoxAppliedTo.getSelectionModel().select("All Stock");
 					this.comboBoxTreatment.getSelectionModel().select("Across Selected Regions");
 					this.comboBoxModificationType.getSelectionModel().select("Initial and Final %");
@@ -1217,65 +1221,70 @@ public class TabMarketShare extends PolicyTab implements Runnable {
      */
     @Override
     public void loadContent(ArrayList<String> content) {
-        for (int i = 0; i < content.size(); i++) {
-            String line = content.get(i);
-            int pos = line.indexOf(":");
-            if (line.startsWith("#") && (pos > -1)) {
-                String param = line.substring(1, pos).trim().toLowerCase();
-                String value = line.substring(pos + 1).trim();
+        if (content == null) {
+            return;
+        }
 
-                if ((param.contains("type")) && (!param.startsWith("Scenario component"))) {
-                    comboBoxPolicyType.setValue(value);
-                    comboBoxPolicyType.fireEvent(new ActionEvent());
-                } else if (param.equals("applied to")) {
-                    if (value.contains("sales")) {
-                        value = "Sales";
-                    } else {
-                        value = "All Stock";
-                    }
-                    comboBoxAppliedTo.setValue(value);
-                    comboBoxAppliedTo.fireEvent(new ActionEvent());
-                } else if (param.equals("treatment")) {
-                    comboBoxTreatment.setValue(value);
-                    comboBoxTreatment.fireEvent(new ActionEvent());
-                } else if (param.equals("constraint")) {
-                    comboBoxConstraint.setValue(value);
-                    comboBoxConstraint.fireEvent(new ActionEvent());
-//                } else if (param.equals("policy name")) {
-//                    textFieldPolicyName.setText(value);
-//                    textFieldPolicyName.fireEvent(new ActionEvent());
-//                } else if (param.equals("market name")) {
-//                    textFieldMarketName.setText(value);
-//                    textFieldMarketName.fireEvent(new ActionEvent());
-                } else if (param.equals("subset")) {
-                    checkComboBoxSubset.getCheckModel().clearChecks();
-                    String[] set = utils.splitString(value, ";");
-                    for (int j = 0; j < set.length; j++) {
-                        String item = set[j].trim();
-                        // Attempt to check by exact item text; ControlsFX will ignore unknown items
-                        checkComboBoxSubset.getCheckModel().check(item);
-                    }
-                    checkComboBoxSubset.fireEvent(new ActionEvent());
-                } else if (param.equals("superset")) {
-                    checkComboBoxSuperset.getCheckModel().clearChecks();
-                    String[] set = utils.splitString(value, ";");
-                    for (int j = 0; j < set.length; j++) {
-                        String item = set[j].trim();
-                        checkComboBoxSuperset.getCheckModel().check(item);
-                    }
-                    checkComboBoxSuperset.fireEvent(new ActionEvent());
-                } else if (param.equals("regions")) {
-                    String[] regions = utils.splitString(value, ",");
-                    this.paneForCountryStateTree.selectNodes(regions);
-                } else if (param.equals("table data")) {
-                    String[] s = utils.splitString(value, ",");
-                    this.paneForComponentDetails.data.add(new DataPoint(s[0], s[1]));
-                }
-
+        // Process "Type" first to ensure dependent controls are set up correctly
+        for (String line : content) {
+            if (line.startsWith(METADATA_TYPE)) {
+                String value = line.substring(METADATA_TYPE.length()).trim();
+                comboBoxPolicyType.getSelectionModel().select(value);
+                comboBoxPolicyType.fireEvent(new ActionEvent());
+                break; // Process only the first occurrence
             }
         }
-        this.setPolicyAndMarketNames();
-        this.paneForComponentDetails.updateTable();
+
+        // Now process other fields
+        for (String line : content) {
+            if (line.startsWith(METADATA_SUBSET)) {
+                setCheckComboBoxItems(checkComboBoxSubset, line.substring(METADATA_SUBSET.length()));
+            } else if (line.startsWith(METADATA_SUPERSET)) {
+                setCheckComboBoxItems(checkComboBoxSuperset, line.substring(METADATA_SUPERSET.length()));
+            } else if (line.startsWith(METADATA_APPLIED_TO)) {
+                comboBoxAppliedTo.getSelectionModel().select(line.substring(METADATA_APPLIED_TO.length()).trim());
+            } else if (line.startsWith(METADATA_TREATMENT)) {
+                comboBoxTreatment.getSelectionModel().select(line.substring(METADATA_TREATMENT.length()).trim());
+            } else if (line.startsWith(METADATA_CONSTRAINT)) {
+                comboBoxConstraint.getSelectionModel().select(line.substring(METADATA_CONSTRAINT.length()).trim());
+            } else if (line.startsWith(METADATA_POLICY_NAME)) {
+                textFieldPolicyName.setText(line.substring(METADATA_POLICY_NAME.length()).trim());
+                checkBoxUseAutoNames.setSelected(false);
+                textFieldPolicyName.setDisable(false);
+            } else if (line.startsWith(METADATA_MARKET_NAME)) {
+                textFieldMarketName.setText(line.substring(METADATA_MARKET_NAME.length()).trim());
+                checkBoxUseAutoNames.setSelected(false);
+                textFieldMarketName.setDisable(false);
+            } else if (line.startsWith(METADATA_REGIONS)) {
+                String regions = line.substring(METADATA_REGIONS.length()).trim();
+                this.paneForCountryStateTree.setSelectedNodes(regions);
+            } else if (line.startsWith(METADATA_TABLE_DATA)) {
+                String tableData = line.substring(METADATA_TABLE_DATA.length()).trim();
+                this.paneForComponentDetails.populateTableFromCSV(tableData);
+            }
+        }
+    }
+
+    /**
+     * Sets the editing flag.
+     * @param isEditing true if the component is being edited, false otherwise.
+     */
+    public void setEditing(boolean isEditing) {
+        this.isEditing = isEditing;
+    }
+
+    /**
+     * Sets the checked items in a CheckComboBox from a comma-separated string.
+     * @param checkComboBox The CheckComboBox to update.
+     * @param value The comma-separated string of items to check.
+     */
+    private void setCheckComboBoxItems(CheckComboBox<String> checkComboBox, String value) {
+        checkComboBox.getCheckModel().clearChecks();
+        String[] items = utils.splitString(value, ";");
+        for (String item : items) {
+            checkComboBox.getCheckModel().check(item.trim());
+        }
+        checkComboBox.fireEvent(new ActionEvent());
     }
 
     /**

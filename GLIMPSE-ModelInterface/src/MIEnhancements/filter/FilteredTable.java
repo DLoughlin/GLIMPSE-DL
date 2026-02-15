@@ -185,17 +185,12 @@ public class FilteredTable {
         // Filter button
         JButton jb = new JButton("Filter");
         jb.setBackground(LegendUtil.getRGB(-8205574));
-        jb.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
-                new FilterTreePane(chartName, unit, path, jTable, sel, sp);
-            }
-        });
+        jb.addActionListener(e -> new FilterTreePane(chartName, unit, path, jTable, sel, sp));
         box.add(jb);
         // Graph button
         jb = new JButton("Graph");
         jb.setBackground(LegendUtil.getRGB(-8205574));
-        jb.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
+        jb.addActionListener(e -> {
                 if (debug)
                     System.out.println("FilteredTable: graph press: " + chartName + " " + Arrays.toString(unit) + " " + path + " " + doubleIndex + " " + jtable.getColumnCount() + "  " + jtable.getRowCount());
                 if (tn == null) {
@@ -203,14 +198,13 @@ public class FilteredTable {
                     HashMap<String, String> unitsMap = ModelInterfaceUtil.getUnitDataFromTableByLastNamedCol(jTable);
                     tn = new Thumbnail(chartName, unit, path, doubleIndex, jtable, metaMap, sp, unitsMap);
                 }
-                JPanel jp = tn.getJp();
-                if (jp != null)
-                    setRightComponent(jp);
+                JPanel graphPanel = tn.getJp();
+                if (graphPanel != null)
+                    setRightComponent(graphPanel);
                 else {
                     tn = null;
                     System.gc();
                 }
-            }
         });
         box.add(jb);
         box.add(new JLabel(" "));
@@ -219,8 +213,7 @@ public class FilteredTable {
         jb.setBackground(LegendUtil.getRGB(-8205574));
         jb.setToolTipText("Beta: Map regional data");
         jb.setFont(jb.getFont());
-        jb.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
+        jb.addActionListener(e -> {
                 if (debug)
                     System.out.println("FilteredTable: mapping press: " + chartName + " " + Arrays.toString(unit) + " " + path + " " + doubleIndex + " " + jtable.getColumnCount() + "  " + jtable.getRowCount());
                 Map<String, Integer[]> metaMap = ModelInterfaceUtil.getMetaIndex2(jtable, doubleIndex);
@@ -253,7 +246,6 @@ public class FilteredTable {
                         worldMap = new WorldMapPanel(chartName, jtable, statesIncluded);
                     }
                 }
-            }
         });
         if (InterfaceMain.enableMapping) {
             box.add(jb);
@@ -263,8 +255,7 @@ public class FilteredTable {
         jb.setBackground(LegendUtil.getRGB(-8205574));
         jb.setToolTipText("Beta: Plot data to Sankey Diagram");
         jb.setFont(jb.getFont());
-        jb.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
+        jb.addActionListener(e -> {
                 boolean noRowSelected = jtable.getSelectionModel().isSelectionEmpty();
                 boolean containOtherColumns = checkContainOtherColumns(jtable);
                 if (!containOtherColumns) {
@@ -277,7 +268,6 @@ public class FilteredTable {
                         e1.printStackTrace();
                     }
                 }
-            }
         });
         if (InterfaceMain.enableSankey) {
             box.add(jb);

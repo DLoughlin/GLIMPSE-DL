@@ -128,7 +128,9 @@ public class JFileChooserWrapper implements FileChooser {
 				ret[0] = toWrap.getSelectedFile();
 			}
 			if(actionListener != null && actionCommand != null) {
-				RecentFilesList.getInstance().addFile(ret, actionListener, actionCommand);
+				if( "Open DB".equals(actionCommand)) {
+					RecentFilesList.getInstance().addFile(ret, actionListener, actionCommand);
+				}
 			}
 			return ret;
 		} else {
