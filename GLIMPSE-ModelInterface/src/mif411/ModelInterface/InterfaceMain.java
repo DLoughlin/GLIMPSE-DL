@@ -722,25 +722,28 @@ public class InterfaceMain implements ActionListener {
 
 		// Ensure required properties exist
 		if (!savedProperties.containsKey("allYearList")) {
-			savedProperties.setProperty("allYearList", "2015;2020;2021;2025;2030;2035;2040;2045;2050;2055;2060;2065;2070;2075;2080;2085;2090;2095;2100");
+			savedProperties.setProperty("allYearList", "1990;2005;2010;2015;2020;2021;2025;2030;2035;2040;2045;2050;2055;2060;2065;2070;2075;2080;2085;2090;2095;2100");
+		}
+		if (!savedProperties.containsKey("selectedYearList")) {
+			savedProperties.setProperty("selectedYearList", "2015;2020;2021;2025;2030;2035;2040;2045;2050;2055;2060;2065;2070;2075;2080;2085;2090;2095;2100");
 		}
 		if (!savedProperties.containsKey("lastWidth")) {
-			savedProperties.setProperty("lastWidth", "1655");
+			savedProperties.setProperty("lastWidth", "1600");
 		}
 		if (!savedProperties.containsKey("lastHeight")) {
-			savedProperties.setProperty("lastHeight", "1061");
+			savedProperties.setProperty("lastHeight", "900");
 		}
 		if (!savedProperties.containsKey("scenarioRegionsSplit")) {
-			savedProperties.setProperty("scenarioRegionsSplit", "283");
+			savedProperties.setProperty("scenarioRegionsSplit", "275");
 		}
 		if (!savedProperties.containsKey("remove1975")) {
 			savedProperties.setProperty("remove1975", "true");
 		}
 		if (!savedProperties.containsKey("tableCreatorSplit")) {
-			savedProperties.setProperty("tableCreatorSplit", "514");
+			savedProperties.setProperty("tableCreatorSplit", "500");
 		}
 		if (!savedProperties.containsKey("queriesSplit")) {
-			savedProperties.setProperty("queriesSplit", "709");
+			savedProperties.setProperty("queriesSplit", "700");
 		}
 		if (!savedProperties.containsKey("enableMapping")) {
 			savedProperties.setProperty("enableMapping", "true");

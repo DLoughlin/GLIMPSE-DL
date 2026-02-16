@@ -71,12 +71,14 @@ public class FilterTreePaneYears {
     public JDialog dialog;
     private boolean debug = false;
     final InterfaceMain main = InterfaceMain.getInstance();
+    private List<String> filterSelectedYears;
 
     /**
      * Constructs the filter tree pane and displays the filter dialog.
      */
     public FilterTreePaneYears() {
         try {
+            filterSelectedYears = new ArrayList<>(Arrays.asList(main.getProperties().getProperty("selectedYearList", "").split(";")));
             showFilter();
         } catch (Exception e) {
             System.out.println(e.getMessage());
@@ -148,19 +150,9 @@ public class FilterTreePaneYears {
             public void mousePressed(MouseEvent e) {
                 JButton but = (JButton) e.getSource();
                 if (but.getName().trim().equals("Ok")) {
-                    // If no years are selected, show warning
-                    if (DbViewer.getSelectedYearsFromPropFile().isEmpty()) {
+                    String selectedYears = main.getProperties().getProperty("selectedYearList", "");
+                    if (selectedYears.isEmpty()) {
                         JOptionPane.showMessageDialog(null, "Select filter", "Warning", JOptionPane.WARNING_MESSAGE);
-                    } else {
-                        // Build a string of all selected years
-                        StringBuilder toWrite = new StringBuilder();
-                        for (String s : DbViewer.getSelectedYearsFromPropFile().keySet()) {
-                            toWrite.append(s).append(";");
-                        }
-                        if (toWrite.length() > 0) {
-                            toWrite.setLength(toWrite.length() - 1); // Remove last semicolon
-                        }
-                        main.getProperties().setProperty("selectedYearList", toWrite.toString());
                     }
                 }
                 dialog.dispose();
@@ -180,7 +172,7 @@ public class FilterTreePaneYears {
      * @param top Root node
      */
     private void createNodes(DefaultMutableTreeNode top) {
-        List<String> years = DbViewer.getAllYearListFromPropFile();
+        List<String> years = new ArrayList<>(Arrays.asList(main.getProperties().getProperty("allYearList", "").split(";")));
         for (String year : years) {
             createNode(year, "filter", top);
         }
@@ -196,7 +188,7 @@ public class FilterTreePaneYears {
     private DefaultMutableTreeNode createNode(String nodename, String type, DefaultMutableTreeNode top) {
         DefaultMutableTreeNode category = null;
         if (nodename != null) {
-            boolean selected = DbViewer.getSelectedYearsFromPropFile().containsKey(nodename) || nodename.contains("Filter");
+            boolean selected = filterSelectedYears.contains(nodename) || nodename.contains("Filter");
             category = new DefaultMutableTreeNode(new TrNode(nodename, type, selected, top));
             if (top != null) {
                 top.add(category);
@@ -216,6 +208,7 @@ public class FilterTreePaneYears {
     private void setNodeBoolean(String[] leaf, boolean selected, DefaultMutableTreeNode node) {
         TreeNode tNode = node;
         String keyStr = ((TrNode) node.getUserObject()).keyStr;
+
         if (!node.isRoot()) {
             ((TrNode) node.getUserObject()).setSelected(selected);
             TreePath tpath = new TreePath(tNode);
@@ -229,10 +222,11 @@ public class FilterTreePaneYears {
                         if (leaf != null) {
                             selected = Arrays.asList(leaf).contains(keyStr.trim());
                         }
-                        if (selected)
-                            DbViewer.getSelectedYearsFromPropFile().put(keyStr, keyStr);
-                        else
-                            DbViewer.getSelectedYearsFromPropFile().remove(keyStr, keyStr);
+                        if (selected) {
+                            if (!filterSelectedYears.contains(keyStr)) filterSelectedYears.add(keyStr);
+                        } else {
+                            filterSelectedYears.remove(keyStr);
+                        }
                         ((TrNode) n.getUserObject()).setSelected(selected);
                     } else {
                         setNodeBoolean(leaf, selected, n);
@@ -243,17 +237,16 @@ public class FilterTreePaneYears {
                 if (leaf != null) {
                     selected = Arrays.asList(leaf).contains(keyStr.trim());
                 }
-                if (selected)
-                    DbViewer.getSelectedYearsFromPropFile().put(keyStr, keyStr);
-                else
-                    DbViewer.getSelectedYearsFromPropFile().remove(keyStr, keyStr);
+                if (selected) {
+                    if (!filterSelectedYears.contains(keyStr)) filterSelectedYears.add(keyStr);
+                } else {
+                    filterSelectedYears.remove(keyStr);
+                }
                 DefaultMutableTreeNode pn = (DefaultMutableTreeNode) node.getParent();
                 checkPartial(pn, ((TrNode) pn.getUserObject()).isSelected);
             }
             if (debug) {
-                for (String key : DbViewer.getSelectedYearsFromPropFile().keySet()) {
-                    System.out.println("setNodeBoolean:sel: " + DbViewer.getSelectedYearsFromPropFile().get(key));
-                }
+                System.out.println("setNodeBoolean:sel: " + String.join(";", filterSelectedYears));
             }
         } else {
             selectAllBox(selected);
@@ -335,7 +328,7 @@ public class FilterTreePaneYears {
      * Sets selection state for all nodes based on selected years.
      */
     public void setSelBoolean() {
-        String[] leaf = DbViewer.getSelectedYearsFromPropFile().keySet().toArray(new String[0]);
+        String[] leaf = filterSelectedYears.toArray(new String[0]);
         TreeNode root = (TreeNode) tree.getModel().getRoot();
         TreePath tPath = new TreePath(root);
         tree.expandPath(tPath);

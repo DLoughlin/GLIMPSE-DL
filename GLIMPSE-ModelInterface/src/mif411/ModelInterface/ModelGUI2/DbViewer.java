@@ -404,7 +404,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	 * 
 	 * @return Map of selected years.
 	 */
-	public static Map<String, String> getSelectedYearsFromPropFile() {
+	public static Map<String, String> getSelectedYearListFromPropFile() {
 
 		if (DbViewer.selectedYears == null) {
 
