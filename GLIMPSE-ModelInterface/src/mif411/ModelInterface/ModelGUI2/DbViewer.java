@@ -330,22 +330,22 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 						if (queryFile == null) {
 							System.out.println("No query file specified in properties. Select query file via ModelInterface file menu.");
 						}
-//						if (queryFile == null || !queryFile.exists()) {
-//							FileChooser fc = FileChooserFactory.getFileChooser();
-//							final FileFilter xmlFilter = new XMLFilter();
-//							File[] xmlFiles = fc.doFilePrompt(parentFrame,
-//									"Could not find query file.  Please select one.", FileChooser.LOAD_DIALOG,
-//									new File(main.getProperties().getProperty("lastDirectory", ".")), xmlFilter);
-//							if (xmlFiles == null && xmlFiles.length > 0) {
-//								// user hit cancel just create a new query file
-//								queryFileName = "Main_queries.xml";
-//								queryFile = new File(queryFileName);
-//							} else {
-//								queryFile = xmlFiles[0];
-//								queryFileName = queryFile.getAbsolutePath();
-//							}
-//							prop.setProperty("queryFile", queryFileName);
-//						}
+						if (queryFile == null || !queryFile.exists()) {
+							FileChooser fc = FileChooserFactory.getFileChooser();
+							final FileFilter xmlFilter = new XMLFilter();
+							File[] xmlFiles = fc.doFilePrompt(parentFrame,
+									"Could not find query file.  Please select one.", FileChooser.LOAD_DIALOG,
+									new File(main.getProperties().getProperty("lastDirectory", ".")), xmlFilter);
+							if (xmlFiles == null && xmlFiles.length > 0) {
+								// user hit cancel just create a new query file
+								queryFileName = "Main_queries.xml";
+								queryFile = new File(queryFileName);
+							} else {
+								queryFile = xmlFiles[0];
+								queryFileName = queryFile.getAbsolutePath();
+							}
+							prop.setProperty("queryFile", queryFileName);
+						}
 
 						// TODO: move to load preferences
 						scenarioRegionSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true);

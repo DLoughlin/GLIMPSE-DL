@@ -289,7 +289,11 @@ public class DiffResultsPanel extends QueryResultsPanel {
 		// jTable.getColumnCount() - 1)); //@
 		
 		if(DbViewer.enableUnitConversions) {
-			convertUnits(qg,jTable);
+			try {
+				convertUnits(qg,jTable);
+			} catch(Exception e) {
+				System.out.println("Could not convert units: "+e.toString());
+			}
 		}
 		
 		String[][] units = getUnits(qg, jTable);

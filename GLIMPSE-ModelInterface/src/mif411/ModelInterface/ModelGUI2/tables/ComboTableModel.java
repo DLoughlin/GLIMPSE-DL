@@ -86,7 +86,6 @@ import ModelInterface.ModelGUI2.xmldb.DbProcInterrupt;
 import ModelInterface.ModelGUI2.xmldb.QueryBinding;
 import ModelInterface.ModelGUI2.xmldb.XMLDB;
 import ModelInterface.common.DataPair;
-import javafx.application.Platform;
 
 public class ComboTableModel extends BaseTableModel {
 

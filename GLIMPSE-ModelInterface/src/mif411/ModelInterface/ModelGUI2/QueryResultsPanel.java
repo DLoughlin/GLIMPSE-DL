@@ -678,6 +678,7 @@ public class QueryResultsPanel extends JPanel {
 			}
 		}catch(Exception e) {
 			System.out.println("Could not read units file: "+e.toString());
+			return null;
 		}
 		return localInfo;
 	}
