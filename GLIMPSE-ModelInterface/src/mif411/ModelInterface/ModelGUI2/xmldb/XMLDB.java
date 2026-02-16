@@ -140,7 +140,15 @@ public class XMLDB {
 			throw new Exception("Could not open databse because "+xmldbInstance.contName+
 					" is still open");
 		}
-        xmldbInstance = new XMLDB(dbLocation);
+		try {
+			xmldbInstance = new XMLDB(dbLocation);
+		} catch (FileSystemNotFoundException e) {
+			if (e.getMessage() != null && e.getMessage().contains("rsrc")) {
+				// Suppress "Provider rsrc not installed" error
+			} else {
+				throw e;
+			}
+		}
     }
 	/**
 	 * Opens a new xml database at the given location and potentially an existing context.
@@ -158,11 +166,15 @@ public class XMLDB {
 					" is still open");
 		}
 		try {
-		xmldbInstance = new XMLDB(contextIn);
+			xmldbInstance = new XMLDB(contextIn);
 		} 
 		catch (FileSystemNotFoundException e) {
-		    System.err.println("BaseX initialization issue. Likely OK. Continuing...");
-		    throw e;
+			if (e.getMessage() != null && e.getMessage().contains("rsrc")) {
+				// Suppress "Provider rsrc not installed" error
+			} else {
+				System.err.println("BaseX initialization issue. Likely OK. Continuing...");
+				throw e;
+			}
 		}
 	}
 

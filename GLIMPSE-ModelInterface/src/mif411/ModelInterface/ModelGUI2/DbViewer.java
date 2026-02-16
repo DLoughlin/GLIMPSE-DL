@@ -1535,13 +1535,19 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 					// iterates over selected queries by path
 					for (int i = 0; i < selPaths.length; ++i) {
 						try {
+							Object lastComp = selPaths[i].getLastPathComponent();
+							// Skip QueryGroups (folders)
+							if (lastComp.getClass().getName().contains("QueryGroup")) {
+								continue;
+							}
+							
 							QueryGenerator qg = null;
 							QueryBinding singleBinding = null;
-							if (selPaths[i].getLastPathComponent() instanceof QueryGenerator) {
-								qg = (QueryGenerator) selPaths[i].getLastPathComponent();
+							if (lastComp instanceof QueryGenerator) {
+								qg = (QueryGenerator) lastComp;
 							} else {
-								singleBinding = ((SingleQueryExtension.SingleQueryValue) selPaths[i]
-										.getLastPathComponent()).getAsQueryBinding();
+								singleBinding = ((SingleQueryExtension.SingleQueryValue) lastComp)
+										.getAsQueryBinding();
 								qg = (QueryGenerator) selPaths[i].getParentPath().getLastPathComponent();
 							}
 							// add loading icon to QueryResultsPanel
@@ -1592,13 +1598,18 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 					// iterates over selected queries by path
 					for (int i = 0; i < selPaths.length; ++i) {
 						try {
+							Object lastComp = selPaths[i].getLastPathComponent();
+							// Skip QueryGroups (folders)
+							if (lastComp.getClass().getName().contains("QueryGroup")) {
+								continue;
+							}
+
 							QueryGenerator qg = null;
 							QueryBinding singleBinding = null;
-							if (selPaths[i].getLastPathComponent() instanceof QueryGenerator) {
-								qg = (QueryGenerator) selPaths[i].getLastPathComponent();
+							if (lastComp instanceof QueryGenerator) {
+								qg = (QueryGenerator) lastComp;
 							} else {
-								singleBinding = ((SingleQueryExtension.SingleQueryValue) selPaths[i]
-										.getLastPathComponent()).getAsQueryBinding();
+								singleBinding = ((SingleQueryExtension.SingleQueryValue) lastComp).getAsQueryBinding();
 								qg = (QueryGenerator) selPaths[i].getParentPath().getLastPathComponent();
 							}
 							// add loading icon to QueryResultsPanel

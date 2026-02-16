@@ -552,8 +552,32 @@ public class InterfaceMain implements ActionListener {
 			public void run() {
 				createGUI();
 				if (path != null) {
+					File dbFile = new File(path);
+					if (!dbFile.exists()) {
+						int response = JOptionPane.showConfirmDialog(main.mainFrame,
+								"The database '" + path + "' does not exist. Would you like to create it?",
+								"Create Database?", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+						if (response == JOptionPane.NO_OPTION || response == JOptionPane.CLOSED_OPTION) {
+							// User chose not to create it, so we can just show the GUI without a DB
+							// or ask what to do next. For now, just show the GUI.
+							showGUI();
+							return;
+						}
+						// If yes, doOpenDB will create it.
+					}
 					DbViewer db = (DbViewer) main.dbView;
-					db.doOpenDB(new File(path));
+					try {
+						db.doOpenDB(dbFile);
+					} catch (Exception e) {
+						// Suppress "Provider rsrc not installed" error which can happen with BaseX initialization in some environments
+						if (e instanceof java.nio.file.FileSystemNotFoundException && e.getMessage() != null && e.getMessage().contains("rsrc")) {
+							// do nothing
+						} else if (e.getCause() instanceof java.nio.file.FileSystemNotFoundException && e.getCause().getMessage() != null && e.getCause().getMessage().contains("rsrc")) {
+							// do nothing
+						} else {
+							e.printStackTrace();
+						}
+					}
 					File f = new File(path);
 					File[] files = new File[1];
 					files[0] = f;
@@ -698,25 +722,58 @@ public class InterfaceMain implements ActionListener {
 
 		// Ensure required properties exist
 		if (!savedProperties.containsKey("allYearList")) {
-			savedProperties.setProperty("allYearList", "1990,2005,2010,2015,2020,2021,2025,2030,2035,2040,2045,2050,2055,2060,2065,2070,2075,2080,2085,2090,2095,2100");
+			savedProperties.setProperty("allYearList", "2015;2020;2021;2025;2030;2035;2040;2045;2050;2055;2060;2065;2070;2075;2080;2085;2090;2095;2100");
 		}
 		if (!savedProperties.containsKey("lastWidth")) {
-			savedProperties.setProperty("lastWidth", "800");
+			savedProperties.setProperty("lastWidth", "1655");
 		}
 		if (!savedProperties.containsKey("lastHeight")) {
-			savedProperties.setProperty("lastHeight", "800");
+			savedProperties.setProperty("lastHeight", "1061");
 		}
 		if (!savedProperties.containsKey("scenarioRegionsSplit")) {
-			savedProperties.setProperty("scenarioRegionsSplit", "200");
+			savedProperties.setProperty("scenarioRegionsSplit", "283");
 		}
 		if (!savedProperties.containsKey("remove1975")) {
 			savedProperties.setProperty("remove1975", "true");
 		}
 		if (!savedProperties.containsKey("tableCreatorSplit")) {
-			savedProperties.setProperty("tableCreatorSplit", "400");
+			savedProperties.setProperty("tableCreatorSplit", "514");
 		}
 		if (!savedProperties.containsKey("queriesSplit")) {
-			savedProperties.setProperty("queriesSplit", "400");
+			savedProperties.setProperty("queriesSplit", "709");
+		}
+		if (!savedProperties.containsKey("enableMapping")) {
+			savedProperties.setProperty("enableMapping", "true");
+		}
+		if (!savedProperties.containsKey("favoriteQueriesFile")) {
+			savedProperties.setProperty("favoriteQueriesFile", ".\\config\\favorite_queries_list.txt");
+		}
+		if (!savedProperties.containsKey("presetRegionsFile")) {
+			savedProperties.setProperty("presetRegionsFile", ".\\config\\preset_region_list.txt");
+		}
+		if (!savedProperties.containsKey("unitsFile")) {
+			savedProperties.setProperty("unitsFile", ".\\config\\units_rules.csv");
+		}
+		if (!savedProperties.containsKey("mapResourceFolder")) {
+			savedProperties.setProperty("mapResourceFolder", ".\\map_resources");
+		}
+		if (!savedProperties.containsKey("RecentFilesLength")) {
+			savedProperties.setProperty("RecentFilesLength", "5");
+		}
+		if (!savedProperties.containsKey("suppressStartupWarning")) {
+			savedProperties.setProperty("suppressStartupWarning", "false");
+		}
+		if (!savedProperties.containsKey("isMaximized")) {
+			savedProperties.setProperty("isMaximized", "false");
+		}
+		if (!savedProperties.containsKey("presetRegionList")) {
+			savedProperties.setProperty("presetRegionList", ".\\config\\preset_region_list.txt");
+		}
+		if (!savedProperties.containsKey("shapeFileLocationPrefix")) {
+			savedProperties.setProperty("shapeFileLocationPrefix", ".\\map_resources");
+		}
+		if (!savedProperties.containsKey("legendBundlesLoc")) {
+			savedProperties.setProperty("legendBundlesLoc", "config/LegendBundle.properties");
 		}
 		// Persist if any defaults were added
 		persistProperties();
@@ -1436,7 +1493,15 @@ public class InterfaceMain implements ActionListener {
 	// Persist properties to model_interface.properties immediately after changes
 	private void persistProperties() {
 		try (FileOutputStream fos = new FileOutputStream(propertiesFile)) {
-			savedProperties.storeToXML(fos, "ModelInterface properties");
+			// Create a custom Properties class that sorts keys for consistent output
+			Properties sortedProps = new Properties() {
+				@Override
+				public java.util.Enumeration<Object> keys() {
+					return java.util.Collections.enumeration(new java.util.TreeSet<Object>(super.keySet()));
+				}
+			};
+			sortedProps.putAll(savedProperties);
+			sortedProps.storeToXML(fos, "ModelInterface properties");
 		} catch (IOException ioe) {
 			ioe.printStackTrace();
 		}

@@ -133,6 +133,7 @@ public class QueryResultsPanel extends JPanel {
 					}
 				} catch (Exception e) {
 					errorMessage = e.getMessage();
+					e.printStackTrace();
 				} finally {
 					// Ensure we always mark this query as completed so the progress UI stays in sync
 					DbViewer.registerQueryCompleted();
