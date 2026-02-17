@@ -39,6 +39,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -225,6 +226,21 @@ public class QueryResultsPanel extends JPanel {
 	}
 
 	/**
+	 * Helper method to get the list of selected years from the application
+	 * properties.
+	 * 
+	 * @return A list of selected years.
+	 */
+	protected List<String> getSelectedYears() {
+		final InterfaceMain main = InterfaceMain.getInstance();
+		String selectedYearsString = main.getProperties().getProperty("selectedYearList", "");
+		if (selectedYearsString.isEmpty()) {
+			return new ArrayList<>();
+		}
+		return new ArrayList<>(Arrays.asList(selectedYearsString.split(";")));
+	}
+
+	/**
 	 * Kills the running query and waits for it to stop running before returning.
 	 * This would be useful to call for instance before we are about to close the
 	 * database since it would not be acceptable for the query to take it's time
@@ -354,7 +370,7 @@ public class QueryResultsPanel extends JPanel {
 //				jTable, sp); //@1
 		new FilteredTable(null, qg.toString(), // @1
 				units[0], path, // @1
-				jTable, sp); // @1
+				jTable, sp, getSelectedYears()); // @1
 
 		main.fireProperty("Query", null, bt); // @1
 		return sp;

@@ -78,11 +78,12 @@ public class FilterTreePaneYears {
      */
     public FilterTreePaneYears() {
         try {
-            filterSelectedYears = new ArrayList<>(Arrays.asList(main.getProperties().getProperty("selectedYearList", "").split(";")));
             showFilter();
         } catch (Exception e) {
             System.out.println(e.getMessage());
-            dialog.dispose();
+            if (dialog != null) {
+                dialog.dispose();
+            }
         }
     }
 
@@ -92,6 +93,7 @@ public class FilterTreePaneYears {
      */
     private JScrollPane buildTree() {
         try {
+            filterSelectedYears = new ArrayList<>(Arrays.asList(main.getProperties().getProperty("selectedYearList", "").split(";")));
             DefaultMutableTreeNode top = createNode("Filter All", "Root", null);
             tree = new JTree(top);
             createNodes(top);
@@ -150,10 +152,8 @@ public class FilterTreePaneYears {
             public void mousePressed(MouseEvent e) {
                 JButton but = (JButton) e.getSource();
                 if (but.getName().trim().equals("Ok")) {
-                    String selectedYears = main.getProperties().getProperty("selectedYearList", "");
-                    if (selectedYears.isEmpty()) {
-                        JOptionPane.showMessageDialog(null, "Select filter", "Warning", JOptionPane.WARNING_MESSAGE);
-                    }
+                    filterSelectedYears.sort(null); // Sort numerically
+                    main.setProperty("selectedYearList", String.join(";", filterSelectedYears));
                 }
                 dialog.dispose();
             }
@@ -188,7 +188,7 @@ public class FilterTreePaneYears {
     private DefaultMutableTreeNode createNode(String nodename, String type, DefaultMutableTreeNode top) {
         DefaultMutableTreeNode category = null;
         if (nodename != null) {
-            boolean selected = filterSelectedYears.contains(nodename) || nodename.contains("Filter");
+            boolean selected = "Root".equals(type) || filterSelectedYears.contains(nodename);
             category = new DefaultMutableTreeNode(new TrNode(nodename, type, selected, top));
             if (top != null) {
                 top.add(category);
@@ -333,7 +333,12 @@ public class FilterTreePaneYears {
         TreePath tPath = new TreePath(root);
         tree.expandPath(tPath);
         for (Enumeration<?> e = root.children(); e.hasMoreElements();) {
-            setNodeBoolean(leaf, true, (DefaultMutableTreeNode) e.nextElement());
+            DefaultMutableTreeNode node = (DefaultMutableTreeNode) e.nextElement();
+            String keyStr = ((TrNode) node.getUserObject()).keyStr;
+            boolean isSelected = Arrays.asList(leaf).contains(keyStr.trim());
+            if (isSelected) {
+                setNodeBoolean(leaf, true, node);
+            }
         }
     }
 
@@ -341,6 +346,7 @@ public class FilterTreePaneYears {
      * Shows the filter dialog for year selection.
      */
     public void showFilter() {
+        filterSelectedYears = new ArrayList<>(Arrays.asList(main.getProperties().getProperty("selectedYearList", "").split(";")));
         dialog = new JDialog();
         dialog.setTitle("Year Filter");
         dialog.setSize(300, 500);
@@ -348,6 +354,7 @@ public class FilterTreePaneYears {
         dialog.getContentPane().setLayout(new BorderLayout());
         dialog.getContentPane().add(buildTree(), BorderLayout.CENTER);
         dialog.getContentPane().add(crtButton(), BorderLayout.SOUTH);
+        setSelBoolean();
         dialog.setVisible(true);
         DbViewer.openWindows.add(dialog);
     }

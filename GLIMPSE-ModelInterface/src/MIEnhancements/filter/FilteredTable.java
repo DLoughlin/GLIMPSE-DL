@@ -96,6 +96,8 @@ public class FilteredTable {
     private boolean debug = false;
     /** Significant figures for numeric display */
     private int sigfigs = 3;
+	/** List of selected years to display */
+    private List<String> selectedYears;
 
     /**
      * Constructs a FilteredTable and sets up the UI and filtering logic.
@@ -107,7 +109,23 @@ public class FilteredTable {
      * @param sp Split pane for UI
      */
     public FilteredTable(Map<String, String> sel, String chartName, String[] unit, String path, final JTable jTable, JSplitPane sp) {
+        this(sel, chartName, unit, path, jTable, sp, new ArrayList<>());
+    }
+
+    /**
+     * Constructs a FilteredTable and sets up the UI and filtering logic.
+     * @param sel Selection map for filtering
+     * @param chartName Chart name for graphing
+     * @param unit Units for display
+     * @param path Data path
+     * @param jTable Source JTable
+     * @param sp Split pane for UI
+     * @param selectedYears List of selected years to display
+     */
+	public FilteredTable(Map<String, String> sel, String chartName, String[] unit, String path, final JTable jTable,
+			JSplitPane sp, List<String> selectedYears) {
         this.sp = sp;
+        this.selectedYears = selectedYears;
         JPanel jp = new JPanel(new BorderLayout());
         Component c = sp.getRightComponent();
         if (c != null) sp.remove(c);
@@ -322,6 +340,31 @@ public class FilteredTable {
         Arrays.sort(tableColumnIndex);
         if (debug)
             System.out.println("FilteredTable::getTableColumnIndex::col" + Arrays.toString(tableColumnIndex) + " sec: " + Arrays.toString(Var.sectionYRange));
+        
+        if (selectedYears != null && !selectedYears.isEmpty()) {
+            ArrayList<Integer> yearIndices = new ArrayList<>();
+            for (String year : selectedYears) {
+                int colIdx = -1;
+                for (int i = 0; i < tableColumnData.length; i++) {
+                    if (tableColumnData[i].equals(year)) {
+                        colIdx = i;
+                        break;
+                    }
+                }
+                if (colIdx != -1) {
+                    yearIndices.add(colIdx);
+                }
+            }
+            
+            ArrayList<Integer> currentIndices = new ArrayList<>();
+            for (Integer index : tableColumnIndex) {
+                currentIndices.add(index);
+            }
+            
+            currentIndices.retainAll(yearIndices);
+            tableColumnIndex = currentIndices.toArray(new Integer[0]);
+        }
+
         return tableColumnIndex;
     }
 

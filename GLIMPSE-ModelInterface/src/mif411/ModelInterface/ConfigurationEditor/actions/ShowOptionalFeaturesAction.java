@@ -57,7 +57,7 @@ import ModelInterface.ConfigurationEditor.utils.Messages;
  * 
  * @author Josh Lurz
  */
-public class ShowPreferencesAction extends AbstractAction {
+public class ShowOptionalFeaturesAction extends AbstractAction {
     /**
      * Identifier used for serializing.
      */
@@ -76,8 +76,8 @@ public class ShowPreferencesAction extends AbstractAction {
      * @param aParentFrame
      *            The top level window.
      */
-    public ShowPreferencesAction(Frame aParentFrame) {
-        super("Show Preferences..."); //$NON-NLS-1$
+    public ShowOptionalFeaturesAction(Frame aParentFrame) {
+        super("Optional Features..."); //$NON-NLS-1$
         mParentFrame = aParentFrame;
     }
 
@@ -102,7 +102,7 @@ public class ShowPreferencesAction extends AbstractAction {
      */
     private JDialog createPreferencesDialog() {
         final JDialog prefDialog = new JDialog(mParentFrame, Messages
-                    .getString("ShowPreferencesAction.3"), true); //$NON-NLS-1$
+                    .getString("ShowOptionalFeaturesAction.3"), true); //$NON-NLS-1$
         prefDialog.setContentPane(createPreferencesDialogFrame(prefDialog));
         return prefDialog;
     }
@@ -161,8 +161,8 @@ public class ShowPreferencesAction extends AbstractAction {
 
         // Add ok and cancel buttons.
         final JButton okButton = new JButton(Messages
-                .getString("ShowPreferencesAction.19")); //$NON-NLS-1$
-        okButton.setToolTipText(Messages.getString("ShowPreferencesAction.10")); //$NON-NLS-1$
+                .getString("ShowOptionalFeaturesAction.19")); //$NON-NLS-1$
+        okButton.setToolTipText(Messages.getString("ShowOptionalFeaturesAction.10")); //$NON-NLS-1$
 
         // Add a listener which will save the preferences and close the
         // window.
@@ -186,9 +186,9 @@ public class ShowPreferencesAction extends AbstractAction {
         prefDialog.add(okButton, cons);
         // Add a cancel button.
         final JButton cancelButton = new JButton();
-        cancelButton.setText(Messages.getString("ShowPreferencesAction.18")); //$NON-NLS-1$
+        cancelButton.setText(Messages.getString("ShowOptionalFeaturesAction.18")); //$NON-NLS-1$
         cancelButton.setToolTipText(Messages
-                .getString("ShowPreferencesAction.13")); //$NON-NLS-1$
+                .getString("ShowOptionalFeaturesAction.13")); //$NON-NLS-1$
         // Add a listener which will save the preferences and close the
         // window.
         cancelButton.addActionListener(new ActionListener() {

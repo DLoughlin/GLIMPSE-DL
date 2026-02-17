@@ -50,6 +50,8 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -619,11 +621,11 @@ public class InterfaceMain implements ActionListener {
 		} catch (NoSuchFieldException e1) {
 			e1.printStackTrace();
 		} catch (SecurityException e1) {
-			e1.printStackTrace();
+		 e1.printStackTrace();
 		} catch (IllegalArgumentException e1) {
-			e1.printStackTrace();
+		 e1.printStackTrace();
 		} catch (IllegalAccessException e1) {
-			e1.printStackTrace();
+		 e1.printStackTrace();
 		}
 
 	}
@@ -722,10 +724,16 @@ public class InterfaceMain implements ActionListener {
 
 		// Ensure required properties exist
 		if (!savedProperties.containsKey("allYearList")) {
-			savedProperties.setProperty("allYearList", "1990;2005;2010;2015;2020;2021;2025;2030;2035;2040;2045;2050;2055;2060;2065;2070;2075;2080;2085;2090;2095;2100");
+			String allYears = "1990;2005;2010;2015;2020;2021;2025;2030;2035;2040;2045;2050;2055;2060;2065;2070;2075;2080;2085;2090;2095;2100";
+			List<String> yearList = new ArrayList<>(Arrays.asList(allYears.split(";")));
+			yearList.sort(Comparator.naturalOrder());
+			savedProperties.setProperty("allYearList", String.join(";", yearList));
 		}
 		if (!savedProperties.containsKey("selectedYearList")) {
-			savedProperties.setProperty("selectedYearList", "2015;2020;2021;2025;2030;2035;2040;2045;2050;2055;2060;2065;2070;2075;2080;2085;2090;2095;2100");
+			String selectedYears = "2015;2020;2021;2025;2030;2035;2040;2045;2050;2055;2060;2065;2070;2075;2080;2085;2090;2095;2100";
+			List<String> yearList = new ArrayList<>(Arrays.asList(selectedYears.split(";")));
+			yearList.sort(Comparator.naturalOrder());
+			savedProperties.setProperty("selectedYearList", String.join(";", yearList));
 		}
 		if (!savedProperties.containsKey("lastWidth")) {
 			savedProperties.setProperty("lastWidth", "1600");
@@ -885,11 +893,11 @@ public class InterfaceMain implements ActionListener {
         menuMan.addMenuItem(helpMenu, HELP_MENU_POS);
 
         // Preferences… under Edit
-        JMenuItem preferences = new JMenuItem("Preferences…");
-        preferences.setMnemonic(KeyEvent.VK_P);
+        JMenuItem optionalFeatures = new JMenuItem("Optional Features...");
+        optionalFeatures.setMnemonic(KeyEvent.VK_P);
         // Removed accelerator: preferences.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, getMenuShortcutMask()));
-        preferences.addActionListener(this);
-        menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(preferences, 5);
+        optionalFeatures.addActionListener(this);
+        menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(optionalFeatures, 5);
 
         // Add Help (F1) under Help menu
         helpItem = new JMenuItem("Help");
@@ -1085,8 +1093,8 @@ public class InterfaceMain implements ActionListener {
 			// YD edits second round, when user choose "Query File", check the query file
 			// saved in the savedProperties file
 			// and open the system editor, allowing user to edit it
-		} else if (e.getActionCommand().equals("Preferences…")) {
-			showPreferencesDialog();
+		} else if (e.getActionCommand().equals("Optional Features...")) {
+			showOptionalFeaturesDialog();
 		} else if (e.getActionCommand().equals("Disable Auto Graphics") || e.getActionCommand().equals("Enable Auto Graphics")) {
 			autoGenerateGraphics = !autoGenerateGraphics;
 			toggleAutoGraphicsMenu.setText(autoGenerateGraphics ? "Disable Auto Graphics" : "Enable Auto Graphics");
@@ -1511,36 +1519,19 @@ public class InterfaceMain implements ActionListener {
 	}
 
 	// Preferences dialog implementation
-	private void showPreferencesDialog() {
-		javax.swing.JDialog dlg = new javax.swing.JDialog(mainFrame, "Preferences", true);
+	private javax.swing.JLabel unitsFileLabel;
+	private javax.swing.JLabel regionsFileLabel;
+	private javax.swing.JLabel mapResourceFolderLabel;
+
+	private void showOptionalFeaturesDialog() {
+		javax.swing.JDialog dlg = new javax.swing.JDialog(mainFrame, "Optional Features", true);
+		dlg.setDefaultCloseOperation(javax.swing.JDialog.DISPOSE_ON_CLOSE);
 		javax.swing.JTabbedPane tabs = new javax.swing.JTabbedPane();
 
-		// Queries tab
-		javax.swing.JPanel queriesPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
-		queriesPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
-		javax.swing.JPanel queriesInner = new javax.swing.JPanel();
-		queriesInner.setLayout(new java.awt.GridBagLayout());
-		java.awt.GridBagConstraints qc = new java.awt.GridBagConstraints();
-		qc.gridx = 0; qc.gridy = 0; qc.fill = java.awt.GridBagConstraints.HORIZONTAL; qc.weightx = 1.0;
-		qc.insets = new java.awt.Insets(6, 6, 6, 6);
-		javax.swing.JLabel qLbl = new javax.swing.JLabel("Default Query File: " + (savedProperties.getProperty("queryFile", "<none>")));
-		queriesInner.add(qLbl, qc);
-
-		qc.gridy++;
-		JPanel qBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
-		JButton btnSetQuery = new JButton("Choose…");
-		btnSetQuery.setActionCommand("Select Query File");
-		btnSetQuery.addActionListener(this);
-		JButton btnEditQuery = new JButton("Edit…");
-		btnEditQuery.setActionCommand("Query File");
-		btnEditQuery.addActionListener(this);
-		qBtns.add(btnSetQuery);
-		qBtns.add(btnEditQuery);
-		qBtns.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
-		queriesInner.add(qBtns, qc);
-
-		queriesPanel.add(queriesInner, java.awt.BorderLayout.NORTH);
-		tabs.addTab("Queries", queriesPanel);
+		// Initialize labels with current values
+		unitsFileLabel = new javax.swing.JLabel("Units CSV: " + (savedProperties.getProperty("unitsFile", "<none>")));
+		regionsFileLabel = new javax.swing.JLabel("Regions List: " + (savedProperties.getProperty("presetRegionList", "<none>")));
+		mapResourceFolderLabel = new javax.swing.JLabel("Map Resource Folder: " + (savedProperties.getProperty("mapResourceFolder", "<none>")));
 
 		// Units tab
 		javax.swing.JPanel unitsPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
@@ -1548,17 +1539,32 @@ public class InterfaceMain implements ActionListener {
 		javax.swing.JPanel unitsInner = new javax.swing.JPanel(new java.awt.GridBagLayout());
 		java.awt.GridBagConstraints uc = new java.awt.GridBagConstraints();
 		uc.gridx = 0; uc.gridy = 0; uc.fill = java.awt.GridBagConstraints.HORIZONTAL; uc.weightx = 1.0; uc.insets = new java.awt.Insets(6, 6, 6, 6);
-		javax.swing.JLabel uLbl = new javax.swing.JLabel("Units CSV: " + (savedProperties.getProperty("unitsFile", "<none>")));
-		unitsInner.add(uLbl, uc);
+		unitsInner.add(unitsFileLabel, uc);
 		uc.gridy++;
 		JPanel uBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
-		JButton btnUnits = new JButton("Choose…");
-		btnUnits.setActionCommand("Select Units File");
-		btnUnits.addActionListener(this);
+		JButton btnUnits = new JButton("Select");
+		btnUnits.addActionListener(e -> {
+			actionPerformed(new ActionEvent(btnUnits, ActionEvent.ACTION_PERFORMED, "Select Units File"));
+			unitsFileLabel.setText("Units CSV: " + (savedProperties.getProperty("unitsFile", "<none>")));
+		});
 		uBtns.add(btnUnits);
+		JButton editUnits = new JButton("Edit");
+		editUnits.addActionListener(e -> {
+			String unitsFile = savedProperties.getProperty("unitsFile");
+			if (unitsFile != null && !unitsFile.isEmpty()) {
+				try {
+					Desktop.getDesktop().edit(new File(unitsFile));
+				} catch (IOException ex) {
+					showMessageDialog("Unable to open file: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+				}
+			} else {
+				showMessageDialog("No units file selected.", "Edit File", JOptionPane.INFORMATION_MESSAGE);
+			}
+		});
+		uBtns.add(editUnits);
 		unitsInner.add(uBtns, uc);
 		unitsPanel.add(unitsInner, java.awt.BorderLayout.NORTH);
-		tabs.addTab("Units", unitsPanel);
+		tabs.addTab("Convert Units", unitsPanel);
 
 		// Regions tab
 		javax.swing.JPanel regionsPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
@@ -1566,17 +1572,32 @@ public class InterfaceMain implements ActionListener {
 		javax.swing.JPanel regionsInner = new javax.swing.JPanel(new java.awt.GridBagLayout());
 		java.awt.GridBagConstraints rc = new java.awt.GridBagConstraints();
 		rc.gridx = 0; rc.gridy = 0; rc.fill = java.awt.GridBagConstraints.HORIZONTAL; rc.weightx = 1.0; rc.insets = new java.awt.Insets(6, 6, 6, 6);
-		javax.swing.JLabel rLbl = new javax.swing.JLabel("Regions List: " + (savedProperties.getProperty("presetRegionList", "<none>")));
-		regionsInner.add(rLbl, rc);
+		regionsInner.add(regionsFileLabel, rc);
 		rc.gridy++;
 		JPanel rBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
-		JButton btnRegions = new JButton("Choose…");
-		btnRegions.setActionCommand("Select Regions File");
-		btnRegions.addActionListener(this);
+		JButton btnRegions = new JButton("Select");
+		btnRegions.addActionListener(e -> {
+			actionPerformed(new ActionEvent(btnRegions, ActionEvent.ACTION_PERFORMED, "Select Regions File"));
+			regionsFileLabel.setText("Regions List: " + (savedProperties.getProperty("presetRegionList", "<none>")));
+		});
 		rBtns.add(btnRegions);
+		JButton editRegions = new JButton("Edit");
+		editRegions.addActionListener(e -> {
+			String regionsFile = savedProperties.getProperty("presetRegionList");
+			if (regionsFile != null && !regionsFile.isEmpty()) {
+				try {
+					Desktop.getDesktop().edit(new File(regionsFile));
+				} catch (IOException ex) {
+					showMessageDialog("Unable to open file: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+				}
+			} else {
+				showMessageDialog("No regions file selected.", "Edit File", JOptionPane.INFORMATION_MESSAGE);
+			}
+		});
+		rBtns.add(editRegions);
 		regionsInner.add(rBtns, rc);
 		regionsPanel.add(regionsInner, java.awt.BorderLayout.NORTH);
-		tabs.addTab("Regions", regionsPanel);
+		tabs.addTab("Preset Regions", regionsPanel);
 
 		// Maps tab
 		javax.swing.JPanel mapsPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
@@ -1584,13 +1605,14 @@ public class InterfaceMain implements ActionListener {
 		javax.swing.JPanel mapsInner = new javax.swing.JPanel(new java.awt.GridBagLayout());
 		java.awt.GridBagConstraints mc = new java.awt.GridBagConstraints();
 		mc.gridx = 0; mc.gridy = 0; mc.fill = java.awt.GridBagConstraints.HORIZONTAL; mc.weightx = 1.0; mc.insets = new java.awt.Insets(6, 6, 6, 6);
-		javax.swing.JLabel mLbl = new javax.swing.JLabel("Map Resource Folder: " + (savedProperties.getProperty("mapResourceFolder", "<none>")));
-		mapsInner.add(mLbl, mc);
+		mapsInner.add(mapResourceFolderLabel, mc);
 		mc.gridy++;
 		JPanel mBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
-		JButton btnMaps = new JButton("Choose…");
-		btnMaps.setActionCommand("Select Map Resource Folder");
-		btnMaps.addActionListener(this);
+		JButton btnMaps = new JButton("Select");
+		btnMaps.addActionListener(e -> {
+			actionPerformed(new ActionEvent(btnMaps, ActionEvent.ACTION_PERFORMED, "Select Map Resource Folder"));
+			mapResourceFolderLabel.setText("Map Resource Folder: " + (savedProperties.getProperty("mapResourceFolder", "<none>")));
+		});
 		mBtns.add(btnMaps);
 		mapsInner.add(mBtns, mc);
 		mapsPanel.add(mapsInner, java.awt.BorderLayout.NORTH);
@@ -1600,24 +1622,14 @@ public class InterfaceMain implements ActionListener {
 		javax.swing.JPanel content = new javax.swing.JPanel(new java.awt.BorderLayout());
 		content.add(tabs, java.awt.BorderLayout.CENTER);
 
-		// Bottom buttons: Close and Apply (Apply will persist properties immediately)
+		// Bottom buttons: Close
 		javax.swing.JPanel bottom = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 8));
-		JButton apply = new JButton("Apply");
-		apply.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				persistProperties();
-				InterfaceMain.this.showMessageDialog("Preferences saved.", "Preferences", JOptionPane.INFORMATION_MESSAGE);
-			}
-		});
 		JButton close = new JButton("Close");
 		close.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) { dlg.dispose(); }
 		});
-		apply.setPreferredSize(new java.awt.Dimension(90, 26));
 		close.setPreferredSize(new java.awt.Dimension(90, 26));
-		bottom.add(apply);
 		bottom.add(close);
 		content.add(bottom, java.awt.BorderLayout.SOUTH);
 
