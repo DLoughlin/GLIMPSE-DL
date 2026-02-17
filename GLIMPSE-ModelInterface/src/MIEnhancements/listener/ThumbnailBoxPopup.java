@@ -34,6 +34,7 @@ package listener;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JSplitPane;
@@ -64,6 +65,7 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
     private boolean useSameScale;
     private JSplitPane splitPane;
     private Runnable refreshAction;
+    private JCheckBoxMenuItem sameScaleMenuItem;
 
     /**
      * Constructs the popup menu for thumbnail chart operations.
@@ -106,6 +108,11 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
             this.add(menuItem);
         }
         
+        sameScaleMenuItem = new JCheckBoxMenuItem("Same Scale");
+        sameScaleMenuItem.setSelected(useSameScale);
+        sameScaleMenuItem.addActionListener(this);
+        this.add(sameScaleMenuItem);
+        
         if (refreshAction != null) {
             JMenuItem refreshItem = new JMenuItem("Refresh");
             refreshItem.addActionListener(this);
@@ -121,6 +128,11 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent e) {
         if ("Refresh".equals(e.getActionCommand())) {
+            if (refreshAction != null) {
+                refreshAction.run();
+            }
+        } else if (e.getSource() == sameScaleMenuItem) {
+            useSameScale = sameScaleMenuItem.isSelected();
             if (refreshAction != null) {
                 refreshAction.run();
             }

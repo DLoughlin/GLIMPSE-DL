@@ -46,7 +46,6 @@ import java.awt.event.MouseEvent;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
@@ -129,7 +128,6 @@ public class OptionsArea {
 		gPane.setBackground(Color.green);
 		box.add(gPane);
 
-		box.add(scaleCheckBox());
 		box.add(Box.createHorizontalStrut(10));
 
 		/*jb = new JButton("Refresh");
@@ -168,27 +166,6 @@ public class OptionsArea {
 		return new JScrollPane(list);
 	}
 
-	private JCheckBox scaleCheckBox() {
-		JCheckBox jc = new JCheckBox("Same Scale");
-		jc.setSelected(sameScale);
-		ItemListener il = new ItemListener() {
-			public void itemStateChanged(ItemEvent e) {
-				JCheckBox jcb = (JCheckBox) e.getSource();
-				if (e.getStateChange() == 1) {
-					sameScale = true;
-					jcb.setSelected(true);
-				} else if (e.getStateChange() == 2) {
-					sameScale = false;
-					jcb.setSelected(false);
-				}
-				setChartPane();
-				jp.updateUI();
-			}
-		};
-		jc.addItemListener(il);
-		return jc;
-	}
-
 	private void setChartPane() {
 		// Dan: Using modified version (2)
 		ThumbnailUtilNew.validateChartPane(jp);
@@ -210,20 +187,6 @@ public class OptionsArea {
 	private class GraphOptionPane extends JComboBox<String> implements ActionListener {
 
 		private static final long serialVersionUID = 1L;
-//		private String graphType[] = { "BarChart", "StackedBarChart", "StackedAreaChart", "____________", "AreaChart",
-//				"LineChart", "RelativeIndex", "XYLineChart", "ScatterChart" };
-//		private String graphClassName[] = { "chart.CategoryBarChart", "chart.CategoryStackedBarChart",
-//				"chart.CategoryStackedAreaChart", "____________", "chart.CategoryAreaChart", "chart.CategoryLineChart",
-//				"", "chart.XYLineChart", "chart.XYScatterChart" };
-		// private String graphType[] = { "StackedBarChart",
-		// "StackedAreaChart","BarChart",
-		// "LineChart", "RelativeIndex"};
-		// private String graphClassName[] = { "chart.CategoryStackedBarChart",
-		// "chart.CategoryStackedAreaChart","chart.CategoryBarChart","chart.CategoryLineChart"};
-
-		//private String graphType[] = { "StackedBarChart", "StackedAreaChart", "LineChart", "RelativeIndex" };
-		//private String graphClassName[] = { "chart.CategoryStackedBarChart", "chart.CategoryStackedAreaChart",
-		//		"chart.CategoryLineChart" };
 
 		private String graphType[] = {OptionsArea.LINE_CHART, OptionsArea.STACKED_BAR_CHART, OptionsArea.STACKED_AREA_CHART,OptionsArea.REL_RATIO_LINE,OptionsArea.REL_DIFF_LINE,OptionsArea.REL_DIFF_BAR };
 		private String graphClassName[] = {"chart.CategoryLineChart","chart.CategoryStackedBarChart","chart.CategoryStackedAreaChart","chart.CategoryLineChart","chart.CategoryLineChart","chart.CategoryStackedBarChart" };

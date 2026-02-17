@@ -39,21 +39,18 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.URI;
 import java.util.ArrayList;
@@ -65,8 +62,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Vector;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import javax.swing.BorderFactory;
@@ -79,7 +74,6 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -100,19 +94,12 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.ToolTipManager;
 import javax.swing.TransferHandler;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.table.TableModel;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
-import javax.swing.undo.UndoableEdit;
-
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathFactory;
-
 import org.basex.api.dom.BXDoc;
 import org.basex.api.dom.BXNode;
 import org.basex.query.QueryException;
@@ -120,12 +107,10 @@ import org.basex.query.QueryProcessor;
 import org.basex.query.iter.Iter;
 import org.basex.query.value.item.Item;
 import org.basex.query.value.node.ANode;
-import org.w3c.dom.DOMConfiguration;
 import org.w3c.dom.DOMImplementation;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 import org.w3c.dom.bootstrap.DOMImplementationRegistry;
 import org.w3c.dom.ls.DOMImplementationLS;
 import org.w3c.dom.ls.LSInput;
@@ -138,33 +123,19 @@ import org.w3c.dom.traversal.NodeFilter;
 import ModelInterface.BatchRunner;
 import ModelInterface.InterfaceMain;
 import ModelInterface.MenuAdder;
-import ModelInterface.ConfigurationEditor.guihelpers.XMLFileFilter;
 import ModelInterface.ModelGUI2.QueryTreeModel.QueryGroup;
 import ModelInterface.ModelGUI2.queries.QueryGenerator;
 import ModelInterface.ModelGUI2.queries.SingleQueryExtension;
 import ModelInterface.ModelGUI2.tables.BaseTableModel;
 import ModelInterface.ModelGUI2.tables.TableSorter;
 import ModelInterface.ModelGUI2.tables.TableTransferHandler;
-import ModelInterface.ModelGUI2.undo.RenameScenarioUndoableEdit;
 import ModelInterface.ModelGUI2.xmldb.QueryBinding;
 import ModelInterface.ModelGUI2.xmldb.XMLDB;
-import ModelInterface.common.DataPair;
 import ModelInterface.common.FileChooser;
 import ModelInterface.common.FileChooserFactory;
 import ModelInterface.common.RecentFilesList.RecentFile;
-import ModelInterface.ModelGUI2.FavoriteQueriesManager;
-
 import filter.FilterTreePaneYears;
-
-/***
- * * Author Action Date Flag
- * ======================================================================= TWU
- * Add capability to allow 1/2/2017 @1 to invoke from command line Allow DBView
- * to accept filtered JTable which is in different table model and container Add
- * Copy to Clip board capability to allow large data paste to excel file Add a
- * monitor to large data drag
- * 
- */
+import mif411.ModelInterface.ModelGUI2.BatchExecutionController;
 
 /**
  * DbViewer is the main class for the database viewing and query interface in
@@ -194,7 +165,7 @@ import filter.FilterTreePaneYears;
  * access, file operations, and UI components.
  *
  * @author Battelle Memorial Institute
- * @version 1.0
+ * @version 1.1
  * @since 2012
  */
 public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
@@ -205,22 +176,20 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	private DOMImplementationLS implls;
 
 	protected Vector<ScenarioListItem> scns;
-	protected JList scnList;
+	public JList scnList;
 	protected JList regionList;
 	protected Vector regions;
-	protected BaseTableModel bt; // does this still need to be a field?
-	protected JScrollPane jsp; // does this still need to be a field?
 	protected QueryTreeModel queries;
 	private JTabbedPane tablesTabs = new JTabbedPane();
 	private JSplitPane scenarioRegionSplit;
 	private JSplitPane queriesSplit;
 	private JSplitPane tableCreatorSplit;
-	private JMenuItem queriesLockMenu; // YD added
-	private JMenuItem queriesCreateMenu; // YD added
-	private JMenuItem queriesEditMenu; // YD added
-	private JMenuItem queriesRemoveMenu; // YD added
-	private JMenuItem queriesUpdateMenu; // YD added
-	private JMenuItem significantDigitsMenu; // YD added
+	private JMenuItem queriesLockMenu;
+	private JMenuItem queriesCreateMenu;
+	private JMenuItem queriesEditMenu;
+	private JMenuItem queriesRemoveMenu;
+	private JMenuItem queriesUpdateMenu;
+	private JMenuItem significantDigitsMenu;
 	private JMenuItem enableUnitConversionsMenu;
 	private JMenuItem createFavoritesMenu;// YD Feb-2024
 	private JMenuItem loadFavoritesMenu;
@@ -232,19 +201,17 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
 	private JMenuItem menuExpPrn;
 
-	private String filteringText; // YD added
-	private Enumeration<TreePath> expansionState;// YD added
-	private boolean AllCollapsed = false; // YD added
+	private String filteringText;
 	private static final int BOTTOM_PANE_HEIGHT = 25;
-	ArrayList<String> region_list = new ArrayList<String>();// YD added,Feb-2024
-	ArrayList<String> subregion_list = new ArrayList<String>();// YD added,Feb-2024
-	ArrayList<String> preset_region_list = new ArrayList<String>();// YD added,Feb-2024
-	private JComboBox<String> comboBoxPresetRegions; // YD added,Feb-2024
-	private String[] preset_choices; // YD added,Feb-2024
-	private JScrollPane listScrollRegions; // YD added,Feb-2024
-	private JScrollPane listScrollQueries; // YD added,Feb-2024
-	public static boolean queryTreeLocked = true; // YD added
-	public static boolean disable3Digits = false; // YD added
+	ArrayList<String> region_list = new ArrayList<String>();
+	ArrayList<String> subregion_list = new ArrayList<String>();
+	ArrayList<String> preset_region_list = new ArrayList<String>();
+	private JComboBox<String> comboBoxPresetRegions;
+	private String[] preset_choices;
+	private JScrollPane listScrollRegions;
+	private JScrollPane listScrollQueries;
+	public static boolean queryTreeLocked = true;
+	public static boolean disable3Digits = false;
 	public static boolean enableUnitConversions = true;
 
 	public static final String SCENARIO_LIST_NAME = "scenario list";
@@ -259,14 +226,18 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	private static int completedQueries = 0;
 	private JFrame parentFrame = null;
 	private FavoriteQueriesManager favoriteQueriesManager;
+	private BatchExecutionController batchExecutionController;
 
-	ArrayList<Object> windowList = new ArrayList<>();
-
+	/**
+	 * Constructs a new DbViewer, initializing the user interface and setting up
+	 * property change listeners for application-level events.
+	 */
 	public DbViewer() {
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
 		this.parentFrame = parentFrame;
 		final DbViewer thisViewer = this;
+		this.batchExecutionController = new BatchExecutionController(this);
 		
 		queryProgressBar = new JProgressBar(0, 100);
 		queryProgressBar.setVisible(false);
@@ -505,6 +476,13 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		return allYearsList;
 	}
 
+	/**
+	 * Creates a JMenuItem with the given title and adds this DbViewer as its
+	 * ActionListener.
+	 *
+	 * @param title The text for the menu item.
+	 * @return A configured JMenuItem.
+	 */
 	private JMenuItem makeMenuItem(String title) {
 		JMenuItem ret = new JMenuItem(title);
 		ret.addActionListener(this);
@@ -529,6 +507,14 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		addAdvancedMenuItems(menuMan, main, parentFrame);
 	}
 
+	/**
+	 * Adds file-related menu items to the application's menu manager.
+	 *
+	 * @param menuMan      The menu manager to which menu items are added.
+	 * @param main         The main interface instance.
+	 * @param parentFrame  The parent JFrame for dialogs and listeners.
+	 * @param thisListener The ActionListener for the menu items.
+	 */
 	private void addFileMenuItems(InterfaceMain.MenuManager menuMan, InterfaceMain main, JFrame parentFrame,
 			ActionListener thisListener) {
 		JMenuItem menuItem = new JMenuItem("Open DB");
@@ -536,7 +522,6 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).addMenuItem(menuItem, 5);
 
 		final JMenuItem menuManage = makeMenuItem("Manage DB");
-		// menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).addMenuItem(menuManage, 10);
 		menuManage.setEnabled(false);
 
 		parentFrame.addPropertyChangeListener(new PropertyChangeListener() {
@@ -628,6 +613,16 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addMenuItem(yearsMn, 21);
 	}
 
+	/**
+	 * Adds advanced menu items to the application's menu manager. This includes
+	 * menus for query management, such as locking/unlocking the query tree,
+	 * saving, creating, editing, and removing queries. It also includes favorites
+	 * management.
+	 *
+	 * @param menuMan     The menu manager to which menu items are added.
+	 * @param main        The main interface instance.
+	 * @param parentFrame The parent JFrame for dialogs and listeners.
+	 */
 	private void addAdvancedMenuItems(InterfaceMain.MenuManager menuMan, InterfaceMain main, JFrame parentFrame) {
 		// Move Queries menus under the global Edit menu instead of Tools
 		InterfaceMain.MenuManager editMM = menuMan.getSubMenuManager(InterfaceMain.EDIT_MENU_POS);
@@ -713,27 +708,9 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		editMM.addMenuItem(favoritesSubMenu, 4);
 		// Add a separator between Favorites (4) and Preferences (5)
 		editMM.addSeparator(4);
-		// queriesMM.addMenuItem(favoritesSubMenu, 25);
-		// queriesMM.addSeparator(26);
 
 		// Add Run Batch under Tools (unchanged)
-        // Dan: Commented out because this is already added in InterfaceMain.java
-        /*
-		InterfaceMain.MenuManager toolsMM = menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS);
-		if (toolsMM == null) {
-			JMenu toolsMenu = new JMenu("Tools");
-			menuMan.addMenuItem(toolsMenu, InterfaceMain.TOOLS_MENU_POS);
-			toolsMM = menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS);
-		}
-		JMenuItem runBatchMenu = makeMenuItem("Run Batch...");
-		runBatchMenu.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-            	InterfaceMain.getInstance().runBatch();
-            }
-        });
-        toolsMM.addSeparator(51);
-        toolsMM.addMenuItem(runBatchMenu, 52);
-        */
+		// This is already added in InterfaceMain.java
 
 		// Favorites under Queries
 		loadFavoritesMenu = makeMenuItem("Load Favorite Queries File");
@@ -744,20 +721,13 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
 		appendFavoritesMenu = makeMenuItem("Append Favorite Queries File");
 		favoritesSubMenu.add(appendFavoritesMenu);
-
-		/****Hiding menu option for hiding beta features since features are now reasonably stable
-		// Separator
-		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS).addSeparator(99);
-
-		// Beta Features
-		String betaText = (InterfaceMain.enableMapping || InterfaceMain.enableSankey) ? "Disable Beta Features"
-				: "Enable Beta Features";
-		betaMn = makeMenuItem(betaText);
-		betaMn.addActionListener(this);
-		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS).addMenuItem(betaMn, 100);
-		*/
 	}	
 	
+	/**
+	 * Handles action events from menu items and buttons.
+	 *
+	 * @param e The ActionEvent that occurred.
+	 */
 	public void actionPerformed(ActionEvent e) {
 		String command = e.getActionCommand();
 		switch (command) {
@@ -809,6 +779,12 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		}
 	}
 
+	/**
+	 * Handles the "Open DB" action event. Prompts the user to select a database
+	 * directory and opens it.
+	 *
+	 * @param e The ActionEvent that occurred.
+	 */
 	private void handleOpenDB(ActionEvent e) {
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
@@ -875,6 +851,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	}
 
 	
+	/**
+	 * Handles the "Enable Beta Features" action. Enables beta features like mapping
+	 * and Sankey diagrams and updates the menu item text.
+	 */
 	private void handleEnableBetaFeatures() {
 		betaMn.setText("Disable Beta Features");
 		InterfaceMain.enableMapping = true;
@@ -884,6 +864,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		prop.setProperty("enableSankey", String.valueOf(InterfaceMain.enableSankey));
 	}
 
+	/**
+	 * Handles the "Disable Beta Features" action. Disables beta features and
+	 * updates the menu item text.
+	 */
 	private void handleDisableBetaFeatures() {
 		betaMn.setText("Enable Beta Features");
 		InterfaceMain.enableMapping = false;
@@ -893,6 +877,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		prop.setProperty("enableSankey", String.valueOf(InterfaceMain.enableSankey));
 	}
 
+	/**
+	 * Handles the "Batch Query File" action. Prompts the user to select a batch
+	 * query file and an output file, then starts the batch query process.
+	 */
 	private void handleBatchQueryFile() {
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
@@ -925,11 +913,15 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 					}
 				}
 				main.getProperties().setProperty("lastDirectory", xlsFiles[0].getParent());
-				batchQuery(batchFiles[0], xlsFiles[0]);
+				batchExecutionController.batchQuery(batchFiles[0], xlsFiles[0]);
 			}
 		}
 	}
 
+	/**
+	 * Handles the "Lock Query Tree" action. Disables UI components for editing
+	 * queries and updates the menu item text.
+	 */
 	private void handleLockQueryTree() {
 		queriesUpdateMenu.setEnabled(false);
 		queriesEditMenu.setEnabled(false);
@@ -947,6 +939,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		queriesLockMenu.setText("Unlock Query Tree");
 	}
 
+	/**
+	 * Handles the "Unlock Query Tree" action. Enables UI components for editing
+	 * queries and updates the menu item text.
+	 */
 	private void handleUnlockQueryTree() {
 		queriesUpdateMenu.setEnabled(true);
 		queriesEditMenu.setEnabled(true);
@@ -959,6 +955,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		if (queriesSaveAsMenu != null) queriesSaveAsMenu.setEnabled(true);
 	}
 
+	/**
+	 * Handles the "Save As" action for queries. Prompts the user for a new file
+	 * location and saves the current queries to that file.
+	 */
 	private void handleSaveAs() {
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
@@ -982,26 +982,42 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		}
 	}
 
+	/**
+	 * Handles the "Disable 3 Significant Digits" action. Updates the menu item and
+	 * sets the flag to disable formatting to 3 significant digits.
+	 */
 	private void handleDisable3Digits() {
 		significantDigitsMenu.setText("Enable 3 Significant Digits");
 		disable3Digits = true;
 		// TODO: add method to disable using 3 significant digits in the table
 	}
 
+	/**
+	 * Handles the "Enable 3 Significant Digits" action. Updates the menu item and
+	 * sets the flag to enable formatting to 3 significant digits.
+	 */
 	private void handleEnable3Digits() {
 		significantDigitsMenu.setText("Disable 3 Significant Digits");
 		disable3Digits = false;
 		// TODO: add method to enable using 3 significant digits in the table
 	}
 
+	/**
+	 * Handles the "Disable Unit Conversions" action. Updates the menu item and sets
+	 * the flag to disable unit conversions.
+	 */
 	private void handleDisableUnitConversions() {
 		enableUnitConversionsMenu.setText("Enable Unit Conversions");
 		enableUnitConversions = false;
 		// TODO: add method to disable unit conversions
 	}
 
+	/**
+	 * Handles the "Enable Unit Conversions" action. Updates the menu item and sets
+	 * the flag to enable unit conversions.
+	 */
 	private void handleEnableUnitConversions() {
-		enableUnitConversionsMenu.setText("Disable Unit Conversions");
+		enableUnitConversionsMenu.setText("Enable Unit Conversions");
 		enableUnitConversions = true;
 		// TODO: add method to enable unit conversions
 	}
@@ -1100,7 +1116,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	 *
 	 * @return Vector of region names.
 	 */
-	protected Vector getRegions() {
+	public Vector getRegions() {
 
 		Vector funcTemp = new Vector<String>(1, 0);
 		funcTemp.add("distinct-values");
@@ -1146,6 +1162,11 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
 	private JCheckBox doTotalCheckBox;
 
+	/**
+	 * Sets up the main UI components for the DbViewer, including scenario/region lists,
+	 * the query tree, and result tabs. This method orchestrates the creation of the
+	 * entire user interface by calling various setup helper methods.
+	 */
 	protected void createTableSelector() {
 		setupScenarioRegionLists();
 		setupQueryTree();
@@ -1158,6 +1179,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		finalizeUI();
 	}
 
+	/**
+	 * Initializes the scenario and region lists by fetching data from the database
+	 * and creating the JList components.
+	 */
 	private void setupScenarioRegionLists() {
 		scns = getScenarios();
 		regions = getRegions();
@@ -1168,6 +1193,11 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		regionList.setName(REGION_LIST_NAME);
 	}
 
+	/**
+	 * Initializes the query tree (JTree) component, including its model, transfer
+	 * handler for drag-and-drop, selection model, and cell renderer for custom
+	 * icons and tooltips.
+	 */
 	private void setupQueryTree() {
 		final Icon queryIcon = new ImageIcon(TabCloseIcon.class.getResource("icons/group-query.png"));
 		final Icon singleQueryIcon = new ImageIcon(TabCloseIcon.class.getResource("icons/single-query.png"));
@@ -1200,6 +1230,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		});
 	}
 
+	/**
+	 * Sets up the preset region dropdown (JComboBox) and the "Total" checkbox.
+	 * It loads the region list from a file and adds the components to the UI.
+	 */
 	private void setupPresetRegionDropdown() {
 		loadRegionListToDropdown();
 		JPanel presetRegionsPanel = new JPanel();
@@ -1224,6 +1258,11 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
 	}
 
+	/**
+	 * Sets up the panel containing the main action buttons like "Run Query",
+	 * "Diff Query", "Search", and "Favorites". It also includes the query progress
+	 * bar.
+	 */
 	private void setupButtonPanel() {
 		JPanel queryPanel = (JPanel) queriesSplit.getRightComponent();
 		JPanel buttonPanel = new JPanel();
@@ -1231,11 +1270,8 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		buttonPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		runQueryButton = new JButton("Run Query");
 		diffQueryButton = new JButton("Diff Query");
-		//final JButton 
 		listCollapseButton = new JButton("View +/-");
-		//final JButton 
 		queryFilterButton = new JButton("Search");
-		//final JButton 
 		favoriteQueryButton = new JButton("Favorites");
 		
 		queriesEditMenu.setEnabled(false);
@@ -1279,6 +1315,9 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		this.favoriteQueryButton = favoriteQueryButton;
 	}
 
+	/**
+	 * Sets up the panel that contains the query tree view.
+	 */
 	private void setupQueryPanel() {
 		scenarioRegionSplit.getRightComponent();
 		JPanel queryPanel = new JPanel();
@@ -1291,11 +1330,17 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		queriesSplit.setRightComponent(queryPanel);
 	}
 	
+	/**
+	 * Registers that a new query is starting so the progress UI can track it.
+	 */
 	public static void registerNewQuery() {
 	    totalQueries++;
 	    updateProgressBar();
 	}
 
+	/**
+	 * Registers that a query has completed so the progress UI can track it.
+	 */
 	public static void registerQueryCompleted() {
 	    completedQueries++;
 	    updateProgressBar();
@@ -1305,6 +1350,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	    }
 	}
 
+	/**
+	 * Updates the progress bar's visibility and value based on the current state of
+	 * query execution.
+	 */
 	private static void updateProgressBar() {
 	    if (totalQueries > 1) {
 	        if (queryProgressBar != null) {
@@ -1315,6 +1364,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	    }
 	}
 
+	/**
+	 * Finalizes the progress bar when all queries are complete. It sets the value
+	 * to 100% and then hides it after a short delay.
+	 */
 	private static void finishProgressBar() {
 	    if (queryProgressBar != null) {
 	        queryProgressBar.setValue(100);
@@ -1333,42 +1386,16 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	}
 
 	
-//	private void setupSplitPanes() {
-//		JPanel listPane = new JPanel();
-//		listPane.setLayout(new BoxLayout(listPane, BoxLayout.Y_AXIS));
-//		JLabel listLabel = new JLabel("Scenario");
-//		listPane.add(listLabel);
-//		JScrollPane listScroll = new JScrollPane(scnList);
-//		// listScroll.setPreferredSize(new Dimension(150, 150));
-//		listPane.add(listScroll);
-//		scenarioRegionSplit.setLeftComponent(listPane);
-//		listPane = new JPanel();
-//		listPane.setLayout(new BoxLayout(listPane, BoxLayout.Y_AXIS));
-//		listLabel = new JLabel("Regions");
-//		listPane.add(listLabel);
-//		listScrollRegions = new JScrollPane(regionList);
-//		// listScrollRegions.setPreferredSize(new Dimension(150, 100));
-//		listPane.add(listScrollRegions);
-//		scenarioRegionSplit.setRightComponent(listPane);
-//		queriesSplit.setLeftComponent(scenarioRegionSplit);
-//		tableCreatorSplit.setLeftComponent(queriesSplit);
-//		tableCreatorSplit.setRightComponent(tablesTabs);
-//
-//		int frameWidth = parentFrame.getWidth();
-//		scenarioRegionSplit.setDividerLocation((int) (frameWidth * 0.2));
-//		queriesSplit.setDividerLocation((int) (frameWidth * 0.5));
-//
-//		int frameHeight = parentFrame.getHeight();
-//		tableCreatorSplit.setDividerLocation((int) (frameHeight * 0.4));
-//	}
-
+	/**
+	 * Sets up the split panes that organize the main UI areas: scenarios/regions,
+	 * queries, and the results tabs.
+	 */
 	private void setupSplitPanes() {
 		JPanel listPane = new JPanel();
 		listPane.setLayout(new BoxLayout(listPane, BoxLayout.Y_AXIS));
 		JLabel listLabel = new JLabel("Scenario");
 		listPane.add(listLabel);
 		JScrollPane listScroll = new JScrollPane(scnList);
-		// listScroll.setPreferredSize(new Dimension(150, 150));
 		listPane.add(listScroll);
 
 		// Create the bottom pane separately so it appears below the listPane
@@ -1415,7 +1442,6 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		listLabel = new JLabel("Regions");
 		listPane.add(listLabel);
 		listScrollRegions = new JScrollPane(regionList);
-		// listScrollRegions.setPreferredSize(new Dimension(150, 100));
 		listPane.add(listScrollRegions);
 		scenarioRegionSplit.setRightComponent(listPane);
 		queriesSplit.setLeftComponent(scenarioRegionSplit);
@@ -1430,6 +1456,11 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		tableCreatorSplit.setDividerLocation((int) (frameHeight * 0.4));
 	}
 	
+	/**
+	 * Sets up all the event listeners for the UI components, such as buttons and
+	 * the query list. This includes actions for running queries, filtering,
+	 * managing favorites, and handling tree selections.
+	 */
 	private void setupListeners() {
 		// Move all listeners from createTableSelector here
 		// YD edits,2024
@@ -1450,13 +1481,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 				String[] buttons = { "Apply", "Clear", "Cancel" };
 				int returnValue = JOptionPane.showOptionDialog(null, box, "Query Filter",
 						JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null, buttons, buttons[0]);
-				// System.out.println(returnValue);
 				queries = getQueries();
 				switch (returnValue) {
 				case 0:
-					// YD added,2024
 					// Process the filter results...
-
 					filteringText = field.getText();
 					if (filteringText != null && filteringText.length() > 0) {
 						queries = getFilteredQueries(queries, filteringText);
@@ -1467,46 +1495,42 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 				case 2:
 				case -1:
 					return;
-				// case 'OK_OPTION' end here
-				} // switch 'result' end
+				}
 				queryList.setModel(queries);
 				queryList.setSelectionRow(0);
 				for (int i = 0; i < queryList.getRowCount(); ++i) {
 					queryList.expandRow(i);
 				}
-			} // actionEvent end
-		}); // queryFilterButton listener ends
+			}
+		});
 
-		// YD added this listener,Feb-2024
-		favoriteQueryButton.addActionListener(new ActionListener() { // YD,2024
+		favoriteQueryButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 
 				favoriteQueriesManager.selectFavoriteQueries();
 			}
-		}); // favoriteQueryButton listener ends
+		});
 
-		// YD added this listener,Feb-2024
 		createFavoritesMenu.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				favoriteQueriesManager.createFavoriteQueriesFile();
 
 			}
-		});// createFavoritesMenu listener ends
+		});
 
 		loadFavoritesMenu.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				favoriteQueriesManager.loadFavoriteQueriesFile();
 
 			}
-		});// loadFavoritesMenu listener ends
+		});
 
-		// YD added this listener,Mar-2024
 		appendFavoritesMenu.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				favoriteQueriesManager.appendFavoriteQueries();
 
 			}
-		});// appendFavoritesMenu listener ends
+		});
 
 		// Add TreeSelectionListener to enable/disable Run Query and Diff Query buttons
 		queryList.addTreeSelectionListener(e -> {
@@ -1685,6 +1709,14 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		parentFrame.setVisible(true);
 	}
 
+	/**
+	 * Filters the query tree model to show only the queries and groups that match
+	 * the given query string.
+	 *
+	 * @param model The query tree model to filter.
+	 * @param query The text to search for.
+	 * @return The filtered query tree model.
+	 */
 	private QueryTreeModel getFilteredQueries(QueryTreeModel model, String query) {
 
 		QueryGroup root = (QueryGroup) model.getRoot();
@@ -1700,7 +1732,6 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		}
 
 		for (int i = 0; i < toRemove.size(); i++) {
-			// boolean removed=query_list.remove(toRemove.get(i));
 			QueryGenerator qg = (QueryGenerator) toRemove.get(i);
 			Node myNode = qg.getMyNode();
 			qg.getMyNode().getParentNode().removeChild(myNode);
@@ -1731,10 +1762,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 				QueryGroup group = (QueryGroup) query_list.get(i);
 				getMatchingNodes(group, query);
 			} else {
-				if (query_list.get(i).toString().toLowerCase().contains(query.toLowerCase())) {
-					// System.out.println("found a match: " + query_list.get(i).toString());
-				} else {
-					query_list.get(i);
+				if (!query_list.get(i).toString().toLowerCase().contains(query.toLowerCase())) {
 					toRemove.add(query_list.get(i));
 				}
 			}
@@ -1746,11 +1774,23 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		return toRemove;
 	}
 
+	/**
+	 * Saves the expansion state of a JTree.
+	 *
+	 * @param tree The JTree whose expansion state is to be saved.
+	 * @return An Enumeration of TreePaths representing the expanded nodes.
+	 */
 	// YD added,2024
 	public static Enumeration<TreePath> saveExpansionState(JTree tree) {
 		return tree.getExpandedDescendants(new TreePath(tree.getModel().getRoot()));
 	}
 
+	/**
+	 * Restores the expansion state of a JTree.
+	 *
+	 * @param enumeration An Enumeration of TreePaths to be expanded.
+	 * @param tree        The JTree whose expansion state is to be restored.
+	 */
 	// YD added,2024
 	public void restoreExpansionState(Enumeration enumeration, JTree tree) {
 		if (enumeration != null) {
@@ -1761,6 +1801,13 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		}
 	}
 
+	/**
+	 * Collapses a query group in the tree if it does not contain the filtering
+	 * keywords.
+	 *
+	 * @param myTree      The JTree containing the query group.
+	 * @param mySubGroup  The QueryGroup to check and potentially collapse.
+	 */
 	// YD added,2024
 	private void collapseGroupWhenNotContainKeyWords(JTree myTree, QueryGroup mySubGroup) {
 		ArrayList leaf_inside = mySubGroup.getQueryList();
@@ -1774,6 +1821,13 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		} // inner if else loop end
 	}
 
+	/**
+	 * Gets the full TreePath for a query group by its name.
+	 *
+	 * @param tree      The JTree to search in.
+	 * @param groupName The name of the query group.
+	 * @return The TreePath for the group, or null if not found.
+	 */
 	// YD added,2024
 	// this method is to get the full tree path for a query group name,YD added
 	private TreePath getFullTreePath(JTree tree, String groupName) {
@@ -1800,10 +1854,18 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		return (myTreePath);
 	}
 
+	/**
+	 * Gets all TreePaths for a query group name, considering that the same name can
+	 * appear at different levels in the tree.
+	 *
+	 * @param tree      The JTree to search in.
+	 * @param groupName The name of the query group.
+	 * @param pathCount The expected path count (depth) of the group.
+	 * @return An ArrayList of matching TreePaths.
+	 */
 	// this method is to get the full tree path for a query group name
 	// considering that the same query group name can appear multiple times in the
 // same tree
-	// but at different locations,YD added
 	public static ArrayList<TreePath> getFullTreePath2(JTree tree, String groupName, int pathCount) {
 		Enumeration<TreePath> allPath = tree.getExpandedDescendants(new TreePath(tree.getModel().getRoot()));
 		ArrayList<TreePath> myTreePath = new ArrayList<TreePath>();
@@ -1827,6 +1889,13 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		return (myTreePath);
 	}
 
+	/**
+	 * Checks if a QueryGroup contains any nested QueryGroups.
+	 *
+	 * @param mySubGroup The QueryGroup to check.
+	 * @return true if the group contains no other groups (only leaves), false
+	 *         otherwise.
+	 */
 	// YD added,2024
 	// this method is to check if there are more levels of query group under a query
 	// group
@@ -1842,69 +1911,27 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		return (noMoreGroup);
 	}
 
-	// YD added, Feb-2024
-	// this method is to load the preset region list from the control file to the
-	// dropdown menu
-	public void loadRegionListToDropdown() {
-
-		if (InterfaceMain.presetRegionListLocation == null
-				|| InterfaceMain.presetRegionListLocation.trim().length() == 0) {
-			System.out.println("No regions list specified, skipping.");
-			return;
-		}
-
-		String preset_region_list_filename = InterfaceMain.presetRegionListLocation;
-
-		// preset region list
-		try {
-			ArrayList<String> contents = getStringArrayFromFile(preset_region_list_filename, "#");
-
-			for (int i = 0; i < contents.size(); i++) {
-				String line = contents.get(i);
-				if (line.length() > 0) {
-					preset_region_list.add(line);
-				}
-			}
-		} catch (Exception e) {
-
-			System.out.println("Unable to load region list: " + e.toString());
-
-		}
-
-		preset_choices = new String[preset_region_list.size() + 1];
-		preset_choices[0] = "Select (optional)";
-		for (int i = 0; i < preset_region_list.size(); i++) {
-			String s = preset_region_list.get(i);
-			int index_of_semicolon = s.indexOf(":");
-			if (index_of_semicolon > -1) {
-				s = s.substring(0, index_of_semicolon);
-				preset_choices[i + 1] = s;
-			}
-		}
-
-	}
-
+	/**
+	 * Closes all open tabs in the results pane.
+	 */
 	public void closeAllTabs() {
 		// need to disable the export tabs option
 		if (menuExpPrn != null) menuExpPrn.setEnabled(false);
 
 		// grab the panel
-		if (tablesTabs.getTabCount() == 0) {
-			// noting to do
-			return;
+		if (tablesTabs.getTabCount() > 0) {
+			// iterate over children and close each one
+			tablesTabs.removeAll();
 		}
-		// iterate over children
-		tablesTabs.removeAll();
-		// close each one
 	}
 
+	/**
+	 * Closes all open secondary windows (JDialog and JFrames) managed by the
+	 * application.
+	 */
 	public void closeAllWindows() {
-		// need to disable the export tabs option
-		// menuExpPrn.setEnabled(false);
-
 		// grab the panel
-		if (openWindows.size() == 0) {
-			// noting to do
+		if (openWindows.isEmpty()) {
 			return;
 		}
 		// iterate over children
@@ -2041,7 +2068,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 					regionIndicesArray[regionIndices.size() - 1]);
 			listScrollRegions.getVerticalScrollBar().setValue((int) bounds.getMinY());
 		}
-	} // selectItemsFromRegionList method end
+	}
 
 	/**
 	 * Gets the row number for a leaf under a query group in the tree.
@@ -2057,211 +2084,53 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		QueryGroup myChildGroup = (QueryGroup) myPath.getLastPathComponent();
 		ArrayList leaves = myChildGroup.getQueryList();
 		for (int m = 0; m < leaves.size(); m++) {
-			// if (leafName.contains(leaves.get(m).toString())) {
 			if (leafName.replace("\"", "").trim().compareToIgnoreCase(leaves.get(m).toString().trim()) == 0) {
-				// System.out.println("found my favorite query name here:" +
-				// leaves.get(m).toString());
 				int myIndex = ((TreeModel) myTree.getModel()).getIndexOfChild(myChildGroup, leaves.get(m));
 				rowNumForLeaf = rowNumForSubgroup + myIndex + 1;
 				break;
 			}
-		} // for loop end
+		}
 		return rowNumForLeaf;
-	} // get RowNumberForLeaf method end
+	}
 
 	public void runBatch(Node command) {
-		/**
-		 * Executes a batch command for running queries on the XMLDB database.
-		 * <p>
-		 * This method parses the provided XML Node command, which should contain
-		 * instructions for running batch queries. It supports the following actions:
-		 * <ul>
-		 * <li>Opening the database file</li>
-		 * <li>Loading query files or inline queries</li>
-		 * <li>Selecting scenarios to run</li>
-		 * <li>Configuring batch options (single sheet, charts, split runs, replace
-		 * results, cores to use)</li>
-		 * <li>Running the batch and exporting results</li>
-		 * </ul>
-		 * The method validates required files, opens the database if needed, loads
-		 * scenarios and queries, and executes the batch run. If any required
-		 * information is missing or an error occurs, it prints the stack trace and
-		 * closes the database if it was opened.
-		 *
-		 * @param command The XML Node containing batch command instructions.
-		 */
-		// Get properties and batch options
-		Properties prop = InterfaceMain.getInstance().getProperties();
-		final String singleSheetCheckBoxPropName = "batchQueryResultsInDifferentSheets";
-		final String includeChartsPropName = "batchQueryIncludeCharts";
-		final String splitRunsPropName = "batchQuerySplitRunsInDifferentSheets";
-		final String replaceResultsPropName = "batchQueryReplaceResults";
-		final String coresToUsePropertyName = "coresToUse";
-		Runtime.getRuntime().availableProcessors();
-		final int defaultNumCoresToUse = Integer.valueOf(prop.getProperty(coresToUsePropertyName, Integer.toString(2)));
-		prop.setProperty(coresToUsePropertyName, Integer.toString(defaultNumCoresToUse));
+		batchExecutionController.runBatch(command);
+	}
 
-		NodeList children = command.getChildNodes();
-		for (int i = 0; i < children.getLength(); ++i) {
-			Node child = children.item(i);
-			// Only process element nodes
-			if (child.getNodeType() != Node.ELEMENT_NODE) {
-				continue;
-			}
-			String actionCommand = ((Element) child).getAttribute("name");
-			if (actionCommand == null) {
-				continue;
-			}
-			// Only handle XMLDB Batch File commands
-			if ("XMLDB Batch File".equals(actionCommand)) {
-				File queryFile = null;
-				Node queriesNode = null;
-				File outFile = null;
-				String dbFile = null;
-				boolean didOpenDB = false;
-				List<DataPair<String, String>> scenariosNames = new ArrayList<>();
-				// Batch options
-				boolean singleSheet = Boolean.parseBoolean(prop.getProperty(singleSheetCheckBoxPropName, "false"));
-				boolean includeCharts = Boolean.parseBoolean(prop.getProperty(includeChartsPropName, "true"));
-				boolean splitRuns = Boolean.parseBoolean(prop.getProperty(splitRunsPropName, "false"));
-				boolean replaceResults = Boolean.parseBoolean(prop.getProperty(replaceResultsPropName, "false"));
-				int numCoresToUse = defaultNumCoresToUse;
-				// Parse child nodes for batch file configuration
-				NodeList fileNameChildren = child.getChildNodes();
-				for (int j = 0; j < fileNameChildren.getLength(); ++j) {
-					Node fileNode = fileNameChildren.item(j);
-					if (fileNode.getNodeType() != Node.ELEMENT_NODE) {
-						continue;
-					}
-					String nodeName = fileNode.getNodeName();
-					switch (nodeName) {
-					case "queryFile":
-						queryFile = new File(fileNode.getTextContent());
-						break;
-					case "queries":
-						queriesNode = fileNode;
-						break;
-					case "outFile":
-						outFile = new File(fileNode.getTextContent());
-						break;
-					case "xmldbLocation":
-						dbFile = fileNode.getTextContent();
-						break;
-					case "scenario":
-						scenariosNames.add(new DataPair<>(((Element) fileNode).getAttribute("name"),
-								((Element) fileNode).getAttribute("date")));
-						break;
-					case singleSheetCheckBoxPropName:
-						singleSheet = Boolean.parseBoolean(fileNode.getTextContent());
-						break;
-					case includeChartsPropName:
-						includeCharts = Boolean.parseBoolean(fileNode.getTextContent());
-						break;
-					case splitRunsPropName:
-						splitRuns = Boolean.parseBoolean(fileNode.getTextContent());
-						break;
-					case replaceResultsPropName:
-						replaceResults = Boolean.parseBoolean(fileNode.getTextContent());
-						break;
-					case coresToUsePropertyName:
-						try {
-							numCoresToUse = Integer.parseInt(fileNode.getTextContent());
-						} catch (NumberFormatException ex) {
-							numCoresToUse = defaultNumCoresToUse;
+	/**
+	 * Loads the preset region list from a file and populates the dropdown choices.
+	 * It reads from "config/preset_region_list.txt", parsing region groups and
+	 * their sub-regions.
+	 */
+	private void loadRegionListToDropdown() {
+		String region_list_file = "config/preset_region_list.txt";
+		try {
+			preset_region_list = getStringArrayFromFile(region_list_file, "#");
+			if (preset_region_list.size() > 0) {
+				preset_choices = new String[preset_region_list.size() + 1];
+				preset_choices[0] = "(optional)";
+				for (int i = 0; i < preset_region_list.size(); i++) {
+					String line = preset_region_list.get(i);
+					int index = line.indexOf(":");
+					if (index > 0) {
+						String name = line.substring(0, index);
+						preset_choices[i + 1] = name;
+						String[] subregions = splitString(line.substring(index + 1), ",");
+						for (int j = 0; j < subregions.length; j++) {
+							subregion_list.add(subregions[j]);
 						}
-						break;
-					default:
-						System.out.println("Unknown tag: " + nodeName);
-						break;
 					}
 				}
-				try {
-					// Validate required files
-					if ((queryFile == null && queriesNode == null) || outFile == null || dbFile == null) {
-						throw new Exception("Not enough information provided to run batch query.");
-					}
-					// Open DB if needed
-					if (XMLDB.getInstance() == null) {
-						XMLDB.openDatabase(dbFile);
-						didOpenDB = true;
-					}
-					// Get scenarios from DB
-					Vector<ScenarioListItem> scenariosInDb = getScenarios();
-					Vector<ScenarioListItem> scenariosToRun = new Vector<>();
-					if (scenariosNames.isEmpty() && !scenariosInDb.isEmpty()) {
-						scenariosToRun.add(scenariosInDb.lastElement());
-					} else {
-						for (DataPair<String, String> currScn : scenariosNames) {
-							String scen = currScn.getKey();
-							String date = currScn.getValue();
-							if (date.isEmpty()) {
-								date = null;
-							}
-							ScenarioListItem found = ScenarioListItem.findClosestScenario(scenariosInDb, scen, date);
-							if (found != null) {
-								scenariosToRun.add(found);
-							}
-						}
-					}
-					if (scenariosToRun.isEmpty()) {
-						throw new Exception("Could not find scenarios to run.");
-					}
-					// Load queries from file or inline
-					if (queryFile != null && queriesNode != null) {
-						throw new Exception("Setting both a queryFile and inline queries is not allowed.");
-					} else if (queryFile != null) {
-						queriesNode = readQueries(queryFile).getDocumentElement();
-					} else {
-						filterNodes(queriesNode, new ParseFilter());
-					}
-					// Get queries to run
-					final NodeList res = (NodeList) XPathFactory.newInstance().newXPath().evaluate("./aQuery",
-							queriesNode, XPathConstants.NODESET);
-					final int numQueries = res.getLength();
-					if (numQueries == 0) {
-						throw new Exception("Could not find queries to run.");
-					}
-					// Prepare scenarios to run
-					final Vector<Object[]> toRunScns = new Vector<>();
-					if (!splitRuns) {
-						toRunScns.add(scenariosToRun.toArray());
-					} else {
-						for (ScenarioListItem scn : scenariosToRun) {
-							Object[] temp = new Object[1];
-							temp[0] = scn;
-							toRunScns.add(temp);
-						}
-					}
-					// Get regions (excluding Global)
-					Vector<String> allRegions = getRegions();
-					allRegions.remove("Global");
-					// Run the batch window
-					// Register total queries to run so the progress UI can track them
-					int totalToRegister = numQueries * toRunScns.size();
-					for (int qi = 0; qi < totalToRegister; ++qi) {
-						registerNewQuery();
-					}
-					BatchWindow runner = new BatchWindow(outFile, toRunScns, allRegions, singleSheet, includeCharts,
-							numQueries, res, replaceResults, numCoresToUse);
-					if (runner != null) {
-						runner.waitForFinish();
-					}
-				} catch (Exception e) {
-					// Print stack trace for errors
-					e.printStackTrace();
-				} finally {
-					// Close DB if it was opened in this method
-					if (didOpenDB) {
-						XMLDB.closeDatabase();
-					}
-				}
-			} else {
-				// Unknown command type
-				System.out.println("Unknown command: " + actionCommand);
 			}
+		} catch (IOException e) {
+			System.out.println("Not able to read preset_region_list file: " + region_list_file);
 		}
 	}
 
+	/**
+	 * Finalizes the UI setup by adding the main component to the parent frame and
+	 * making it visible.
+	 */
 	private void finalizeUI() {
 		JFrame parentFrame = InterfaceMain.getInstance().getFrame();
 		if (parentFrame == null)
@@ -2270,39 +2139,17 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		contentPane.removeAll();
 		contentPane.setLayout(new BorderLayout());
 		contentPane.add(tableCreatorSplit, BorderLayout.CENTER);
-		// Remove pack() to avoid overriding setSize from InterfaceMain
-		// parentFrame.pack();
 		parentFrame.setLocationRelativeTo(null);
 		parentFrame.setVisible(true);
 		parentFrame.getGlassPane().setVisible(false);
 	}
 
-
 	/**
-	 * Runs a batch query from a file and saves the output.
-	 * 
-	 * @param batchFile The batch query file.
-	 * @param outFile   The output file.
+	 * Gets the TreePath from a given TreeNode.
+	 *
+	 * @param treeNode The node to get the path for.
+	 * @return The TreePath, or null if the node is null.
 	 */
-	public void batchQuery(File batchFile, File outFile) {
-		try {
-			final Document doc = readQueries(batchFile);
-			final NodeList res = (NodeList) XPathFactory.newInstance().newXPath().evaluate("./aQuery",
-					doc.getDocumentElement(), XPathConstants.NODESET);
-			final int numQueries = res.getLength();
-			if (numQueries == 0) {
-				throw new Exception("Could not find queries to run.");
-			}
-			Vector<Object[]> toRunScns = new Vector<Object[]>();
-			toRunScns.add(scnList.getSelectedValues());
-			Vector<String> allRegions = getRegions();
-			allRegions.remove("Global");
-			new BatchWindow(outFile, toRunScns, allRegions, false, true, numQueries, res, false, 2);
-		} catch (Exception e) {
-		 e.printStackTrace();
-		}
-	}
-
 	public TreePath getTreePathFromNode(TreeNode treeNode) {
 		List<Object> nodes = new ArrayList<Object>();
 		if (treeNode != null) {
@@ -2353,12 +2200,22 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		}
 	}
 
+	/**
+	 * Opens the database management dialog.
+	 */
 	private void manageDB() {
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
 		new ManageDatabaseDialog(parentFrame, this).setVisible(true);
 	}
 
+	/**
+	 * Writes a DOM Document to a file.
+	 *
+	 * @param file The file to write to.
+	 * @param doc  The Document to serialize.
+	 * @return true if writing was successful, false otherwise.
+	 */
 	private boolean writeFile(File file, Document doc) {
 		LSSerializer serializer = implls.createLSSerializer();
 		LSOutput lsOutput = implls.createLSOutput();
@@ -2432,7 +2289,6 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 			lsParser.setFilter(new ParseFilter());
 			return lsParser.parse(lsInput);
 		} else {
-			// DocumentType DOCTYPE = impl.createDocumentType("recent", "", "");
 			return ((DOMImplementation) implls).createDocument("", "queries", null);
 		}
 	}
@@ -2488,6 +2344,49 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	}
 
 	/**
+	 * A filter which will be used by the LSParser to filter out any nodes
+	 * which are not necessary for the query file. This includes things like
+	 * comments and insignificant whitespace.
+	 * 
+	 * @author Josh Lurz
+	 * 
+	 */
+	public class ParseFilter implements LSParserFilter {
+		/**
+		 * A bitmask of what nodes to show. We will be showing all nodes and
+		 * making a decision on each one.
+		 */
+		public int getWhatToShow() {
+			return LSParserFilter.FILTER_ACCEPT; //This was ShowAll. Need to verify functionality of change.
+		}
+
+		/**
+		 * The filter method which will decide which nodes to keep.
+		 * 
+		 * @param node The node to check.
+		 * @return A short which will be either FILTER_ACCEPT, FILTER_REJECT, or
+		 *         FILTER_SKIP.
+		 */
+		public short acceptNode(Node node) {
+			// we want to keep all elements
+			if (node.getNodeType() == Node.ELEMENT_NODE) {
+				return LSParserFilter.FILTER_ACCEPT;
+			}
+			// we want to skip text nodes that are not all whitespace
+			else if (node.getNodeType() == Node.TEXT_NODE && node.getTextContent().trim().length() != 0) {
+				return LSParserFilter.FILTER_ACCEPT;
+			}
+			// we will reject everything else
+			return LSParserFilter.FILTER_REJECT;
+		}
+
+		@Override
+		public short startElement(Element element) {
+			return LSParserFilter.FILTER_ACCEPT;
+		}
+	}
+
+	/**
 	 * Loads favorite queries file and applies it if requested by the user.
 	 */
 	/**
@@ -2507,12 +2406,25 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 				.collect(Collectors.joining(">"));
 	}
 
+	/**
+	 * Counts the number of commas in a TreePath string representation.
+	 *
+	 * @param pathStr The string representation of the TreePath.
+	 * @return The number of commas.
+	 */
 	// YD added this method to count number of commas in a TreePath,Mar-2024
 	public int countCommaInPath(String pathStr) {
 		int numCommas = pathStr.length() - pathStr.replace(",", "").length();
 		return (numCommas);
 	}
 
+	/**
+	 * Converts a TreePath that may contain commas in its node names to a
+	 * delimited string line.
+	 *
+	 * @param treePathNow The TreePath to convert.
+	 * @return A string representing the path with ">" as a delimiter.
+	 */
 	// YD added this method to count number of commas in a TreePath,Mar-2024
 	public String convertPathWithCommaToLine(TreePath treePathNow) {
 		int treePathCount = treePathNow.getPathCount();
@@ -2530,6 +2442,13 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
 	// YD edits end
 
+	/**
+	 * Extracts the BaseTableModel from a component, which is expected to be a
+	 * QueryResultsPanel or a similar structure containing a JTable.
+	 *
+	 * @param comp The component to extract the model from.
+	 * @return The BaseTableModel, or null if not found.
+	 */
 	public static BaseTableModel getTableModelFromComponent(java.awt.Component comp) {
 		Object c;
 		try {
@@ -2539,8 +2458,6 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 				return null;
 			}
 			if (c instanceof JSplitPane) {
-				// Dan-Debug - Causes error javax.swing.JPanel cannot be cast to
-				// javax.swing.JScrollPane
 				Component leftComponent = ((JSplitPane) c).getLeftComponent();
 				JTable table = null;
 				if (leftComponent instanceof JScrollPane) {
@@ -2573,6 +2490,13 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		}
 	}
 
+	/**
+	 * Extracts the JTable from a component, which is expected to be a
+	 * QueryResultsPanel or a similar structure.
+	 *
+	 * @param comp The component to extract the table from.
+	 * @return The JTable, or null if not found.
+	 */
 	public static JTable getJTableFromComponent(java.awt.Component comp) {
 		Object c;
 		try {
@@ -2660,32 +2584,49 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 				// Arbitrarily define a 5-pixel shift as the
 				// official beginning of a drag.
 				if (dx > 5 || dy > 5) {
-				 {
-						JComponent c = (JComponent) e.getSource();
-						c.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+					JComponent c = (JComponent) e.getSource();
+					c.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 
-						tablesTabs.getTransferHandler().exportAsDrag(tablesTabs, firstMouseEvent, action);
-						firstMouseEvent = null;
-						c.setCursor(Cursor.getDefaultCursor());
-					}
-
+					tablesTabs.getTransferHandler().exportAsDrag(tablesTabs, firstMouseEvent, action);
+					firstMouseEvent = null;
+					c.setCursor(Cursor.getDefaultCursor());
 				}
 			}
 		}
 
+		/**
+		 * Unused mouse event.
+		 * @param e The MouseEvent.
+		 */
 		// all the events we don't care about..
 		public void mouseMoved(MouseEvent e) {
 		}
 
+		/**
+		 * Unused mouse event.
+		 * @param e The MouseEvent.
+		 */
 		public void mouseEntered(MouseEvent e) {
 		}
 
+		/**
+		 * Unused mouse event.
+		 * @param e The MouseEvent.
+		 */
 		public void mouseExited(MouseEvent e) {
 		}
 
+		/**
+		 * Unused mouse event.
+		 * @param e The MouseEvent.
+		 */
 		public void mouseClicked(MouseEvent e) {
 		}
 
+		/**
+		 * Unused mouse event.
+		 * @param e The MouseEvent.
+		 */
 		public void mouseReleased(MouseEvent e) {
 		}
 	}
