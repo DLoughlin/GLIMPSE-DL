@@ -43,7 +43,8 @@ import graphDisplay.AChartDisplay;
 import graphDisplay.BoxAndWhiskerChartPane;
 import graphDisplay.DifferenceChartPane;
 import graphDisplay.SumAcrossChartPane;
-import graphDisplay.Transpose;
+import graphDisplay.Breakout;
+import java.util.function.Consumer;
 
 /**
  * Handles Thumbnail Box Popup events for chart panels.
@@ -58,7 +59,7 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
 
     private static final long serialVersionUID = 1L;
     /** Menu options for chart operations */
-    private final String[] menuOptions = { "Difference", "Transpose" };
+    private final String[] menuOptions = { "Difference", "Transpose", "Breakout View" };
     private Chart[] charts;
     private int thumbnailWidth;
     private int gridWidth;
@@ -66,6 +67,8 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
     private JSplitPane splitPane;
     private Runnable refreshAction;
     private JCheckBoxMenuItem sameScaleMenuItem;
+    private boolean hideOptions;
+    private Consumer<Boolean> onSameScaleChange;
 
     /**
      * Constructs the popup menu for thumbnail chart operations.
@@ -76,7 +79,7 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
      * @param splitPane JSplitPane containing chart panel
      */
     public ThumbnailBoxPopup(Chart[] charts, int thumbnailWidth, int gridWidth, boolean useSameScale, JSplitPane splitPane) {
-        this(charts, thumbnailWidth, gridWidth, useSameScale, splitPane, null);
+        this(charts, thumbnailWidth, gridWidth, useSameScale, splitPane, null, false, null);
     }
 
     /**
@@ -89,12 +92,22 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
      * @param refreshAction Action to run when Refresh is clicked
      */
     public ThumbnailBoxPopup(Chart[] charts, int thumbnailWidth, int gridWidth, boolean useSameScale, JSplitPane splitPane, Runnable refreshAction) {
+        this(charts, thumbnailWidth, gridWidth, useSameScale, splitPane, refreshAction, false, null);
+    }
+
+    public ThumbnailBoxPopup(Chart[] charts, int thumbnailWidth, int gridWidth, boolean useSameScale, JSplitPane splitPane, Runnable refreshAction, boolean hideOptions) {
+        this(charts, thumbnailWidth, gridWidth, useSameScale, splitPane, refreshAction, hideOptions, null);
+    }
+
+    public ThumbnailBoxPopup(Chart[] charts, int thumbnailWidth, int gridWidth, boolean useSameScale, JSplitPane splitPane, Runnable refreshAction, boolean hideOptions, Consumer<Boolean> onSameScaleChange) {
         this.charts = charts;
         this.thumbnailWidth = thumbnailWidth;
         this.gridWidth = gridWidth;
         this.useSameScale = useSameScale;
         this.splitPane = splitPane;
         this.refreshAction = refreshAction;
+        this.hideOptions = hideOptions;
+        this.onSameScaleChange = onSameScaleChange;
         createMenuItems();
     }
 
@@ -103,6 +116,9 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
      */
     private void createMenuItems() {
         for (String option : menuOptions) {
+            if (hideOptions && (option.equals("Transpose") || option.equals("Breakout View"))) {
+                continue;
+            }
             JMenuItem menuItem = new JMenuItem(option);
             menuItem.addActionListener(this);
             this.add(menuItem);
@@ -133,6 +149,9 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
             }
         } else if (e.getSource() == sameScaleMenuItem) {
             useSameScale = sameScaleMenuItem.isSelected();
+            if (onSameScaleChange != null) {
+                onSameScaleChange.accept(useSameScale);
+            }
             if (refreshAction != null) {
                 refreshAction.run();
             }
@@ -146,7 +165,10 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
                         new AChartDisplay(new DifferenceChartPane(charts).getChart());
                     } else if (selected.equalsIgnoreCase("Transpose")) {
                         // Show transposed chart
-                        new Transpose(charts.clone(), thumbnailWidth, gridWidth, useSameScale, splitPane);
+                        new Breakout(charts.clone(), thumbnailWidth, gridWidth, useSameScale, splitPane, false);
+                    } else if (selected.equalsIgnoreCase("Breakout View")) {
+                        // Show breakout chart
+                        new Breakout(charts.clone(), thumbnailWidth, gridWidth, useSameScale, splitPane, true);
                     }
                 }
             } catch (ClassNotFoundException | NullPointerException ex) {

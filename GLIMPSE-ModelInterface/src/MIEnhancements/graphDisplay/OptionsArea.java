@@ -76,6 +76,7 @@ public class OptionsArea {
 	private int w;
 	private int gridWidth;
 	private boolean sameScale;
+	private boolean hideOptions;
 	//private int typeLineChart = 2;
 	//private int typeRelativeLineChart = 3;
 	public static String LINE_CHART="LineChart";
@@ -86,12 +87,23 @@ public class OptionsArea {
 	public static String REL_DIFF_BAR="RelativeDiff(bar)";
 
 	public OptionsArea(JPanel jp, Chart[] chart, int gridWidth, boolean sameScale, JSplitPane sp) {
+		this(jp, chart, gridWidth, sameScale, sp, false);
+	}
+
+	public OptionsArea(JPanel jp, Chart[] chart, int gridWidth, boolean sameScale, JSplitPane sp, boolean hideOptions) {
 		this.jp = jp;
+		this.jp.setBackground(Color.green);
+		this.jp.setLayout(new BorderLayout());
 		this.chart = chart;
 		this.gridWidth = gridWidth;
 		this.sameScale = sameScale;
 		this.sp = sp;
+		this.hideOptions = hideOptions;
 		setOptionsArea();
+	}
+
+	public JPanel getPanel() {
+		return jp;
 	}
 
 	protected void setOptionsArea() {
@@ -99,27 +111,30 @@ public class OptionsArea {
 		box.add(Box.createHorizontalStrut(5));
 		JButton jb = new JButton("Options");
 		jb.setBackground(LegendUtil.getRGB(-8205574));
-		java.awt.event.MouseListener ml1 = new MouseAdapter() {
-			public void mouseClicked(MouseEvent e) {
+		jp.add(box);
+
+		jb.addMouseListener(new MouseAdapter() {
+			public void mousePressed(MouseEvent e) {
 				Runnable refreshAction = new Runnable() {
 					public void run() {
 						setChartPane();
 					}
 				};
-				ThumbnailBoxPopup popup = new ThumbnailBoxPopup(chart, w, gridWidth, sameScale, sp, refreshAction);
-				popup.show(jp, e.getX(), e.getY());
+				ThumbnailBoxPopup popup = new ThumbnailBoxPopup(chart, w, gridWidth, sameScale, sp, refreshAction, hideOptions, (newSameScale) -> {
+                    sameScale = newSameScale;
+                });
+				popup.show(e.getComponent(), e.getX(), e.getY());
 			}
-		};
-		jb.addMouseListener(ml1);
+		});
 		box.add(jb);
 		box.add(Box.createHorizontalStrut(10));
-		JLabel jl = new JLabel("Display", 2);
+		/* JLabel jl = new JLabel("Display", 2);
 		box.add(jl);
 		box.add(Box.createHorizontalStrut(10));
 		JScrollPane dspCol = displayCol();
 		dspCol.setMaximumSize(new Dimension(90, 30));
 		dspCol.setMinimumSize(new Dimension(30, 30));
-		box.add(dspCol);
+		box.add(dspCol); */
 
 		GraphOptionPane gPane = new GraphOptionPane();
 		gPane.setMaximumSize(new Dimension(150, 30));
