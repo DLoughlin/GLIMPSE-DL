@@ -274,8 +274,12 @@ public class Breakout extends JDialog {
         JPanel chartPane = ThumbnailUtilNew.createFlowChartPane(chart, sameScale);
         JScrollPane scrollPane = new JScrollPane(chartPane);
         scrollPane.getVerticalScrollBar().setUnitIncrement(20);
+        if (jp.getComponentCount() > 1 && jp.getComponent(1) instanceof JScrollPane) {
+            jp.remove(1);
+        }
         jp.add(scrollPane, BorderLayout.CENTER);
-        jp.updateUI();
+        jp.revalidate();
+        jp.repaint();
     }
 
 	public void updateChartPane(boolean sameScale) {

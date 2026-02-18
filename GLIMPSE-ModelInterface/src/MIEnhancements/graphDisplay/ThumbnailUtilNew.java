@@ -399,7 +399,7 @@ public class ThumbnailUtilNew {
 		int padding = SCROLL_BAR_WIDTH / 4;
 		GridLayout gl = new GridLayout(0, gridWidth);
 		gl.setHgap(0);
-		gl.setVgap(padding);
+		gl.setVgap(0);
 		JPanel chartPane = new JPanel(gl);
 		chartPane.setBorder(BorderFactory.createEmptyBorder(padding, 0, padding, 0));
 		// Calculate max and min values for scaling
@@ -513,7 +513,7 @@ public class ThumbnailUtilNew {
 		int padding = SCROLL_BAR_WIDTH / 4;
 		WrappingLayout fl = new WrappingLayout(FlowLayout.LEFT);
 		fl.setHgap(0);
-		fl.setVgap(padding);
+		fl.setVgap(0);
 		JPanel chartPane = new WrappingPanel(fl);
 		chartPane.setBorder(BorderFactory.createEmptyBorder(padding, 0, padding, 0));
 		// Calculate max and min values for scaling
