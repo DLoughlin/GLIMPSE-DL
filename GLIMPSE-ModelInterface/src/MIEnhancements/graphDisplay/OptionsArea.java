@@ -42,6 +42,7 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.function.Consumer;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -120,7 +121,7 @@ public class OptionsArea {
 						setChartPane();
 					}
 				};
-				ThumbnailBoxPopup popup = new ThumbnailBoxPopup(chart, w, gridWidth, sameScale, sp, refreshAction, hideOptions, (newSameScale) -> {
+				ThumbnailBoxPopup popup = new ThumbnailBoxPopup(chart, w, gridWidth, sameScale, sp, refreshAction, hideOptions, (Consumer<Boolean>)(newSameScale) -> {
                     sameScale = newSameScale;
                 });
 				popup.show(e.getComponent(), e.getX(), e.getY());
@@ -294,7 +295,7 @@ public class OptionsArea {
 			} else if (relativeIndex > -1) {
 
 				resetChart();
-				setSelectedIndex(selectedChartIndex);
+			 setSelectedIndex(selectedChartIndex);
 				listYrsForRelChart.setSelectedIndex(selectedChartIndex);
 
 			}

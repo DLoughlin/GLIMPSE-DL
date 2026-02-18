@@ -150,12 +150,19 @@ public class Breakout extends JDialog {
 				System.out.println("Transpose::Transpose:input " + chart1.length + " trans: " + transChart.length
 						+ " transpose: " + chart1.length);
 			}
-			JPanel jp = ThumbnailUtilNew.setChartPane(chart1, 0, sameScale, true, sp);
-			JDialog dialog = CreateComponent.crtJDialog("Transpose Thumbnails: " + chart[0].getGraphName());
-			dialog.setContentPane(new JScrollPane(jp));
-			dialog.pack();
-			dialog.setSize(new Dimension(705, 805));
-			dialog.setVisible(true);
+			
+			this.chart = chart1;
+			this.gridWidth = 0;
+			JPanel optionsPanel = new JPanel();
+			this.optionsArea = new OptionsArea(optionsPanel, this.chart, this.gridWidth, sameScale, sp, true);
+			jp.add(optionsArea.getPanel(), BorderLayout.NORTH);
+			setChartPane();
+			add(jp);
+			setTitle("Transpose Thumbnails: " + chart[0].getGraphName());
+			setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+			pack();
+			setSize(800, 600);
+			setVisible(true);
 		}
 	}
 
