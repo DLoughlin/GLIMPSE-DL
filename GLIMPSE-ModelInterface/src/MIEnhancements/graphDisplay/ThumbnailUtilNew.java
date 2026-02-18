@@ -625,9 +625,12 @@ public class ThumbnailUtilNew {
 	 * @param jp JPanel to validate
 	 */
 	public static void validateChartPane(JPanel jp) {
-		BorderLayout bl = (BorderLayout) jp.getLayout();
-		if (bl.getLayoutComponent("Center") != null) {
-			jp.remove(bl.getLayoutComponent("Center"));
+		if (jp.getLayout() instanceof BorderLayout) {
+			BorderLayout bl = (BorderLayout) jp.getLayout();
+			Component center = bl.getLayoutComponent(BorderLayout.CENTER);
+			if (center != null) {
+				jp.remove(center);
+			}
 		}
 	}
 
