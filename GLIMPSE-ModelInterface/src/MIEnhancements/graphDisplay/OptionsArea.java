@@ -185,13 +185,21 @@ public class OptionsArea {
 	private void setChartPane() {
 		// Dan: Using modified version (2)
 		ThumbnailUtilNew.validateChartPane(jp);
-		w = ThumbnailUtilNew.computeFixGridLayoutViewSize(sp.getSize().width, gridWidth);
-		// Dan: Using modified version (2)
-		JPanel chartPane = ThumbnailUtilNew.setChartPane(chart, w, gridWidth, sameScale, false);
+		
+		JPanel chartPane;
+		if (hideOptions) {
+			chartPane = ThumbnailUtilNew.createFlowChartPane(chart, sameScale);
+		} else {
+			w = ThumbnailUtilNew.computeFixGridLayoutViewSize(sp.getSize().width, gridWidth);
+			// Dan: Using modified version (2)
+			chartPane = ThumbnailUtilNew.setChartPane(chart, w, gridWidth, sameScale, false);
+		}
+
 		JScrollPane scrollPane = new JScrollPane(chartPane);
 		scrollPane.getVerticalScrollBar().setUnitIncrement(20);
 		jp.add(scrollPane, BorderLayout.CENTER);
-		jp.updateUI();
+		jp.revalidate();
+		jp.repaint();
 	}
 
 	/**

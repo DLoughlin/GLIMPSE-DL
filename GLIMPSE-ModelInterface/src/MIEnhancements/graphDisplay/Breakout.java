@@ -86,10 +86,9 @@ public class Breakout extends JDialog {
 		this.jp = new JPanel(new BorderLayout());
 
 		if (isBreakout) {
-			JPanel optionsPanel = new JPanel();
+			
 			// DanL - The 'true' passed here hides the Breakout and Transpose options
-			this.optionsArea = new OptionsArea(optionsPanel, chart, gridWidth, sameScale, sp, true);
-			jp.add(optionsArea.getPanel(), BorderLayout.NORTH);
+			this.optionsArea = new OptionsArea(jp, chart, gridWidth, sameScale, sp, true);
 			setChartPane(); // This will now add the JScrollPane
 			add(jp);
 			setTitle("Thumbnails: " + chart[0].getGraphName());
