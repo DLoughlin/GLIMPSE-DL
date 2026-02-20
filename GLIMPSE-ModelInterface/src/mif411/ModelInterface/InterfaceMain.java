@@ -569,7 +569,7 @@ public class InterfaceMain implements ActionListener {
 					}
 					DbViewer db = (DbViewer) main.dbView;
 					try {
-						db.doOpenDB(dbFile);
+						db.doOpenDB(dbFile, !dbFile.exists());
 					} catch (Exception e) {
 						// Suppress "Provider rsrc not installed" error which can happen with BaseX initialization in some environments
 						if (e instanceof java.nio.file.FileSystemNotFoundException && e.getMessage() != null && e.getMessage().contains("rsrc")) {

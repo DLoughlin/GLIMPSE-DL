@@ -807,7 +807,21 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		}
 		if (dbFiles != null) {
 			main.fireControlChange(controlStr);
-			doOpenDB(dbFiles[0]);
+			File dbFile = dbFiles[0];
+			boolean create = false;
+			if (!dbFile.exists()) {
+				int response = JOptionPane.showConfirmDialog(parentFrame,
+						"The database '" + dbFile.getAbsolutePath() + "' does not exist. Would you like to create it?",
+						"Create Database?", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+				if (response == JOptionPane.YES_OPTION) {
+					create = true;
+				} else {
+					// User chose not to create, so abort
+					main.fireControlChange("ModelInterface"); // Go back
+					return;
+				}
+			}
+			doOpenDB(dbFile, create);
 		}
 	}
 
@@ -1026,8 +1040,9 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	 * Opens the database from the specified file.
 	 * 
 	 * @param dbFile The database file to open.
+	 * @param create Whether to create the database if it doesn't exist.
 	 */
-	public void doOpenDB(File dbFile) {
+	public void doOpenDB(File dbFile, boolean create) {
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
 		main.getProperties().setProperty("lastDirectory", dbFile.getParent());
@@ -1035,7 +1050,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		// database loads
 		parentFrame.getGlassPane().setVisible(true);
 		try {
-			XMLDB.openDatabase(dbFile.getAbsolutePath());
+			XMLDB.openDatabase(dbFile.getAbsolutePath(), create);
 		} catch (Exception e) {
 			e.printStackTrace();
 			parentFrame.getGlassPane().setVisible(false);

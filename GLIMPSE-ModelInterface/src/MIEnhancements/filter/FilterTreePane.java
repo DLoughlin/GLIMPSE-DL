@@ -232,7 +232,7 @@ public class FilterTreePane {
         Box filterBox = Box.createHorizontalBox();
         filterBox.add(Box.createHorizontalStrut(5)); // 5px padding left
         filterBox.add(Box.createHorizontalStrut(10)); // increased left padding before Filter label
-        JLabel filterLabel = new JLabel("Filter:");
+        JLabel filterLabel = new JLabel("Find text:");
         JTextField filterField = new JTextField(20);
         JButton applyButton = new JButton("Apply");
         JButton clearButton = new JButton("Clear");
@@ -246,6 +246,7 @@ public class FilterTreePane {
                 filterTree(tree, filterText);
             }
         });
+        filterField.addActionListener(e -> applyButton.doClick());
         clearButton.addActionListener(e -> {
             filterField.setText("");
             // Restore the original tree model
@@ -293,8 +294,9 @@ public class FilterTreePane {
                         JOptionPane.showMessageDialog(null, "Select filter", "Warning", JOptionPane.WARNING_MESSAGE);
                     } else {
                         // Apply filter and close dialog
-                        new FilteredTable(selOptions, chartName, unit, path, jtable, sp);
+                        FilteredTable ft = new FilteredTable(selOptions, chartName, unit, path, jtable, sp);
                         dialog.dispose();
+						ft.autoGraph();
                     }
                 } else {
                     dialog.dispose();

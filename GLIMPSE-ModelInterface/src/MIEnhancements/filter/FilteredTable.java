@@ -98,6 +98,8 @@ public class FilteredTable {
     private int sigfigs = 3;
 	/** List of selected years to display */
     private List<String> selectedYears;
+	private static final int MAX_AUTO_CHARTS = 125; // Max number of charts to auto-generate before skipping auto-graphics
+	private JButton graphButton;
 
     /**
      * Constructs a FilteredTable and sets up the UI and filtering logic.
@@ -206,9 +208,9 @@ public class FilteredTable {
         jb.addActionListener(e -> new FilterTreePane(chartName, unit, path, jTable, sel, sp));
         box.add(jb);
         // Graph button
-        jb = new JButton("Graph");
-        jb.setBackground(LegendUtil.getRGB(-8205574));
-        jb.addActionListener(e -> {
+        graphButton = new JButton("Graph");
+        graphButton.setBackground(LegendUtil.getRGB(-8205574));
+        graphButton.addActionListener(e -> {
                 if (debug)
                     System.out.println("FilteredTable: graph press: " + chartName + " " + Arrays.toString(unit) + " " + path + " " + doubleIndex + " " + jtable.getColumnCount() + "  " + jtable.getRowCount());
                 if (tn == null) {
@@ -224,7 +226,7 @@ public class FilteredTable {
                     System.gc();
                 }
         });
-        box.add(jb);
+        box.add(graphButton);
         box.add(new JLabel(" "));
         // Mapping button
         jb = new JButton("Mapping");
@@ -623,4 +625,100 @@ public class FilteredTable {
         }
         return filter;
     }
+
+    /**
+     * Auto-generates graphics if enabled and conditions are met.
+     */
+	public void autoGraph() {
+		if (InterfaceMain.autoGenerateGraphics) {
+			int chartCount = estimateChartCount(jtable);
+			if (chartCount < MAX_AUTO_CHARTS) {
+				System.out.println("Auto-graphics proceeding: Result has " + chartCount + " charts.");
+				clickGraphButton();
+			} else {
+				System.out.println("Auto-graphics skipped: Result has " + chartCount + " charts (limit is " + MAX_AUTO_CHARTS + ").");
+			}
+		}
+	}
+
+	private void clickGraphButton() {
+		if (graphButton != null) {
+			graphButton.doClick();
+		}
+	}
+
+	/**
+	 * Estimates the number of charts by counting unique values in the first column.
+	 * @param table JTable
+	 * @return Estimated number of charts
+	 */
+	private int estimateChartCount(JTable table) {
+		if (table == null || table.getRowCount() == 0) {
+			return 0;
+		}
+
+		TableModel model = table.getModel();
+		int scenarioColumn = -1;
+		int regionColumn = -1;
+
+		for (int i = 0; i < model.getColumnCount(); i++) {
+			String columnName = model.getColumnName(i);
+			if ("scenario".equalsIgnoreCase(columnName)) {
+				scenarioColumn = i;
+			}
+			if ("region".equalsIgnoreCase(columnName)) {
+				regionColumn = i;
+			}
+		}
+
+		if (scenarioColumn == -1) {
+			// Fallback to old method if scenario column is not found
+			System.out.println("Warning: 'scenario' column not found. Falling back to old chart count estimation.");
+			HashSet<Object> uniqueValues = new HashSet<>();
+			for (int i = 0; i < table.getRowCount(); i++) {
+				if (table.getRowSorter() != null) {
+					int modelRow = table.getRowSorter().convertRowIndexToModel(i);
+					uniqueValues.add(model.getValueAt(modelRow, 0));
+				} else {
+					uniqueValues.add(table.getValueAt(i, 0));
+				}
+			}
+			int count = uniqueValues.size();
+			System.out.println("Estimated chart count based on unique values in first column: " + count);
+			return count;
+		}
+
+		HashSet<Object> uniqueScenarios = new HashSet<>();
+		for (int i = 0; i < table.getRowCount(); i++) {
+			int modelRow;
+			if (table.getRowSorter() != null) {
+				modelRow = table.getRowSorter().convertRowIndexToModel(i);
+			} else {
+				modelRow = i;
+			}
+			uniqueScenarios.add(model.getValueAt(modelRow, scenarioColumn));
+		}
+
+		int scenarioCount = uniqueScenarios.size();
+		int regionCount = 1; // Default to 1 if region column is not found
+
+		if (regionColumn != -1) {
+			HashSet<Object> uniqueRegions = new HashSet<>();
+			for (int i = 0; i < table.getRowCount(); i++) {
+				int modelRow;
+				if (table.getRowSorter() != null) {
+					modelRow = table.getRowSorter().convertRowIndexToModel(i);
+				} else {
+					modelRow = i;
+				}
+				uniqueRegions.add(model.getValueAt(modelRow, regionColumn));
+			}
+			regionCount = uniqueRegions.size();
+		}
+		
+		int chartCount = scenarioCount * regionCount;
+
+		System.out.println("Estimated chart count based on " + scenarioCount + " scenarios and " + regionCount + " regions: " + chartCount);
+		return chartCount;
+	}
 }

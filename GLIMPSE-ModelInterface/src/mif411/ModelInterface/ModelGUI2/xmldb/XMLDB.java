@@ -150,6 +150,22 @@ public class XMLDB {
 			}
 		}
     }
+
+	public static void openDatabase(String dbLocation, boolean create) throws Exception {
+		// WARNING: not thread safe
+		if (xmldbInstance != null) {
+			throw new Exception("Could not open databse because " + xmldbInstance.contName + " is still open");
+		}
+		try {
+			xmldbInstance = new XMLDB(dbLocation, create);
+		} catch (FileSystemNotFoundException e) {
+			if (e.getMessage() != null && e.getMessage().contains("rsrc")) {
+				// Suppress "Provider rsrc not installed" error
+			} else {
+				throw e;
+			}
+		}
+	}
 	/**
 	 * Opens a new xml database at the given location and potentially an existing context.
 	 * @param dbLocation The location of the database to open.
@@ -208,10 +224,17 @@ public class XMLDB {
 	 */
 	private XMLDB(String db) throws Exception {
         wasContextAdopted = false;
-		if(!openDB(db)) {
+		if(!openDB(db, false)) {
 			throw new Exception ("Could not open DB");
 		}
     }
+
+	private XMLDB(String db, boolean create) throws Exception {
+		wasContextAdopted = false;
+		if (!openDB(db, create)) {
+			throw new Exception("Could not open DB");
+		}
+	}
 	
 	/**
 	 * Public constructor using a context to initialize.
@@ -231,7 +254,7 @@ public class XMLDB {
 	 * @return whether or not DB opened sucessfully
 	 * @throws Exception Throws from downstream children.
 	 */
-	private boolean openDB(String dbPath) throws Exception {
+	private boolean openDB(String dbPath, boolean create) throws Exception {
         // We need to seperate the path to the DB and the container name (last name in the path)
         File dbLocationFile = new File(dbPath).getAbsoluteFile();
         // The path may be a relative path so we must convert it to absolute here.
@@ -303,12 +326,17 @@ public class XMLDB {
         	}
         } else {
         	try {
-        		int ans = InterfaceMain.getInstance().showConfirmDialog(
-        	        	warningMessage,
-        				"Open DB Error", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, JOptionPane.NO_OPTION);
-        		if (ans == JOptionPane.YES_OPTION) {
-        			new CreateDB(contName).execute(context);
-        		}
+				if (create) {
+					new CreateDB(contName).execute(context);
+				} else {
+					int ans = InterfaceMain.getInstance().showConfirmDialog(warningMessage, "Open DB Error",
+						JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, JOptionPane.NO_OPTION);
+					if (ans == JOptionPane.YES_OPTION) {
+						new CreateDB(contName).execute(context);
+					} else {
+						return false;
+					}
+				}
         	} catch (Exception e) {
         		System.out.println("Cannot create database: "+contName);
         	 System.out.println("  error: "+e); 

@@ -51,6 +51,7 @@ import listener.IconMouseListener;
  * Handles both legacy and enhanced unit handling for chart data.
  */
 public class ThumbnailUtilNew {
+
 	private static final Logger LOGGER = Logger.getLogger(ThumbnailUtilNew.class.getName());
 	private static final int DEFAULT_THUMBNAIL_SIZE = 240; // 320 * 0.75
 	private static final int MIN_THUMBNAIL_SIZE = 135; // 180 * 0.75
