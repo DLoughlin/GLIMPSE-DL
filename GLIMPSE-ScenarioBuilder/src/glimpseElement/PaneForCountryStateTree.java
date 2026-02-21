@@ -401,4 +401,16 @@ public class PaneForCountryStateTree extends VBox {
         }
         return count;
     }
+    
+    /**
+     * Sets the selected nodes in the tree view from a comma-separated string of node names.
+     * @param nodes A comma-separated string of node names to select.
+     */
+    public void setSelectedNodes(String nodes) {
+        if (nodes == null || nodes.trim().isEmpty()) {
+            return;
+        }
+        String[] nodeArray = utils.splitString(nodes, ",");
+        selectNodes(nodeArray);
+    }
 }

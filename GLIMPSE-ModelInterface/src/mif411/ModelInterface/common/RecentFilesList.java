@@ -340,7 +340,7 @@ public class RecentFilesList implements MenuAdder {
 		 * @param actionCommand The command to give the ActionEvent.
 		 */
 		public RecentFile(File[] files, String targetName, String actionCommand) {
-			super(createTitle(actionCommand, files[0].getAbsolutePath()));
+			super(createTitle(files[0].getAbsolutePath()));
 			this.files = files;
 			this.targetName = targetName;
 			this.actionCommand = actionCommand;
@@ -357,7 +357,7 @@ public class RecentFilesList implements MenuAdder {
 		 * @param actionCommand The command to give the ActionEvent.
 		 */
 		public RecentFile(File[] files, ActionListener list, String actionCommand) {
-			super(actionCommand+": "+files[0].getName());
+			super(createTitle(files[0].getName()));
 			this.files = files;
 			this.targetName = list.getClass().getName();
 			this.actionCommand = actionCommand;
@@ -465,13 +465,13 @@ public class RecentFilesList implements MenuAdder {
 	 * @param fileName The file name to abbreviate.
 	 * @return The title that is no longer than MAX_TITLE_LENGTH
 	 */
-	private static String createTitle(String actionCommand, String fileName) {
+	private static String createTitle(String fileName) {
 		// subtract off the actionCommand length and 4 for ": .."
-		int maxFileLen = MAX_TITLE_LENGTH - actionCommand.length() - 4;
+		int maxFileLen = MAX_TITLE_LENGTH - 3; // 3 for ".. "
 		if(fileName.length() <= maxFileLen) {
-			return actionCommand+": "+fileName;
+			return fileName;
 		} else {
-			return actionCommand+": .."+fileName.substring(
+			return ".."+fileName.substring(
 					fileName.length() - maxFileLen -1, fileName.length());
 		}
 	}

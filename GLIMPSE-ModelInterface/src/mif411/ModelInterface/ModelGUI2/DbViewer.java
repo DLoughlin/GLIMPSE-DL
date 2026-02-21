@@ -39,21 +39,18 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.URI;
 import java.util.ArrayList;
@@ -65,8 +62,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Vector;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import javax.swing.BorderFactory;
@@ -79,7 +74,6 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -97,21 +91,15 @@ import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.ToolTipManager;
 import javax.swing.TransferHandler;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.table.TableModel;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
-import javax.swing.undo.UndoableEdit;
-
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathFactory;
-
 import org.basex.api.dom.BXDoc;
 import org.basex.api.dom.BXNode;
 import org.basex.query.QueryException;
@@ -119,12 +107,10 @@ import org.basex.query.QueryProcessor;
 import org.basex.query.iter.Iter;
 import org.basex.query.value.item.Item;
 import org.basex.query.value.node.ANode;
-import org.w3c.dom.DOMConfiguration;
 import org.w3c.dom.DOMImplementation;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 import org.w3c.dom.bootstrap.DOMImplementationRegistry;
 import org.w3c.dom.ls.DOMImplementationLS;
 import org.w3c.dom.ls.LSInput;
@@ -137,32 +123,19 @@ import org.w3c.dom.traversal.NodeFilter;
 import ModelInterface.BatchRunner;
 import ModelInterface.InterfaceMain;
 import ModelInterface.MenuAdder;
-import ModelInterface.ConfigurationEditor.guihelpers.XMLFileFilter;
 import ModelInterface.ModelGUI2.QueryTreeModel.QueryGroup;
 import ModelInterface.ModelGUI2.queries.QueryGenerator;
 import ModelInterface.ModelGUI2.queries.SingleQueryExtension;
 import ModelInterface.ModelGUI2.tables.BaseTableModel;
 import ModelInterface.ModelGUI2.tables.TableSorter;
 import ModelInterface.ModelGUI2.tables.TableTransferHandler;
-import ModelInterface.ModelGUI2.undo.RenameScenarioUndoableEdit;
 import ModelInterface.ModelGUI2.xmldb.QueryBinding;
 import ModelInterface.ModelGUI2.xmldb.XMLDB;
-import ModelInterface.common.DataPair;
 import ModelInterface.common.FileChooser;
 import ModelInterface.common.FileChooserFactory;
 import ModelInterface.common.RecentFilesList.RecentFile;
-
 import filter.FilterTreePaneYears;
-
-/***
- * * Author Action Date Flag
- * ======================================================================= TWU
- * Add capability to allow 1/2/2017 @1 to invoke from command line Allow DBView
- * to accept filtered JTable which is in different table model and container Add
- * Copy to Clip board capability to allow large data paste to excel file Add a
- * monitor to large data drag
- * 
- */
+import mif411.ModelInterface.ModelGUI2.BatchExecutionController;
 
 /**
  * DbViewer is the main class for the database viewing and query interface in
@@ -192,7 +165,7 @@ import filter.FilterTreePaneYears;
  * access, file operations, and UI components.
  *
  * @author Battelle Memorial Institute
- * @version 1.0
+ * @version 1.1
  * @since 2012
  */
 public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
@@ -203,22 +176,20 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	private DOMImplementationLS implls;
 
 	protected Vector<ScenarioListItem> scns;
-	protected JList scnList;
+	public JList scnList;
 	protected JList regionList;
 	protected Vector regions;
-	protected BaseTableModel bt; // does this still need to be a field?
-	protected JScrollPane jsp; // does this still need to be a field?
 	protected QueryTreeModel queries;
 	private JTabbedPane tablesTabs = new JTabbedPane();
 	private JSplitPane scenarioRegionSplit;
 	private JSplitPane queriesSplit;
 	private JSplitPane tableCreatorSplit;
-	private JMenuItem queriesLockMenu; // YD added
-	private JMenuItem queriesCreateMenu; // YD added
-	private JMenuItem queriesEditMenu; // YD added
-	private JMenuItem queriesRemoveMenu; // YD added
-	private JMenuItem queriesUpdateMenu; // YD added
-	private JMenuItem significantDigitsMenu; // YD added
+	private JMenuItem queriesLockMenu;
+	private JMenuItem queriesCreateMenu;
+	private JMenuItem queriesEditMenu;
+	private JMenuItem queriesRemoveMenu;
+	private JMenuItem queriesUpdateMenu;
+	private JMenuItem significantDigitsMenu;
 	private JMenuItem enableUnitConversionsMenu;
 	private JMenuItem createFavoritesMenu;// YD Feb-2024
 	private JMenuItem loadFavoritesMenu;
@@ -230,19 +201,17 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
 	private JMenuItem menuExpPrn;
 
-	private String filteringText; // YD added
-	private Enumeration<TreePath> expansionState;// YD added
-	private boolean AllCollapsed = false; // YD added
+	private String filteringText;
 	private static final int BOTTOM_PANE_HEIGHT = 25;
-	ArrayList<String> region_list = new ArrayList<String>();// YD added,Feb-2024
-	ArrayList<String> subregion_list = new ArrayList<String>();// YD added,Feb-2024
-	ArrayList<String> preset_region_list = new ArrayList<String>();// YD added,Feb-2024
-	private JComboBox<String> comboBoxPresetRegions; // YD added,Feb-2024
-	private String[] preset_choices; // YD added,Feb-2024
-	private JScrollPane listScrollRegions; // YD added,Feb-2024
-	private JScrollPane listScrollQueries; // YD added,Feb-2024
-	public static boolean queryTreeLocked = true; // YD added
-	public static boolean disable3Digits = false; // YD added
+	ArrayList<String> region_list = new ArrayList<String>();
+	ArrayList<String> subregion_list = new ArrayList<String>();
+	ArrayList<String> preset_region_list = new ArrayList<String>();
+	private JComboBox<String> comboBoxPresetRegions;
+	private String[] preset_choices;
+	private JScrollPane listScrollRegions;
+	private JScrollPane listScrollQueries;
+	public static boolean queryTreeLocked = true;
+	public static boolean disable3Digits = false;
 	public static boolean enableUnitConversions = true;
 
 	public static final String SCENARIO_LIST_NAME = "scenario list";
@@ -251,16 +220,30 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	private static Map<String, String> selectedYears = null;
 
 	public static ArrayList openWindows = new ArrayList();
-
+	
+	private static JProgressBar queryProgressBar; 
+	private static int totalQueries = 0; 
+	private static int completedQueries = 0;
 	private JFrame parentFrame = null;
+	private FavoriteQueriesManager favoriteQueriesManager;
+	private BatchExecutionController batchExecutionController;
 
-	ArrayList<Object> windowList = new ArrayList<>();
-
+	/**
+	 * Constructs a new DbViewer, initializing the user interface and setting up
+	 * property change listeners for application-level events.
+	 */
 	public DbViewer() {
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
 		this.parentFrame = parentFrame;
 		final DbViewer thisViewer = this;
+		this.batchExecutionController = new BatchExecutionController(this);
+		
+		queryProgressBar = new JProgressBar(0, 100);
+		queryProgressBar.setVisible(false);
+		queryProgressBar.setStringPainted(false); // cleaner look
+		queryProgressBar.setPreferredSize(new Dimension(120, 16));
+
 
 		try {
 			DOMImplementationRegistry reg = DOMImplementationRegistry.newInstance();
@@ -317,6 +300,9 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 						Properties prop = main.getProperties();
 						String queryFileName = prop.getProperty("queryFile", null);
 						File queryFile = queryFileName != null ? new File(queryFileName) : null;
+						if (queryFile == null) {
+							System.out.println("No query file specified in properties. Select query file via ModelInterface file menu.");
+						}
 						if (queryFile == null || !queryFile.exists()) {
 							FileChooser fc = FileChooserFactory.getFileChooser();
 							final FileFilter xmlFilter = new XMLFilter();
@@ -363,6 +349,22 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 						queriesDoc = readQueries(queryFile);
 
 					}
+				} else if (evt.getPropertyName().equals("SelectQuery")) {
+					FileChooser fc = FileChooserFactory.getFileChooser();
+					File start = new File(main.getProperties().getProperty("queryFile",
+							main.getProperties().getProperty("lastDirectory", ".")));
+					File[] files = fc.doFilePrompt(parentFrame, "Open Query File", FileChooser.LOAD_DIALOG, start,
+							new XMLFilter());
+					if (files != null && files.length > 0) {
+						File file = files[0];
+						// update runtime and persist for next launch
+						String oldFile = main.getProperties().getProperty("queryFile");
+						main.setProperty("queryFile", file.getAbsolutePath());
+						main.setProperty("lastDirectory", file.getParent());
+						System.out.println("Selected query file: " + file.getAbsolutePath());
+						updateQueryTree(file);
+						main.fireProperty("QueryFileChanged", oldFile, file.getAbsolutePath());
+					}
 				}
 			}
 		});
@@ -375,7 +377,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	 * 
 	 * @return Map of selected years.
 	 */
-	public static Map<String, String> getSelectedYearsFromPropFile() {
+	public static Map<String, String> getSelectedYearListFromPropFile() {
 
 		if (DbViewer.selectedYears == null) {
 
@@ -389,6 +391,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 					System.out.println("DbViewer375: Using selectedYearsStr from properties file: " + defaultYearStr);
 
 					String[] yearsArr = defaultYearStr.split(";");
+					Arrays.sort(yearsArr);
 					DbViewer.selectedYears = new HashMap<>();
 					if (!(yearsArr.length == 1 && yearsArr[0].equals(""))) {
 						for (String year : yearsArr) {
@@ -426,6 +429,14 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	}
 
 	/**
+	 * Forces a refresh of the selected years from the properties file.
+	 */
+	public static void refreshSelectedYearListFromPropFile() {
+		DbViewer.selectedYears = null;
+		getSelectedYearListFromPropFile();
+	}
+
+	/**
 	 * Returns all years from the properties file or default years if not found.
 	 * 
 	 * @return List of all years.
@@ -441,6 +452,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
 			if (allYearStr != null) {
 				String[] yearsArr = allYearStr.split(";");
+				Arrays.sort(yearsArr);
 				allYearsList = new ArrayList<String>(yearsArr.length);
 				if (!(yearsArr.length == 1 && yearsArr[0].equals(""))) {
 					for (String year : yearsArr) {
@@ -458,11 +470,19 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 			for (int i = 2005; i < 2101; i += 5) {
 				allYearsList.add(String.valueOf(i));
 			}
+			allYearsList.sort(String.CASE_INSENSITIVE_ORDER);
 		}
 
 		return allYearsList;
 	}
 
+	/**
+	 * Creates a JMenuItem with the given title and adds this DbViewer as its
+	 * ActionListener.
+	 *
+	 * @param title The text for the menu item.
+	 * @return A configured JMenuItem.
+	 */
 	private JMenuItem makeMenuItem(String title) {
 		JMenuItem ret = new JMenuItem(title);
 		ret.addActionListener(this);
@@ -487,6 +507,14 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		addAdvancedMenuItems(menuMan, main, parentFrame);
 	}
 
+	/**
+	 * Adds file-related menu items to the application's menu manager.
+	 *
+	 * @param menuMan      The menu manager to which menu items are added.
+	 * @param main         The main interface instance.
+	 * @param parentFrame  The parent JFrame for dialogs and listeners.
+	 * @param thisListener The ActionListener for the menu items.
+	 */
 	private void addFileMenuItems(InterfaceMain.MenuManager menuMan, InterfaceMain main, JFrame parentFrame,
 			ActionListener thisListener) {
 		JMenuItem menuItem = new JMenuItem("Open DB");
@@ -494,7 +522,6 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).addMenuItem(menuItem, 5);
 
 		final JMenuItem menuManage = makeMenuItem("Manage DB");
-		// menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).addMenuItem(menuManage, 10);
 		menuManage.setEnabled(false);
 
 		parentFrame.addPropertyChangeListener(new PropertyChangeListener() {
@@ -586,6 +613,16 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addMenuItem(yearsMn, 21);
 	}
 
+	/**
+	 * Adds advanced menu items to the application's menu manager. This includes
+	 * menus for query management, such as locking/unlocking the query tree,
+	 * saving, creating, editing, and removing queries. It also includes favorites
+	 * management.
+	 *
+	 * @param menuMan     The menu manager to which menu items are added.
+	 * @param main        The main interface instance.
+	 * @param parentFrame The parent JFrame for dialogs and listeners.
+	 */
 	private void addAdvancedMenuItems(InterfaceMain.MenuManager menuMan, InterfaceMain main, JFrame parentFrame) {
 		// Move Queries menus under the global Edit menu instead of Tools
 		InterfaceMain.MenuManager editMM = menuMan.getSubMenuManager(InterfaceMain.EDIT_MENU_POS);
@@ -671,24 +708,9 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		editMM.addMenuItem(favoritesSubMenu, 4);
 		// Add a separator between Favorites (4) and Preferences (5)
 		editMM.addSeparator(4);
-		// queriesMM.addMenuItem(favoritesSubMenu, 25);
-		// queriesMM.addSeparator(26);
 
 		// Add Run Batch under Tools (unchanged)
-		InterfaceMain.MenuManager toolsMM = menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS);
-		if (toolsMM == null) {
-			JMenu toolsMenu = new JMenu("Tools");
-			menuMan.addMenuItem(toolsMenu, InterfaceMain.TOOLS_MENU_POS);
-			toolsMM = menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS);
-		}
-		JMenuItem runBatchMenu = makeMenuItem("Run Batch...");
-		runBatchMenu.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-            	InterfaceMain.getInstance().runBatch();
-            }
-        });
-        toolsMM.addSeparator(51);
-        toolsMM.addMenuItem(runBatchMenu, 52);
+		// This is already added in InterfaceMain.java
 
 		// Favorites under Queries
 		loadFavoritesMenu = makeMenuItem("Load Favorite Queries File");
@@ -699,20 +721,13 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
 		appendFavoritesMenu = makeMenuItem("Append Favorite Queries File");
 		favoritesSubMenu.add(appendFavoritesMenu);
-
-		/****Hiding menu option for hiding beta features since features are now reasonably stable
-		// Separator
-		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS).addSeparator(99);
-
-		// Beta Features
-		String betaText = (InterfaceMain.enableMapping || InterfaceMain.enableSankey) ? "Disable Beta Features"
-				: "Enable Beta Features";
-		betaMn = makeMenuItem(betaText);
-		betaMn.addActionListener(this);
-		menuMan.getSubMenuManager(InterfaceMain.TOOLS_MENU_POS).addMenuItem(betaMn, 100);
-		*/
 	}	
 	
+	/**
+	 * Handles action events from menu items and buttons.
+	 *
+	 * @param e The ActionEvent that occurred.
+	 */
 	public void actionPerformed(ActionEvent e) {
 		String command = e.getActionCommand();
 		switch (command) {
@@ -764,6 +779,12 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		}
 	}
 
+	/**
+	 * Handles the "Open DB" action event. Prompts the user to select a database
+	 * directory and opens it.
+	 *
+	 * @param e The ActionEvent that occurred.
+	 */
 	private void handleOpenDB(ActionEvent e) {
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
@@ -786,10 +807,68 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		}
 		if (dbFiles != null) {
 			main.fireControlChange(controlStr);
-			doOpenDB(dbFiles[0]);
+			File dbFile = dbFiles[0];
+			boolean create = false;
+			if (!dbFile.exists()) {
+				int response = JOptionPane.showConfirmDialog(parentFrame,
+						"The database '" + dbFile.getAbsolutePath() + "' does not exist. Would you like to create it?",
+						"Create Database?", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+				if (response == JOptionPane.YES_OPTION) {
+					create = true;
+				} else {
+					// User chose not to create, so abort
+					main.fireControlChange("ModelInterface"); // Go back
+					return;
+				}
+			}
+			doOpenDB(dbFile, create);
 		}
 	}
 
+	/**
+	 * Exports all open tabs to CSV files.
+	 */
+	public void exportTabs() {
+		final InterfaceMain main = InterfaceMain.getInstance();
+		final JFrame parentFrame = main.getFrame();
+		FileChooser fc = FileChooserFactory.getFileChooser();
+		final FileFilter csvFilter = new javax.swing.filechooser.FileFilter() {
+			public boolean accept(File f) {
+				return f.getName().toLowerCase().endsWith(".csv") || f.isDirectory();
+			}
+
+			public String getDescription() {
+				return "CSV File (*.csv)";
+			}
+		};
+		File[] csvFiles = fc.doFilePrompt(parentFrame, "Export Tabs as CSVs", FileChooser.SAVE_DIALOG,
+				new File(main.getProperties().getProperty("lastDirectory", ".")), csvFilter);
+		if (csvFiles == null) {
+			return;
+		} else {
+			main.getProperties().setProperty("lastDirectory", csvFiles[0].getParent());
+			for (int i = 0; i < tablesTabs.getTabCount(); ++i) {
+				File file = new File(csvFiles[0].getParentFile(),
+						tablesTabs.getTitleAt(i).replaceAll("[^a-zA-Z0-9.-]", "_") + ".csv");
+				try {
+					PrintWriter pw = new PrintWriter(file);
+					BaseTableModel btm = getTableModelFromComponent(tablesTabs.getComponentAt(i));
+					if (btm != null) {
+						btm.print(pw);
+					}
+					pw.close();
+				} catch (FileNotFoundException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
+	
+	/**
+	 * Handles the "Enable Beta Features" action. Enables beta features like mapping
+	 * and Sankey diagrams and updates the menu item text.
+	 */
 	private void handleEnableBetaFeatures() {
 		betaMn.setText("Disable Beta Features");
 		InterfaceMain.enableMapping = true;
@@ -799,6 +878,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		prop.setProperty("enableSankey", String.valueOf(InterfaceMain.enableSankey));
 	}
 
+	/**
+	 * Handles the "Disable Beta Features" action. Disables beta features and
+	 * updates the menu item text.
+	 */
 	private void handleDisableBetaFeatures() {
 		betaMn.setText("Enable Beta Features");
 		InterfaceMain.enableMapping = false;
@@ -808,6 +891,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		prop.setProperty("enableSankey", String.valueOf(InterfaceMain.enableSankey));
 	}
 
+	/**
+	 * Handles the "Batch Query File" action. Prompts the user to select a batch
+	 * query file and an output file, then starts the batch query process.
+	 */
 	private void handleBatchQueryFile() {
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
@@ -840,11 +927,15 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 					}
 				}
 				main.getProperties().setProperty("lastDirectory", xlsFiles[0].getParent());
-				batchQuery(batchFiles[0], xlsFiles[0]);
+				batchExecutionController.batchQuery(batchFiles[0], xlsFiles[0]);
 			}
 		}
 	}
 
+	/**
+	 * Handles the "Lock Query Tree" action. Disables UI components for editing
+	 * queries and updates the menu item text.
+	 */
 	private void handleLockQueryTree() {
 		queriesUpdateMenu.setEnabled(false);
 		queriesEditMenu.setEnabled(false);
@@ -862,6 +953,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		queriesLockMenu.setText("Unlock Query Tree");
 	}
 
+	/**
+	 * Handles the "Unlock Query Tree" action. Enables UI components for editing
+	 * queries and updates the menu item text.
+	 */
 	private void handleUnlockQueryTree() {
 		queriesUpdateMenu.setEnabled(true);
 		queriesEditMenu.setEnabled(true);
@@ -874,6 +969,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		if (queriesSaveAsMenu != null) queriesSaveAsMenu.setEnabled(true);
 	}
 
+	/**
+	 * Handles the "Save As" action for queries. Prompts the user for a new file
+	 * location and saves the current queries to that file.
+	 */
 	private void handleSaveAs() {
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
@@ -897,26 +996,42 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		}
 	}
 
+	/**
+	 * Handles the "Disable 3 Significant Digits" action. Updates the menu item and
+	 * sets the flag to disable formatting to 3 significant digits.
+	 */
 	private void handleDisable3Digits() {
 		significantDigitsMenu.setText("Enable 3 Significant Digits");
 		disable3Digits = true;
 		// TODO: add method to disable using 3 significant digits in the table
 	}
 
+	/**
+	 * Handles the "Enable 3 Significant Digits" action. Updates the menu item and
+	 * sets the flag to enable formatting to 3 significant digits.
+	 */
 	private void handleEnable3Digits() {
 		significantDigitsMenu.setText("Disable 3 Significant Digits");
 		disable3Digits = false;
 		// TODO: add method to enable using 3 significant digits in the table
 	}
 
+	/**
+	 * Handles the "Disable Unit Conversions" action. Updates the menu item and sets
+	 * the flag to disable unit conversions.
+	 */
 	private void handleDisableUnitConversions() {
 		enableUnitConversionsMenu.setText("Enable Unit Conversions");
 		enableUnitConversions = false;
 		// TODO: add method to disable unit conversions
 	}
 
+	/**
+	 * Handles the "Enable Unit Conversions" action. Updates the menu item and sets
+	 * the flag to enable unit conversions.
+	 */
 	private void handleEnableUnitConversions() {
-		enableUnitConversionsMenu.setText("Disable Unit Conversions");
+		enableUnitConversionsMenu.setText("Enable Unit Conversions");
 		enableUnitConversions = true;
 		// TODO: add method to enable unit conversions
 	}
@@ -925,8 +1040,9 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	 * Opens the database from the specified file.
 	 * 
 	 * @param dbFile The database file to open.
+	 * @param create Whether to create the database if it doesn't exist.
 	 */
-	public void doOpenDB(File dbFile) {
+	public void doOpenDB(File dbFile, boolean create) {
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
 		main.getProperties().setProperty("lastDirectory", dbFile.getParent());
@@ -934,7 +1050,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		// database loads
 		parentFrame.getGlassPane().setVisible(true);
 		try {
-			XMLDB.openDatabase(dbFile.getAbsolutePath());
+			XMLDB.openDatabase(dbFile.getAbsolutePath(), create);
 		} catch (Exception e) {
 			e.printStackTrace();
 			parentFrame.getGlassPane().setVisible(false);
@@ -1015,7 +1131,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	 *
 	 * @return Vector of region names.
 	 */
-	protected Vector getRegions() {
+	public Vector getRegions() {
 
 		Vector funcTemp = new Vector<String>(1, 0);
 		funcTemp.add("distinct-values");
@@ -1061,6 +1177,11 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
 	private JCheckBox doTotalCheckBox;
 
+	/**
+	 * Sets up the main UI components for the DbViewer, including scenario/region lists,
+	 * the query tree, and result tabs. This method orchestrates the creation of the
+	 * entire user interface by calling various setup helper methods.
+	 */
 	protected void createTableSelector() {
 		setupScenarioRegionLists();
 		setupQueryTree();
@@ -1068,10 +1189,15 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		setupButtonPanel();
 		setupSplitPanes();
 		setupPresetRegionDropdown();
+		favoriteQueriesManager = new FavoriteQueriesManager(queryList, listScrollQueries);
 		setupListeners();
 		finalizeUI();
 	}
 
+	/**
+	 * Initializes the scenario and region lists by fetching data from the database
+	 * and creating the JList components.
+	 */
 	private void setupScenarioRegionLists() {
 		scns = getScenarios();
 		regions = getRegions();
@@ -1082,6 +1208,11 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		regionList.setName(REGION_LIST_NAME);
 	}
 
+	/**
+	 * Initializes the query tree (JTree) component, including its model, transfer
+	 * handler for drag-and-drop, selection model, and cell renderer for custom
+	 * icons and tooltips.
+	 */
 	private void setupQueryTree() {
 		final Icon queryIcon = new ImageIcon(TabCloseIcon.class.getResource("icons/group-query.png"));
 		final Icon singleQueryIcon = new ImageIcon(TabCloseIcon.class.getResource("icons/single-query.png"));
@@ -1114,6 +1245,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		});
 	}
 
+	/**
+	 * Sets up the preset region dropdown (JComboBox) and the "Total" checkbox.
+	 * It loads the region list from a file and adds the components to the UI.
+	 */
 	private void setupPresetRegionDropdown() {
 		loadRegionListToDropdown();
 		JPanel presetRegionsPanel = new JPanel();
@@ -1138,6 +1273,11 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
 	}
 
+	/**
+	 * Sets up the panel containing the main action buttons like "Run Query",
+	 * "Diff Query", "Search", and "Favorites". It also includes the query progress
+	 * bar.
+	 */
 	private void setupButtonPanel() {
 		JPanel queryPanel = (JPanel) queriesSplit.getRightComponent();
 		JPanel buttonPanel = new JPanel();
@@ -1145,25 +1285,54 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		buttonPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		runQueryButton = new JButton("Run Query");
 		diffQueryButton = new JButton("Diff Query");
-		//final JButton 
 		listCollapseButton = new JButton("View +/-");
-		//final JButton 
 		queryFilterButton = new JButton("Search");
-		//final JButton 
 		favoriteQueryButton = new JButton("Favorites");
+		
 		queriesEditMenu.setEnabled(false);
 		runQueryButton.setEnabled(false);
 		diffQueryButton.setEnabled(false);
-		buttonPanel.add(runQueryButton);
-		buttonPanel.add(diffQueryButton);
-		buttonPanel.add(listCollapseButton);
-		buttonPanel.add(queryFilterButton);
-		buttonPanel.add(favoriteQueryButton);
+
+		// Ensure the button panel matches the standard bottom pane height used in Manage DB
+		buttonPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, BOTTOM_PANE_HEIGHT));
+		buttonPanel.setPreferredSize(new Dimension(100, BOTTOM_PANE_HEIGHT));
+
+		// Determine a good button width based on the Run Query button's preferred size
+		int btnPadding = 15;
+		int runQueryWidth = runQueryButton.getPreferredSize().width + btnPadding;
+		int diffQueryWidth = diffQueryButton.getPreferredSize().width + btnPadding;
+		int preferredBtnWidth = Math.max(runQueryWidth, diffQueryWidth);
+
+		Font referenceFont = runQueryButton.getFont();
+		final Dimension btnDim = new Dimension(preferredBtnWidth, BOTTOM_PANE_HEIGHT - 8);
+
+		// Apply consistent sizing to each primary button so the row height remains fixed
+		JButton[] buttons = new JButton[] { runQueryButton, diffQueryButton, listCollapseButton, queryFilterButton, favoriteQueryButton };
+		for (JButton b : buttons) {
+			b.setPreferredSize(btnDim);
+			b.setMaximumSize(new Dimension(preferredBtnWidth, BOTTOM_PANE_HEIGHT));
+			b.setAlignmentY(Component.CENTER_ALIGNMENT);
+			if (referenceFont != null) b.setFont(referenceFont);
+			buttonPanel.add(b);
+		}
+
+		// Add a 20px buffer between the Favorites button and the progress bar
+		buttonPanel.add(Box.createHorizontalStrut(20));
+		// Ensure the progress bar keeps its preferred size and does not expand vertically
+		queryProgressBar.setMaximumSize(queryProgressBar.getPreferredSize());
+		buttonPanel.add(queryProgressBar);
+		// Add a 20px buffer between the progress bar and the right edge of the panel
+		buttonPanel.add(Box.createHorizontalStrut(20));
+		// Add glue so any extra space is consumed to the right of the progress bar
+		buttonPanel.add(Box.createHorizontalGlue());
 		queryPanel.add(buttonPanel);
 		this.queryFilterButton = queryFilterButton;
 		this.favoriteQueryButton = favoriteQueryButton;
 	}
 
+	/**
+	 * Sets up the panel that contains the query tree view.
+	 */
 	private void setupQueryPanel() {
 		scenarioRegionSplit.getRightComponent();
 		JPanel queryPanel = new JPanel();
@@ -1175,43 +1344,73 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		queryPanel.add(listScrollQueries);
 		queriesSplit.setRightComponent(queryPanel);
 	}
+	
+	/**
+	 * Registers that a new query is starting so the progress UI can track it.
+	 */
+	public static void registerNewQuery() {
+	    totalQueries++;
+	    updateProgressBar();
+	}
 
-//	private void setupSplitPanes() {
-//		JPanel listPane = new JPanel();
-//		listPane.setLayout(new BoxLayout(listPane, BoxLayout.Y_AXIS));
-//		JLabel listLabel = new JLabel("Scenario");
-//		listPane.add(listLabel);
-//		JScrollPane listScroll = new JScrollPane(scnList);
-//		// listScroll.setPreferredSize(new Dimension(150, 150));
-//		listPane.add(listScroll);
-//		scenarioRegionSplit.setLeftComponent(listPane);
-//		listPane = new JPanel();
-//		listPane.setLayout(new BoxLayout(listPane, BoxLayout.Y_AXIS));
-//		listLabel = new JLabel("Regions");
-//		listPane.add(listLabel);
-//		listScrollRegions = new JScrollPane(regionList);
-//		// listScrollRegions.setPreferredSize(new Dimension(150, 100));
-//		listPane.add(listScrollRegions);
-//		scenarioRegionSplit.setRightComponent(listPane);
-//		queriesSplit.setLeftComponent(scenarioRegionSplit);
-//		tableCreatorSplit.setLeftComponent(queriesSplit);
-//		tableCreatorSplit.setRightComponent(tablesTabs);
-//
-//		int frameWidth = parentFrame.getWidth();
-//		scenarioRegionSplit.setDividerLocation((int) (frameWidth * 0.2));
-//		queriesSplit.setDividerLocation((int) (frameWidth * 0.5));
-//
-//		int frameHeight = parentFrame.getHeight();
-//		tableCreatorSplit.setDividerLocation((int) (frameHeight * 0.4));
-//	}
+	/**
+	 * Registers that a query has completed so the progress UI can track it.
+	 */
+	public static void registerQueryCompleted() {
+	    completedQueries++;
+	    updateProgressBar();
 
+	    if (completedQueries == totalQueries) {
+	        finishProgressBar();
+	    }
+	}
+
+	/**
+	 * Updates the progress bar's visibility and value based on the current state of
+	 * query execution.
+	 */
+	private static void updateProgressBar() {
+	    if (totalQueries > 1) {
+	        if (queryProgressBar != null) {
+	            queryProgressBar.setVisible(true);
+	            int percent = (int) (((double) completedQueries / totalQueries) * 100);
+	            queryProgressBar.setValue(percent);
+	        }
+	    }
+	}
+
+	/**
+	 * Finalizes the progress bar when all queries are complete. It sets the value
+	 * to 100% and then hides it after a short delay.
+	 */
+	private static void finishProgressBar() {
+	    if (queryProgressBar != null) {
+	        queryProgressBar.setValue(100);
+
+	        Timer timer = new Timer(1000, e -> {
+	            queryProgressBar.setVisible(false);
+	            totalQueries = 0;
+	            completedQueries = 0;
+	        });
+	        timer.setRepeats(false);
+	        timer.start();
+	    } else {
+	        totalQueries = 0;
+	        completedQueries = 0;
+	    }
+	}
+
+	
+	/**
+	 * Sets up the split panes that organize the main UI areas: scenarios/regions,
+	 * queries, and the results tabs.
+	 */
 	private void setupSplitPanes() {
 		JPanel listPane = new JPanel();
 		listPane.setLayout(new BoxLayout(listPane, BoxLayout.Y_AXIS));
 		JLabel listLabel = new JLabel("Scenario");
 		listPane.add(listLabel);
 		JScrollPane listScroll = new JScrollPane(scnList);
-		// listScroll.setPreferredSize(new Dimension(150, 150));
 		listPane.add(listScroll);
 
 		// Create the bottom pane separately so it appears below the listPane
@@ -1258,7 +1457,6 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		listLabel = new JLabel("Regions");
 		listPane.add(listLabel);
 		listScrollRegions = new JScrollPane(regionList);
-		// listScrollRegions.setPreferredSize(new Dimension(150, 100));
 		listPane.add(listScrollRegions);
 		scenarioRegionSplit.setRightComponent(listPane);
 		queriesSplit.setLeftComponent(scenarioRegionSplit);
@@ -1273,6 +1471,11 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		tableCreatorSplit.setDividerLocation((int) (frameHeight * 0.4));
 	}
 	
+	/**
+	 * Sets up all the event listeners for the UI components, such as buttons and
+	 * the query list. This includes actions for running queries, filtering,
+	 * managing favorites, and handling tree selections.
+	 */
 	private void setupListeners() {
 		// Move all listeners from createTableSelector here
 		// YD edits,2024
@@ -1293,13 +1496,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 				String[] buttons = { "Apply", "Clear", "Cancel" };
 				int returnValue = JOptionPane.showOptionDialog(null, box, "Query Filter",
 						JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null, buttons, buttons[0]);
-				// System.out.println(returnValue);
 				queries = getQueries();
 				switch (returnValue) {
 				case 0:
-					// YD added,2024
 					// Process the filter results...
-
 					filteringText = field.getText();
 					if (filteringText != null && filteringText.length() > 0) {
 						queries = getFilteredQueries(queries, filteringText);
@@ -1310,45 +1510,42 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 				case 2:
 				case -1:
 					return;
-				// case 'OK_OPTION' end here
-				} // switch 'result' end
+				}
 				queryList.setModel(queries);
 				queryList.setSelectionRow(0);
 				for (int i = 0; i < queryList.getRowCount(); ++i) {
 					queryList.expandRow(i);
 				}
-			} // actionEvent end
-		}); // queryFilterButton listener ends
+			}
+		});
 
-		// YD added this listener,Feb-2024
 		favoriteQueryButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				selectFavoriteQueries(queryList);
-			}
-		}); // favoriteQueryButton listener ends
 
-		// YD added this listener,Feb-2024
+				favoriteQueriesManager.selectFavoriteQueries();
+			}
+		});
+
 		createFavoritesMenu.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				createFavoriteQueriesFile(queryList);
+				favoriteQueriesManager.createFavoriteQueriesFile();
 
 			}
-		});// createFavoritesMenu listener ends
+		});
 
 		loadFavoritesMenu.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				loadFavoriteQueriesFile();
+				favoriteQueriesManager.loadFavoriteQueriesFile();
 
 			}
-		});// loadFavoritesMenu listener ends
+		});
 
-		// YD added this listener,Mar-2024
 		appendFavoritesMenu.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				appendFavoriteQueries(queryList);
+				favoriteQueriesManager.appendFavoriteQueries();
 
 			}
-		});// appendFavoritesMenu listener ends
+		});
 
 		// Add TreeSelectionListener to enable/disable Run Query and Diff Query buttons
 		queryList.addTreeSelectionListener(e -> {
@@ -1389,20 +1586,30 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 					// identifies path in query file to the selected query(ies)
 					TreePath[] selPaths = queryList.getSelectionPaths();
 					boolean movedTabAlready = false;
+					// Force a refresh of the selected years list before running queries
+					refreshSelectedYearListFromPropFile();
 					// iterates over selected queries by path
 					for (int i = 0; i < selPaths.length; ++i) {
 						try {
+							Object lastComp = selPaths[i].getLastPathComponent();
+							// Skip QueryGroups (folders)
+							if (lastComp.getClass().getName().contains("QueryGroup")) {
+								continue;
+							}
+							
 							QueryGenerator qg = null;
 							QueryBinding singleBinding = null;
-							if (selPaths[i].getLastPathComponent() instanceof QueryGenerator) {
-								qg = (QueryGenerator) selPaths[i].getLastPathComponent();
+							if (lastComp instanceof QueryGenerator) {
+								qg = (QueryGenerator) lastComp;
 							} else {
-								singleBinding = ((SingleQueryExtension.SingleQueryValue) selPaths[i]
-										.getLastPathComponent()).getAsQueryBinding();
+								singleBinding = ((SingleQueryExtension.SingleQueryValue) lastComp)
+										.getAsQueryBinding();
 								qg = (QueryGenerator) selPaths[i].getParentPath().getLastPathComponent();
 							}
 							// add loading icon to QueryResultsPanel
 							TabCloseIcon loadingIcon = new TabCloseIcon(tablesTabs);
+							// Register that a new query is starting so the progress UI can track it
+                            registerNewQuery();
 							// creating new panel for holding the results of the queries
 							JComponent ret = new QueryResultsPanel(qg, singleBinding, scnList.getSelectedValues(),
 									regionList.getSelectedValues(), loadingIcon, doTotalCheckBox.isSelected());
@@ -1444,20 +1651,29 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 					// identifies path in query file to the selected query(ies)
 					TreePath[] selPaths = queryList.getSelectionPaths();
 					boolean movedTabAlready = false;
+					// Force a refresh of the selected years list before running queries
+					refreshSelectedYearListFromPropFile();
 					// iterates over selected queries by path
 					for (int i = 0; i < selPaths.length; ++i) {
 						try {
+							Object lastComp = selPaths[i].getLastPathComponent();
+							// Skip QueryGroups (folders)
+							if (lastComp.getClass().getName().contains("QueryGroup")) {
+								continue;
+							}
+
 							QueryGenerator qg = null;
 							QueryBinding singleBinding = null;
-							if (selPaths[i].getLastPathComponent() instanceof QueryGenerator) {
-								qg = (QueryGenerator) selPaths[i].getLastPathComponent();
+							if (lastComp instanceof QueryGenerator) {
+								qg = (QueryGenerator) lastComp;
 							} else {
-								singleBinding = ((SingleQueryExtension.SingleQueryValue) selPaths[i]
-										.getLastPathComponent()).getAsQueryBinding();
+								singleBinding = ((SingleQueryExtension.SingleQueryValue) lastComp).getAsQueryBinding();
 								qg = (QueryGenerator) selPaths[i].getParentPath().getLastPathComponent();
 							}
 							// add loading icon to QueryResultsPanel
 							TabCloseIcon loadingIcon = new TabCloseIcon(tablesTabs);
+							// Register that a new diff query is starting so the progress UI can track it
+                            registerNewQuery();
 							// creating new panel for holding the results of the queries
 							JComponent ret = new DiffResultsPanel(qg, singleBinding, scnList.getSelectedValues(),
 									regionList.getSelectedValues(), loadingIcon, doTotalCheckBox.isSelected());
@@ -1508,6 +1724,14 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		parentFrame.setVisible(true);
 	}
 
+	/**
+	 * Filters the query tree model to show only the queries and groups that match
+	 * the given query string.
+	 *
+	 * @param model The query tree model to filter.
+	 * @param query The text to search for.
+	 * @return The filtered query tree model.
+	 */
 	private QueryTreeModel getFilteredQueries(QueryTreeModel model, String query) {
 
 		QueryGroup root = (QueryGroup) model.getRoot();
@@ -1523,7 +1747,6 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		}
 
 		for (int i = 0; i < toRemove.size(); i++) {
-			// boolean removed=query_list.remove(toRemove.get(i));
 			QueryGenerator qg = (QueryGenerator) toRemove.get(i);
 			Node myNode = qg.getMyNode();
 			qg.getMyNode().getParentNode().removeChild(myNode);
@@ -1554,10 +1777,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 				QueryGroup group = (QueryGroup) query_list.get(i);
 				getMatchingNodes(group, query);
 			} else {
-				if (query_list.get(i).toString().toLowerCase().contains(query.toLowerCase())) {
-					// System.out.println("found a match: " + query_list.get(i).toString());
-				} else {
-					query_list.get(i);
+				if (!query_list.get(i).toString().toLowerCase().contains(query.toLowerCase())) {
 					toRemove.add(query_list.get(i));
 				}
 			}
@@ -1569,11 +1789,23 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		return toRemove;
 	}
 
+	/**
+	 * Saves the expansion state of a JTree.
+	 *
+	 * @param tree The JTree whose expansion state is to be saved.
+	 * @return An Enumeration of TreePaths representing the expanded nodes.
+	 */
 	// YD added,2024
 	public static Enumeration<TreePath> saveExpansionState(JTree tree) {
 		return tree.getExpandedDescendants(new TreePath(tree.getModel().getRoot()));
 	}
 
+	/**
+	 * Restores the expansion state of a JTree.
+	 *
+	 * @param enumeration An Enumeration of TreePaths to be expanded.
+	 * @param tree        The JTree whose expansion state is to be restored.
+	 */
 	// YD added,2024
 	public void restoreExpansionState(Enumeration enumeration, JTree tree) {
 		if (enumeration != null) {
@@ -1584,6 +1816,13 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		}
 	}
 
+	/**
+	 * Collapses a query group in the tree if it does not contain the filtering
+	 * keywords.
+	 *
+	 * @param myTree      The JTree containing the query group.
+	 * @param mySubGroup  The QueryGroup to check and potentially collapse.
+	 */
 	// YD added,2024
 	private void collapseGroupWhenNotContainKeyWords(JTree myTree, QueryGroup mySubGroup) {
 		ArrayList leaf_inside = mySubGroup.getQueryList();
@@ -1597,6 +1836,13 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		} // inner if else loop end
 	}
 
+	/**
+	 * Gets the full TreePath for a query group by its name.
+	 *
+	 * @param tree      The JTree to search in.
+	 * @param groupName The name of the query group.
+	 * @return The TreePath for the group, or null if not found.
+	 */
 	// YD added,2024
 	// this method is to get the full tree path for a query group name,YD added
 	private TreePath getFullTreePath(JTree tree, String groupName) {
@@ -1623,10 +1869,18 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		return (myTreePath);
 	}
 
+	/**
+	 * Gets all TreePaths for a query group name, considering that the same name can
+	 * appear at different levels in the tree.
+	 *
+	 * @param tree      The JTree to search in.
+	 * @param groupName The name of the query group.
+	 * @param pathCount The expected path count (depth) of the group.
+	 * @return An ArrayList of matching TreePaths.
+	 */
 	// this method is to get the full tree path for a query group name
 	// considering that the same query group name can appear multiple times in the
-	// same tree
-	// but at different locations,YD added
+// same tree
 	public static ArrayList<TreePath> getFullTreePath2(JTree tree, String groupName, int pathCount) {
 		Enumeration<TreePath> allPath = tree.getExpandedDescendants(new TreePath(tree.getModel().getRoot()));
 		ArrayList<TreePath> myTreePath = new ArrayList<TreePath>();
@@ -1650,6 +1904,13 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		return (myTreePath);
 	}
 
+	/**
+	 * Checks if a QueryGroup contains any nested QueryGroups.
+	 *
+	 * @param mySubGroup The QueryGroup to check.
+	 * @return true if the group contains no other groups (only leaves), false
+	 *         otherwise.
+	 */
 	// YD added,2024
 	// this method is to check if there are more levels of query group under a query
 	// group
@@ -1665,69 +1926,27 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		return (noMoreGroup);
 	}
 
-	// YD added, Feb-2024
-	// this method is to load the preset region list from the control file to the
-	// dropdown menu
-	public void loadRegionListToDropdown() {
-
-		if (InterfaceMain.presetRegionListLocation == null
-				|| InterfaceMain.presetRegionListLocation.trim().length() == 0) {
-			System.out.println("No regions list specified, skipping.");
-			return;
-		}
-
-		String preset_region_list_filename = InterfaceMain.presetRegionListLocation;
-
-		// preset region list
-		try {
-			ArrayList<String> contents = getStringArrayFromFile(preset_region_list_filename, "#");
-
-			for (int i = 0; i < contents.size(); i++) {
-				String line = contents.get(i);
-				if (line.length() > 0) {
-					preset_region_list.add(line);
-				}
-			}
-		} catch (Exception e) {
-
-			System.out.println("Unable to load region list: " + e.toString());
-
-		}
-
-		preset_choices = new String[preset_region_list.size() + 1];
-		preset_choices[0] = "Select (optional)";
-		for (int i = 0; i < preset_region_list.size(); i++) {
-			String s = preset_region_list.get(i);
-			int index_of_semicolon = s.indexOf(":");
-			if (index_of_semicolon > -1) {
-				s = s.substring(0, index_of_semicolon);
-				preset_choices[i + 1] = s;
-			}
-		}
-
-	}
-
+	/**
+	 * Closes all open tabs in the results pane.
+	 */
 	public void closeAllTabs() {
 		// need to disable the export tabs option
 		if (menuExpPrn != null) menuExpPrn.setEnabled(false);
 
 		// grab the panel
-		if (tablesTabs.getTabCount() == 0) {
-			// noting to do
-			return;
+		if (tablesTabs.getTabCount() > 0) {
+			// iterate over children and close each one
+			tablesTabs.removeAll();
 		}
-		// iterate over children
-		tablesTabs.removeAll();
-		// close each one
 	}
 
+	/**
+	 * Closes all open secondary windows (JDialog and JFrames) managed by the
+	 * application.
+	 */
 	public void closeAllWindows() {
-		// need to disable the export tabs option
-		// menuExpPrn.setEnabled(false);
-
 		// grab the panel
-		if (openWindows.size() == 0) {
-			// noting to do
+		if (openWindows.isEmpty()) {
 			return;
 		}
 		// iterate over children
@@ -1746,76 +1965,6 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		// clear out list
 		openWindows.clear();
 
-	}
-
-	/**
-	 * Selects favorite queries in the query tree based on the favorite queries
-	 * file.
-	 * 
-	 * @param queryList The JTree containing queries.
-	 */
-	public void selectFavoriteQueries(JTree queryList) {
-
-		ArrayList<String> favoriteQueryLines = new ArrayList<>();
-		ArrayList<TreePath> favoriteQueryPaths = new ArrayList<>();
-		ArrayList<String> favoriteQueryNames = new ArrayList<>();
-		String favoriteQueryFilename = InterfaceMain.favoriteQueriesFileLocation;
-		try {
-			favoriteQueryLines = getStringArrayFromFile(favoriteQueryFilename, "#");
-		} catch (Exception e) {
-			System.out.println("Could not read favorite queries file: " + e);
-			JOptionPane.showMessageDialog(null, "Unable to load favorites file, please see console for error",
-					"Error Saving File", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-		for (String line : favoriteQueryLines) {
-			if (!line.isEmpty()) {
-				TreePath path = getTreePathForEachLine(queryList, line);
-				if (path != null) {
-					favoriteQueryPaths.add(path);
-				} else {
-					System.out.println("Unable to find path for " + line);
-				}
-				String[] splitLine = line.split(">");
-				favoriteQueryNames.add(splitLine[splitLine.length - 1]);
-			}
-		}
-		QueryTreeModel model = (QueryTreeModel) queryList.getModel();
-		QueryGroup root = (QueryGroup) model.getRoot();
-		int[] rowsToSelect = new int[favoriteQueryPaths.size()];
-		ArrayList<String> notFound = new ArrayList<>();
-		for (int i = 0; i < favoriteQueryPaths.size(); i++) {
-			TreePath treePath = favoriteQueryPaths.get(i);
-			String leafName = favoriteQueryNames.get(i);
-			int rowNum = getRowNumberForLeaf(queryList, treePath, leafName);
-			rowsToSelect[i] = rowNum;
-			if (rowNum == -1) {
-				notFound.add(leafName);
-			}
-		}
-		if (notFound.size() != rowsToSelect.length) {
-			queryList.clearSelection();
-			// Only select valid rows
-			ArrayList<Integer> validRows = new ArrayList<>();
-			for (int row : rowsToSelect) {
-				if (row != -1)
-					validRows.add(row);
-			}
-			int[] validRowsArray = validRows.stream().mapToInt(Integer::intValue).toArray();
-			queryList.setSelectionRows(validRowsArray);
-			// Scroll to last found favorite query
-			if (validRowsArray.length > 0) {
-				java.awt.Rectangle bounds = queryList.getRowBounds(validRowsArray[validRowsArray.length - 1]);
-				listScrollQueries.getVerticalScrollBar().setValue((int) bounds.getMinY());
-			}
-		}
-		if (!notFound.isEmpty()) {
-			StringBuilder errorMessage = new StringBuilder("The following queries were not found:\n\n");
-			for (String s : notFound) {
-				errorMessage.append(s).append("\n");
-			}
-			JOptionPane.showMessageDialog(null, errorMessage.toString());
-		}
 	}
 
 	/**
@@ -1934,7 +2083,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 					regionIndicesArray[regionIndices.size() - 1]);
 			listScrollRegions.getVerticalScrollBar().setValue((int) bounds.getMinY());
 		}
-	} // selectItemsFromRegionList method end
+	}
 
 	/**
 	 * Gets the row number for a leaf under a query group in the tree.
@@ -1950,74 +2099,72 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		QueryGroup myChildGroup = (QueryGroup) myPath.getLastPathComponent();
 		ArrayList leaves = myChildGroup.getQueryList();
 		for (int m = 0; m < leaves.size(); m++) {
-			// if (leafName.contains(leaves.get(m).toString())) {
 			if (leafName.replace("\"", "").trim().compareToIgnoreCase(leaves.get(m).toString().trim()) == 0) {
-				// System.out.println("found my favorite query name here:" +
-				// leaves.get(m).toString());
 				int myIndex = ((TreeModel) myTree.getModel()).getIndexOfChild(myChildGroup, leaves.get(m));
 				rowNumForLeaf = rowNumForSubgroup + myIndex + 1;
 				break;
 			}
-		} // for loop end
+		}
 		return rowNumForLeaf;
-	} // get RowNumberForLeaf method end
-
-	/**
-	 * Gets the full tree path for each line in the favorite query list.
-	 * 
-	 * @param myTree The JTree.
-	 * @param myLine The line from the favorite query list.
-	 * @return The TreePath corresponding to the line, or null if not found.
-	 */
-	private TreePath getTreePathForEachLine(JTree myTree, String myLine) {
-		TreePath theFullPath = null;
-		String[] splitLine = myLine.split(">");
-		String[] splitLineForGroups = Arrays.copyOfRange(splitLine, 0, splitLine.length - 1);
-		String child_group_to_find = splitLine[splitLine.length - 2]; // get the last child group before the leaf
-		String group_to_find_trim = child_group_to_find.substring(1, child_group_to_find.length() - 1); // remove double
-																										// quotes
-		int pathCount = splitLine.length - 1;
-		ArrayList<TreePath> allPaths = getFullTreePath2(myTree, group_to_find_trim, pathCount);
-		if (allPaths.size() == 1) {
-			theFullPath = allPaths.get(0);
-		} else if ((allPaths.size() > 1)) { // when queryGroup appears multiple times in a tree
-			for (int i = 0; i < allPaths.size(); i++) {
-				TreePath testPath = allPaths.get(i);
-				boolean checkMatchAll = matchsAllGroups(testPath, splitLineForGroups);
-				if (checkMatchAll) {
-					theFullPath = allPaths.get(i);
-					// System.out.println("this is the treePath that matches :" + theFullPath);
-				}
-
-			}
-		}
-		return theFullPath;
-	} // getTreePathForEachLine method end
-
-	/**
-	 * Checks if all elements of a string array are present in the TreePath.
-	 * 
-	 * @param myPath  The TreePath.
-	 * @param allStrs Array of group names.
-	 * @return True if all groups match, false otherwise.
-	 */
-	public boolean matchsAllGroups(TreePath myPath, String[] allStrs) {
-		boolean matchsAll = true;
-		for (int i = 0; i < allStrs.length; i++) {
-			// need to remove the double quotes for each group
-			String groupName = allStrs[i];
-			String groupQuoteRemoved = groupName.substring(1, groupName.length() - 1);
-			String myPathStr = (String) myPath.getPathComponent(i).toString();
-			if (!myPathStr.equals(groupQuoteRemoved)) {
-				matchsAll = false;
-				break;
-			}
-		}
-		return matchsAll;
 	}
 
-	// YD edits end
+	public void runBatch(Node command) {
+		batchExecutionController.runBatch(command);
+	}
 
+	/**
+	 * Loads the preset region list from a file and populates the dropdown choices.
+	 * It reads from "config/preset_region_list.txt", parsing region groups and
+	 * their sub-regions.
+	 */
+	private void loadRegionListToDropdown() {
+		String region_list_file = "config/preset_region_list.txt";
+		try {
+			preset_region_list = getStringArrayFromFile(region_list_file, "#");
+			if (preset_region_list.size() > 0) {
+				preset_choices = new String[preset_region_list.size() + 1];
+				preset_choices[0] = "(optional)";
+				for (int i = 0; i < preset_region_list.size(); i++) {
+					String line = preset_region_list.get(i);
+					int index = line.indexOf(":");
+					if (index > 0) {
+						String name = line.substring(0, index);
+						preset_choices[i + 1] = name;
+						String[] subregions = splitString(line.substring(index + 1), ",");
+						for (int j = 0; j < subregions.length; j++) {
+							subregion_list.add(subregions[j]);
+						}
+					}
+				}
+			}
+		} catch (IOException e) {
+			System.out.println("Not able to read preset_region_list file: " + region_list_file);
+		}
+	}
+
+	/**
+	 * Finalizes the UI setup by adding the main component to the parent frame and
+	 * making it visible.
+	 */
+	private void finalizeUI() {
+		JFrame parentFrame = InterfaceMain.getInstance().getFrame();
+		if (parentFrame == null)
+			return;
+		Container contentPane = parentFrame.getContentPane();
+		contentPane.removeAll();
+		contentPane.setLayout(new BorderLayout());
+		contentPane.add(tableCreatorSplit, BorderLayout.CENTER);
+		parentFrame.setLocationRelativeTo(null);
+		parentFrame.setVisible(true);
+		parentFrame.getGlassPane().setVisible(false);
+	}
+
+	/**
+	 * Gets the TreePath from a given TreeNode.
+	 *
+	 * @param treeNode The node to get the path for.
+	 * @return The TreePath, or null if the node is null.
+	 */
 	public TreePath getTreePathFromNode(TreeNode treeNode) {
 		List<Object> nodes = new ArrayList<Object>();
 		if (treeNode != null) {
@@ -2068,782 +2215,34 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		}
 	}
 
+	/**
+	 * Opens the database management dialog.
+	 */
 	private void manageDB() {
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
-		final JDialog filterDialog = new JDialog(parentFrame, "Manage Database", true);
-		// Disable UI while DB is closed or rebuilding
-		if (XMLDB.getInstance() == null) {
-			InterfaceMain.getInstance().showMessageDialog("No database is open. Please open a database first.", "Manage DB", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-		filterDialog.getGlassPane().addMouseListener(new MouseAdapter() {
-		});
-		filterDialog.getGlassPane().setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-		final DbViewer thisViewer = this;
-		JPanel listPane = new JPanel();
-		JPanel buttonPane = new JPanel();
-		// Status field shown between the list pane and the buttons
-		final javax.swing.JTextField statusField = new javax.swing.JTextField();
-		statusField.setEditable(false);
-		statusField.setBackground(Color.LIGHT_GRAY);
-		statusField.setText("");
-		statusField.setMaximumSize(new Dimension(Integer.MAX_VALUE, statusField.getPreferredSize().height));
-         final JButton addButton = new JButton("Add");
-         final JButton removeButton = new JButton("Remove");
-         final JButton renameButton = new JButton("Rename");
-         final JButton exportButton = new JButton("Export");
-         final JButton rebuildButton = new JButton("Rebuild DB");
-          final JButton doneButton = new JButton("Done");
-          listPane.setLayout(new BoxLayout(listPane, BoxLayout.Y_AXIS));
-          Container contentPane = filterDialog.getContentPane();
-          removeButton.setEnabled(false);
-          renameButton.setEnabled(false);
-          exportButton.setEnabled(false);
-          rebuildButton.setEnabled(true);
-
-        // Add a small uniform padding around each button in the dialog
-        java.awt.Insets btnPadding = new java.awt.Insets(2, 2, 2, 2);
-        addButton.setMargin(btnPadding);
-        removeButton.setMargin(btnPadding);
-        renameButton.setMargin(btnPadding);
-        exportButton.setMargin(btnPadding);
-        rebuildButton.setMargin(btnPadding);
-        doneButton.setMargin(btnPadding);
-
-        // Make Manage DB buttons visually match the Run/Diff buttons below the query list.
-        // Use the Run Query button's preferred width and font if available to keep a consistent look.
-        int preferredBtnWidth = 90;
-        java.awt.Font referenceFont = null;
-        if (runQueryButton != null) {
-            java.awt.Dimension ref = runQueryButton.getPreferredSize();
-            if (ref != null && ref.width > 0) preferredBtnWidth = ref.width;
-            referenceFont = runQueryButton.getFont();
-        }
-        java.awt.Dimension manageBtnDim = new java.awt.Dimension(preferredBtnWidth, BOTTOM_PANE_HEIGHT - 8);
-        JButton[] manageButtons = new JButton[] { addButton, removeButton, renameButton, exportButton, 
-                rebuildButton, doneButton };
-        for (JButton b : manageButtons) {
-            b.setPreferredSize(manageBtnDim);
-            b.setMaximumSize(new java.awt.Dimension(preferredBtnWidth, BOTTOM_PANE_HEIGHT));
-            b.setAlignmentY(Component.CENTER_ALIGNMENT);
-            if (referenceFont != null) b.setFont(referenceFont);
-        }
-
-        // list of scenarios displayed in the Manage DB dialog
-        final JList list = new JList(scns != null ? scns : new Vector<ScenarioListItem>());
-        
-        // Enable/disable action buttons based on selection in the scenarios list
-        list.addListSelectionListener(new ListSelectionListener() {
-            public void valueChanged(ListSelectionEvent e) {
-                boolean hasSelection = !list.isSelectionEmpty();
-                removeButton.setEnabled(hasSelection);
-                renameButton.setEnabled(hasSelection);
-                exportButton.setEnabled(hasSelection);
-            }
-        });
-
-         // Map to store previous enabled states so we can restore them after long-running ops
-         final java.util.Map<JButton, Boolean> prevStates = new java.util.HashMap();
-         // Runnable to disable all dialog buttons on the EDT and remember their previous state
-         final Runnable disableAllButtons = new Runnable() {
-             @Override
-             public void run() {
-                 SwingUtilities.invokeLater(new Runnable() {
-                     @Override
-                     public void run() {
-                         prevStates.put(addButton, addButton.isEnabled());
-                         prevStates.put(removeButton, removeButton.isEnabled());
-                         prevStates.put(renameButton, renameButton.isEnabled());
-                         prevStates.put(exportButton, exportButton.isEnabled());
-                         prevStates.put(rebuildButton, rebuildButton.isEnabled());
-                         prevStates.put(doneButton, doneButton.isEnabled());
-                         addButton.setEnabled(false);
-                         removeButton.setEnabled(false);
-                         renameButton.setEnabled(false);
-                         exportButton.setEnabled(false);
-                         rebuildButton.setEnabled(false);
-                         doneButton.setEnabled(false);
-                     }
-                 });
-             }
-         };
-         // Runnable to restore buttons' enabled state using saved values
-         final Runnable restoreAllButtons = new Runnable() {
-             @Override
-             public void run() {
-                 SwingUtilities.invokeLater(new Runnable() {
-                     @Override
-                     public void run() {
-                         Boolean b;
-                         b = prevStates.get(addButton); if (b != null) addButton.setEnabled(b);
-                         b = prevStates.get(removeButton); if (b != null) removeButton.setEnabled(b);
-                         b = prevStates.get(renameButton); if (b != null) renameButton.setEnabled(b);
-                         b = prevStates.get(exportButton); if (b != null) exportButton.setEnabled(b);
-                         b = prevStates.get(rebuildButton); if (b != null) rebuildButton.setEnabled(b);
-                         b = prevStates.get(doneButton); if (b != null) doneButton.setEnabled(b);
-                     }
-                 });
-             }
-         };
-
-        // Dirty bit tracks changes; declare it here so listeners can use it
-        final DirtyBit dirtyBit = new DirtyBit();
-
-         addButton.addActionListener(new ActionListener() {
-             @Override
-             public void actionPerformed(ActionEvent e) {
-
-                 FileChooser fc = FileChooserFactory.getFileChooser();
-                 final FileFilter xmlFilter = new XMLFilter();
-                 // Dan: parentFrame seems to introduce some dialog blocking issues. Trying to
-                 // set parent of filechooser as the filterDialog
-
-                 SwingUtilities.invokeLater(() -> {
-                     final File[] xmlFiles = fc.doFilePrompt(/* parentFrame */filterDialog, "Open XML File",
-                             FileChooser.LOAD_DIALOG, new File(main.getProperties().getProperty("lastDirectory", ".")),
-                             xmlFilter);
-
-                     if (xmlFiles != null) {
-
-                        dirtyBit.setDirty();
-                        main.getProperties().setProperty("lastDirectory", xmlFiles[0].getParent());
-                        // update status and start background add
-                        statusField.setText("Adding files...");
-                        // disable dialog buttons while adding
-                        //disableAllButtons.run();
-
-                        new Thread(new Runnable() {
-                             @Override
-                             public void run() {
-                                 for (int addFileIndex = 0; addFileIndex < xmlFiles.length; ++addFileIndex) {
-                                     if (xmlFiles[addFileIndex] != null) {
-                                         // pass the Manage Database dialog as owner so the import
-                                         // progress dialog is positioned relative to it and keeps focus
-                                         XMLDB.getInstance().addFile("run_" + System.currentTimeMillis() + ".xml",
-                                                 xmlFiles[addFileIndex].getAbsolutePath(), addFileIndex, xmlFiles.length,
-                                                 filterDialog);
-                                     }
-                                 }
-                                 scns = getScenarios();
-                                 // update UI on EDT and restore buttons
-                                 SwingUtilities.invokeLater(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        list.setListData(scns);
-                                        statusField.setText("Add complete");
-                                        //restoreAllButtons.run();
-                                    }
-                                 });
-                             }
-                         }).start();
-                      }
-                  });
-              }
-
-          });
-         removeButton.addActionListener(new ActionListener() {
-             @Override
-             public void actionPerformed(ActionEvent e) {
-                 final Object[] remList = list.getSelectedValues();
-                 if (remList == null || remList.length == 0) {
-                     return;
-                 }
-                 
-                 int ans = InterfaceMain.getInstance().showConfirmDialog(
-                         "Remove scenario? This removes the scenario index but does not decrease database size.\nAfter removing, click on Rebuild DB to reclaim space.\nRebuild DB may take as long as an hour or two.",
-                         "Click on Optimize to reclaim space.", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
-                         JOptionPane.NO_OPTION);
-                 if (ans != JOptionPane.YES_OPTION) {
-                     return;
-                 }
-                 
-                 // Inform user and show busy glass, then perform removal off the EDT
-                 SwingUtilities.invokeLater(new Runnable() {
-                     @Override
-                     public void run() {
-                         statusField.setText("Removing selected scenarios...");
-                         filterDialog.getGlassPane().setVisible(true);
-                     }
-                 });
-
-                 // disable dialog buttons while removal runs
-                 //disableAllButtons.run();
-                 
-                 new Thread(new Runnable() {
-                     @Override
-                     public void run() {
-                         try {
-                             for (int i = 0; i < remList.length; ++i) {
-                                 dirtyBit.setDirty();
-                                 XMLDB.getInstance().removeDoc(((ScenarioListItem) remList[i]).getDocName());
-                             }
-                             scns = getScenarios();
-                         } finally {
-                             // Update UI on EDT when done and restore buttons
-                             SwingUtilities.invokeLater(new Runnable() {
-                                 @Override
-                                 public void run() {
-                                     list.setListData(scns);
-                                     filterDialog.getGlassPane().setVisible(false);
-                                     statusField.setText("Remove complete");
-                                     //this may have been causing some issues
-                                     //restoreAllButtons.run();
-                                     // After removal completed, ensure these action buttons are disabled
-                                     removeButton.setEnabled(false);
-                                     renameButton.setEnabled(false);
-                                     exportButton.setEnabled(false);
-                                 }
-                             });
-                         }
-                     }
-                 }).start();
-              }
-          });
-         renameButton.addActionListener(new ActionListener() {
-             @Override
-             public void actionPerformed(ActionEvent e) {
-                 final Object[] renameList = list.getSelectedValues();
-                 if (renameList.length == 0) {
-                     return;
-                 }
-                 final JDialog renameScenarioDialog = new JDialog(parentFrame, "Rename Scenarios", true);
-                 renameScenarioDialog.setResizable(false);
-                 final List<JTextField> renameBoxes = new ArrayList<JTextField>(renameList.length);
-                 JPanel renameBoxPanel = new JPanel();
-                 renameBoxPanel.setLayout(new BoxLayout(renameBoxPanel, BoxLayout.Y_AXIS));
-                 Component verticalSeparator = Box.createVerticalStrut(5);
-
-                 for (int i = 0; i < renameList.length; ++i) {
-                     ScenarioListItem currItem = (ScenarioListItem) renameList[i];
-                     JPanel currPanel = new JPanel();
-                     currPanel.setLayout(new BoxLayout(currPanel, BoxLayout.X_AXIS));
-                     JLabel currLabel = new JLabel("<html>Rename <b>" + currItem.getScnName() + "</b> on <b>"
-                             + currItem.getScnDate() + "</b> to:</html>");
-                     JTextField currTextBox = new JTextField(currItem.getScnName(), 20);
-                     currTextBox.setMaximumSize(currTextBox.getPreferredSize());
-                     renameBoxes.add(currTextBox);
-                     currPanel.add(currLabel);
-                     currPanel.add(Box.createHorizontalGlue());
-                     renameBoxPanel.add(currPanel);
-                     currPanel = new JPanel();
-                     currPanel.setLayout(new BoxLayout(currPanel, BoxLayout.X_AXIS));
-                     currPanel.add(currTextBox);
-                     currPanel.add(Box.createHorizontalGlue());
-                     renameBoxPanel.add(currPanel);
-                    	renameBoxPanel.add(verticalSeparator);
-                 }
-
-                 JPanel renameButtonPanel = new JPanel();
-                 final JButton renameOK = new JButton("  OK  ");
-                 final JButton renameCancel = new JButton("Cancel");
-                 renameButtonPanel.setLayout(new BoxLayout(renameButtonPanel, BoxLayout.X_AXIS));
-                 renameButtonPanel.add(Box.createHorizontalGlue());
-                 renameButtonPanel.add(renameOK);
-                 renameButtonPanel.add(Box.createHorizontalStrut(10));
-                 renameButtonPanel.add(renameCancel);
-                 ActionListener renameButtonListener = new ActionListener() {
-                     @Override
-                     public void actionPerformed(ActionEvent renameEvt) {
-                         if (renameEvt.getSource() == renameOK) {
-                             for (int i = 0; i < renameList.length; ++i) {
-                                 ScenarioListItem currItem = (ScenarioListItem) renameList[i];
-                                 String currText = renameBoxes.get(i).getText();
-                                 // only do it if the name really is different
-                                 if (!currItem.getScnName().equals(currText)) {
-                                     // the undoable edit will take care of doing
-                                     // the rename
-                                     UndoableEdit renameEdit = new RenameScenarioUndoableEdit(thisViewer, currItem,
-                                             currText);
-                                     InterfaceMain.getInstance().getUndoManager().addEdit(renameEdit);
-                                     InterfaceMain.getInstance().refreshUndoRedo();
-                                 }
-                             }
-                         }
-                         // scns = getScenarios();
-                         list.setListData(scns);
-                         renameScenarioDialog.dispose();
-                     }
-                 };
-                 renameOK.addActionListener(renameButtonListener);
-                 renameCancel.addActionListener(renameButtonListener);
-
-                 renameBoxPanel.add(renameButtonPanel);
-                 renameBoxPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-                 renameScenarioDialog.getContentPane().add(renameBoxPanel);
-                 renameScenarioDialog.pack();
-                 renameScenarioDialog.setVisible(true);
-             }
-         });
-
-         exportButton.addActionListener(new ActionListener() {
-             /**
-              * Method called when the export button is clicked which allows the user to
-              * select a location to export the scenario to and exports the scenario.
-              * 
-              * @param aEvent The event received.
-              * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
-              */
-             public void actionPerformed(ActionEvent aEvent) {
-                 final Object[] selectedList = list.getSelectedValues();
-
-                 // !!!Dan: updated this so isSingleSelection is always false
-                 final boolean isSingleSelection = false; // selectedList.length == 1;
-                 FileFilter fileFilter;
-                 String saveDialogTitle;
-
-                 if (isSingleSelection) {
-                     fileFilter = new XMLFileFilter();
-                     saveDialogTitle = "Save As XML";
-                 } else {
-                     fileFilter = new FileFilter() {
-                         @Override
-                         public boolean accept(File f) {
-                             return f.isDirectory();
-                         }
-
-                         @Override
-                         public String getDescription() {
-                             return "Directory to export into";
-                         }
-                     };
-                     saveDialogTitle = "Select Export Directory";
-                 }
-                 FileChooser fc = FileChooserFactory.getFileChooser();
-
-                 final File[] exportLocation = fc.doFilePrompt(null, saveDialogTitle, FileChooser.SAVE_DIALOG,
-                         new File(main.getProperties().getProperty("lastDirectory", ".")), fileFilter);
-                 if (isSingleSelection && !exportLocation[0].getName().endsWith(".xml")) {
-                     exportLocation[0] = new File(exportLocation[0].getParentFile(),
-                             exportLocation[0].getName() + ".xml");
-                 }
-                 if (exportLocation == null) {
-                     // user canceled, nothing to do
-                     return;
-                 }
-                 // update status before starting background export
-                 statusField.setText("Exporting runs to selected directory...");
-                 // disable dialog buttons while exporting
-                 //disableAllButtons.run();
-                 final JProgressBar progBar = new JProgressBar(0, selectedList.length);
-                 final JLabel curLabel = new JLabel("Exporting runs from the database");
-                 // Create the export progress dialog and then position it centered on the Manage Database dialog
-                 final JDialog jd = XMLDB.createProgressBarGUI(progBar, "Exporting Runs", curLabel);
-                 if (jd != null) {
-                     jd.setLocationRelativeTo(filterDialog);
-                 }
-                 final Runnable incProgress = (new Runnable() {
-                     @Override
-                     public void run() {
-                         progBar.setValue(progBar.getValue() + 1);
-                     }
-                 });
-                 if (jd != null) {
-                     jd.setVisible(true);
-                 }
-
-                 // run the export off the gui thread which ensures progress updates correctly
-                 // and keeps the gui responsive
-                 new Thread(new Runnable() {
-                      @Override
-                      public void run() {
-                          boolean success = true;
-                          for (int i = 0; i < selectedList.length; ++i) {
-                             ScenarioListItem currItem = (ScenarioListItem) selectedList[i];
-                             File exportFile;
-
-                             if (isSingleSelection) {
-                                 exportFile = exportLocation[0];
-                             } else {
-                                 String exportFileName = currItem.getScnName() + "_"
-                                         + currItem.getScnDate().replaceAll(":", "_") + ".xml";
-                                 exportFile = new File(exportLocation[0], exportFileName);
-                             }
-                             success = success && XMLDB.getInstance().exportDoc(currItem.getDocName(), exportFile);
-                             SwingUtilities.invokeLater(incProgress);
-                          }
-                          if (jd != null) {
-                             jd.setVisible(false);
-                          }
-                          final boolean finalSuccess = success;
-                          SwingUtilities.invokeLater(new Runnable() {
-                             @Override
-                             public void run() {
-                                 if (finalSuccess) {
-                                     InterfaceMain.getInstance().showMessageDialog("Scenario export succeeded.",
-                                             "Scenario Export", JOptionPane.INFORMATION_MESSAGE);
-                                     statusField.setText("Export complete");
-                                 } else {
-                                     InterfaceMain.getInstance().showMessageDialog("Scenario export failed.", null,
-                                             JOptionPane.ERROR_MESSAGE);
-                                     statusField.setText("Export failed");
-                                 }
-                                 // restore dialog buttons after export finishes
-                                 //removed since not necessary
-                                 //restoreAllButtons.run();
-                             }
-                         });
-                      }
-                  }).start();
-              }
-
-          });
-
-         // Rebuild DB button - export current docs, drop DB files, recreate DB and re-import docs
-         rebuildButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                // verify DB is open
-                if (XMLDB.getInstance() == null) {
-                    InterfaceMain.getInstance().showMessageDialog("No database is open.", "Rebuild DB",
-                            JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                int ans = InterfaceMain.getInstance().showConfirmDialog(
-                        "Rebuild database? This will export all scemarops, create a fresh database and re-import the scenarios.\nRebuilding is expected to require as long as an hour or two.",
-                        "Confirm Rebuild", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
-                        JOptionPane.NO_OPTION);
-                if (ans != JOptionPane.YES_OPTION) {
-                    return;
-                }
-
-                // Disable UI while rebuilding
-                disableAllButtons.run();
-                SwingUtilities.invokeLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        statusField.setText("Rebuilding database...");
-                        filterDialog.getGlassPane().setVisible(true);
-                        filterDialog.getGlassPane().setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-                    }
-                });
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        File tempDir = null;
-                        File backupDir = null;
-                        String cont = null;
-                        String dbPath = null;
-                        AtomicBoolean rebuildSuccess = new AtomicBoolean(false);
-                        try {
-                            // gather docs to export from the Manage DB dialog list (only what's shown there)
-                            java.util.List<ScenarioListItem> currentScns = new java.util.ArrayList<ScenarioListItem>();
-                            javax.swing.ListModel lm = list.getModel();
-                            for (int i = 0; i < lm.getSize(); i++) {
-                                Object el = lm.getElementAt(i);
-                                if (el instanceof ScenarioListItem) {
-                                    currentScns.add((ScenarioListItem) el);
-                                }
-                            }
-                            if (currentScns.isEmpty()) {
-                                throw new Exception("No documents found in Manage Database list to export.");
-                            }
-                            // create temp dir
-                            String tmpBase = System.getProperty("java.io.tmpdir");
-                            tempDir = new File(tmpBase, "glimpse_rebuild_" + System.currentTimeMillis());
-                            if (!tempDir.mkdirs()) {
-                                throw new IOException("Could not create temporary directory: " + tempDir);
-                            }
-                            // export each doc with detailed logging
-                            final AtomicInteger num = new AtomicInteger(0);
-                            for (ScenarioListItem s : currentScns) {
-                                final int currNum = num.incrementAndGet();
-                                File out = new File(tempDir, s.getDocName());
-                                System.out.println("Rebuild: exporting " + s.getDocName() + " -> " + out.getAbsolutePath());
-                                final String exportName = s.getDocName();
-                                SwingUtilities.invokeLater(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        statusField.setText("Exporting " + exportName + " (" + currNum + "/" + currentScns.size() + ")");
-                                    }
-                                });
-                                boolean ok = XMLDB.getInstance().exportDoc(s.getDocName(), out);
-                                if (!ok) {
-                                    throw new IOException("Failed to export " + s.getDocName());
-                                } else {
-                                    System.out.println("Rebuild: export succeeded for " + s.getDocName());
-                                }
-                            }
-                            // capture container and db path
-                            cont = XMLDB.getInstance().getContainer();
-                            dbPath = System.getProperty("org.basex.DBPATH");
-                            System.out.println("Rebuild: captured container='" + cont + "' dbPath='" + dbPath + "'");
-                            // close database
-                            System.out.println("Rebuild: closing database before deleting files...");
-                            XMLDB.closeDatabase();
-                            // --- BEGIN BACKUP LOGIC ---
-                            File dbDir = null;
-                            if (dbPath != null && cont != null) {
-                                dbDir = new File(dbPath, cont);
-                                if (dbDir.exists()) {
-                                    // Create backup directory
-                                    backupDir = new File(dbDir.getParentFile(), dbDir.getName() + "_backup_" + System.currentTimeMillis());
-                                    System.out.println("Rebuild: backing up DB directory to " + backupDir.getAbsolutePath());
-                                    copyDirectory(dbDir, backupDir);
-                                    System.out.println("Rebuild: backup completed");
-                                } else {
-                                    System.out.println("Rebuild: DB directory not found: " + dbDir.getAbsolutePath());
-                                }
-                            }
-                            // --- END BACKUP LOGIC ---
-                            // delete old DB files
-                            if (dbDir != null && dbDir.exists()) {
-                                System.out.println("Rebuild: deleting old DB files at " + dbDir.getAbsolutePath());
-                                deleteRecursive(dbDir);
-                                System.out.println("Rebuild: deletion of old DB files completed");
-                            }
-                            // create a fresh context and DB, import files
-                            org.basex.core.Context tmpCtx = new org.basex.core.Context();
-                            final AtomicInteger num1 = new AtomicInteger(0);
-                            boolean tmpCtxAdopted = false;
-                            try {
-                                System.out.println("Rebuild: creating new database '" + cont + "'...");
-                                new org.basex.core.cmd.CreateDB(cont).execute(tmpCtx);
-                                File[] exportFiles = tempDir.listFiles();
-                                if (exportFiles != null) {
-                                    for (File f : exportFiles) {
-                                        final int currNum1 = num1.incrementAndGet();
-                                        System.out.println("Rebuild: importing file " + f.getName() + " -> database '" + cont + "'");
-                                        SwingUtilities.invokeLater(new Runnable() {
-                                            public void run() {
-                                                statusField.setText("Importing " + f.getName() + " (" + currNum1 + "/" + exportFiles.length + ")");
-                                            }
-                                        });
-                                        new org.basex.core.cmd.Add(f.getName(), f.getAbsolutePath()).execute(tmpCtx);
-                                        System.out.println("Rebuild: import completed for " + f.getName());
-                                    }
-                                } else {
-                                    System.out.println("Rebuild: no export files found in temp dir: " + tempDir);
-                                }
-                                // Instead of closing tmpCtx here, set the default collection on tmpCtx
-                                // and attempt to adopt tmpCtx into XMLDB so queries will see the default collection.
-                                try {
-                                    System.out.println("Rebuild: setting default collection '" + cont + "' on tmpCtx...");
-                                    new org.basex.core.cmd.Open(cont).execute(tmpCtx);
-                                } catch (Exception openEx) {
-                                    System.out.println("Rebuild: failed to open collection on tmpCtx: " + openEx);
-                                }
-
-                                try {
-                                    System.out.println("Rebuild: attempting to open database by adopting tmpCtx...");
-                                    XMLDB.openDatabase(tmpCtx);
-                                    tmpCtxAdopted = true;
-                                    System.out.println("Rebuild: database opened by adopting tmpCtx");
-                                } catch (Exception adoptEx) {
-                                    System.out.println("Rebuild: adopt tmpCtx open failed: " + adoptEx);
-                                    // fallback to previous behavior: create a fresh context and open the desired collection
-                                    try {
-                                        XMLDB.openDatabase(new org.basex.core.Context());
-                                        try {
-                                            if (cont != null && XMLDB.getInstance() != null && XMLDB.getInstance().getContext() != null) {
-                                               org.basex.core.cmd.Open openCmd = new org.basex.core.cmd.Open(cont);
-                                               String openRes = openCmd.execute(XMLDB.getInstance().getContext());
-                                               System.out.println("Rebuild: Open command result: " + openRes);
-                                            }
-                                        } catch (Exception openEx2) {
-                                            System.out.println("Rebuild: failed to set default collection via Open(): " + openEx2);
-                                        }
-                                        System.out.println("Rebuild: database re-opened using fresh context");
-                                    } catch (Exception ex2) {
-                                        System.out.println("Rebuild: fresh-context open failed, attempting open by path...");
-                                        try {
-                                            XMLDB.openDatabase(new File(dbPath, cont).getAbsolutePath());
-                                            System.out.println("Rebuild: database opened by path");
-                                        } catch (Exception ex3) {
-                                            System.out.println("Rebuild: failed to re-open database: " + ex3);
-                                            SwingUtilities.invokeLater(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    InterfaceMain.getInstance().showMessageDialog(
-                                                            "Failed to re-open database after rebuild. Please restart the application.",
-                                                            "Rebuild Error", JOptionPane.ERROR_MESSAGE);
-                                                }
-                                            });
-                                        }
-                                    }
-                                } finally {
-                                    // Only close tmpCtx if it wasn't adopted by XMLDB.openDatabase(tmpCtx)
-                                    if (!tmpCtxAdopted) {
-                                        try { new org.basex.core.cmd.Close().execute(tmpCtx); } catch (Exception ignore) {}
-                                        try { tmpCtx.close(); } catch (Exception ignore) {}
-                                    }
-                                }
-                                rebuildSuccess.set(true);
-                            } finally {
-                                // nothing to do here
-                            }
-                        } catch (final Exception ex) {
-                            ex.printStackTrace();
-                            // --- RESTORE ON FAILURE ---
-                            if (backupDir != null && backupDir.exists()) {
-                                try {
-                                    dbPath = System.getProperty("org.basex.DBPATH");
-                                    File dbDir = new File(dbPath, cont);
-                                    if (dbDir.exists()) {
-                                        deleteRecursive(dbDir);
-                                    }
-                                    copyDirectory(backupDir, dbDir);
-                                    System.out.println("Rebuild: Database restore from backup completed.");
-                                    SwingUtilities.invokeLater(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            statusField.setText("Rebuild failed. Database restored from backup.");
-                                            InterfaceMain.getInstance().showMessageDialog(
-                                                    "Database rebuild failed. The previous database has been restored.", "Rebuild Error",
-                                                    JOptionPane.ERROR_MESSAGE);
-                                        }
-                                    });
-                                } catch (Exception restoreEx) {
-                                    System.out.println("Rebuild: Failed to restore database from backup: " + restoreEx);
-                                    SwingUtilities.invokeLater(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            statusField.setText("Rebuild failed. Restore from backup also failed.");
-                                            InterfaceMain.getInstance().showMessageDialog(
-                                                    "Database rebuild failed and restore from backup also failed. Manual intervention required.",
-                                                    "Rebuild Error", JOptionPane.ERROR_MESSAGE);
-                                        }
-                                    });
-                                }
-                            } else {
-                                SwingUtilities.invokeLater(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        statusField.setText("Rebuild failed. No backup available.");
-                                        InterfaceMain.getInstance().showMessageDialog(
-                                                "Database rebuild failed and no backup was available.", "Rebuild Error",
-                                                JOptionPane.ERROR_MESSAGE);
-                                    }
-                                });
-                            }
-                        } finally {
-                            // cleanup temp dir if present
-                            if (tempDir != null && tempDir.exists()) {
-                                try { deleteRecursive(tempDir); } catch (Exception ignored) {}
-                            }
-                            // If rebuild succeeded, delete backup
-                            if (rebuildSuccess.get() && backupDir != null && backupDir.exists()) {
-                                try { deleteRecursive(backupDir); } catch (Exception ignored) {}
-                            }
-                            SwingUtilities.invokeLater(new Runnable() {
-                                @Override
-                                public void run() {
-                                    filterDialog.getGlassPane().setVisible(false);
-                                    filterDialog.getGlassPane().setCursor(Cursor.getDefaultCursor());
-                                    // ensure buttons restored in finally as well
-                                    restoreAllButtons.run();
-                                    if (rebuildSuccess.get()) {
-                                        JOptionPane.showMessageDialog(filterDialog, "Database rebuild is complete.", "Rebuild Complete", JOptionPane.INFORMATION_MESSAGE);
-                                    }
-                                }
-                            });
-                        }
-                    }
-                }).start();
-            }
-        });
-
-        // --- assemble the Manage DB dialog UI and show it ---
-        // Configure button pane
-        buttonPane.setLayout(new BoxLayout(buttonPane, BoxLayout.X_AXIS));
-        // Add 3 pixels to the left of the Add button for extra spacing
-        buttonPane.add(Box.createHorizontalStrut(3));
-        buttonPane.add(addButton);
-        // half the previous spacing (was 6)
-        buttonPane.add(Box.createHorizontalStrut(3));
-        buttonPane.add(removeButton);
-        buttonPane.add(Box.createHorizontalStrut(3));
-        buttonPane.add(renameButton);
-        buttonPane.add(Box.createHorizontalStrut(3));
-        buttonPane.add(exportButton);
-        buttonPane.add(Box.createHorizontalStrut(3));
-        buttonPane.add(rebuildButton);
-        // Place Done immediately to the right of Rebuild with half spacing
-        buttonPane.add(Box.createHorizontalStrut(3));
-        buttonPane.add(doneButton);
-        // then push remaining space to the right
-        buttonPane.add(Box.createHorizontalGlue());
-        // Add 3 pixels to the right for extra spacing
-        buttonPane.add(Box.createHorizontalStrut(3));
-
-        // Populate list pane (shows scenarios) and status field
-        listPane.add(new JScrollPane(list));
-        listPane.add(Box.createVerticalStrut(6));
-        listPane.add(statusField);
-
-        // Assemble into dialog
-        contentPane.setLayout(new BorderLayout());
-        contentPane.add(listPane, BorderLayout.CENTER);
-        contentPane.add(buttonPane, BorderLayout.SOUTH);
-
-        // Done button closes dialog and refreshes scenario list if changes were made
-        doneButton.addActionListener(new ActionListener() {
-            @Override
-	public void actionPerformed(ActionEvent e) {
-		if (dirtyBit.isDirty()) {
-			scns = getScenarios();
-			try {
-				if (scnList != null)
-					scnList.setListData(scns);
-			} catch (Exception ex) {
-				// ignore UI update issues
-			}
-		}
-		filterDialog.dispose();
-	}});
-
-	filterDialog.pack();
-	// Make the dialog about 50% taller than the packed size so content has more
-	// vertical room
-	try{
-
-	java.awt.Dimension dlgSize = filterDialog.getSize();
-	// Reduce the computed width by 30 pixels as requested
-	int newWidth = Math.max(100, (int) (dlgSize.width * 1.2) - 30);
-	int newHeight = (int) (dlgSize.height * 1.5);filterDialog.setSize(newWidth,newHeight);}catch(Exception ignore){
-	// ignore any unexpected sizing issues
-	}filterDialog.setLocationRelativeTo(parentFrame);filterDialog.setVisible(true);}
-
-	// Helper to delete files/directories recursively
-	private static void deleteRecursive(File f) throws IOException {
-		if (f == null || !f.exists())
-			return;
-		if (f.isDirectory()) {
-			File[] children = f.listFiles();
-			if (children != null) {
-				for (File c : children) {
-					System.out.println("Rebuild: deleting " + c.getAbsolutePath());
-					deleteRecursive(c);
-				}
-			}
-		}
-		if (!f.delete()) {
-			System.out.println("Rebuild: failed to delete " + f.getAbsolutePath());
-			throw new IOException("Failed to delete: " + f.getAbsolutePath());
-		} else {
-			System.out.println("Rebuild: deleted " + f.getAbsolutePath());
-		}
+		new ManageDatabaseDialog(parentFrame, this).setVisible(true);
 	}
 
-	// Helper to copy files/directories recursively
-	private static void copyDirectory(File source, File dest) throws IOException {
-    if (source == null || !source.exists()) return;
-    if (source.isDirectory()) {
-        if (!dest.exists()) {
-            if (!dest.mkdirs()) throw new IOException("Failed to create directory: " + dest);
-        }
-        File[] children = source.listFiles();
-        if (children != null) {
-            for (File c : children) {
-                copyDirectory(c, new File(dest, c.getName()));
-            }
-        }
-    } else {
-        java.nio.file.Files.copy(source.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-    }
-}
-	
+	/**
+	 * Writes a DOM Document to a file.
+	 *
+	 * @param file The file to write to.
+	 * @param doc  The Document to serialize.
+	 * @return true if writing was successful, false otherwise.
+	 */
+	private boolean writeFile(File file, Document doc) {
+		LSSerializer serializer = implls.createLSSerializer();
+		LSOutput lsOutput = implls.createLSOutput();
+		try {
+			lsOutput.setByteStream(new FileOutputStream(file));
+			serializer.write(doc, lsOutput);
+			return true;
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
 	
 	/**
 	 * Writes the current queries document to the file specified in properties. If
@@ -2869,268 +2268,21 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	}
 
 	/**
-	 * Exports all open tabs as CSV files to the selected directory.
-	 */
-	public void exportTabs() {
-		final InterfaceMain main = InterfaceMain.getInstance();
-
-		if (tablesTabs.getTabCount() == 0) {
-			// error?
-			return;
-		}
-
-		// select export location
-		String exportDialogTitle = "Select Export Directory";
-		FileFilter fileFilter = new FileFilter() {
-			public boolean accept(File f) {
-				return f.isDirectory();
-			}
-
-			public String getDescription() {
-				return "Directory to export into";
-			}
-		};
-
-		FileChooser fc = FileChooserFactory.getFileChooser();
-		final File[] exportLocation = fc.doFilePrompt(null, exportDialogTitle, FileChooser.SAVE_DIALOG,
-				new File(main.getProperties().getProperty("lastDirectory", ".")), fileFilter);
-
-		if (exportLocation == null) {
-			// user canceled, nothing to do
-			return;
-		}
-
-		ArrayList<String> tab_titles = new ArrayList<String>();
-
-		int tab_count = tablesTabs.getTabCount();
-		for (int i = 0; i < tab_count; i++) {
-			String tab_title = tablesTabs.getTitleAt(i).replaceAll(" ", "_").replaceAll(":", "");
-
-			// System.out.println("Title:" + tab_title);
-
-			int k = 0;
-			for (int j = 0; j < tab_titles.size(); j++) {
-				if (tab_titles.get(j).equals(tab_title))
-					k++;
-			}
-			tab_titles.add(tab_title);
-			if (k > 0)
-				tab_title += ("_" + k);
-
-			Component c = tablesTabs.getComponentAt(i);
-
-			JTable jTable = getJTableFromComponent(c);
-
-			TableModel tm = jTable.getModel();
-
-			if (tm != null) {
-				String filename = exportLocation[0].getAbsolutePath() + File.separator + tab_title + ".csv";
-				writeTableModelToFile(filename, tm);
-			}
-
-		}
-		JOptionPane.showMessageDialog(null,
-				tab_titles.size() + " files exported to " + exportLocation[0].getAbsolutePath());
-	}
-
-	protected boolean arrayListIncludes(ArrayList<String> array, String val) {
-		for (int i = 0; i < array.size(); i++) {
-			if (val.equals(array.get(i)))
-				return true;
-		}
-		return false;
-	}
-
-	/**
-	 * Writes the specified TableModel to a CSV file.
-	 * <p>
-	 * This method writes the column names and all rows of the TableModel to the
-	 * given filename in CSV format.
+	 * Updates the query tree with the queries from the specified file.
 	 *
-	 * @param filename The file to write to.
-	 * @param tm       The TableModel to export.
+	 * @param queryFile The query file to load.
 	 */
-	protected void writeTableModelToFile(String filename, TableModel tm) {
-		try {
-			PrintWriter pw = new PrintWriter(new FileOutputStream(filename));
-
-			int no_rows = tm.getRowCount();
-			int no_cols = tm.getColumnCount();
-
-			String s = "";
-			for (int j = 0; j < no_cols; j++) {
-				if (s != "")
-					s += ",";
-				s += tm.getColumnName(j);
-			}
-			pw.println(s);
-
-			for (int i = 0; i < no_rows; i++) {
-				s = "";
-				for (int j = 0; j < no_cols; j++) {
-					if (s != "")
-						s += ",";
-					s += tm.getValueAt(i, j);
-				}
-				pw.println(s);
-			}
-
-			pw.close();
-
-		} catch (Exception e) {
-			System.out.println("Problem writing tab to CSV file:" + e);
-		}
-
-	}
-
-	protected void batchQuery(File queryFile, final File excelFile) {
-		final JFrame parentFrame = InterfaceMain.getInstance().getFrame();
-		final Vector<ScenarioListItem> tempScns = getScenarios();
-		final String singleSheetCheckBoxPropName = "batchQueryResultsInDifferentSheets";
-		final String includeChartsPropName = "batchQueryIncludeCharts";
-		final String splitRunsPropName = "batchQuerySplitRunsInDifferentSheets";
-		final String replaceResultsPropName = "batchQueryReplaceResults";
-		Properties prop = InterfaceMain.getInstance().getProperties();
-
-		final String coresToUsePropertyName = "coresToUse";
-		Runtime.getRuntime().availableProcessors();
-		final int defaultNumCoresToUse = Integer.valueOf(prop.getProperty(coresToUsePropertyName, Integer.toString(2)));
-		prop.setProperty(coresToUsePropertyName, Integer.toString(defaultNumCoresToUse));
-
-		// Create a Select Scenarios dialog to get which scenarios to run
-		final JList scenarioList = new JList(tempScns);
-		final JDialog scenarioDialog = new JDialog(parentFrame, "Select Scenarios to Run", true);
-		JPanel listPane = new JPanel();
-		JPanel buttonPane = new JPanel();
-		final JCheckBox singleSheetCheckBox = new JCheckBox("Place all results in different sheets",
-				Boolean.parseBoolean(prop.getProperty(singleSheetCheckBoxPropName, "false")));
-		final JCheckBox drawPicsCheckBox = new JCheckBox("Include charts with results",
-				Boolean.parseBoolean(prop.getProperty(includeChartsPropName, "true")));
-		final JCheckBox seperateRunsCheckBox = new JCheckBox("Split runs into different sheets",
-				Boolean.parseBoolean(prop.getProperty(splitRunsPropName, "false")));
-		final JButton okButton = new JButton("Ok");
-		okButton.setEnabled(false);
-		JButton cancelButton = new JButton("Cancel");
-		listPane.setLayout(new BoxLayout(listPane, BoxLayout.Y_AXIS));
-		Container contentPane = scenarioDialog.getContentPane();
-		final JCheckBox overwriteCheckBox = new JCheckBox("Overwrite selected file if it exists",
-				Boolean.parseBoolean(prop.getProperty(replaceResultsPropName, "false")));
-
-		scenarioList.addListSelectionListener(new ListSelectionListener() {
-			public void valueChanged(ListSelectionEvent e) {
-				if (scenarioList.isSelectionEmpty()) {
-					okButton.setEnabled(false);
-				} else {
-					okButton.setEnabled(true);
+	public void updateQueryTree(File queryFile) {
+		queriesDoc = readQueries(queryFile);
+		if (queriesDoc != null) {
+			queries = getQueries();
+			if (queryList != null) {
+				queryList.setModel(queries);
+				for (int i = 0; i < queryList.getRowCount(); ++i) {
+					queryList.expandRow(i);
 				}
 			}
-		});
-
-		okButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				scenarioDialog.dispose();
-			}
-		});
-
-		cancelButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				scenarioList.clearSelection();
-				scenarioDialog.dispose();
-			}
-		});
-
-		buttonPane.setLayout(new BoxLayout(buttonPane, BoxLayout.X_AXIS));
-		buttonPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-		buttonPane.add(Box.createHorizontalGlue());
-		buttonPane.add(okButton);
-		buttonPane.add(Box.createHorizontalStrut(10));
-		buttonPane.add(cancelButton);
-
-		JScrollPane sp = new JScrollPane(scenarioList);
-		sp.setPreferredSize(new Dimension(300, 300));
-		listPane.add(new JLabel("Select Scenarios:"));
-		listPane.add(Box.createVerticalStrut(10));
-		listPane.add(sp);
-		listPane.add(singleSheetCheckBox);
-		listPane.add(overwriteCheckBox);
-		listPane.add(drawPicsCheckBox);
-		listPane.add(seperateRunsCheckBox);
-		listPane.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-		contentPane.add(listPane, BorderLayout.PAGE_START);
-		contentPane.add(buttonPane, BorderLayout.PAGE_END);
-		scenarioDialog.pack();
-		scenarioDialog.setVisible(true);
-
-		if (scenarioList.isSelectionEmpty()) {
-			return;
 		}
-		// save the check box options back into the properties
-		prop.setProperty(singleSheetCheckBoxPropName, Boolean.toString(singleSheetCheckBox.isSelected()));
-		prop.setProperty(includeChartsPropName, Boolean.toString(drawPicsCheckBox.isSelected()));
-		prop.setProperty(splitRunsPropName, Boolean.toString(seperateRunsCheckBox.isSelected()));
-		prop.setProperty(replaceResultsPropName, Boolean.toString(overwriteCheckBox.isSelected()));
-
-		// read the batch query file
-		Document queries = readQueries(queryFile);
-		final NodeList res;
-		try {
-			res = (NodeList) XPathFactory.newInstance().newXPath().evaluate("/queries/node()", queries,
-					XPathConstants.NODESET);
-		} catch (Exception e) {
-			InterfaceMain.getInstance().showMessageDialog("Could not find queries to run in batch file:\n" + queryFile,
-					"Batch Query Error", JOptionPane.ERROR_MESSAGE);
-			e.printStackTrace();
-			return;
-		}
-		final int numQueries = res.getLength();
-		if (numQueries == 0) {
-			InterfaceMain.getInstance().showMessageDialog("Could not find queries to run in batch file:\n" + queryFile,
-					"Batch Query Error", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-		final Vector<Object[]> toRunScns = new Vector<Object[]>();
-		if (!seperateRunsCheckBox.isSelected()) {
-			toRunScns.add(scenarioList.getSelectedValuesList().toArray());
-		} else {
-			for (Object scn : scenarioList.getSelectedValuesList().toArray()) {
-				Object[] temp = new Object[1];
-				temp[0] = scn;
-				toRunScns.add(temp);
-			}
-		}
-		// create window
-
-		// Provide the default set of all regions which does not include Global
-		Vector<String> allRegions = new Vector<String>(regions);
-		allRegions.remove("Global");
-
-		new BatchWindow(excelFile, toRunScns, allRegions, singleSheetCheckBox.isSelected(),
-				drawPicsCheckBox.isSelected(), numQueries, res, overwriteCheckBox.isSelected(), defaultNumCoresToUse);
-	}
-
-	/**
-	 * Writes the specified Document to a file.
-	 * 
-	 * @param file   The file to write to.
-	 * @param theDoc The Document to write.
-	 * @return True if successful, false otherwise.
-	 */
-	public boolean writeFile(File file, Document theDoc) {
-		LSSerializer serializer = implls.createLSSerializer();
-		DOMConfiguration domConfig = serializer.getDomConfig();
-		boolean prettyPrint = Boolean.parseBoolean(System.getProperty("ModelInterface.pretty-print", "true"));
-		domConfig.setParameter("format-pretty-print", prettyPrint);
-		// create the serializer and have it print the document
-
-		try {
-			LSOutput lsOut = implls.createLSOutput();
-			lsOut.setByteStream(new FileOutputStream(file));
-			serializer.write(theDoc, lsOut);
-		} catch (Exception e) {
-			System.err.println("Error outputting tree: " + e);
-			return false;
-		}
-		return true;
 	}
 
 	/**
@@ -3152,7 +2304,6 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 			lsParser.setFilter(new ParseFilter());
 			return lsParser.parse(lsInput);
 		} else {
-			// DocumentType DOCTYPE = impl.createDocumentType("recent", "", "");
 			return ((DOMImplementation) implls).createDocument("", "queries", null);
 		}
 	}
@@ -3208,163 +2359,61 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	}
 
 	/**
-	 * Loads favorite queries file and applies it if requested by the user.
+	 * A filter which will be used by the LSParser to filter out any nodes
+	 * which are not necessary for the query file. This includes things like
+	 * comments and insignificant whitespace.
+	 * 
+	 * @author Josh Lurz
+	 * 
 	 */
-	public void loadFavoriteQueriesFile() {
-		String PathToUse = null;
-		if (InterfaceMain.favoriteQueriesFileLocation != null) {
-			File f = new File(InterfaceMain.favoriteQueriesFileLocation);
-			if (f.exists()) {
-				PathToUse = f.getParent();
-			}
+	public class ParseFilter implements LSParserFilter {
+		/**
+		 * A bitmask of what nodes to show. We will be showing all nodes and
+		 * making a decision on each one.
+		 */
+		public int getWhatToShow() {
+			return LSParserFilter.FILTER_ACCEPT; //This was ShowAll. Need to verify functionality of change.
 		}
 
-		JFileChooser fileChooser = new JFileChooser();
-		fileChooser.setDialogTitle("Select a query file to load.");
-		if (PathToUse != null) {
-			fileChooser.setCurrentDirectory(new File(PathToUse));
-		}
-		int returnVal = fileChooser.showOpenDialog(null);
-
-		if (returnVal == JFileChooser.APPROVE_OPTION) {
-			InterfaceMain.favoriteQueriesFileLocation = fileChooser.getSelectedFile().getAbsolutePath();
-			String messageFileSaved = fileChooser.getSelectedFile().toString()
-					+ " has been loaded.\n\n Would you like to apply it now?";
-			int answer = JOptionPane.showConfirmDialog(null, messageFileSaved, "Switch?", JOptionPane.YES_NO_OPTION);
-			if (answer == JOptionPane.YES_OPTION) {
-				selectFavoriteQueries(queryList);
+		/**
+		 * The filter method which will decide which nodes to keep.
+		 * 
+		 * @param node The node to check.
+		 * @return A short which will be either FILTER_ACCEPT, FILTER_REJECT, or
+		 *         FILTER_SKIP.
+		 */
+		public short acceptNode(Node node) {
+			// we want to keep all elements
+			if (node.getNodeType() == Node.ELEMENT_NODE) {
+				return LSParserFilter.FILTER_ACCEPT;
 			}
+			// we want to skip text nodes that are not all whitespace
+			else if (node.getNodeType() == Node.TEXT_NODE && node.getTextContent().trim().length() != 0) {
+				return LSParserFilter.FILTER_ACCEPT;
+			}
+			// we will reject everything else
+			return LSParserFilter.FILTER_REJECT;
+		}
+
+		@Override
+		public short startElement(Element element) {
+			return LSParserFilter.FILTER_ACCEPT;
 		}
 	}
 
+	/**
+	 * Loads favorite queries file and applies it if requested by the user.
+	 */
 	/**
 	 * Creates a file containing the selected queries as user's favorite queries.
 	 * 
 	 * @param myTree The JTree containing selected queries.
 	 */
-	public void createFavoriteQueriesFile(JTree myTree) {
-		TreePath[] selectedTreePath = myTree.getSelectionPaths();
-		if (selectedTreePath.length == 0) {
-			JOptionPane.showMessageDialog(null, "Please select at least one query to save.");
-			return;
-		}
-
-		boolean hasLeaf = false;
-		for (TreePath tp : selectedTreePath) {
-			if (tp.getLastPathComponent() instanceof QueryGenerator)
-				hasLeaf = true;
-		}
-		if (!hasLeaf) {
-			JOptionPane.showMessageDialog(null, "Please select at least one query to save.");
-			return;
-		}
-
-		String PathToUse = null;
-		if (InterfaceMain.favoriteQueriesFileLocation != null) {
-			File f = new File(InterfaceMain.favoriteQueriesFileLocation);
-			if (f.exists()) {
-				PathToUse = f.getParent();
-			}
-		}
-
-		JFileChooser fileChooser = new JFileChooser();
-		fileChooser.setDialogTitle("Specify a favorite queries file to save");
-		if (PathToUse != null) {
-			fileChooser.setCurrentDirectory(new File(PathToUse));
-		}
-		int userSelection = fileChooser.showSaveDialog(null);
-
-		if (userSelection == JFileChooser.APPROVE_OPTION) {
-			try {
-				BufferedWriter writer = new BufferedWriter(
-						new OutputStreamWriter(new FileOutputStream(fileChooser.getSelectedFile(), false)));
-				String convertedLine = "";
-				for (int i = 0; i < selectedTreePath.length; i++) {
-
-					TreePath treePathNow = selectedTreePath[i];
-					if (treePathNow.getLastPathComponent() instanceof QueryGenerator) {
-						int treePathCount = treePathNow.getPathCount();
-						String pathStr = selectedTreePath[i].toString();
-						String lineStr = pathStr.substring(1, pathStr.length() - 1);// remove the square brackets
-						int commaCount = countCommaInPath(lineStr);
-						if (commaCount > treePathCount - 1) { // there are commas inside queryGroup
-							convertedLine = convertPathWithCommaToLine(treePathNow);
-						} else {
-							convertedLine = convertPathToLine(lineStr);
-						}
-					}
-					// System.out.println("converted line is:" + convertedLine);
-					writer.write(convertedLine);
-					writer.newLine();
-				}
-				writer.close();
-				String messageFileSaved = fileChooser.getSelectedFile().toString()
-						+ " has been saved.\n\n Would you like to make this the active favorites file?";
-				int answer = JOptionPane.showConfirmDialog(null, messageFileSaved, "Switch?",
-						JOptionPane.YES_NO_OPTION);
-				if (answer == JOptionPane.YES_OPTION) {
-					InterfaceMain.favoriteQueriesFileLocation = fileChooser.getSelectedFile().getAbsolutePath();
-				}
-			} catch (IOException e) {
-				System.out.println("Could not save file: " + e.toString());
-				JOptionPane.showMessageDialog(null, "Unable to save file, please see console for error",
-						"Error Saving File", JOptionPane.ERROR_MESSAGE);
-			}
-
-		}
-
-	}// createFavoriteQueriesFile method end
-
 	/**
 	 * Appends selected queries to the favorite queries file.
 	 * 
 	 * @param myTree The JTree containing selected queries.
 	 */
-	public void appendFavoriteQueries(JTree myTree) {
-		TreePath[] selectedTreePath = myTree.getSelectionPaths();
-		if (selectedTreePath == null || selectedTreePath.length == 0) {
-			JOptionPane.showMessageDialog(null, "Please select at least one query to append.");
-			return;
-		}
-		String favoritesFilePath = InterfaceMain.favoriteQueriesFileLocation;
-		if (favoritesFilePath == null || favoritesFilePath.trim().isEmpty()) {
-			JOptionPane.showMessageDialog(null,
-					"No favorite queries file specified. Please load or create a file first.");
-			return;
-		}
-		File favoritesFile = new File(favoritesFilePath);
-		if (!favoritesFile.exists()) {
-			String messageFileNotFound = "Favorite queries list file " + favoritesFilePath
-					+ " could not be found to be appended to.\nPlease load or create a file first.";
-			JOptionPane.showMessageDialog(null, messageFileNotFound);
-			return;
-		}
-		try (BufferedWriter writer = new BufferedWriter(
-				new OutputStreamWriter(new FileOutputStream(favoritesFile, true)))) {
-			for (TreePath treePathNow : selectedTreePath) {
-				int treePathCount = treePathNow.getPathCount();
-				String pathStr = treePathNow.toString();
-				String lineStr = pathStr.substring(1, pathStr.length() - 1); // remove the square brackets
-				int commaCount = countCommaInPath(lineStr);
-				String convertedLine;
-				if (commaCount > treePathCount - 1) { // there are commas inside queryGroup
-					convertedLine = convertPathWithCommaToLine(treePathNow);
-				} else {
-					convertedLine = convertPathToLine(lineStr);
-				}
-				writer.write(convertedLine);
-				writer.newLine();
-			}
-			writer.flush();
-			String messageQueriesAppended = "The selected queries have been appended to " + favoritesFilePath;
-			JOptionPane.showMessageDialog(null, messageQueriesAppended);
-		} catch (IOException e) {
-			System.out.println("Could not append to favorite queries: " + e);
-			JOptionPane.showMessageDialog(null, "Unable to append to file, please see console for error",
-					"Error Appending File", JOptionPane.ERROR_MESSAGE);
-		}
-	}// appendFavoriteQueries method end
-
 	// YD added this method to convert the path string into each line with
 	// ">",Feb-2024
 	public static String convertPathToLine(String pathStr) {
@@ -3372,12 +2421,25 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 				.collect(Collectors.joining(">"));
 	}
 
+	/**
+	 * Counts the number of commas in a TreePath string representation.
+	 *
+	 * @param pathStr The string representation of the TreePath.
+	 * @return The number of commas.
+	 */
 	// YD added this method to count number of commas in a TreePath,Mar-2024
 	public int countCommaInPath(String pathStr) {
 		int numCommas = pathStr.length() - pathStr.replace(",", "").length();
 		return (numCommas);
 	}
 
+	/**
+	 * Converts a TreePath that may contain commas in its node names to a
+	 * delimited string line.
+	 *
+	 * @param treePathNow The TreePath to convert.
+	 * @return A string representing the path with ">" as a delimiter.
+	 */
 	// YD added this method to count number of commas in a TreePath,Mar-2024
 	public String convertPathWithCommaToLine(TreePath treePathNow) {
 		int treePathCount = treePathNow.getPathCount();
@@ -3395,6 +2457,13 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
 	// YD edits end
 
+	/**
+	 * Extracts the BaseTableModel from a component, which is expected to be a
+	 * QueryResultsPanel or a similar structure containing a JTable.
+	 *
+	 * @param comp The component to extract the model from.
+	 * @return The BaseTableModel, or null if not found.
+	 */
 	public static BaseTableModel getTableModelFromComponent(java.awt.Component comp) {
 		Object c;
 		try {
@@ -3404,18 +2473,45 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 				return null;
 			}
 			if (c instanceof JSplitPane) {
-				// Dan-Debug - Causes error javax.swing.JPanel cannot be cast to
-				// javax.swing.JScrollPane
-				return (BaseTableModel) ((TableSorter) ((JTable) ((JScrollPane) ((JSplitPane) c).getLeftComponent())
-						.getViewport().getView()).getModel()).getTableModel();
+				Component leftComponent = ((JSplitPane) c).getLeftComponent();
+				JTable table = null;
+				if (leftComponent instanceof JScrollPane) {
+					table = (JTable) ((JScrollPane) leftComponent).getViewport().getView();
+				} else if (leftComponent instanceof JPanel) {
+					// Assuming the table is within a JScrollPane which is the second component of the JPanel
+					JScrollPane scrollPane = (JScrollPane) ((JPanel) leftComponent).getComponent(1);
+					table = (JTable) scrollPane.getViewport().getView();
+				}
+
+				if (table != null) {
+					TableModel model = table.getModel();
+					if (model instanceof TableSorter) {
+						return (BaseTableModel) ((TableSorter) model).getTableModel();
+					} else if (model instanceof BaseTableModel) {
+						return (BaseTableModel) model;
+					}
+				}
+				return null;
 			} else {
-				return (BaseTableModel) ((JTable) ((JScrollPane) c).getViewport().getView()).getModel();
+				JTable table = (JTable) ((JScrollPane) c).getViewport().getView();
+				TableModel model = table.getModel();
+				if (model instanceof TableSorter) {
+					return (BaseTableModel) ((TableSorter) model).getTableModel();
+				}
+				return (BaseTableModel) model;
 			}
 		} catch (ClassCastException e) {
 			return null;
 		}
 	}
 
+	/**
+	 * Extracts the JTable from a component, which is expected to be a
+	 * QueryResultsPanel or a similar structure.
+	 *
+	 * @param comp The component to extract the table from.
+	 * @return The JTable, or null if not found.
+	 */
 	public static JTable getJTableFromComponent(java.awt.Component comp) {
 		Object c;
 		try {
@@ -3510,23 +2606,42 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 					firstMouseEvent = null;
 					c.setCursor(Cursor.getDefaultCursor());
 				}
-
 			}
 		}
 
+		/**
+		 * Unused mouse event.
+		 * @param e The MouseEvent.
+		 */
 		// all the events we don't care about..
 		public void mouseMoved(MouseEvent e) {
 		}
 
+		/**
+		 * Unused mouse event.
+		 * @param e The MouseEvent.
+		 */
 		public void mouseEntered(MouseEvent e) {
 		}
 
+		/**
+		 * Unused mouse event.
+		 * @param e The MouseEvent.
+		 */
 		public void mouseExited(MouseEvent e) {
 		}
 
+		/**
+		 * Unused mouse event.
+		 * @param e The MouseEvent.
+		 */
 		public void mouseClicked(MouseEvent e) {
 		}
 
+		/**
+		 * Unused mouse event.
+		 * @param e The MouseEvent.
+		 */
 		public void mouseReleased(MouseEvent e) {
 		}
 	}
@@ -3669,7 +2784,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		// buttons need to be layouted out horizontally
 		final JPanel buttonPanel = new JPanel();
 		buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.X_AXIS));
-		buttonPanel.add(Box.createHorizontalGlue());
+			buttonPanel.add(Box.createHorizontalGlue());
 		buttonPanel.add(scanButton);
 		buttonPanel.add(seperator);
 		buttonPanel.add(cancelButton);
@@ -3742,208 +2857,5 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		scanDialog.setResizable(false);
 		scanDialog.setContentPane(all);
 		scanDialog.setVisible(true);
-	}
-
-	public void runBatch(Node command) {
-		/**
-		 * Executes a batch command for running queries on the XMLDB database.
-		 * <p>
-		 * This method parses the provided XML Node command, which should contain
-		 * instructions for running batch queries. It supports the following actions:
-		 * <ul>
-		 * <li>Opening the database file</li>
-		 * <li>Loading query files or inline queries</li>
-		 * <li>Selecting scenarios to run</li>
-		 * <li>Configuring batch options (single sheet, charts, split runs, replace
-		 * results, cores to use)</li>
-		 * <li>Running the batch and exporting results</li>
-		 * </ul>
-		 * The method validates required files, opens the database if needed, loads
-		 * scenarios and queries, and executes the batch run. If any required
-		 * information is missing or an error occurs, it prints the stack trace and
-		 * closes the database if it was opened.
-		 *
-		 * @param command The XML Node containing batch command instructions.
-		 */
-		// Get properties and batch options
-		Properties prop = InterfaceMain.getInstance().getProperties();
-		final String singleSheetCheckBoxPropName = "batchQueryResultsInDifferentSheets";
-		final String includeChartsPropName = "batchQueryIncludeCharts";
-		final String splitRunsPropName = "batchQuerySplitRunsInDifferentSheets";
-		final String replaceResultsPropName = "batchQueryReplaceResults";
-		final String coresToUsePropertyName = "coresToUse";
-		Runtime.getRuntime().availableProcessors();
-		final int defaultNumCoresToUse = Integer.valueOf(prop.getProperty(coresToUsePropertyName, Integer.toString(2)));
-		prop.setProperty(coresToUsePropertyName, Integer.toString(defaultNumCoresToUse));
-
-		NodeList children = command.getChildNodes();
-		for (int i = 0; i < children.getLength(); ++i) {
-			Node child = children.item(i);
-			// Only process element nodes
-			if (child.getNodeType() != Node.ELEMENT_NODE) {
-				continue;
-			}
-			String actionCommand = ((Element) child).getAttribute("name");
-			if (actionCommand == null) {
-				continue;
-			}
-			// Only handle XMLDB Batch File commands
-			if ("XMLDB Batch File".equals(actionCommand)) {
-				File queryFile = null;
-				Node queriesNode = null;
-				File outFile = null;
-				String dbFile = null;
-				boolean didOpenDB = false;
-				List<DataPair<String, String>> scenariosNames = new ArrayList<>();
-				// Batch options
-				boolean singleSheet = Boolean.parseBoolean(prop.getProperty(singleSheetCheckBoxPropName, "false"));
-				boolean includeCharts = Boolean.parseBoolean(prop.getProperty(includeChartsPropName, "true"));
-				boolean splitRuns = Boolean.parseBoolean(prop.getProperty(splitRunsPropName, "false"));
-				boolean replaceResults = Boolean.parseBoolean(prop.getProperty(replaceResultsPropName, "false"));
-				int numCoresToUse = defaultNumCoresToUse;
-				// Parse child nodes for batch file configuration
-				NodeList fileNameChildren = child.getChildNodes();
-				for (int j = 0; j < fileNameChildren.getLength(); ++j) {
-					Node fileNode = fileNameChildren.item(j);
-					if (fileNode.getNodeType() != Node.ELEMENT_NODE) {
-						continue;
-					}
-					String nodeName = fileNode.getNodeName();
-					switch (nodeName) {
-					case "queryFile":
-						queryFile = new File(fileNode.getTextContent());
-						break;
-					case "queries":
-						queriesNode = fileNode;
-						break;
-					case "outFile":
-						outFile = new File(fileNode.getTextContent());
-						break;
-					case "xmldbLocation":
-						dbFile = fileNode.getTextContent();
-						break;
-					case "scenario":
-						scenariosNames.add(new DataPair<>(((Element) fileNode).getAttribute("name"),
-								((Element) fileNode).getAttribute("date")));
-						break;
-					case singleSheetCheckBoxPropName:
-						singleSheet = Boolean.parseBoolean(fileNode.getTextContent());
-						break;
-					case includeChartsPropName:
-						includeCharts = Boolean.parseBoolean(fileNode.getTextContent());
-						break;
-					case splitRunsPropName:
-						splitRuns = Boolean.parseBoolean(fileNode.getTextContent());
-						break;
-					case replaceResultsPropName:
-						replaceResults = Boolean.parseBoolean(fileNode.getTextContent());
-						break;
-					case coresToUsePropertyName:
-						try {
-							numCoresToUse = Integer.parseInt(fileNode.getTextContent());
-						} catch (NumberFormatException ex) {
-							numCoresToUse = defaultNumCoresToUse;
-						}
-						break;
-					default:
-						System.out.println("Unknown tag: " + nodeName);
-						break;
-					}
-				}
-				try {
-					// Validate required files
-					if ((queryFile == null && queriesNode == null) || outFile == null || dbFile == null) {
-						throw new Exception("Not enough information provided to run batch query.");
-					}
-					// Open DB if needed
-					if (XMLDB.getInstance() == null) {
-						XMLDB.openDatabase(dbFile);
-						didOpenDB = true;
-					}
-					// Get scenarios from DB
-					Vector<ScenarioListItem> scenariosInDb = getScenarios();
-					Vector<ScenarioListItem> scenariosToRun = new Vector<>();
-					if (scenariosNames.isEmpty() && !scenariosInDb.isEmpty()) {
-						scenariosToRun.add(scenariosInDb.lastElement());
-					} else {
-						for (DataPair<String, String> currScn : scenariosNames) {
-							String scen = currScn.getKey();
-							String date = currScn.getValue();
-							if (date.isEmpty()) {
-								date = null;
-							}
-							ScenarioListItem found = ScenarioListItem.findClosestScenario(scenariosInDb, scen, date);
-							if (found != null) {
-								scenariosToRun.add(found);
-							}
-						}
-					}
-					if (scenariosToRun.isEmpty()) {
-						throw new Exception("Could not find scenarios to run.");
-					}
-					// Load queries from file or inline
-					if (queryFile != null && queriesNode != null) {
-						throw new Exception("Setting both a queryFile and inline queries is not allowed.");
-					} else if (queryFile != null) {
-						queriesNode = readQueries(queryFile).getDocumentElement();
-					} else {
-						filterNodes(queriesNode, new ParseFilter());
-					}
-					// Get queries to run
-					final NodeList res = (NodeList) XPathFactory.newInstance().newXPath().evaluate("./aQuery",
-							queriesNode, XPathConstants.NODESET);
-					final int numQueries = res.getLength();
-					if (numQueries == 0) {
-						throw new Exception("Could not find queries to run.");
-					}
-					// Prepare scenarios to run
-					final Vector<Object[]> toRunScns = new Vector<>();
-					if (!splitRuns) {
-						toRunScns.add(scenariosToRun.toArray());
-					} else {
-						for (ScenarioListItem scn : scenariosToRun) {
-							Object[] temp = new Object[1];
-							temp[0] = scn;
-							toRunScns.add(temp);
-						}
-					}
-					// Get regions (excluding Global)
-					Vector<String> allRegions = getRegions();
-					allRegions.remove("Global");
-					// Run the batch window
-					BatchWindow runner = new BatchWindow(outFile, toRunScns, allRegions, singleSheet, includeCharts,
-							numQueries, res, replaceResults, numCoresToUse);
-					if (runner != null) {
-						runner.waitForFinish();
-					}
-				} catch (Exception e) {
-					// Print stack trace for errors
-					e.printStackTrace();
-				} finally {
-					// Close DB if it was opened in this method
-					if (didOpenDB) {
-						XMLDB.closeDatabase();
-					}
-				}
-			} else {
-				// Unknown command type
-				System.out.println("Unknown command: " + actionCommand);
-			}
-		}
-	}
-
-	private void finalizeUI() {
-		JFrame parentFrame = InterfaceMain.getInstance().getFrame();
-		if (parentFrame == null)
-			return;
-		Container contentPane = parentFrame.getContentPane();
-		contentPane.removeAll();
-		contentPane.setLayout(new BorderLayout());
-		contentPane.add(tableCreatorSplit, BorderLayout.CENTER);
-		// Remove pack() to avoid overriding setSize from InterfaceMain
-		// parentFrame.pack();
-		parentFrame.setLocationRelativeTo(null);
-		parentFrame.setVisible(true);
-		parentFrame.getGlassPane().setVisible(false);
 	}
 }

@@ -492,6 +492,22 @@ public class PaneForComponentDetails extends VBox {
     }
 
     /**
+     * Populates the table from a comma-separated string.
+     * @param csv The comma-separated string with year and value.
+     */
+    public void populateTableFromCSV(String csv) {
+        if (csv == null || csv.trim().isEmpty()) {
+            return;
+        }
+        String[] parts = utils.splitString(csv, ",");
+        if (parts.length == 2) {
+            String year = parts[0].trim();
+            String value = parts[1].trim();
+            data.add(new DataPoint(year, value));
+        }
+    }
+
+    /**
      * Cell factory for enabling drag selection in the table.
      */
     public class DragSelectionCellFactory implements

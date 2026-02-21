@@ -50,6 +50,8 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -176,6 +178,7 @@ public class InterfaceMain implements ActionListener {
 	private JMenuItem toolsCSVMenu; // YD added
 	private JMenuItem toolsUnitMenu; // YD added
 	private JMenuItem editRegionsMenu; // Added: Edit Regions menu item
+	private JMenuItem selectQueryMenu;
 	// private JMenuItem toolsSankeyMenu; // YD moved to "DbViewer.java"
 
 	// New Config menu items
@@ -185,6 +188,7 @@ public class InterfaceMain implements ActionListener {
 	private JMenuItem selectMapResourceFolderMenu;
 
 	private JMenuItem editQuerySubMenu; // YD added
+	private JMenuItem toggleAutoGraphicsMenu;
 	private JMenu advancedSubMenu1;// YD added
 	private JMenu advancedSubMenu2;// YD added
 	private Properties savedProperties;
@@ -209,6 +213,7 @@ public class InterfaceMain implements ActionListener {
 	public static String gcamReg32US52ShapeFileLocation = null; // YD added,July-2024
 	public static boolean enableMapping = false; // YD added,August-2024
 	public static boolean enableSankey = false; // YD added,August-2024
+	public static boolean autoGenerateGraphics = false; // DPL added, Feb-2026
 	public static String shapeFileLocationPrefix = null;
 	public static String legendBundlesLoc = null;
 
@@ -229,6 +234,20 @@ public class InterfaceMain implements ActionListener {
 
 		// we want this to always be in root of run environment
 		propertiesFile = new File("model_interface.properties");
+		if (!propertiesFile.exists()) {
+			try {
+				if (propertiesFile.createNewFile()) {
+					System.out.println("Created new properties file: " + propertiesFile.getAbsolutePath());
+					// Write a default empty properties XML to the new file
+					try (FileOutputStream fos = new FileOutputStream(propertiesFile)) {
+						new Properties().storeToXML(fos, "ModelInterface properties");
+					}
+				}
+			} catch (IOException e) {
+				System.err.println("Could not create properties file. Proceeding with defaults.");
+				e.printStackTrace();
+			}
+		}
 		System.out.println("Getting model properties from " + propertiesFile.getAbsolutePath());
 
 		// Load properties early so we can apply precedence (CLI > properties > defaults)
@@ -265,6 +284,7 @@ public class InterfaceMain implements ActionListener {
 		parser.accepts("f", "Path to favorite queries file").withOptionalArg(); // YD added,Feb-2024
 		parser.accepts("m", "Path to mapping directory").withOptionalArg();// YD added,May-2024
 		parser.accepts("legend_bundle", "Path to the LegendBundle.properties file").withOptionalArg();
+		parser.accepts("auto-generate-graphics", "Automatically generate graphics when a scenario is run.");
 
 		OptionSet opts = null;
 		try {
@@ -393,7 +413,7 @@ public class InterfaceMain implements ActionListener {
 					unitFileLocation = f.getAbsolutePath();
 				}
 				System.out.println("    --> attempting to use default unitsFile: " + unitFileLocation + " exists: "
-						+ new File(unitFileLocation).exists());
+						+ (unitFileLocation != null && new File(unitFileLocation).exists()));
 			}
 		}
 
@@ -417,7 +437,7 @@ public class InterfaceMain implements ActionListener {
 				}
 				System.out.println(
 						"    --> attempting to use default presetRegionListLocation: " + presetRegionListLocation
-								+ " exists: " + new File(presetRegionListLocation).exists());
+								+ " exists: " + (presetRegionListLocation != null && new File(presetRegionListLocation).exists()));
 			}
 		}
 
@@ -441,10 +461,25 @@ public class InterfaceMain implements ActionListener {
 				}
 				System.out.println("    --> attempting to use default favoriteQueriesFileLocation: "
 						+ favoriteQueriesFileLocation + " exists: "
-						+ new File(favoriteQueriesFileLocation).exists());
+						+ (favoriteQueriesFileLocation != null && new File(favoriteQueriesFileLocation).exists()));
 			}
 		}
 
+		// auto-generate-graphics precedence
+		if (opts.has("auto-generate-graphics")) {
+			autoGenerateGraphics = true;
+			System.out.println("InterfaceMain: auto-generate-graphics is set to true from command line");
+			bootProps.setProperty("autoGenerateGraphics", "true");
+		} else {
+			String propAutoGraphics = bootProps.getProperty("autoGenerateGraphics", "false");
+			if (propAutoGraphics.equalsIgnoreCase("true")) {
+				autoGenerateGraphics = true;
+				System.out.println("InterfaceMain: auto-generate-graphics is set to true from properties");
+			} else {
+				autoGenerateGraphics = false;
+			}
+		}
+		
 		// Mapping folder precedence (-m)
 		if (opts.has("m")) {
 			shapeFileLocationPrefix = (String) opts.valueOf("m");
@@ -472,7 +507,7 @@ public class InterfaceMain implements ActionListener {
 				}
 				System.out.println(
 						"    --> attempting to use default shapeFileLocationPrefix: " + shapeFileLocationPrefix
-								+ " exists: " + new File(shapeFileLocationPrefix).exists());
+								+ " exists: " + (shapeFileLocationPrefix != null && new File(shapeFileLocationPrefix).exists()));
 			}
 		}
 
@@ -519,13 +554,62 @@ public class InterfaceMain implements ActionListener {
 			public void run() {
 				createGUI();
 				if (path != null) {
+					File dbFile = new File(path);
+					if (!dbFile.exists()) {
+						int response = JOptionPane.showConfirmDialog(main.mainFrame,
+								"The database '" + path + "' does not exist. Would you like to create it?",
+								"Create Database?", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+						if (response == JOptionPane.NO_OPTION || response == JOptionPane.CLOSED_OPTION) {
+							// User chose not to create it, so we can just show the GUI without a DB
+							// or ask what to do next. For now, just show the GUI.
+							showGUI();
+							return;
+						}
+						// If yes, doOpenDB will create it.
+					}
 					DbViewer db = (DbViewer) main.dbView;
-					db.doOpenDB(new File(path));
+					try {
+						db.doOpenDB(dbFile, !dbFile.exists());
+					} catch (Exception e) {
+						// Suppress "Provider rsrc not installed" error which can happen with BaseX initialization in some environments
+						if (e instanceof java.nio.file.FileSystemNotFoundException && e.getMessage() != null && e.getMessage().contains("rsrc")) {
+							// do nothing
+						} else if (e.getCause() instanceof java.nio.file.FileSystemNotFoundException && e.getCause().getMessage() != null && e.getCause().getMessage().contains("rsrc")) {
+							// do nothing
+						} else {
+							e.printStackTrace();
+						}
+					}
 					File f = new File(path);
 					File[] files = new File[1];
 					files[0] = f;
 					RecentFilesList.getInstance().addFile(files, "ModelInterface.ModelGUI2.DbViewer", "Open DB");
 
+				}
+				else {
+					// if no path is specified, ask the user what to do
+					String[] options = { "Choose Database", "Open without Database", "Quit" };
+					int response = JOptionPane.showOptionDialog(main.mainFrame,
+							"No database specified. What would you like to do?", "Database not specified",
+							JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+					switch (response) {
+					case 0:
+						// "Choose Database"
+						// This will trigger the file chooser and then the rest of the UI will be built
+						((ActionListener)main.dbView).actionPerformed(new ActionEvent(main.mainFrame, ActionEvent.ACTION_PERFORMED, "Open DB"));
+						break;
+					case 1:
+						// "Open without Database" - just show the GUI
+						break;
+					case 2:
+						// "Quit"
+						System.exit(0);
+						break;
+					default:
+						// User closed dialog, so quit
+						System.exit(0);
+						break;
+					}
 				}
 				showGUI();
 			}
@@ -537,11 +621,11 @@ public class InterfaceMain implements ActionListener {
 		} catch (NoSuchFieldException e1) {
 			e1.printStackTrace();
 		} catch (SecurityException e1) {
-			e1.printStackTrace();
+		 e1.printStackTrace();
 		} catch (IllegalArgumentException e1) {
-			e1.printStackTrace();
+		 e1.printStackTrace();
 		} catch (IllegalAccessException e1) {
-			e1.printStackTrace();
+		 e1.printStackTrace();
 		}
 
 	}
@@ -637,6 +721,74 @@ public class InterfaceMain implements ActionListener {
 				ioe.printStackTrace();
 			}
 		}
+
+		// Ensure required properties exist
+		if (!savedProperties.containsKey("allYearList")) {
+			String allYears = "1990;2005;2010;2015;2020;2021;2025;2030;2035;2040;2045;2050;2055;2060;2065;2070;2075;2080;2085;2090;2095;2100";
+			List<String> yearList = new ArrayList<>(Arrays.asList(allYears.split(";")));
+			yearList.sort(Comparator.naturalOrder());
+			savedProperties.setProperty("allYearList", String.join(";", yearList));
+		}
+		if (!savedProperties.containsKey("selectedYearList")) {
+			String selectedYears = "2015;2020;2021;2025;2030;2035;2040;2045;2050;2055;2060;2065;2070;2075;2080;2085;2090;2095;2100";
+			List<String> yearList = new ArrayList<>(Arrays.asList(selectedYears.split(";")));
+			yearList.sort(Comparator.naturalOrder());
+			savedProperties.setProperty("selectedYearList", String.join(";", yearList));
+		}
+		if (!savedProperties.containsKey("lastWidth")) {
+			savedProperties.setProperty("lastWidth", "1600");
+		}
+		if (!savedProperties.containsKey("lastHeight")) {
+			savedProperties.setProperty("lastHeight", "900");
+		}
+		if (!savedProperties.containsKey("scenarioRegionsSplit")) {
+			savedProperties.setProperty("scenarioRegionsSplit", "275");
+		}
+		if (!savedProperties.containsKey("remove1975")) {
+			savedProperties.setProperty("remove1975", "true");
+		}
+		if (!savedProperties.containsKey("tableCreatorSplit")) {
+			savedProperties.setProperty("tableCreatorSplit", "500");
+		}
+		if (!savedProperties.containsKey("queriesSplit")) {
+			savedProperties.setProperty("queriesSplit", "700");
+		}
+		if (!savedProperties.containsKey("enableMapping")) {
+			savedProperties.setProperty("enableMapping", "true");
+		}
+		if (!savedProperties.containsKey("favoriteQueriesFile")) {
+			savedProperties.setProperty("favoriteQueriesFile", ".\\config\\favorite_queries_list.txt");
+		}
+		if (!savedProperties.containsKey("presetRegionsFile")) {
+			savedProperties.setProperty("presetRegionsFile", ".\\config\\preset_region_list.txt");
+		}
+		if (!savedProperties.containsKey("unitsFile")) {
+			savedProperties.setProperty("unitsFile", ".\\config\\units_rules.csv");
+		}
+		if (!savedProperties.containsKey("mapResourceFolder")) {
+			savedProperties.setProperty("mapResourceFolder", ".\\map_resources");
+		}
+		if (!savedProperties.containsKey("RecentFilesLength")) {
+			savedProperties.setProperty("RecentFilesLength", "5");
+		}
+		if (!savedProperties.containsKey("suppressStartupWarning")) {
+			savedProperties.setProperty("suppressStartupWarning", "false");
+		}
+		if (!savedProperties.containsKey("isMaximized")) {
+			savedProperties.setProperty("isMaximized", "false");
+		}
+		if (!savedProperties.containsKey("presetRegionList")) {
+			savedProperties.setProperty("presetRegionList", ".\\config\\preset_region_list.txt");
+		}
+		if (!savedProperties.containsKey("shapeFileLocationPrefix")) {
+			savedProperties.setProperty("shapeFileLocationPrefix", ".\\map_resources");
+		}
+		if (!savedProperties.containsKey("legendBundlesLoc")) {
+			savedProperties.setProperty("legendBundlesLoc", "config/LegendBundle.properties");
+		}
+		// Persist if any defaults were added
+		persistProperties();
+
 		oldControl = "ModelInterface";
 		if (path != null)
 			savedProperties.setProperty("paramPath", path);
@@ -694,6 +846,11 @@ public class InterfaceMain implements ActionListener {
         // menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveAsMenu, 25);
         // menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(FILE_MENU_SEPERATOR);
 
+        selectQueryMenu = makeMenuItem("Select Query File");
+        menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(25);
+        menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(selectQueryMenu, 26);
+        menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(27);
+
         quitMenu = makeMenuItem("Quit");
         quitMenu.setMnemonic(KeyEvent.VK_Q);
         // Removed accelerator: quitMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, getMenuShortcutMask()));
@@ -709,6 +866,10 @@ public class InterfaceMain implements ActionListener {
         JMenu viewMenu = new JMenu("View");
         viewMenu.setMnemonic(KeyEvent.VK_V);
         menuMan.addMenuItem(viewMenu, VIEW_MENU_POS);
+
+        toggleAutoGraphicsMenu = makeMenuItem(autoGenerateGraphics ? "Disable Auto Graphics" : "Enable Auto Graphics");
+        menuMan.getSubMenuManager(VIEW_MENU_POS).addMenuItem(toggleAutoGraphicsMenu, 9);
+
         JMenu toolsMenu = new JMenu("Tools");
         toolsMenu.setMnemonic(KeyEvent.VK_T);
         menuMan.addMenuItem(toolsMenu, TOOLS_MENU_POS);
@@ -724,18 +885,19 @@ public class InterfaceMain implements ActionListener {
         batchMenu = new JMenuItem("Run Batch…");
         // Removed accelerator: batchMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, getMenuShortcutMask()));
         batchMenu.addActionListener(this);
-        // menuMan.getSubMenuManager(TOOLS_MENU_POS).addMenuItem(batchMenu, 10);
+        menuMan.getSubMenuManager(TOOLS_MENU_POS).addMenuItem(batchMenu, 18);
+        menuMan.getSubMenuManager(TOOLS_MENU_POS).addSeparator(19);
 
         JMenu helpMenu = new JMenu("Help");
         helpMenu.setMnemonic(KeyEvent.VK_H);
         menuMan.addMenuItem(helpMenu, HELP_MENU_POS);
 
         // Preferences… under Edit
-        JMenuItem preferences = new JMenuItem("Preferences…");
-        preferences.setMnemonic(KeyEvent.VK_P);
+        JMenuItem optionalFeatures = new JMenuItem("Optional Features...");
+        optionalFeatures.setMnemonic(KeyEvent.VK_P);
         // Removed accelerator: preferences.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, getMenuShortcutMask()));
-        preferences.addActionListener(this);
-        menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(preferences, 5);
+        optionalFeatures.addActionListener(this);
+        menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(optionalFeatures, 5);
 
         // Add Help (F1) under Help menu
         helpItem = new JMenuItem("Help");
@@ -931,8 +1093,15 @@ public class InterfaceMain implements ActionListener {
 			// YD edits second round, when user choose "Query File", check the query file
 			// saved in the savedProperties file
 			// and open the system editor, allowing user to edit it
-		} else if (e.getActionCommand().equals("Preferences…")) {
-			showPreferencesDialog();
+		} else if (e.getActionCommand().equals("Optional Features...")) {
+			showOptionalFeaturesDialog();
+		} else if (e.getActionCommand().equals("Disable Auto Graphics") || e.getActionCommand().equals("Enable Auto Graphics")) {
+			autoGenerateGraphics = !autoGenerateGraphics;
+			toggleAutoGraphicsMenu.setText(autoGenerateGraphics ? "Disable Auto Graphics" : "Enable Auto Graphics");
+			setProperty("autoGenerateGraphics", Boolean.toString(autoGenerateGraphics));
+		} else if (e.getActionCommand().equals("Select Query File")) {
+			// Let DbViewer handle this
+			fireProperty("SelectQuery", null, null);
 		} else if (e.getActionCommand().equals("Help")) {
 			try {
 				Desktop.getDesktop().browse(new URI("https://github.com/USEPA/GLIMPSE"));
@@ -1301,9 +1470,13 @@ public class InterfaceMain implements ActionListener {
 	}
 
 	public void showMessageDialog(Object message, String title, int messageType) {
-		System.out.print(convertMessageTypeToString(messageType));
-		System.out.print("; ");
-		System.out.println(message);
+		if (GraphicsEnvironment.isHeadless()) {
+			System.out.print(convertMessageTypeToString(messageType));
+			System.out.print("; ");
+			System.out.println(message);
+			return;
+		}
+		JOptionPane.showMessageDialog(mainFrame, message, title, messageType);
 	}
 
 	private static String convertOptionTypeToString(int optionType) {
@@ -1331,43 +1504,34 @@ public class InterfaceMain implements ActionListener {
 	// Persist properties to model_interface.properties immediately after changes
 	private void persistProperties() {
 		try (FileOutputStream fos = new FileOutputStream(propertiesFile)) {
-			savedProperties.storeToXML(fos, "ModelInterface properties");
+			// Create a custom Properties class that sorts keys for consistent output
+			Properties sortedProps = new Properties() {
+				@Override
+				public java.util.Enumeration<Object> keys() {
+					return java.util.Collections.enumeration(new java.util.TreeSet<Object>(super.keySet()));
+				}
+			};
+			sortedProps.putAll(savedProperties);
+			sortedProps.storeToXML(fos, "ModelInterface properties");
 		} catch (IOException ioe) {
 			ioe.printStackTrace();
 		}
 	}
 
 	// Preferences dialog implementation
-	private void showPreferencesDialog() {
-		javax.swing.JDialog dlg = new javax.swing.JDialog(mainFrame, "Preferences", true);
+	private javax.swing.JLabel unitsFileLabel;
+	private javax.swing.JLabel regionsFileLabel;
+	private javax.swing.JLabel mapResourceFolderLabel;
+
+	private void showOptionalFeaturesDialog() {
+		javax.swing.JDialog dlg = new javax.swing.JDialog(mainFrame, "Optional Features", true);
+		dlg.setDefaultCloseOperation(javax.swing.JDialog.DISPOSE_ON_CLOSE);
 		javax.swing.JTabbedPane tabs = new javax.swing.JTabbedPane();
 
-		// Queries tab
-		javax.swing.JPanel queriesPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
-		queriesPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
-		javax.swing.JPanel queriesInner = new javax.swing.JPanel();
-		queriesInner.setLayout(new java.awt.GridBagLayout());
-		java.awt.GridBagConstraints qc = new java.awt.GridBagConstraints();
-		qc.gridx = 0; qc.gridy = 0; qc.fill = java.awt.GridBagConstraints.HORIZONTAL; qc.weightx = 1.0;
-		qc.insets = new java.awt.Insets(6, 6, 6, 6);
-		javax.swing.JLabel qLbl = new javax.swing.JLabel("Default Query File: " + (savedProperties.getProperty("queryFile", "<none>")));
-		queriesInner.add(qLbl, qc);
-
-		qc.gridy++;
-		JPanel qBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
-		JButton btnSetQuery = new JButton("Choose…");
-		btnSetQuery.setActionCommand("Select Query File");
-		btnSetQuery.addActionListener(this);
-		JButton btnEditQuery = new JButton("Edit…");
-		btnEditQuery.setActionCommand("Query File");
-		btnEditQuery.addActionListener(this);
-		qBtns.add(btnSetQuery);
-		qBtns.add(btnEditQuery);
-		qBtns.setAlignmentX(javax.swing.JComponent.LEFT_ALIGNMENT);
-		queriesInner.add(qBtns, qc);
-
-		queriesPanel.add(queriesInner, java.awt.BorderLayout.NORTH);
-		tabs.addTab("Queries", queriesPanel);
+		// Initialize labels with current values
+		unitsFileLabel = new javax.swing.JLabel("Units CSV: " + (savedProperties.getProperty("unitsFile", "<none>")));
+		regionsFileLabel = new javax.swing.JLabel("Regions List: " + (savedProperties.getProperty("presetRegionList", "<none>")));
+		mapResourceFolderLabel = new javax.swing.JLabel("Map Resource Folder: " + (savedProperties.getProperty("mapResourceFolder", "<none>")));
 
 		// Units tab
 		javax.swing.JPanel unitsPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
@@ -1375,17 +1539,32 @@ public class InterfaceMain implements ActionListener {
 		javax.swing.JPanel unitsInner = new javax.swing.JPanel(new java.awt.GridBagLayout());
 		java.awt.GridBagConstraints uc = new java.awt.GridBagConstraints();
 		uc.gridx = 0; uc.gridy = 0; uc.fill = java.awt.GridBagConstraints.HORIZONTAL; uc.weightx = 1.0; uc.insets = new java.awt.Insets(6, 6, 6, 6);
-		javax.swing.JLabel uLbl = new javax.swing.JLabel("Units CSV: " + (savedProperties.getProperty("unitsFile", "<none>")));
-		unitsInner.add(uLbl, uc);
+		unitsInner.add(unitsFileLabel, uc);
 		uc.gridy++;
 		JPanel uBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
-		JButton btnUnits = new JButton("Choose…");
-		btnUnits.setActionCommand("Select Units File");
-		btnUnits.addActionListener(this);
+		JButton btnUnits = new JButton("Select");
+		btnUnits.addActionListener(e -> {
+			actionPerformed(new ActionEvent(btnUnits, ActionEvent.ACTION_PERFORMED, "Select Units File"));
+			unitsFileLabel.setText("Units CSV: " + (savedProperties.getProperty("unitsFile", "<none>")));
+		});
 		uBtns.add(btnUnits);
+		JButton editUnits = new JButton("Edit");
+		editUnits.addActionListener(e -> {
+			String unitsFile = savedProperties.getProperty("unitsFile");
+			if (unitsFile != null && !unitsFile.isEmpty()) {
+				try {
+					Desktop.getDesktop().edit(new File(unitsFile));
+				} catch (IOException ex) {
+					showMessageDialog("Unable to open file: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+				}
+			} else {
+				showMessageDialog("No units file selected.", "Edit File", JOptionPane.INFORMATION_MESSAGE);
+			}
+		});
+		uBtns.add(editUnits);
 		unitsInner.add(uBtns, uc);
 		unitsPanel.add(unitsInner, java.awt.BorderLayout.NORTH);
-		tabs.addTab("Units", unitsPanel);
+		tabs.addTab("Convert Units", unitsPanel);
 
 		// Regions tab
 		javax.swing.JPanel regionsPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
@@ -1393,17 +1572,32 @@ public class InterfaceMain implements ActionListener {
 		javax.swing.JPanel regionsInner = new javax.swing.JPanel(new java.awt.GridBagLayout());
 		java.awt.GridBagConstraints rc = new java.awt.GridBagConstraints();
 		rc.gridx = 0; rc.gridy = 0; rc.fill = java.awt.GridBagConstraints.HORIZONTAL; rc.weightx = 1.0; rc.insets = new java.awt.Insets(6, 6, 6, 6);
-		javax.swing.JLabel rLbl = new javax.swing.JLabel("Regions List: " + (savedProperties.getProperty("presetRegionList", "<none>")));
-		regionsInner.add(rLbl, rc);
+		regionsInner.add(regionsFileLabel, rc);
 		rc.gridy++;
 		JPanel rBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
-		JButton btnRegions = new JButton("Choose…");
-		btnRegions.setActionCommand("Select Regions File");
-		btnRegions.addActionListener(this);
+		JButton btnRegions = new JButton("Select");
+		btnRegions.addActionListener(e -> {
+			actionPerformed(new ActionEvent(btnRegions, ActionEvent.ACTION_PERFORMED, "Select Regions File"));
+			regionsFileLabel.setText("Regions List: " + (savedProperties.getProperty("presetRegionList", "<none>")));
+		});
 		rBtns.add(btnRegions);
+		JButton editRegions = new JButton("Edit");
+		editRegions.addActionListener(e -> {
+			String regionsFile = savedProperties.getProperty("presetRegionList");
+			if (regionsFile != null && !regionsFile.isEmpty()) {
+				try {
+					Desktop.getDesktop().edit(new File(regionsFile));
+				} catch (IOException ex) {
+					showMessageDialog("Unable to open file: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+				}
+			} else {
+				showMessageDialog("No regions file selected.", "Edit File", JOptionPane.INFORMATION_MESSAGE);
+			}
+		});
+		rBtns.add(editRegions);
 		regionsInner.add(rBtns, rc);
 		regionsPanel.add(regionsInner, java.awt.BorderLayout.NORTH);
-		tabs.addTab("Regions", regionsPanel);
+		tabs.addTab("Preset Regions", regionsPanel);
 
 		// Maps tab
 		javax.swing.JPanel mapsPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
@@ -1411,13 +1605,14 @@ public class InterfaceMain implements ActionListener {
 		javax.swing.JPanel mapsInner = new javax.swing.JPanel(new java.awt.GridBagLayout());
 		java.awt.GridBagConstraints mc = new java.awt.GridBagConstraints();
 		mc.gridx = 0; mc.gridy = 0; mc.fill = java.awt.GridBagConstraints.HORIZONTAL; mc.weightx = 1.0; mc.insets = new java.awt.Insets(6, 6, 6, 6);
-		javax.swing.JLabel mLbl = new javax.swing.JLabel("Map Resource Folder: " + (savedProperties.getProperty("mapResourceFolder", "<none>")));
-		mapsInner.add(mLbl, mc);
+		mapsInner.add(mapResourceFolderLabel, mc);
 		mc.gridy++;
 		JPanel mBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
-		JButton btnMaps = new JButton("Choose…");
-		btnMaps.setActionCommand("Select Map Resource Folder");
-		btnMaps.addActionListener(this);
+		JButton btnMaps = new JButton("Select");
+		btnMaps.addActionListener(e -> {
+			actionPerformed(new ActionEvent(btnMaps, ActionEvent.ACTION_PERFORMED, "Select Map Resource Folder"));
+			mapResourceFolderLabel.setText("Map Resource Folder: " + (savedProperties.getProperty("mapResourceFolder", "<none>")));
+		});
 		mBtns.add(btnMaps);
 		mapsInner.add(mBtns, mc);
 		mapsPanel.add(mapsInner, java.awt.BorderLayout.NORTH);
@@ -1427,24 +1622,14 @@ public class InterfaceMain implements ActionListener {
 		javax.swing.JPanel content = new javax.swing.JPanel(new java.awt.BorderLayout());
 		content.add(tabs, java.awt.BorderLayout.CENTER);
 
-		// Bottom buttons: Close and Apply (Apply will persist properties immediately)
+		// Bottom buttons: Close
 		javax.swing.JPanel bottom = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 8));
-		JButton apply = new JButton("Apply");
-		apply.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				persistProperties();
-				InterfaceMain.this.showMessageDialog("Preferences saved.", "Preferences", JOptionPane.INFORMATION_MESSAGE);
-			}
-		});
 		JButton close = new JButton("Close");
 		close.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) { dlg.dispose(); }
 		});
-		apply.setPreferredSize(new java.awt.Dimension(90, 26));
 		close.setPreferredSize(new java.awt.Dimension(90, 26));
-		bottom.add(apply);
 		bottom.add(close);
 		content.add(bottom, java.awt.BorderLayout.SOUTH);
 

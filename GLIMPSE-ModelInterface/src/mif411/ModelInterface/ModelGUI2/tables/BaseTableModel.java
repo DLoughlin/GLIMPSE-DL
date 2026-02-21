@@ -39,6 +39,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -739,6 +740,10 @@ public abstract class BaseTableModel extends AbstractTableModel {
 	       return ret.toString();
        }
        
+       public void print(PrintWriter pw) {
+    	   pw.print(exportToText(','));
+       }
+
        private String[] getRemainingIdentifiers(JTable table) {
 
     	    String[] identifiers = new String[table.getColumnCount()];
@@ -829,7 +834,7 @@ public abstract class BaseTableModel extends AbstractTableModel {
    	   	   		   Properties globalProperties = InterfaceMain.getInstance().getProperties();
 
 					yearList = globalProperties.getProperty("allYearList");
-					System.out.println("BaseTableModel830: Using allYearList from properties: "+yearList);
+					//System.out.println("BaseTableModel830: Using allYearList from properties: "+yearList);
 			       if(yearList!=null && yearList.length()>0) {
 						String[] setYearListArr = yearList.split(";");
 				      

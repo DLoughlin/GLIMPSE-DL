@@ -5,6 +5,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Insets;
@@ -50,10 +51,11 @@ import listener.IconMouseListener;
  * Handles both legacy and enhanced unit handling for chart data.
  */
 public class ThumbnailUtilNew {
+
 	private static final Logger LOGGER = Logger.getLogger(ThumbnailUtilNew.class.getName());
-	private static final int DEFAULT_THUMBNAIL_SIZE = 320;
-	private static final int MIN_THUMBNAIL_SIZE = 180;
-	private static final int MAX_THUMBNAIL_SIZE = 320;
+	private static final int DEFAULT_THUMBNAIL_SIZE = 240; // 320 * 0.75
+	private static final int MIN_THUMBNAIL_SIZE = 135; // 180 * 0.75
+	private static final int MAX_THUMBNAIL_SIZE = 240; // 320 * 0.75
 	private static final int DEFAULT_GRID_WIDTH = 2;
 	private static final int DEFAULT_PANEL_MIN_WIDTH = 330;
 	private static final Color DEFAULT_PANEL_BG_COLOR = Color.GREEN;
@@ -398,7 +400,7 @@ public class ThumbnailUtilNew {
 		int padding = SCROLL_BAR_WIDTH / 4;
 		GridLayout gl = new GridLayout(0, gridWidth);
 		gl.setHgap(0);
-		gl.setVgap(padding);
+		gl.setVgap(0);
 		JPanel chartPane = new JPanel(gl);
 		chartPane.setBorder(BorderFactory.createEmptyBorder(padding, 0, padding, 0));
 		// Calculate max and min values for scaling
@@ -508,6 +510,36 @@ public class ThumbnailUtilNew {
 		return jb;
 	}
 
+	public static JPanel createFlowChartPane(Chart[] chart, boolean sameScale) {
+		int padding = SCROLL_BAR_WIDTH / 4;
+		WrappingLayout fl = new WrappingLayout(FlowLayout.LEFT);
+		fl.setHgap(0);
+		fl.setVgap(0);
+		JPanel chartPane = new WrappingPanel(fl);
+		chartPane.setBorder(BorderFactory.createEmptyBorder(padding, 0, padding, 0));
+		// Calculate max and min values for scaling
+		double max = setMax(chart);
+		double min = setMin(chart);
+		for (int i = 0; i < chart.length; i++) {
+			IconMouseListener iconListener = new IconMouseListener(chart, i);
+			JButton jb = null;
+			try {
+				jb = buttonIcon(chart[i], chart.length - 1 - i, DEFAULT_THUMBNAIL_SIZE, max, min, sameScale, false, iconListener);
+			} catch (OutOfMemoryError e2) {
+				JOptionPane.showMessageDialog(null, "Too many charts to be created. No enough memory ", "Information",
+						JOptionPane.INFORMATION_MESSAGE);
+				chartPane.removeAll();
+				Runtime.getRuntime().gc();
+				return null;
+			}
+			jb.setMargin(new Insets(0, 0, 0, 0));
+			jb.setBackground(Color.lightGray);
+			jb.setName(String.valueOf(i));
+			chartPane.add(jb);
+		}
+		return chartPane;
+	}
+
 	/**
 	 * Returns a description for an empty chart.
 	 * 
@@ -594,9 +626,12 @@ public class ThumbnailUtilNew {
 	 * @param jp JPanel to validate
 	 */
 	public static void validateChartPane(JPanel jp) {
-		BorderLayout bl = (BorderLayout) jp.getLayout();
-		if (bl.getLayoutComponent("Center") != null) {
-			jp.remove(bl.getLayoutComponent("Center"));
+		if (jp.getLayout() instanceof BorderLayout) {
+			BorderLayout bl = (BorderLayout) jp.getLayout();
+			Component center = bl.getLayoutComponent(BorderLayout.CENTER);
+			if (center != null) {
+				jp.remove(center);
+			}
 		}
 	}
 

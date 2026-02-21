@@ -107,6 +107,7 @@ public class DiffResultsPanel extends QueryResultsPanel {
 	protected boolean use_pct_filter = true;
 	protected String base_scenario = "";
 	protected boolean show_pct_diff = false;
+	protected static final int MAX_AUTO_CHARTS = 125; // Max number of charts to auto-generate before skipping auto-graphics
 
 	/**
 	 * Referring to the thread that is running. Used to track which thread is being
@@ -140,42 +141,94 @@ public class DiffResultsPanel extends QueryResultsPanel {
 		final DiffResultsPanel thisThread = this;
 		runThread = new Thread() {
 			public void run() {
-				JComponent ret = null;
-				String errorMessage = null;
-				// do computations, return a JComponent
 				try {
-					ret = createSingleTableContent(qg, singleBinding, scenarioListValues, regionListValues,
+					JComponent ret = null;
+					String errorMessage = null;
+					// do computations, return a JComponent
+					try {
+						ret = createSingleTableContent(qg, singleBinding, scenarioListValues, regionListValues,
 							generateTotals);
-				} catch (Exception e) {
-					System.out.println("Error creating diff table:" + e);
-					errorMessage = e.getMessage();
-				}
-				// Stop process if the user terminated the process
-				if (isInterrupted()) {
-					return;
-				}
+					} catch (Exception e) {
+						System.out.println("Error creating diff table:" + e);
+						errorMessage = e.getMessage();
+					}
+					// Stop process if the user terminated the process
+					if (isInterrupted()) {
+						return;
+					}
 
-				// clear the text box in preparation of adding the new component
-				removeAll();
+					// clear the text box in preparation of adding the new component
+					removeAll();
 
-				// icon is changed to the finished state
-				icon.finishedLoading();
+					// icon is changed to the finished state
+					icon.finishedLoading();
 
-				// error message displayed
-				if (ret == null) {
-					JPanel tempPanel = new JPanel();
-					tempPanel.setLayout(new BoxLayout(tempPanel, BoxLayout.X_AXIS));
-					tempPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-					tempPanel.add(new JLabel(errorMessage));
-					add(tempPanel);
+					// error message displayed
+					if (ret == null) {
+						JPanel tempPanel = new JPanel();
+						tempPanel.setLayout(new BoxLayout(tempPanel, BoxLayout.X_AXIS));
+						tempPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+						tempPanel.add(new JLabel(errorMessage));
+						add(tempPanel);
+					}
+					// the new JPanel is added where the text box was
+					else {
+						setLayout(new BoxLayout(thisThread, BoxLayout.X_AXIS));
+						add(ret);
+					}
+					// the panel is refreshed to show the changes
+					revalidate();
+					
+					final JComponent finalRet = ret;
+					javax.swing.SwingUtilities.invokeLater(new Runnable() {
+						public void run() {
+							if (InterfaceMain.autoGenerateGraphics) {
+								if (finalRet instanceof JSplitPane) {
+									JSplitPane sp = (JSplitPane) finalRet;
+									// Check if we should graph based on chart count
+									boolean shouldGraph = true;
+									
+									// Try to inspect the table to get chart count
+									JTable table = thisThread.getJTableFromComponent(thisThread);
+									int chartCount = estimateChartCount(table);
+									if (table != null && chartCount >= MAX_AUTO_CHARTS) {
+										shouldGraph = false;
+										System.out.println("Auto-graphics skipped: Result has " + chartCount + " charts (limit is "+MAX_AUTO_CHARTS+").");
+									} else if (table != null) {
+										System.out.println("Auto-graphics proceeding: Result has " + chartCount + " charts.");
+									}
+
+									if (shouldGraph && sp.getLeftComponent() instanceof JPanel) {
+										JPanel jp = (JPanel) sp.getLeftComponent();
+										clickGraphButton(jp);
+									} else {
+										//System.out.println("Auto-graphics: Left component is not JPanel or shoudGraph is false.");
+									}
+								} else {
+									//System.out.println("Auto-graphics: result is not JSplitPane");
+								}
+							}
+						}
+					});
+				} finally {
+					// Notify DbViewer that this query has completed regardless of outcome
+					DbViewer.registerQueryCompleted();
 				}
-				// the new JPanel is added where the text box was
-				else {
-					setLayout(new BoxLayout(thisThread, BoxLayout.X_AXIS));
-					add(ret);
+			}
+
+			private void clickGraphButton(java.awt.Container container) {
+				for (java.awt.Component comp : container.getComponents()) {
+					if (comp instanceof JButton) {
+						JButton button = (JButton) comp;
+						if ("Graph".equals(button.getText())) {
+							System.out.println("Auto-graphics: Found Graph button, clicking...");
+							button.doClick();
+							return;
+						}
+					} else if (comp instanceof java.awt.Container) {
+						clickGraphButton((java.awt.Container) comp);
+					}
 				}
-				// the panel is refreshed to show the changes
-				revalidate();
 			}
 		};
 		runThread.start();
@@ -238,7 +291,11 @@ public class DiffResultsPanel extends QueryResultsPanel {
 		// jTable.getColumnCount() - 1)); //@
 		
 		if(DbViewer.enableUnitConversions) {
-			convertUnits(qg,jTable);
+			try {
+				convertUnits(qg,jTable);
+			} catch(Exception e) {
+				System.out.println("Could not convert units: "+e.toString());
+			}
 		}
 		
 		String[][] units = getUnits(qg, jTable);
@@ -1084,5 +1141,80 @@ public class DiffResultsPanel extends QueryResultsPanel {
 
 		return rtn_string;
 	}
+	
+	/**
+	 * Estimates the number of charts by counting unique values in the first column.
+	 * 
+	 * @param table The JTable to process.
+	 * @return The number of unique values in the first column.
+	 */
+	private int estimateChartCount(JTable table) {
+		if (table == null || table.getRowCount() == 0) {
+			return 0;
+		}
 
+		TableModel model = table.getModel();
+		int scenarioColumn = -1;
+		int regionColumn = -1;
+
+		for (int i = 0; i < model.getColumnCount(); i++) {
+			String columnName = model.getColumnName(i);
+			if ("scenario".equalsIgnoreCase(columnName)) {
+				scenarioColumn = i;
+			}
+			if ("region".equalsIgnoreCase(columnName)) {
+				regionColumn = i;
+			}
+		}
+
+		if (scenarioColumn == -1) {
+			// Fallback to old method if scenario column is not found
+			System.out.println("Warning: 'scenario' column not found. Falling back to old chart count estimation.");
+			HashSet<Object> uniqueValues = new HashSet<>();
+			for (int i = 0; i < table.getRowCount(); i++) {
+				if (table.getRowSorter() != null) {
+					int modelRow = table.getRowSorter().convertRowIndexToModel(i);
+					uniqueValues.add(model.getValueAt(modelRow, 0));
+				} else {
+					uniqueValues.add(table.getValueAt(i, 0));
+				}
+			}
+			int count = uniqueValues.size();
+			System.out.println("Estimated chart count based on unique values in first column: " + count);
+			return count;
+		}
+
+		HashSet<Object> uniqueScenarios = new HashSet<>();
+		for (int i = 0; i < table.getRowCount(); i++) {
+			int modelRow;
+			if (table.getRowSorter() != null) {
+				modelRow = table.getRowSorter().convertRowIndexToModel(i);
+			} else {
+				modelRow = i;
+			}
+			uniqueScenarios.add(model.getValueAt(modelRow, scenarioColumn));
+		}
+
+		int scenarioCount = uniqueScenarios.size();
+		int regionCount = 1; // Default to 1 if region column is not found
+
+		if (regionColumn != -1) {
+			HashSet<Object> uniqueRegions = new HashSet<>();
+			for (int i = 0; i < table.getRowCount(); i++) {
+				int modelRow;
+				if (table.getRowSorter() != null) {
+					modelRow = table.getRowSorter().convertRowIndexToModel(i);
+				} else {
+					modelRow = i;
+				}
+				uniqueRegions.add(model.getValueAt(modelRow, regionColumn));
+			}
+			regionCount = uniqueRegions.size();
+		}
+		
+		int chartCount = scenarioCount * regionCount;
+
+		System.out.println("Estimated chart count based on " + scenarioCount + " scenarios and " + regionCount + " regions: " + chartCount);
+		return chartCount;
+	}
 }

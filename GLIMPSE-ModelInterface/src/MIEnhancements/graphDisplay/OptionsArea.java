@@ -42,11 +42,11 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.function.Consumer;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
@@ -77,6 +77,7 @@ public class OptionsArea {
 	private int w;
 	private int gridWidth;
 	private boolean sameScale;
+	private boolean hideOptions;
 	//private int typeLineChart = 2;
 	//private int typeRelativeLineChart = 3;
 	public static String LINE_CHART="LineChart";
@@ -87,35 +88,54 @@ public class OptionsArea {
 	public static String REL_DIFF_BAR="RelativeDiff(bar)";
 
 	public OptionsArea(JPanel jp, Chart[] chart, int gridWidth, boolean sameScale, JSplitPane sp) {
+		this(jp, chart, gridWidth, sameScale, sp, false);
+	}
+
+	public OptionsArea(JPanel jp, Chart[] chart, int gridWidth, boolean sameScale, JSplitPane sp, boolean hideOptions) {
 		this.jp = jp;
+		this.jp.setBackground(Color.green);
+		this.jp.setLayout(new BorderLayout());
 		this.chart = chart;
 		this.gridWidth = gridWidth;
 		this.sameScale = sameScale;
 		this.sp = sp;
+		this.hideOptions = hideOptions;
 		setOptionsArea();
+	}
+
+	public JPanel getPanel() {
+		return jp;
 	}
 
 	protected void setOptionsArea() {
 		Box box = Box.createHorizontalBox();
 		box.add(Box.createHorizontalStrut(5));
-		JButton jb = new JButton("More");
+		JButton jb = new JButton("Options");
 		jb.setBackground(LegendUtil.getRGB(-8205574));
-		java.awt.event.MouseListener ml1 = new MouseAdapter() {
-			public void mouseClicked(MouseEvent e) {
-				ThumbnailBoxPopup popup = new ThumbnailBoxPopup(chart, w, gridWidth, sameScale, sp);
-				popup.show(jp, e.getX(), e.getY());
+		jp.add(box);
+
+		jb.addMouseListener(new MouseAdapter() {
+			public void mousePressed(MouseEvent e) {
+				Runnable refreshAction = new Runnable() {
+					public void run() {
+						setChartPane();
+					}
+				};
+				ThumbnailBoxPopup popup = new ThumbnailBoxPopup(chart, w, gridWidth, sameScale, sp, refreshAction, hideOptions, (Consumer<Boolean>)(newSameScale) -> {
+                    sameScale = newSameScale;
+                });
+				popup.show(e.getComponent(), e.getX(), e.getY());
 			}
-		};
-		jb.addMouseListener(ml1);
+		});
 		box.add(jb);
 		box.add(Box.createHorizontalStrut(10));
-		JLabel jl = new JLabel("Display", 2);
+		/* JLabel jl = new JLabel("Display", 2);
 		box.add(jl);
 		box.add(Box.createHorizontalStrut(10));
 		JScrollPane dspCol = displayCol();
 		dspCol.setMaximumSize(new Dimension(90, 30));
 		dspCol.setMinimumSize(new Dimension(30, 30));
-		box.add(dspCol);
+		box.add(dspCol); */
 
 		GraphOptionPane gPane = new GraphOptionPane();
 		gPane.setMaximumSize(new Dimension(150, 30));
@@ -124,10 +144,9 @@ public class OptionsArea {
 		gPane.setBackground(Color.green);
 		box.add(gPane);
 
-		box.add(scaleCheckBox());
 		box.add(Box.createHorizontalStrut(10));
 
-		jb = new JButton("Refresh");
+		/*jb = new JButton("Refresh");
 		jb.setBackground(LegendUtil.getRGB(-8205574));
 		java.awt.event.MouseListener ml = new MouseAdapter() {
 			public void mouseClicked(MouseEvent e) {
@@ -135,7 +154,7 @@ public class OptionsArea {
 			}
 		};
 		jb.addMouseListener(ml);
-		box.add(jb);
+		box.add(jb);*/
 		box.add(Box.createHorizontalStrut(10));
 
 		jp.add(box, BorderLayout.NORTH);
@@ -163,37 +182,24 @@ public class OptionsArea {
 		return new JScrollPane(list);
 	}
 
-	private JCheckBox scaleCheckBox() {
-		JCheckBox jc = new JCheckBox("Same Scale");
-		jc.setSelected(sameScale);
-		ItemListener il = new ItemListener() {
-			public void itemStateChanged(ItemEvent e) {
-				JCheckBox jcb = (JCheckBox) e.getSource();
-				if (e.getStateChange() == 1) {
-					sameScale = true;
-					jcb.setSelected(true);
-				} else if (e.getStateChange() == 2) {
-					sameScale = false;
-					jcb.setSelected(false);
-				}
-				setChartPane();
-				jp.updateUI();
-			}
-		};
-		jc.addItemListener(il);
-		return jc;
-	}
-
 	private void setChartPane() {
 		// Dan: Using modified version (2)
 		ThumbnailUtilNew.validateChartPane(jp);
-		w = ThumbnailUtilNew.computeFixGridLayoutViewSize(sp.getSize().width, gridWidth);
-		// Dan: Using modified version (2)
-		JPanel chartPane = ThumbnailUtilNew.setChartPane(chart, w, gridWidth, sameScale, false);
+		
+		JPanel chartPane;
+		if (hideOptions) {
+			chartPane = ThumbnailUtilNew.createFlowChartPane(chart, sameScale);
+		} else {
+			w = ThumbnailUtilNew.computeFixGridLayoutViewSize(sp.getSize().width, gridWidth);
+			// Dan: Using modified version (2)
+			chartPane = ThumbnailUtilNew.setChartPane(chart, w, gridWidth, sameScale, false);
+		}
+
 		JScrollPane scrollPane = new JScrollPane(chartPane);
 		scrollPane.getVerticalScrollBar().setUnitIncrement(20);
 		jp.add(scrollPane, BorderLayout.CENTER);
-		jp.updateUI();
+		jp.revalidate();
+		jp.repaint();
 	}
 
 	/**
@@ -205,20 +211,6 @@ public class OptionsArea {
 	private class GraphOptionPane extends JComboBox<String> implements ActionListener {
 
 		private static final long serialVersionUID = 1L;
-//		private String graphType[] = { "BarChart", "StackedBarChart", "StackedAreaChart", "____________", "AreaChart",
-//				"LineChart", "RelativeIndex", "XYLineChart", "ScatterChart" };
-//		private String graphClassName[] = { "chart.CategoryBarChart", "chart.CategoryStackedBarChart",
-//				"chart.CategoryStackedAreaChart", "____________", "chart.CategoryAreaChart", "chart.CategoryLineChart",
-//				"", "chart.XYLineChart", "chart.XYScatterChart" };
-		// private String graphType[] = { "StackedBarChart",
-		// "StackedAreaChart","BarChart",
-		// "LineChart", "RelativeIndex"};
-		// private String graphClassName[] = { "chart.CategoryStackedBarChart",
-		// "chart.CategoryStackedAreaChart","chart.CategoryBarChart","chart.CategoryLineChart"};
-
-		//private String graphType[] = { "StackedBarChart", "StackedAreaChart", "LineChart", "RelativeIndex" };
-		//private String graphClassName[] = { "chart.CategoryStackedBarChart", "chart.CategoryStackedAreaChart",
-		//		"chart.CategoryLineChart" };
 
 		private String graphType[] = {OptionsArea.LINE_CHART, OptionsArea.STACKED_BAR_CHART, OptionsArea.STACKED_AREA_CHART,OptionsArea.REL_RATIO_LINE,OptionsArea.REL_DIFF_LINE,OptionsArea.REL_DIFF_BAR };
 		private String graphClassName[] = {"chart.CategoryLineChart","chart.CategoryStackedBarChart","chart.CategoryStackedAreaChart","chart.CategoryLineChart","chart.CategoryLineChart","chart.CategoryStackedBarChart" };
@@ -311,7 +303,7 @@ public class OptionsArea {
 			} else if (relativeIndex > -1) {
 
 				resetChart();
-				setSelectedIndex(selectedChartIndex);
+			 setSelectedIndex(selectedChartIndex);
 				listYrsForRelChart.setSelectedIndex(selectedChartIndex);
 
 			}

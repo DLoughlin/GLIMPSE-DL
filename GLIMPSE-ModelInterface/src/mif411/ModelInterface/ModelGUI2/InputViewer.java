@@ -1,4 +1,3 @@
-
 /*
 * LEGAL NOTICE
 * This computer software was prepared by Battelle Memorial Institute,
@@ -1229,7 +1228,7 @@ public class InputViewer implements ActionListener, TableModelListener, MenuAdde
 			File[] files = new File[csvFiles.length+1];
 			System.arraycopy(csvFiles, 0, files, 0, csvFiles.length);
 			files[files.length-1] = headerFiles[0];
-			RecentFilesList.getInstance().addFile(files, this, "CSV file");
+			// RecentFilesList.getInstance().addFile(files, this, "CSV file");
 		}
 
 		if(csvFiles == null || headerFiles == null) {
@@ -1543,4 +1542,3 @@ public class InputViewer implements ActionListener, TableModelListener, MenuAdde
 		}
 	}
 }
-

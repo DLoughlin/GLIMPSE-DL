@@ -96,6 +96,10 @@ public class FilteredTable {
     private boolean debug = false;
     /** Significant figures for numeric display */
     private int sigfigs = 3;
+	/** List of selected years to display */
+    private List<String> selectedYears;
+	private static final int MAX_AUTO_CHARTS = 125; // Max number of charts to auto-generate before skipping auto-graphics
+	private JButton graphButton;
 
     /**
      * Constructs a FilteredTable and sets up the UI and filtering logic.
@@ -107,7 +111,23 @@ public class FilteredTable {
      * @param sp Split pane for UI
      */
     public FilteredTable(Map<String, String> sel, String chartName, String[] unit, String path, final JTable jTable, JSplitPane sp) {
+        this(sel, chartName, unit, path, jTable, sp, new ArrayList<>());
+    }
+
+    /**
+     * Constructs a FilteredTable and sets up the UI and filtering logic.
+     * @param sel Selection map for filtering
+     * @param chartName Chart name for graphing
+     * @param unit Units for display
+     * @param path Data path
+     * @param jTable Source JTable
+     * @param sp Split pane for UI
+     * @param selectedYears List of selected years to display
+     */
+	public FilteredTable(Map<String, String> sel, String chartName, String[] unit, String path, final JTable jTable,
+			JSplitPane sp, List<String> selectedYears) {
         this.sp = sp;
+        this.selectedYears = selectedYears;
         JPanel jp = new JPanel(new BorderLayout());
         Component c = sp.getRightComponent();
         if (c != null) sp.remove(c);
@@ -185,17 +205,12 @@ public class FilteredTable {
         // Filter button
         JButton jb = new JButton("Filter");
         jb.setBackground(LegendUtil.getRGB(-8205574));
-        jb.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
-                new FilterTreePane(chartName, unit, path, jTable, sel, sp);
-            }
-        });
+        jb.addActionListener(e -> new FilterTreePane(chartName, unit, path, jTable, sel, sp));
         box.add(jb);
         // Graph button
-        jb = new JButton("Graph");
-        jb.setBackground(LegendUtil.getRGB(-8205574));
-        jb.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
+        graphButton = new JButton("Graph");
+        graphButton.setBackground(LegendUtil.getRGB(-8205574));
+        graphButton.addActionListener(e -> {
                 if (debug)
                     System.out.println("FilteredTable: graph press: " + chartName + " " + Arrays.toString(unit) + " " + path + " " + doubleIndex + " " + jtable.getColumnCount() + "  " + jtable.getRowCount());
                 if (tn == null) {
@@ -203,24 +218,22 @@ public class FilteredTable {
                     HashMap<String, String> unitsMap = ModelInterfaceUtil.getUnitDataFromTableByLastNamedCol(jTable);
                     tn = new Thumbnail(chartName, unit, path, doubleIndex, jtable, metaMap, sp, unitsMap);
                 }
-                JPanel jp = tn.getJp();
-                if (jp != null)
-                    setRightComponent(jp);
+                JPanel graphPanel = tn.getJp();
+                if (graphPanel != null)
+                    setRightComponent(graphPanel);
                 else {
                     tn = null;
                     System.gc();
                 }
-            }
         });
-        box.add(jb);
+        box.add(graphButton);
         box.add(new JLabel(" "));
         // Mapping button
         jb = new JButton("Mapping");
         jb.setBackground(LegendUtil.getRGB(-8205574));
         jb.setToolTipText("Beta: Map regional data");
         jb.setFont(jb.getFont());
-        jb.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
+        jb.addActionListener(e -> {
                 if (debug)
                     System.out.println("FilteredTable: mapping press: " + chartName + " " + Arrays.toString(unit) + " " + path + " " + doubleIndex + " " + jtable.getColumnCount() + "  " + jtable.getRowCount());
                 Map<String, Integer[]> metaMap = ModelInterfaceUtil.getMetaIndex2(jtable, doubleIndex);
@@ -253,7 +266,6 @@ public class FilteredTable {
                         worldMap = new WorldMapPanel(chartName, jtable, statesIncluded);
                     }
                 }
-            }
         });
         if (InterfaceMain.enableMapping) {
             box.add(jb);
@@ -263,8 +275,7 @@ public class FilteredTable {
         jb.setBackground(LegendUtil.getRGB(-8205574));
         jb.setToolTipText("Beta: Plot data to Sankey Diagram");
         jb.setFont(jb.getFont());
-        jb.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
+        jb.addActionListener(e -> {
                 boolean noRowSelected = jtable.getSelectionModel().isSelectionEmpty();
                 boolean containOtherColumns = checkContainOtherColumns(jtable);
                 if (!containOtherColumns) {
@@ -277,7 +288,6 @@ public class FilteredTable {
                         e1.printStackTrace();
                     }
                 }
-            }
         });
         if (InterfaceMain.enableSankey) {
             box.add(jb);
@@ -332,6 +342,31 @@ public class FilteredTable {
         Arrays.sort(tableColumnIndex);
         if (debug)
             System.out.println("FilteredTable::getTableColumnIndex::col" + Arrays.toString(tableColumnIndex) + " sec: " + Arrays.toString(Var.sectionYRange));
+        
+        if (selectedYears != null && !selectedYears.isEmpty()) {
+            ArrayList<Integer> yearIndices = new ArrayList<>();
+            for (String year : selectedYears) {
+                int colIdx = -1;
+                for (int i = 0; i < tableColumnData.length; i++) {
+                    if (tableColumnData[i].equals(year)) {
+                        colIdx = i;
+                        break;
+                    }
+                }
+                if (colIdx != -1) {
+                    yearIndices.add(colIdx);
+                }
+            }
+            
+            ArrayList<Integer> currentIndices = new ArrayList<>();
+            for (Integer index : tableColumnIndex) {
+                currentIndices.add(index);
+            }
+            
+            currentIndices.retainAll(yearIndices);
+            tableColumnIndex = currentIndices.toArray(new Integer[0]);
+        }
+
         return tableColumnIndex;
     }
 
@@ -590,4 +625,100 @@ public class FilteredTable {
         }
         return filter;
     }
+
+    /**
+     * Auto-generates graphics if enabled and conditions are met.
+     */
+	public void autoGraph() {
+		if (InterfaceMain.autoGenerateGraphics) {
+			int chartCount = estimateChartCount(jtable);
+			if (chartCount < MAX_AUTO_CHARTS) {
+				System.out.println("Auto-graphics proceeding: Result has " + chartCount + " charts.");
+				clickGraphButton();
+			} else {
+				System.out.println("Auto-graphics skipped: Result has " + chartCount + " charts (limit is " + MAX_AUTO_CHARTS + ").");
+			}
+		}
+	}
+
+	private void clickGraphButton() {
+		if (graphButton != null) {
+			graphButton.doClick();
+		}
+	}
+
+	/**
+	 * Estimates the number of charts by counting unique values in the first column.
+	 * @param table JTable
+	 * @return Estimated number of charts
+	 */
+	private int estimateChartCount(JTable table) {
+		if (table == null || table.getRowCount() == 0) {
+			return 0;
+		}
+
+		TableModel model = table.getModel();
+		int scenarioColumn = -1;
+		int regionColumn = -1;
+
+		for (int i = 0; i < model.getColumnCount(); i++) {
+			String columnName = model.getColumnName(i);
+			if ("scenario".equalsIgnoreCase(columnName)) {
+				scenarioColumn = i;
+			}
+			if ("region".equalsIgnoreCase(columnName)) {
+				regionColumn = i;
+			}
+		}
+
+		if (scenarioColumn == -1) {
+			// Fallback to old method if scenario column is not found
+			System.out.println("Warning: 'scenario' column not found. Falling back to old chart count estimation.");
+			HashSet<Object> uniqueValues = new HashSet<>();
+			for (int i = 0; i < table.getRowCount(); i++) {
+				if (table.getRowSorter() != null) {
+					int modelRow = table.getRowSorter().convertRowIndexToModel(i);
+					uniqueValues.add(model.getValueAt(modelRow, 0));
+				} else {
+					uniqueValues.add(table.getValueAt(i, 0));
+				}
+			}
+			int count = uniqueValues.size();
+			System.out.println("Estimated chart count based on unique values in first column: " + count);
+			return count;
+		}
+
+		HashSet<Object> uniqueScenarios = new HashSet<>();
+		for (int i = 0; i < table.getRowCount(); i++) {
+			int modelRow;
+			if (table.getRowSorter() != null) {
+				modelRow = table.getRowSorter().convertRowIndexToModel(i);
+			} else {
+				modelRow = i;
+			}
+			uniqueScenarios.add(model.getValueAt(modelRow, scenarioColumn));
+		}
+
+		int scenarioCount = uniqueScenarios.size();
+		int regionCount = 1; // Default to 1 if region column is not found
+
+		if (regionColumn != -1) {
+			HashSet<Object> uniqueRegions = new HashSet<>();
+			for (int i = 0; i < table.getRowCount(); i++) {
+				int modelRow;
+				if (table.getRowSorter() != null) {
+					modelRow = table.getRowSorter().convertRowIndexToModel(i);
+				} else {
+					modelRow = i;
+				}
+				uniqueRegions.add(model.getValueAt(modelRow, regionColumn));
+			}
+			regionCount = uniqueRegions.size();
+		}
+		
+		int chartCount = scenarioCount * regionCount;
+
+		System.out.println("Estimated chart count based on " + scenarioCount + " scenarios and " + regionCount + " regions: " + chartCount);
+		return chartCount;
+	}
 }

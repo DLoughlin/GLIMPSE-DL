@@ -39,6 +39,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -46,8 +47,10 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -84,6 +87,8 @@ import filter.FilteredTable;
 
 public class QueryResultsPanel extends JPanel {
 
+	protected static final int MAX_AUTO_CHARTS = 125; // Max number of charts to auto-generate before skipping auto-graphics
+	
 	/**
 	 * Referring to the thread that is running. Used to track which thread is being
 	 * used/closed
@@ -131,6 +136,10 @@ public class QueryResultsPanel extends JPanel {
 					}
 				} catch (Exception e) {
 					errorMessage = e.getMessage();
+					e.printStackTrace();
+				} finally {
+					// Ensure we always mark this query as completed so the progress UI stays in sync
+					DbViewer.registerQueryCompleted();
 				}
 				// Stop process if the user terminated the process
 				if (isInterrupted())
@@ -158,6 +167,49 @@ public class QueryResultsPanel extends JPanel {
 
 				// the panel is refreshed to show the changes
 				revalidate();
+
+				final JComponent finalRet = ret;
+				javax.swing.SwingUtilities.invokeLater(new Runnable() {
+					public void run() {
+						if (InterfaceMain.autoGenerateGraphics) {
+							if (finalRet instanceof JSplitPane) {
+								JSplitPane sp = (JSplitPane) finalRet;
+								
+								// Check if we should graph based on chart count
+								boolean shouldGraph = true;
+								
+								// Try to inspect the table to get chart count
+								JTable table = getJTableFromComponent(thisThread);
+								int chartCount = estimateChartCount(table);
+								if (table != null && chartCount >= MAX_AUTO_CHARTS) {
+									shouldGraph = false;
+									System.out.println("Auto-graphics skipped: Result has " + chartCount + " charts (limit is "+MAX_AUTO_CHARTS+").");
+								} else if (table != null) {
+									System.out.println("Auto-graphics proceeding: Result has " + chartCount + " charts.");
+								}
+
+								if (shouldGraph && sp.getLeftComponent() instanceof JPanel) {
+									JPanel jp = (JPanel) sp.getLeftComponent();
+									clickGraphButton(jp);
+								}
+							}
+						}
+					}
+
+					private void clickGraphButton(java.awt.Container container) {
+						for (java.awt.Component comp : container.getComponents()) {
+							if (comp instanceof JButton) {
+								JButton button = (JButton) comp;
+								if ("Graph".equals(button.getText())) {
+									button.doClick();
+									return;
+								}
+							} else if (comp instanceof java.awt.Container) {
+								clickGraphButton((java.awt.Container) comp);
+							}
+						}
+					}
+				});
 			}
 		};
 		runThread.start();
@@ -174,6 +226,21 @@ public class QueryResultsPanel extends JPanel {
 	public void killThread() {
 		context.interrupt();
 		runThread.interrupt();
+	}
+
+	/**
+	 * Helper method to get the list of selected years from the application
+	 * properties.
+	 * 
+	 * @return A list of selected years.
+	 */
+	protected List<String> getSelectedYears() {
+		final InterfaceMain main = InterfaceMain.getInstance();
+		String selectedYearsString = main.getProperties().getProperty("selectedYearList", "");
+		if (selectedYearsString.isEmpty()) {
+			return new ArrayList<>();
+		}
+		return new ArrayList<>(Arrays.asList(selectedYearsString.split(";")));
 	}
 
 	/**
@@ -306,7 +373,7 @@ public class QueryResultsPanel extends JPanel {
 //				jTable, sp); //@1
 		new FilteredTable(null, qg.toString(), // @1
 				units[0], path, // @1
-				jTable, sp); // @1
+				jTable, sp, getSelectedYears()); // @1
 
 		main.fireProperty("Query", null, bt); // @1
 		return sp;
@@ -631,6 +698,7 @@ public class QueryResultsPanel extends JPanel {
 			}
 		}catch(Exception e) {
 			System.out.println("Could not read units file: "+e.toString());
+			return null;
 		}
 		return localInfo;
 	}
@@ -827,4 +895,99 @@ public class QueryResultsPanel extends JPanel {
 		return rtn_list;
 	}
 
+	/**
+	 * recursive method to find the JTable in the component
+	 * 
+	 * @param comp
+	 * @return
+	 */
+	public JTable getJTableFromComponent(JComponent comp) {
+		if (comp instanceof JTable)
+			return (JTable) comp;
+		for (int i = 0; i < comp.getComponentCount(); i++) {
+			java.awt.Component child = comp.getComponent(i);
+			if (child instanceof JComponent) {
+				JTable ret = getJTableFromComponent((JComponent) child);
+				if (ret != null)
+					return ret;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Estimates the number of charts by counting unique values in the first column.
+	 * 
+	 * @param table The JTable to process.
+	 * @return The number of unique values in the first column.
+	 */
+	private int estimateChartCount(JTable table) {
+		if (table == null || table.getRowCount() == 0) {
+			return 0;
+		}
+
+		TableModel model = table.getModel();
+		int scenarioColumn = -1;
+		int regionColumn = -1;
+
+		for (int i = 0; i < model.getColumnCount(); i++) {
+			String columnName = model.getColumnName(i);
+			if ("scenario".equalsIgnoreCase(columnName)) {
+				scenarioColumn = i;
+			}
+			if ("region".equalsIgnoreCase(columnName)) {
+				regionColumn = i;
+			}
+		}
+
+		if (scenarioColumn == -1) {
+			// Fallback to old method if scenario column is not found
+			System.out.println("Warning: 'scenario' column not found. Falling back to old chart count estimation.");
+			HashSet<Object> uniqueValues = new HashSet<>();
+			for (int i = 0; i < table.getRowCount(); i++) {
+				if (table.getRowSorter() != null) {
+					int modelRow = table.getRowSorter().convertRowIndexToModel(i);
+					uniqueValues.add(model.getValueAt(modelRow, 0));
+				} else {
+					uniqueValues.add(table.getValueAt(i, 0));
+				}
+			}
+			int count = uniqueValues.size();
+			System.out.println("Estimated chart count based on unique values in first column: " + count);
+			return count;
+		}
+
+		HashSet<Object> uniqueScenarios = new HashSet<>();
+		for (int i = 0; i < table.getRowCount(); i++) {
+			int modelRow;
+			if (table.getRowSorter() != null) {
+				modelRow = table.getRowSorter().convertRowIndexToModel(i);
+			} else {
+				modelRow = i;
+			}
+			uniqueScenarios.add(model.getValueAt(modelRow, scenarioColumn));
+		}
+
+		int scenarioCount = uniqueScenarios.size();
+		int regionCount = 1; // Default to 1 if region column is not found
+
+		if (regionColumn != -1) {
+			HashSet<Object> uniqueRegions = new HashSet<>();
+			for (int i = 0; i < table.getRowCount(); i++) {
+				int modelRow;
+				if (table.getRowSorter() != null) {
+					modelRow = table.getRowSorter().convertRowIndexToModel(i);
+				} else {
+					modelRow = i;
+				}
+				uniqueRegions.add(model.getValueAt(modelRow, regionColumn));
+			}
+			regionCount = uniqueRegions.size();
+		}
+		
+		int chartCount = scenarioCount * regionCount;
+
+		System.out.println("Estimated chart count based on " + scenarioCount + " scenarios and " + regionCount + " regions: " + chartCount);
+		return chartCount;
+	}
 }
