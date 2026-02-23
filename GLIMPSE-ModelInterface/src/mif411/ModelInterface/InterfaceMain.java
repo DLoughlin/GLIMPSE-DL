@@ -127,6 +127,24 @@ public class InterfaceMain implements ActionListener {
 	private static final Color UNIFIED_BORDER = new Color(200, 200, 220); // Border color
 
 	/**
+	 * Split a delimited list property (e.g., year lists) supporting either ';' or ','
+	 * as separators, and trimming optional whitespace.
+	 * <p>
+	 * Examples accepted: "2015;2020;2025", "2015,2020,2025", "2015; 2020, 2025".
+	 */
+	public static String[] splitListProperty(final String value) {
+		if (value == null) {
+			return new String[0];
+		}
+		final String trimmed = value.trim();
+		if (trimmed.isEmpty()) {
+			return new String[0];
+		}
+		// split on ';' or ',' with optional surrounding whitespace
+		return trimmed.split("\\s*[;,]\\s*");
+	}
+
+	/**
 	 * Unique identifier used for serializing.
 	 */
 	private static final long serialVersionUID = -9137748180688015902L;

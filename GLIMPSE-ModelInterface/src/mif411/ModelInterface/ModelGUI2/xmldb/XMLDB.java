@@ -279,7 +279,14 @@ public class XMLDB {
         // and use it as the base path for finding all collections/containers
         System.setProperty("org.basex.DBPATH", path);
 
-        context = new Context();
+        try {
+            context = new Context();
+        } catch (FileSystemNotFoundException ex) {
+            // Log once, or ignore entirely
+            System.err.println("BaseX resource path not resolvable; using defaults.");
+            context = new Context(); // second attempt will use fallback
+        }
+
         // Set some default behaviors such as no indexing etc
         // TODO: experiment with these
         context.options.set(MainOptions.ATTRINDEX, false);

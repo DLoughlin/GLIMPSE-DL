@@ -135,7 +135,6 @@ import ModelInterface.common.FileChooser;
 import ModelInterface.common.FileChooserFactory;
 import ModelInterface.common.RecentFilesList.RecentFile;
 import filter.FilterTreePaneYears;
-import mif411.ModelInterface.ModelGUI2.BatchExecutionController;
 
 /**
  * DbViewer is the main class for the database viewing and query interface in
@@ -390,7 +389,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 					String defaultYearStr = rsp.toString();
 					System.out.println("DbViewer375: Using selectedYearsStr from properties file: " + defaultYearStr);
 
-					String[] yearsArr = defaultYearStr.split(";");
+					String[] yearsArr = InterfaceMain.splitListProperty(defaultYearStr);
 					Arrays.sort(yearsArr);
 					DbViewer.selectedYears = new HashMap<>();
 					if (!(yearsArr.length == 1 && yearsArr[0].equals(""))) {
@@ -451,7 +450,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 			System.out.println("DbViewer421: Setting allYearStr from properties file: " + allYearStr);
 
 			if (allYearStr != null) {
-				String[] yearsArr = allYearStr.split(";");
+				String[] yearsArr = InterfaceMain.splitListProperty(allYearStr);
 				Arrays.sort(yearsArr);
 				allYearsList = new ArrayList<String>(yearsArr.length);
 				if (!(yearsArr.length == 1 && yearsArr[0].equals(""))) {

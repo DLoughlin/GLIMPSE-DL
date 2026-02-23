@@ -1,4 +1,4 @@
-package mif411.ModelInterface.ModelGUI2;
+package ModelInterface.ModelGUI2;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -15,9 +15,6 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import ModelInterface.InterfaceMain;
-import ModelInterface.ModelGUI2.BatchWindow;
-import ModelInterface.ModelGUI2.DbViewer;
-import ModelInterface.ModelGUI2.ScenarioListItem;
 import ModelInterface.ModelGUI2.xmldb.XMLDB;
 import ModelInterface.common.DataPair;
 

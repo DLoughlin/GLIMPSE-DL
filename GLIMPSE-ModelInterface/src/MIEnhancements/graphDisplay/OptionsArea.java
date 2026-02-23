@@ -121,9 +121,11 @@ public class OptionsArea {
 						setChartPane();
 					}
 				};
-				ThumbnailBoxPopup popup = new ThumbnailBoxPopup(chart, w, gridWidth, sameScale, sp, refreshAction, hideOptions, (Consumer<Boolean>)(newSameScale) -> {
-                    sameScale = newSameScale;
-                });
+				// IMPORTANT: use the latest OptionsArea.this.chart instead of a stale captured reference
+				ThumbnailBoxPopup popup = new ThumbnailBoxPopup(OptionsArea.this.chart, w, gridWidth, sameScale, sp,
+						refreshAction, hideOptions, (Consumer<Boolean>) (newSameScale) -> {
+							sameScale = newSameScale;
+						});
 				popup.show(e.getComponent(), e.getX(), e.getY());
 			}
 		});
@@ -183,15 +185,14 @@ public class OptionsArea {
 	}
 
 	private void setChartPane() {
-		// Dan: Using modified version (2)
+		// Remove existing center component and replace it
 		ThumbnailUtilNew.validateChartPane(jp);
-		
+
 		JPanel chartPane;
 		if (hideOptions) {
 			chartPane = ThumbnailUtilNew.createFlowChartPane(chart, sameScale);
 		} else {
 			w = ThumbnailUtilNew.computeFixGridLayoutViewSize(sp.getSize().width, gridWidth);
-			// Dan: Using modified version (2)
 			chartPane = ThumbnailUtilNew.setChartPane(chart, w, gridWidth, sameScale, false);
 		}
 
@@ -313,10 +314,19 @@ public class OptionsArea {
 			//if (selectedChartIndex == typeRelativeLineChart)
 			//	index = typeLineChart;
 			cn = graphClassName[index];
-			chart = ThumbnailUtilNew.createChart(cn, relativeIndex, chart,selectedValue);
+			// Create the new chart array and make sure the enclosing OptionsArea uses it
+			Chart[] newCharts = ThumbnailUtilNew.createChart(cn, relativeIndex, chart, selectedValue);
+			chart = newCharts;
+			OptionsArea.this.chart = newCharts;
+
+			// If we're inside a Breakout (Transpose) dialog, update that dialog so it replaces its single pane
+			java.awt.Container top = javax.swing.SwingUtilities.getWindowAncestor(OptionsArea.this.jp);
+			if (top instanceof Breakout) {
+				((Breakout) top).updateChartPaneWithCharts(newCharts, sameScale);
+				return;
+			}
 
 			setChartPane();
-
 		}
 
 		public void resetChart() {
@@ -325,6 +335,13 @@ public class OptionsArea {
 			relativeIndex = -1;
 
 			chart = oChart;
+			OptionsArea.this.chart = oChart;
+
+			java.awt.Container top = javax.swing.SwingUtilities.getWindowAncestor(OptionsArea.this.jp);
+			if (top instanceof Breakout) {
+				((Breakout) top).updateChartPaneWithCharts(oChart, sameScale);
+				return;
+			}
 
 			setChartPane();
 

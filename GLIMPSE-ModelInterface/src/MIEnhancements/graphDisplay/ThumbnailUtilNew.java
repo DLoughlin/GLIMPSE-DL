@@ -402,6 +402,7 @@ public class ThumbnailUtilNew {
 		gl.setHgap(0);
 		gl.setVgap(0);
 		JPanel chartPane = new JPanel(gl);
+		chartPane.removeAll(); // defensive: ensure pane starts empty
 		chartPane.setBorder(BorderFactory.createEmptyBorder(padding, 0, padding, 0));
 		// Calculate max and min values for scaling
 		double max = setMax(chart);
@@ -516,6 +517,7 @@ public class ThumbnailUtilNew {
 		fl.setHgap(0);
 		fl.setVgap(0);
 		JPanel chartPane = new WrappingPanel(fl);
+		chartPane.removeAll(); // defensive: ensure pane starts empty
 		chartPane.setBorder(BorderFactory.createEmptyBorder(padding, 0, padding, 0));
 		// Calculate max and min values for scaling
 		double max = setMax(chart);

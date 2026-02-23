@@ -93,7 +93,8 @@ public class FilterTreePaneYears {
      */
     private JScrollPane buildTree() {
         try {
-            filterSelectedYears = new ArrayList<>(Arrays.asList(main.getProperties().getProperty("selectedYearList", "").split(";")));
+            filterSelectedYears = new ArrayList<>(Arrays.asList(InterfaceMain.splitListProperty(
+					main.getProperties().getProperty("selectedYearList", "") )));
             DefaultMutableTreeNode top = createNode("Filter All", "Root", null);
             tree = new JTree(top);
             createNodes(top);
@@ -172,8 +173,9 @@ public class FilterTreePaneYears {
      * @param top Root node
      */
     private void createNodes(DefaultMutableTreeNode top) {
-        List<String> years = new ArrayList<>(Arrays.asList(main.getProperties().getProperty("allYearList", "").split(";")));
-        for (String year : years) {
+        List<String> years = new ArrayList<>(Arrays.asList(InterfaceMain.splitListProperty(
+				main.getProperties().getProperty("allYearList", "") )));
+		for (String year : years) {
             createNode(year, "filter", top);
         }
     }
@@ -346,7 +348,8 @@ public class FilterTreePaneYears {
      * Shows the filter dialog for year selection.
      */
     public void showFilter() {
-        filterSelectedYears = new ArrayList<>(Arrays.asList(main.getProperties().getProperty("selectedYearList", "").split(";")));
+        filterSelectedYears = new ArrayList<>(Arrays.asList(InterfaceMain.splitListProperty(
+				main.getProperties().getProperty("selectedYearList", "") )));
         dialog = new JDialog();
         dialog.setTitle("Year Filter");
         dialog.setSize(300, 500);

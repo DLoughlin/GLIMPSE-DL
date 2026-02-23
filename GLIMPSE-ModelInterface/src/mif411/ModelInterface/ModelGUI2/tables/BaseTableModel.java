@@ -790,13 +790,13 @@ public abstract class BaseTableModel extends AbstractTableModel {
 					yearList = globalProperties.getProperty("selectedYearList");
 					System.out.println("BaseTableModel784: Using selectedYearsList from properties: "+yearList);
 			       if(yearList!=null && yearList.length()>0) {
-						String[] setYearListArr = yearList.split(";");
-				      
+						String[] setYearListArr = InterfaceMain.splitListProperty(yearList);
+ 				      
 					       for(String year : setYearListArr ) {
 						       yearArrayList.add(year);
-					       
-				       }
-			       }			       
+ 					       
+ 				       }
+ 			       }			       
 			       if((yearArrayList==null)||(yearArrayList.size()==0)) {
 			    	   yearArrayList=getAllYearList();
 			       }
@@ -836,13 +836,13 @@ public abstract class BaseTableModel extends AbstractTableModel {
 					yearList = globalProperties.getProperty("allYearList");
 					//System.out.println("BaseTableModel830: Using allYearList from properties: "+yearList);
 			       if(yearList!=null && yearList.length()>0) {
-						String[] setYearListArr = yearList.split(";");
-				      
+						String[] setYearListArr = InterfaceMain.splitListProperty(yearList);
+ 				      
 					       for(String year : setYearListArr ) {
 						       yearArrayList.add(year);
-					       
-				       }
-			       }			       
+ 					       
+ 				       }
+ 			       }			       
 			       		       		       
 			       if((yearArrayList==null)||(yearArrayList.size()==0)) {
 			    	   yearArrayList.clear();

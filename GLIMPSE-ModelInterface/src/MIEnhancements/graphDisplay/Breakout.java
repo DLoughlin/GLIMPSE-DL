@@ -152,6 +152,8 @@ public class Breakout extends JDialog {
 			
 			this.chart = chart1;
 			this.gridWidth = 0;
+
+			// Build the transpose dialog the same way as Breakout View: options in NORTH, single scrollpane in CENTER
 			JPanel optionsPanel = new JPanel();
 			this.optionsArea = new OptionsArea(optionsPanel, this.chart, this.gridWidth, sameScale, sp, true);
 			jp.add(optionsArea.getPanel(), BorderLayout.NORTH);
@@ -282,7 +284,11 @@ public class Breakout extends JDialog {
         jp.repaint();
     }
 
-	public void updateChartPane(boolean sameScale) {
+	/**
+	 * Replace the transpose dialog's thumbnails with a new set of charts.
+	 */
+	public void updateChartPaneWithCharts(Chart[] newCharts, boolean sameScale) {
+		this.chart = newCharts;
 		this.sameScale = sameScale;
 		setChartPane();
 	}

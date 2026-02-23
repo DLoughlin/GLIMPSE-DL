@@ -240,7 +240,7 @@ public class QueryResultsPanel extends JPanel {
 		if (selectedYearsString.isEmpty()) {
 			return new ArrayList<>();
 		}
-		return new ArrayList<>(Arrays.asList(selectedYearsString.split(";")));
+		return new ArrayList<>(Arrays.asList(InterfaceMain.splitListProperty(selectedYearsString)));
 	}
 
 	/**
