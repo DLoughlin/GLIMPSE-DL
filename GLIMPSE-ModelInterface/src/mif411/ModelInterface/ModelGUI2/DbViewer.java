@@ -627,22 +627,23 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	 * @param parentFrame The parent JFrame for dialogs and listeners.
 	 */
 	private void addAdvancedMenuItems(InterfaceMain.MenuManager menuMan, InterfaceMain main, JFrame parentFrame) {
-		// Move Queries menus under the global Edit menu instead of Tools
+		// Queries menus live under the global Edit menu.
 		InterfaceMain.MenuManager editMM = menuMan.getSubMenuManager(InterfaceMain.EDIT_MENU_POS);
 		if (editMM == null) {
+			// Should not happen (InterfaceMain builds Edit), but guard anyway.
 			JMenu editMenu = new JMenu("Edit");
 			menuMan.addMenuItem(editMenu, InterfaceMain.EDIT_MENU_POS);
 			editMM = menuMan.getSubMenuManager(InterfaceMain.EDIT_MENU_POS);
 		}
 
-		// Ensure a Queries submenu exists under Edit
+		// InterfaceMain is responsible for creating Edit -> Query Tree submenu.
 		InterfaceMain.MenuManager queriesMM = editMM.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS);
 		if (queriesMM == null) {
-			editMM.addMenuItem(new JMenu("Queries"), InterfaceMain.TOOLS_SUBMENU1_POS);
+			// Fallback for legacy/partial menu configurations.
+			editMM.addMenuItem(new JMenu("Query Tree"), InterfaceMain.TOOLS_SUBMENU1_POS);
 			queriesMM = editMM.getSubMenuManager(InterfaceMain.TOOLS_SUBMENU1_POS);
 		}
 
-		// Move former Edit submenu items directly under Edit -> Queries
 		// Query Tree Lock/Unlock
 		queriesLockMenu = makeMenuItem(queryTreeLocked ? "Unlock Query Tree" : "Lock Query Tree");
 		queriesLockMenu.addActionListener(this);
@@ -706,24 +707,16 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		queriesRemoveMenu.setEnabled(false);
 		queriesMM.addMenuItem(queriesRemoveMenu, 11);
 
-		// Favorites submenu now lives directly under Edit (moved from Edit -> Queries)
-		JMenu favoritesSubMenu = new JMenu("Favorites List");
-		editMM.addMenuItem(favoritesSubMenu, 4);
-		// Add a separator between Favorites (4) and Preferences (5)
-		editMM.addSeparator(4);
-
-		// Add Run Batch under Tools (unchanged)
-		// This is already added in InterfaceMain.java
-
-		// Favorites under Queries
+		// Favorites submenu is created by InterfaceMain; DbViewer only wires actions.
+		InterfaceMain.MenuManager favoritesMM = editMM.getSubMenuManager(InterfaceMain.EDIT_FAVORITES_SUBMENU_POS);
 		loadFavoritesMenu = makeMenuItem("Load Favorite Queries File");
-		favoritesSubMenu.add(loadFavoritesMenu);
-
 		createFavoritesMenu = makeMenuItem("Create Favorite Queries File");
-		favoritesSubMenu.add(createFavoritesMenu);
-
 		appendFavoritesMenu = makeMenuItem("Append Favorite Queries File");
-		favoritesSubMenu.add(appendFavoritesMenu);
+		if (favoritesMM != null) {
+			favoritesMM.addMenuItem(loadFavoritesMenu, 0);
+			favoritesMM.addMenuItem(createFavoritesMenu, 1);
+			favoritesMM.addMenuItem(appendFavoritesMenu, 2);
+		}
 	}	
 	
 	/**
@@ -1786,7 +1779,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 			}
 		}
 		for (int i = 0; i < toRemove.size(); i++) {
-			query_list.remove(toRemove.get(i));
+		 query_list.remove(toRemove.get(i));
 
 		}
 		return toRemove;
@@ -1825,21 +1818,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	 *
 	 * @param myTree      The JTree containing the query group.
 	 * @param mySubGroup  The QueryGroup to check and potentially collapse.
-	 */
-	// YD added,2024
-	private void collapseGroupWhenNotContainKeyWords(JTree myTree, QueryGroup mySubGroup) {
-		ArrayList leaf_inside = mySubGroup.getQueryList();
-		boolean containKeyWords = leaf_inside.toString().contains(filteringText);
-		if (!containKeyWords) {
-			getTreePathFromNode(mySubGroup);
-			TreePath myFullTreePath = getFullTreePath(myTree, mySubGroup.getName());
-			myTree.collapsePath(myFullTreePath);
-		} else {
-			leaf_inside.toString().indexOf(filteringText);
-		} // inner if else loop end
-	}
-
-	/**
+	 *//**
 	 * Gets the full TreePath for a query group by its name.
 	 *
 	 * @param tree      The JTree to search in.

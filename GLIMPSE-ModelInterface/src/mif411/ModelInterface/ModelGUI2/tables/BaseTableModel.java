@@ -76,7 +76,6 @@ import javax.xml.xpath.XPathFactory;
 import org.apache.poi.hssf.usermodel.HSSFPatriarch;
 import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.basex.util.Prop;
 import org.jfree.chart.JFreeChart;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;

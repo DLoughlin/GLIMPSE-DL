@@ -21,10 +21,6 @@ import java.util.Set;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
-import javax.swing.table.TableModel;
-import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
 
 import org.jfree.chart.ChartPanel;
@@ -38,7 +34,6 @@ import ModelInterface.ModelGUI2.DbViewer;
 import ModelInterface.ModelGUI2.QueryResultsPanel;
 import ModelInterface.ModelGUI2.tables.ComboTableModel;
 import ModelInterface.ModelGUI2.TabCloseIcon;
-import ModelInterface.ModelGUI2.QueryTreeModel.QueryGroup;
 import ModelInterface.ModelGUI2.queries.QueryGenerator;
 import ModelInterface.ModelGUI2.queries.SingleQueryExtension;
 import ModelInterface.ModelGUI2.xmldb.QueryBinding;

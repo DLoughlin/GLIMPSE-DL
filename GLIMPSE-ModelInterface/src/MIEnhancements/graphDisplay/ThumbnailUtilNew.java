@@ -403,7 +403,8 @@ public class ThumbnailUtilNew {
 		gl.setVgap(0);
 		JPanel chartPane = new JPanel(gl);
 		chartPane.removeAll(); // defensive: ensure pane starts empty
-		chartPane.setBorder(BorderFactory.createEmptyBorder(padding, 0, padding, 0));
+		// No outer padding around thumbnails.
+		chartPane.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 		// Calculate max and min values for scaling
 		double max = setMax(chart);
 		double min = setMin(chart);
@@ -420,6 +421,11 @@ public class ThumbnailUtilNew {
 				return null;
 			}
 			jb.setMargin(new Insets(0, 0, 0, 0));
+			// Thin border around each thumbnail.
+			jb.setBorder(javax.swing.BorderFactory.createLineBorder(new Color(120, 120, 120), 1));
+			jb.setBorderPainted(true);
+			jb.setContentAreaFilled(false);
+			jb.setOpaque(false);
 			jb.setBackground(Color.lightGray);
 			jb.setName(String.valueOf(i));
 			jb.setPreferredSize(new Dimension(w, w));
@@ -455,6 +461,13 @@ public class ThumbnailUtilNew {
 			// ignore
 		}
 		if (freeChart != null) {
+			// Remove chart padding/whitespace for thumbnails.
+			freeChart.setPadding(org.jfree.chart.ui.RectangleInsets.ZERO_INSETS);
+			// Keep default background/border behavior (do not force transparency or hide borders).
+			if (freeChart.getPlot() != null) {
+				freeChart.getPlot().setInsets(org.jfree.chart.ui.RectangleInsets.ZERO_INSETS);
+				// Keep default plot background/outline behavior.
+			}
 			// Set axis label positions and scaling
 			if (category) {
 				freeChart.getCategoryPlot().getDomainAxis().setCategoryLabelPositions(CategoryLabelPositions.DOWN_90);
@@ -491,9 +504,8 @@ public class ThumbnailUtilNew {
 			}
 			ChartUtils.applyCurrentTheme(freeChart);
 			try {
-				// Create thumbnail image
-				int padding = SCROLL_BAR_WIDTH / 8;
-				int imageSize = Math.max(1, w - (padding * 2));
+				// Create thumbnail image (no artificial shrink)
+				int imageSize = Math.max(1, w);
 				BufferedImage thumb1 = freeChart.createBufferedImage(imageSize, imageSize, BufferedImage.TYPE_INT_ARGB, null);
 				ImageIcon image1 = new ImageIcon(thumb1);
 				jb.setIcon(image1);
@@ -512,13 +524,13 @@ public class ThumbnailUtilNew {
 	}
 
 	public static JPanel createFlowChartPane(Chart[] chart, boolean sameScale) {
-		int padding = SCROLL_BAR_WIDTH / 4;
 		WrappingLayout fl = new WrappingLayout(FlowLayout.LEFT);
 		fl.setHgap(0);
 		fl.setVgap(0);
 		JPanel chartPane = new WrappingPanel(fl);
 		chartPane.removeAll(); // defensive: ensure pane starts empty
-		chartPane.setBorder(BorderFactory.createEmptyBorder(padding, 0, padding, 0));
+		// No outer padding around thumbnails.
+		chartPane.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 		// Calculate max and min values for scaling
 		double max = setMax(chart);
 		double min = setMin(chart);
@@ -535,7 +547,9 @@ public class ThumbnailUtilNew {
 				return null;
 			}
 			jb.setMargin(new Insets(0, 0, 0, 0));
-			jb.setBackground(Color.lightGray);
+			jb.setBorder(javax.swing.BorderFactory.createLineBorder(new Color(120, 120, 120), 1));
+			jb.setBorderPainted(true);
+ 			jb.setBackground(Color.lightGray);
 			jb.setName(String.valueOf(i));
 			chartPane.add(jb);
 		}

@@ -40,9 +40,7 @@ import javax.swing.JPopupMenu;
 import javax.swing.JSplitPane;
 import chart.Chart;
 import graphDisplay.AChartDisplay;
-import graphDisplay.BoxAndWhiskerChartPane;
 import graphDisplay.DifferenceChartPane;
-import graphDisplay.SumAcrossChartPane;
 import graphDisplay.Breakout;
 import java.util.function.Consumer;
 

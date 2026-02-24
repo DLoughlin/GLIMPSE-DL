@@ -63,7 +63,6 @@ import glimpseElement.TabTechTax;
 import glimpseUtil.FileChooserPlus;
 import glimpseElement.TabTechAvailable;
 import glimpseElement.TabTechBound;
-import glimpseElement.TabTechBound;
 import glimpseElement.TabTechParam;
 import glimpseElement.TabFixedDemand;
 import javafx.application.Platform;

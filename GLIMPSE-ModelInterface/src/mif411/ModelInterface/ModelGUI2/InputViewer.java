@@ -108,7 +108,6 @@ import ModelInterface.ModelGUI2.tables.TableSelector;
 import ModelInterface.ModelGUI2.tables.TableSorter;
 import ModelInterface.common.FileChooser;
 import ModelInterface.common.FileChooserFactory;
-import ModelInterface.common.RecentFilesList;
 import ModelInterface.common.RecentFilesList.RecentFile;
 
 public class InputViewer implements ActionListener, TableModelListener, MenuAdder, BatchRunner {

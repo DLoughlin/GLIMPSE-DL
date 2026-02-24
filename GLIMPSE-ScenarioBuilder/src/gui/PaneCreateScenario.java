@@ -52,10 +52,8 @@ import glimpseElement.ScenarioRow;
 import glimpseElement.ScenarioTable;
 import glimpseUtil.CSVToXMLMain;
 
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Group;

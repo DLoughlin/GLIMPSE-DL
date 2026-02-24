@@ -39,7 +39,6 @@ import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.renderer.category.BarRenderer;
 import org.jfree.chart.renderer.category.StandardBarPainter;
 import org.jfree.data.category.DefaultCategoryDataset;
-import org.jfree.ui.RectangleEdge;
 
 /**
  * CategoryBarChart creates a JFreeChart bar chart with properties from the parent CategoryChart.

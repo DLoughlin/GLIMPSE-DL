@@ -60,7 +60,6 @@ import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JList;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
@@ -75,7 +74,6 @@ import org.jfree.chart.JFreeChart;
 import chart.Chart;
 import chart.LegendUtil;
 import graphDisplay.CreateComponent;
-import listener.LineAndShapePopup;
 
 /**
  * Dialog for modifying chart legend properties such as color, pattern, and line stroke.

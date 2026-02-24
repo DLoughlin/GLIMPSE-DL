@@ -37,12 +37,8 @@
 package filter;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
@@ -55,7 +51,6 @@ import javax.swing.table.TableRowSorter;
 import ModelInterface.InterfaceMain;
 import ModelInterface.ModelGUI2.DbViewer;
 import chart.LegendUtil;
-import chartOptions.SelectDecimalFormat;
 import graphDisplay.StateMapPanel;
 import graphDisplay.ModelInterfaceUtil;
 import graphDisplay.SankeyDiagramFromTable;

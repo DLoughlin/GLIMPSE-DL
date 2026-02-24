@@ -62,7 +62,6 @@ import javafx.event.EventHandler;
 import javafx.event.ActionEvent;
 import org.controlsfx.control.CheckComboBox;
 import javafx.scene.layout.ColumnConstraints;
-import javafx.geometry.Insets;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.DoubleBinding;
 

@@ -40,7 +40,6 @@ import org.jfree.chart.renderer.category.BarRenderer;
 import org.jfree.chart.renderer.category.StackedBarRenderer;
 import org.jfree.chart.renderer.category.StandardBarPainter;
 import org.jfree.data.category.DefaultCategoryDataset;
-import org.jfree.ui.RectangleEdge;
 
 /**
  * Creates a StackedBar JFreeChart with all properties stored in Chart.

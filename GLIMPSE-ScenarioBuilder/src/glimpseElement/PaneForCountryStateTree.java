@@ -43,7 +43,6 @@ import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
-import javafx.geometry.Insets;
 import javafx.scene.control.CheckBoxTreeItem;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;

@@ -61,18 +61,12 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.Vector;
 
-import javax.swing.JButton;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
-import javax.swing.JTree;
-import javax.swing.KeyStroke;
 import javax.swing.UIManager;
-import javax.swing.tree.TreePath;
 import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
@@ -81,11 +75,6 @@ import org.basex.query.QueryException;
 import org.basex.query.QueryProcessor;
 import org.basex.query.iter.Iter;
 import org.basex.query.value.item.Item;
-//import org.hsqldb.persist.DirectoryBlockCachedObject;
-import org.jfree.chart.ChartPanel;
-import org.jfree.chart.JFreeChart;
-import org.jfree.chart.plot.flow.FlowPlot;
-import org.jfree.data.flow.DefaultFlowDataset;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -99,15 +88,12 @@ import ModelInterface.ModelGUI2.CSVFilter;
 //import ModelInterface.DMsource.DMViewer;
 import ModelInterface.ModelGUI2.DbViewer;
 import ModelInterface.ModelGUI2.InputViewer;
-import ModelInterface.ModelGUI2.QueryTreeModel;
 import ModelInterface.ModelGUI2.XMLFilter;
-import ModelInterface.ModelGUI2.QueryTreeModel.QueryGroup;
 import ModelInterface.ModelGUI2.xmldb.XMLDB;
 import ModelInterface.PPsource.PPViewer;
 import ModelInterface.common.FileChooser;
 import ModelInterface.common.FileChooserFactory;
 import ModelInterface.common.RecentFilesList;
-import graphDisplay.SankeyDiagramPanel;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -152,7 +138,7 @@ public class InterfaceMain implements ActionListener {
 	public static final int FILE_MENU_POS = 0;
 	public static final int EDIT_MENU_POS = 1;
 	public static final int VIEW_MENU_POS = 2;
-	// public static final int TOOLS_MENU_POS = 80; // YD added
+	
 	public static final int TOOLS_MENU_POS = 90; // YD added
 	public static final int TOOLS_SUBMENU1_POS = 0; // YD added
 	public static final int TOOLS_SUBMENU15_POS = 2; // YD added
@@ -169,8 +155,12 @@ public class InterfaceMain implements ActionListener {
 	public static final int QUERIES_SAVEAS_MENUITEM_POS = 40; // YD changed
 
 	public static final int EDIT_QUERY_SUBMENU_POS = 18; // YD added
+	// Favorites submenu under Edit (used by DbViewer to register favorite query actions)
+	
+	public static final int EDIT_FAVORITES_SUBMENU_POS = 4;
 	public static final int EDIT_COPY_MENUITEM_POS = 10;
 	public static final int EDIT_PASTE_MENUITEM_POS = 11;
+	
 	public static final int TOOLS_CSV_MENUITEM_POS = 20; // YD added
 	public static final int TOOLS_UNIT_MENUITEM_POS = 2; // YD added
 	public static final int TOOLS_SANKEY_MENUITEM_POS = 3;// YD added
@@ -198,7 +188,6 @@ public class InterfaceMain implements ActionListener {
 	private JMenuItem editRegionsMenu; // Added: Edit Regions menu item
 	private JMenuItem selectQueryMenu;
 	private JMenuItem editQueryFileMenu; // Open current query file in XML editor
-	// private JMenuItem toolsSankeyMenu; // YD moved to "DbViewer.java"
 
 	// New Config menu items
 	private JMenuItem selectQueryFileMenu;
@@ -215,6 +204,9 @@ public class InterfaceMain implements ActionListener {
 
 	// New: Help menu primary item
 	private JMenuItem helpItem;
+
+	// New: Edit -> Query File menu item (enabled only when a query file is set)
+	private JMenuItem queryTreeFileMenu;
 
 	private MenuAdder dbView = null;
 
@@ -851,78 +843,91 @@ public class InterfaceMain implements ActionListener {
 	}
 
 	private void addMenuItems(MenuManager menuMan) {
-        JMenu fileMenu = new JMenu("File");
-        fileMenu.setMnemonic(KeyEvent.VK_F);
-        menuMan.addMenuItem(fileMenu, FILE_MENU_POS);
-        // Add Save / Save As to File menu
-        saveMenu = new JMenuItem("Save");
-        saveMenu.setEnabled(false);
-        // Removed accelerator: saveMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, getMenuShortcutMask()));
-        // menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveMenu, 20);
-        saveAsMenu = new JMenuItem("Save As…");
-        saveAsMenu.setEnabled(false);
-        // Removed accelerator: saveAsMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, getMenuShortcutMask() | java.awt.event.InputEvent.SHIFT_DOWN_MASK));
-        // menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveAsMenu, 25);
-        // menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(FILE_MENU_SEPERATOR);
+		addFileMenu(menuMan);
+		addEditMenu(menuMan);
+		addViewMenu(menuMan);
+		addToolsMenu(menuMan);
+		addHelpMenu(menuMan);
+		setupUndo(menuMan);
+	}
 
-        selectQueryMenu = makeMenuItem("Select Query File");
-        menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(25);
-        menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(selectQueryMenu, 26);
-        menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(27);
+	private void addFileMenu(MenuManager menuMan) {
+		JMenu fileMenu = new JMenu("File");
+		fileMenu.setMnemonic(KeyEvent.VK_F);
+		menuMan.addMenuItem(fileMenu, FILE_MENU_POS);
+		MenuManager fileMM = menuMan.getSubMenuManager(FILE_MENU_POS);
 
-        quitMenu = makeMenuItem("Quit");
-        quitMenu.setMnemonic(KeyEvent.VK_Q);
-        // Removed accelerator: quitMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, getMenuShortcutMask()));
-        menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(quitMenu, FILE_QUIT_MENUITEM_POS);
+		// Initialize actions (some are managed by other viewers)
+		saveMenu = new JMenuItem("Save");
+		saveMenu.setEnabled(false);
+		saveAsMenu = new JMenuItem("Save As…");
+		saveAsMenu.setEnabled(false);
 
-        JMenu editMenu = new JMenu("Edit");
-        editMenu.setMnemonic(KeyEvent.VK_E);
-        menuMan.addMenuItem(editMenu, EDIT_MENU_POS);
+		selectQueryMenu = makeMenuItem("Select Query File");
+		fileMM.addSeparator(25);
+		fileMM.addMenuItem(selectQueryMenu, 26);
+		fileMM.addSeparator(27);
 
-        // View menu (required by DbViewer.addViewMenuItems)
-        JMenu viewMenu = new JMenu("View");
-        viewMenu.setMnemonic(KeyEvent.VK_V);
-        menuMan.addMenuItem(viewMenu, VIEW_MENU_POS);
+		quitMenu = makeMenuItem("Quit");
+		quitMenu.setMnemonic(KeyEvent.VK_Q);
+		fileMM.addMenuItem(quitMenu, FILE_QUIT_MENUITEM_POS);
+	}
 
-        // Tools menu (required by InputViewer/DbViewer which add items under Tools submenus)
-        JMenu toolsMenu = new JMenu("Tools");
-        toolsMenu.setMnemonic(KeyEvent.VK_T);
-        menuMan.addMenuItem(toolsMenu, TOOLS_MENU_POS);
-        
-        // Ensure Tools submenus exist before MenuAdders try to populate them.
-        // InputViewer expects Tools -> (TOOLS_SUBMENU2_POS)
-        MenuManager toolsMM = menuMan.getSubMenuManager(TOOLS_MENU_POS);
-        if (toolsMM != null && toolsMM.getSubMenuManager(TOOLS_SUBMENU2_POS) == null) {
-            toolsMM.addMenuItem(new JMenu("Open Files"), TOOLS_SUBMENU2_POS);
-        }
-         
+	private void addEditMenu(MenuManager menuMan) {
+		JMenu editMenu = new JMenu("Edit");
+		editMenu.setMnemonic(KeyEvent.VK_E);
+		menuMan.addMenuItem(editMenu, EDIT_MENU_POS);
+		MenuManager editMM = menuMan.getSubMenuManager(EDIT_MENU_POS);
 
-        // Add Query File to Edit menu (open current query XML in configured editor)
 		editQueryFileMenu = makeMenuItem("Query File");
-		menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(editQueryFileMenu, 0);
-		menuMan.getSubMenuManager(EDIT_MENU_POS).addSeparator(1);
+		editQueryFileMenu.setActionCommand("Edit Queries File");
+		editMM.addMenuItem(editQueryFileMenu, 2);
+		editMM.addSeparator(3);
 
-		// Preferences… under Edit
+//		// Ensure Edit -> Query Tree submenu exists (DbViewer will populate it)
+//		if (editMM.getSubMenuManager(1) == null) {
+//			editMM.addMenuItem(new JMenu("Query Tree"), 1);
+//		}
+
+		// Create "Favorites List" submenu under Edit; DbViewer will populate with actions.
+		if (editMM.getSubMenuManager(3) == null) {
+			editMM.addMenuItem(new JMenu("Favorites List"), 3);
+		}
+
+		editMM.addSeparator(4);
 		JMenuItem setPreferences = new JMenuItem("Preferences...");
-        setPreferences.setMnemonic(KeyEvent.VK_P);
-        // Removed accelerator: preferences.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, getMenuShortcutMask()));
-        setPreferences.addActionListener(this);
-        menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(setPreferences, 5);
+		setPreferences.setMnemonic(KeyEvent.VK_P);
+		setPreferences.addActionListener(this);
+		editMM.addMenuItem(setPreferences, 5);
+	}
 
-        // Help menu
-        JMenu helpMenu = new JMenu("Help");
-        helpMenu.setMnemonic(KeyEvent.VK_H);
-        menuMan.addMenuItem(helpMenu, HELP_MENU_POS);
+	private void addViewMenu(MenuManager menuMan) {
+		JMenu viewMenu = new JMenu("View");
+		viewMenu.setMnemonic(KeyEvent.VK_V);
+		menuMan.addMenuItem(viewMenu, VIEW_MENU_POS);
+	}
 
-        // Add Help (F1) under Help menu
-        helpItem = new JMenuItem("Help");
-        helpItem.setMnemonic(KeyEvent.VK_H);
-        // Removed accelerator: helpItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));
-        helpItem.addActionListener(this);
-        menuMan.getSubMenuManager(HELP_MENU_POS).addMenuItem(helpItem, 0);
+	private void addToolsMenu(MenuManager menuMan) {
+		JMenu toolsMenu = new JMenu("Tools");
+		toolsMenu.setMnemonic(KeyEvent.VK_T);
+		menuMan.addMenuItem(toolsMenu, TOOLS_MENU_POS);
+		MenuManager toolsMM = menuMan.getSubMenuManager(TOOLS_MENU_POS);
+		if (toolsMM != null && toolsMM.getSubMenuManager(TOOLS_SUBMENU2_POS) == null) {
+			toolsMM.addMenuItem(new JMenu("Open Files"), TOOLS_SUBMENU2_POS);
+		}
+	}
 
-        setupUndo(menuMan);
-    }
+	private void addHelpMenu(MenuManager menuMan) {
+		JMenu helpMenu = new JMenu("Help");
+		helpMenu.setMnemonic(KeyEvent.VK_H);
+		menuMan.addMenuItem(helpMenu, HELP_MENU_POS);
+		MenuManager helpMM = menuMan.getSubMenuManager(HELP_MENU_POS);
+
+		helpItem = new JMenuItem("Help");
+		helpItem.setMnemonic(KeyEvent.VK_H);
+		helpItem.addActionListener(this);
+		helpMM.addMenuItem(helpItem, 0);
+	}
 
     // second round YD edited the following lines to move "Undo" and "Redo" to be
     // under "Advanced" >> "Queries"
@@ -1111,16 +1116,10 @@ public class InterfaceMain implements ActionListener {
 		} else if (e.getActionCommand().equals("Preferences...")) {
 			showPreferencesDialog();
 		} else if (e.getActionCommand().equals("Query File")) {
-			// Open the currently selected query file in the configured XML editor (or system editor)
-			String qFile = (queryFilename != null && !queryFilename.trim().isEmpty())
-					? queryFilename
-					: savedProperties.getProperty("queryFile", "");
-			if (qFile == null || qFile.trim().isEmpty()) {
-				showMessageDialog("No query file is configured. Use File > Select Query File first.",
-						"Query File", JOptionPane.INFORMATION_MESSAGE);
-				return;
-			}
-			openEditorForFile(new File(qFile), "xml");
+			openConfiguredQueryFileInXmlEditor();
+		} else if (e.getActionCommand().equals("Edit Queries File")) {
+			// Backwards compatible handler for the previous Edit menu entry
+			openConfiguredQueryFileInXmlEditor();
 		} else if (e.getActionCommand().equals("Disable Auto Graphics") || e.getActionCommand().equals("Enable Auto Graphics")) {
 			autoGenerateGraphics = !autoGenerateGraphics;
 			toggleAutoGraphicsMenu.setText(autoGenerateGraphics ? "Disable Auto Graphics" : "Enable Auto Graphics");
@@ -1168,6 +1167,7 @@ public class InterfaceMain implements ActionListener {
 				savedProperties.setProperty("lastDirectory", file.getParent());
 				System.out.println("Selected query file: " + file.getAbsolutePath());
 				persistProperties();
+				refreshQueryFileMenuEnabled();
 			}
 		} else if (e.getActionCommand().equals("Select Units File")) {
 			FileChooser fc = FileChooserFactory.getFileChooser();
@@ -1580,6 +1580,39 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
+	private boolean hasQueryFileConfigured() {
+		String qFile = (queryFilename != null && !queryFilename.trim().isEmpty())
+				? queryFilename
+				: (savedProperties != null ? savedProperties.getProperty("queryFile", "") : "");
+		return qFile != null && !qFile.trim().isEmpty() && new File(qFile).exists();
+	}
+
+	private void refreshQueryFileMenuEnabled() {
+		if (queryTreeFileMenu != null) {
+			queryTreeFileMenu.setEnabled(hasQueryFileConfigured());
+		}
+	}
+
+	private void openConfiguredQueryFileInXmlEditor() {
+		String qFile = (queryFilename != null && !queryFilename.trim().isEmpty())
+				? queryFilename
+				: savedProperties.getProperty("queryFile", "");
+		if (qFile == null || qFile.trim().isEmpty()) {
+			showMessageDialog("No query file is configured. Use File > Select Query File first.",
+					"Query File", JOptionPane.INFORMATION_MESSAGE);
+			refreshQueryFileMenuEnabled();
+			return;
+		}
+		File f = new File(qFile);
+		if (!f.exists()) {
+			showMessageDialog("Query file does not exist: " + f.getAbsolutePath(), "Query File",
+					JOptionPane.ERROR_MESSAGE);
+			refreshQueryFileMenuEnabled();
+			return;
+		}
+		openEditorForFile(f, "xml");
+	}
+
 	// Re-add previously existing methods and inner classes removed by accident
 	public static InterfaceMain getInstance() { return main; }
 
@@ -1623,6 +1656,33 @@ public class InterfaceMain implements ActionListener {
 			sepList.add(where);
 		}
 		public int addMenuItem(JMenuItem menu, int where) {
+			// If this node currently represents a leaf JMenuItem but callers are trying
+			// to add children, promote it to a JMenu.
+			if (subItems == null && menuValue instanceof JMenuItem && !(menuValue instanceof JMenu)) {
+				final JMenuItem old = menuValue;
+				final JMenu promoted = new JMenu(old.getText());
+				promoted.setMnemonic(old.getMnemonic());
+				promoted.setEnabled(old.isEnabled());
+				promoted.setToolTipText(old.getToolTipText());
+				promoted.setIcon(old.getIcon());
+
+				// Attempt to preserve listeners and action command.
+				promoted.setActionCommand(old.getActionCommand());
+				for (java.awt.event.ActionListener l : old.getActionListeners()) {
+					promoted.addActionListener(l);
+				}
+
+				menuValue = promoted;
+				subItems = new TreeMap<Integer, MenuManager>();
+			}
+
+			if (subItems == null) {
+				if (menuValue == null || menuValue instanceof JMenu) {
+					subItems = new TreeMap<Integer, MenuManager>();
+				} else {
+					throw new IllegalStateException("Cannot add menu item to non-menu parent: " + menuValue);
+				}
+			}
 			if (subItems.containsKey(where)) { return addMenuItem(menu, where + 1); }
 			subItems.put(where, new MenuManager(menu));
 			return where;
