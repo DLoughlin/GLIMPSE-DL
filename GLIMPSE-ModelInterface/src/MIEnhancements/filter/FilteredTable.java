@@ -519,7 +519,7 @@ public class FilteredTable {
     public static String toSigFigs(double value, int significantDigits) {
         if (significantDigits < 0) throw new IllegalArgumentException();
         // If the global toggle disables significant digits, show raw values.
-        if (DbViewer.disable3Digits) {
+        if (DbViewer.disableSigDigits) {
             return Double.toString(value);
         }
 

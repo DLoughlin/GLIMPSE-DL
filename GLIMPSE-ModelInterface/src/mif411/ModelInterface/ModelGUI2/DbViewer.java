@@ -210,7 +210,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	private JScrollPane listScrollRegions;
 	private JScrollPane listScrollQueries;
 	public static boolean queryTreeLocked = true;
-	public static boolean disable3Digits = false;
+	public static boolean disableSigDigits = false;
 	public static boolean enableUnitConversions = true;
 
 	public static final String SCENARIO_LIST_NAME = "scenario list";
@@ -576,7 +576,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	 * Adds view menu items to the application's menu manager.
 	 * <p>
 	 * This method sets up the view-related menu items such as "Close All Tabs",
-	 * "Close All Windows", "Disable 3 Significant Digits", "Disable Unit
+	 * "Close All Windows", "Disable Significant Digits", "Disable Unit
 	 * Conversions", and "Select Years" in the application's menu bar. It also
 	 * configures their action listeners and enables/disables them based on the
 	 * application's state.
@@ -598,7 +598,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addSeparator(3);
 
 		// Significant Digits Toggle
-		significantDigitsMenu = new JMenuItem("Disable 3 Significant Digits");
+		significantDigitsMenu = new JMenuItem("Disable Significant Digits");
 		significantDigitsMenu.addActionListener(this);
 		significantDigitsMenu.setEnabled(true);
 		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addMenuItem(significantDigitsMenu, 10);
@@ -757,11 +757,11 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		case "Save As":
 			handleSaveAs();
 			break;
-		case "Disable 3 Significant Digits":
-			handleDisable3Digits();
+		case "Disable Significant Digits":
+			handleDisableSigDigits();
 			break;
-		case "Enable 3 Significant Digits":
-			handleEnable3Digits();
+		case "Enable Significant Digits":
+			handleEnableSigDigits();
 			break;
 		case "Disable Unit Conversions":
 			handleDisableUnitConversions();
@@ -993,23 +993,21 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	}
 
 	/**
-	 * Handles the "Disable 3 Significant Digits" action. Updates the menu item and
-	 * sets the flag to disable formatting to 3 significant digits.
+	 * Handles the "Disable Significant Digits" action. Updates the menu item and
+	 * sets the flag to disable formatting to specific number of significant digits.
 	 */
-	private void handleDisable3Digits() {
-		significantDigitsMenu.setText("Enable 3 Significant Digits");
-		disable3Digits = true;
-		// TODO: add method to disable using 3 significant digits in the table
+	private void handleDisableSigDigits() {
+		significantDigitsMenu.setText("Enable Significant Digits");
+		disableSigDigits = true;
 	}
 
 	/**
-	 * Handles the "Enable 3 Significant Digits" action. Updates the menu item and
+	 * Handles the "Enable Significant Digits" action. Updates the menu item and
 	 * sets the flag to enable formatting to 3 significant digits.
 	 */
-	private void handleEnable3Digits() {
-		significantDigitsMenu.setText("Disable 3 Significant Digits");
-		disable3Digits = false;
-		// TODO: add method to enable using 3 significant digits in the table
+	private void handleEnableSigDigits() {
+		significantDigitsMenu.setText("Disable Significant Digits");
+		disableSigDigits = false;
 	}
 
 	/**
@@ -1019,7 +1017,6 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	private void handleDisableUnitConversions() {
 		enableUnitConversionsMenu.setText("Enable Unit Conversions");
 		enableUnitConversions = false;
-		// TODO: add method to disable unit conversions
 	}
 
 	/**

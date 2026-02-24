@@ -105,7 +105,7 @@ import java.awt.Font;
 import java.awt.Color;
 
 public class InterfaceMain implements ActionListener {
-	private static final Font UNIFIED_FONT = new Font("Segoe UI", Font.PLAIN, 14);
+	// Use platform Look & Feel defaults for fonts (do not force a unified size).
 	private static final Color UNIFIED_BG = new Color(245, 245, 250); // Soft background
 	private static final Color UNIFIED_PANEL_BG = new Color(255, 255, 255); // Panel background
 	private static final Color UNIFIED_BTN_BG = new Color(230, 235, 245); // Button background
@@ -140,7 +140,8 @@ public class InterfaceMain implements ActionListener {
 	public static final int VIEW_MENU_POS = 2;
 	
 	public static final int TOOLS_MENU_POS = 90; // YD added
-	public static final int TOOLS_SUBMENU1_POS = 0; // YD added
+	// Legacy name used by DbViewer to locate the Edit -> Query Tree submenu.
+	public static final int TOOLS_SUBMENU1_POS = 2; // alias of EDIT_QUERY_SUBMENU_POS
 	public static final int TOOLS_SUBMENU15_POS = 2; // YD added
 	public static final int TOOLS_SUBMENU2_POS = 5; // YD added
 	public static final int QUERIES_UNDO_MENUITEM_POS = 25; // YD added
@@ -154,10 +155,9 @@ public class InterfaceMain implements ActionListener {
 	public static final int QUERIES_SAVE_MENUITEM_POS = 35; // YD changed
 	public static final int QUERIES_SAVEAS_MENUITEM_POS = 40; // YD changed
 
-	public static final int EDIT_QUERY_SUBMENU_POS = 18; // YD added
+	public static final int EDIT_QUERY_SUBMENU_POS = 2; // Edit -> Query Tree submenu position
 	// Favorites submenu under Edit (used by DbViewer to register favorite query actions)
-	
-	public static final int EDIT_FAVORITES_SUBMENU_POS = 4;
+	public static final int EDIT_FAVORITES_SUBMENU_POS = 3;
 	public static final int EDIT_COPY_MENUITEM_POS = 10;
 	public static final int EDIT_PASTE_MENUITEM_POS = 11;
 	
@@ -667,7 +667,7 @@ public class InterfaceMain implements ActionListener {
 		String image_str = ".\\results.png";
 		main.mainFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(image_str));
 		main.mainFrame.getContentPane().setBackground(UNIFIED_BG);
-		main.mainFrame.getContentPane().setFont(UNIFIED_FONT);
+		// Do not override default fonts; let the platform Look & Feel decide.
 		main.mainFrame.getRootPane().setBorder(javax.swing.BorderFactory.createLineBorder(UNIFIED_BORDER, 1));
 		if (Boolean.parseBoolean(main.savedProperties.getProperty("isMaximized", "false"))) {
 			main.mainFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
@@ -817,23 +817,7 @@ public class InterfaceMain implements ActionListener {
 		addMenuItems(menuMan);
 		addMenuAdderMenuItems(menuMan);
 		finalizeMenu(menuMan);
-		// Set font for menu bar and items
-		JMenuBar menuBar = mainFrame.getJMenuBar();
-		if (menuBar != null) {
-			menuBar.setFont(UNIFIED_FONT);
-			for (int i = 0; i < menuBar.getMenuCount(); i++) {
-				JMenu menu = menuBar.getMenu(i);
-				if (menu != null) {
-					menu.setFont(UNIFIED_FONT);
-					for (int j = 0; j < menu.getItemCount(); j++) {
-						JMenuItem item = menu.getItem(j);
-						if (item != null) {
-							item.setFont(UNIFIED_FONT);
-						}
-					}
-				}
-			}
-		}
+		// Do not force fonts for the menu bar/items; use platform Look & Feel defaults.
 		// if path to DB was provided, dispatch to DBViewer to open database
 //		  if (path != null) fireControlChange("DbViewer");		 
 	}
@@ -879,26 +863,32 @@ public class InterfaceMain implements ActionListener {
 		menuMan.addMenuItem(editMenu, EDIT_MENU_POS);
 		MenuManager editMM = menuMan.getSubMenuManager(EDIT_MENU_POS);
 
+		// 1) Query File
 		editQueryFileMenu = makeMenuItem("Query File");
 		editQueryFileMenu.setActionCommand("Edit Queries File");
-		editMM.addMenuItem(editQueryFileMenu, 2);
-		editMM.addSeparator(3);
+		editMM.addMenuItem(editQueryFileMenu, 0);
 
-//		// Ensure Edit -> Query Tree submenu exists (DbViewer will populate it)
-//		if (editMM.getSubMenuManager(1) == null) {
-//			editMM.addMenuItem(new JMenu("Query Tree"), 1);
-//		}
+		// 2) Separator
+		editMM.addSeparator(1);
 
-		// Create "Favorites List" submenu under Edit; DbViewer will populate with actions.
-		if (editMM.getSubMenuManager(3) == null) {
-			editMM.addMenuItem(new JMenu("Favorites List"), 3);
+		// 3) Query Tree submenu (DbViewer will populate it)
+		if (editMM.getSubMenuManager(EDIT_QUERY_SUBMENU_POS) == null) {
+			editMM.addMenuItem(new JMenu("Query Tree"), EDIT_QUERY_SUBMENU_POS);
 		}
 
-		editMM.addSeparator(4);
+		// 4) Favorites List submenu (DbViewer will populate it)
+		if (editMM.getSubMenuManager(EDIT_FAVORITES_SUBMENU_POS) == null) {
+			editMM.addMenuItem(new JMenu("Favorites List"), EDIT_FAVORITES_SUBMENU_POS);
+		}
+
+		// 5) Separator
+		editMM.addSeparator(5);
+
+		// 6) Preferences...
 		JMenuItem setPreferences = new JMenuItem("Preferences...");
 		setPreferences.setMnemonic(KeyEvent.VK_P);
 		setPreferences.addActionListener(this);
-		editMM.addMenuItem(setPreferences, 5);
+		editMM.addMenuItem(setPreferences, 6);
 	}
 
 	private void addViewMenu(MenuManager menuMan) {
@@ -1029,20 +1019,7 @@ public class InterfaceMain implements ActionListener {
 
 	private void finalizeMenu(MenuManager menuMan) {
 		JMenuBar mb = menuMan.createMenu();
-		// Keep system Look & Feel colors; avoid forcing custom colors
-		mb.setFont(UNIFIED_FONT);
-		for (int i = 0; i < mb.getMenuCount(); i++) {
-			JMenu menu = mb.getMenu(i);
-			if (menu != null) {
-				menu.setFont(UNIFIED_FONT);
-				for (int j = 0; j < menu.getItemCount(); j++) {
-					JMenuItem item = menu.getItem(j);
-					if (item != null) {
-						item.setFont(UNIFIED_FONT);
-					}
-				}
-			}
-		}
+		// Keep system Look & Feel defaults for fonts/colors.
 		mainFrame.setJMenuBar(mb);
 	}
 

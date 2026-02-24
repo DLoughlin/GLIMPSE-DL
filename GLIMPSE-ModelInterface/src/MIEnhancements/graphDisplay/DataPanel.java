@@ -54,6 +54,7 @@ import org.jfree.chart.LegendItemCollection;
 import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.data.xy.XYDataset;
 
+import ModelInterface.InterfaceMain;
 import ModelInterface.ModelGUI2.DbViewer;
 import chart.Chart;
 import conversionUtil.ArrayConversion;
@@ -171,20 +172,47 @@ public class DataPanel extends JPanel implements ListSelectionListener {
 	}
 
 	/**
+	 * Read the significant digits preference from properties (Preferences dialog).
+	 * Falls back to defaultDigits if missing/invalid.
+	 */
+	protected int getPreferredSignificantDigits(int defaultDigits) {
+		int ret = defaultDigits;
+		try {
+			if (InterfaceMain.getInstance() != null) {
+				String pref = InterfaceMain.getInstance().getProperties().getProperty("significantDigits",
+						String.valueOf(defaultDigits));
+				if (pref != null) {
+					pref = pref.trim();
+					// Preferences currently supports 2/3/5; be permissive in case properties file is edited.
+					int parsed = Integer.parseInt(pref);
+					if (parsed > 0) {
+						ret = parsed;
+					}
+				}
+			}
+		} catch (Exception ignored) {
+			// use defaultDigits
+		}
+		return ret;
+	}
+
+	/**
 	 * Populate table with category dataset values, rounding as needed.
 	 * @param cds Array of DefaultCategoryDataset
 	 * @param n Number of digits to round to
 	 */
 	public void setDigit(DefaultCategoryDataset[] cds, int n) {
+		// If caller passes a positive n we will still honor the user preference (keeps UI consistent).
+		final int digits = getPreferredSignificantDigits(n > 0 ? n : 3);
 		int r = cds[0].getRowCount();
 		int c = cds[0].getColumnCount();
 
 		for (int i = 0; i < r; i++) {
 			for (int j = 0; j < c; j++) {
-				if (n > 0 && !DbViewer.disable3Digits) {
-					dataValue[i][j + 1] = String
-							.valueOf(conversionUtil.DataConversion.roundDouble(cds[0].getValue(i, j).doubleValue(), n));
-				}else {
+				if (digits > 0 && !DbViewer.disableSigDigits) {
+					dataValue[i][j + 1] = String.valueOf(
+							conversionUtil.DataConversion.roundDouble(cds[0].getValue(i, j).doubleValue(), digits));
+				} else {
 					dataValue[i][j + 1] = String.valueOf(cds[0].getValue(i, j));
 				}
 			}
@@ -196,17 +224,17 @@ public class DataPanel extends JPanel implements ListSelectionListener {
 				String[] temp = new String[cds[k].getColumnCount()];
 				for (int j = 0; j < cds[k].getColumnCount(); j++) {
 					if (addRow) {
-						if (n > 0 && !DbViewer.disable3Digits) {
-							dataValue[r + i][j + 1] = String.valueOf(
-									conversionUtil.DataConversion.roundDouble(cds[k].getValue(i, j).doubleValue(), n));
-						}else {
+						if (digits > 0 && !DbViewer.disableSigDigits) {
+							dataValue[r + i][j + 1] = String.valueOf(conversionUtil.DataConversion
+									.roundDouble(cds[k].getValue(i, j).doubleValue(), digits));
+						} else {
 							dataValue[r + i][j + 1] = String.valueOf(Math.round((double) cds[k].getValue(i, j)));
 						}
 					} else {
-						if (n > 0 && !DbViewer.disable3Digits) {
-							temp[j] = String.valueOf(
-									conversionUtil.DataConversion.roundDouble(cds[k].getValue(i, j).doubleValue(), n));
-						}else {
+						if (digits > 0 && !DbViewer.disableSigDigits) {
+							temp[j] = String.valueOf(conversionUtil.DataConversion
+									.roundDouble(cds[k].getValue(i, j).doubleValue(), digits));
+						} else {
 							temp[j] = String.valueOf(Math.round((double) cds[k].getValue(i, j)));
 						}
 					}
@@ -215,16 +243,15 @@ public class DataPanel extends JPanel implements ListSelectionListener {
 					tranDataValue[i + 1 + c] = temp;
 				}
 			}
-		
+
 			if (addRow) {
 				r += cds[k].getRowCount();
-			}
-			else {
+			} else {
 				c += cds[k].getRowCount();
 			}
-		
+
 		}
-		
+
 		if (!addRow) {
 			dataValue = ArrayConversion.arrayDimReverse(tranDataValue);
 		}
@@ -265,13 +292,19 @@ public class DataPanel extends JPanel implements ListSelectionListener {
 	 * @param n Number of digits to round to
 	 */
 	public void setDigit(XYDataset ds, int n) {
+		final int digits = getPreferredSignificantDigits(n > 0 ? n : 3);
 		int l = 0;
 		for (int k = 0; k < copyChart[id].getXYPlot().getDatasetCount(); k++) {
 			ds = copyChart[id].getXYPlot().getDataset(k);
 			for (int i = 0; i < ds.getSeriesCount(); i++) {
-				for (int j = 0; j < ds.getItemCount(i); j++)
-					dataValue[l + i][j + 1] = String
-							.valueOf(conversionUtil.DataConversion.roundDouble(ds.getYValue(i, j), n));
+				for (int j = 0; j < ds.getItemCount(i); j++) {
+					if (digits > 0 && !DbViewer.disableSigDigits) {
+						dataValue[l + i][j + 1] = String
+								.valueOf(conversionUtil.DataConversion.roundDouble(ds.getYValue(i, j), digits));
+					} else {
+						dataValue[l + i][j + 1] = String.valueOf(ds.getYValue(i, j));
+					}
+				}
 
 			}
 			l += ds.getSeriesCount();

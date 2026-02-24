@@ -75,7 +75,9 @@ public class AboutDialog extends JDialog implements MenuAdder, ActionListener {
      * display in the About dialog.
      */
     public AboutDialog() {
-        super(InterfaceMain.getInstance().getFrame(), "About");
+        super(InterfaceMain.getInstance().getFrame(), "About", true);
+		setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
+		setAlwaysOnTop(true);
 
 		JPanel all = new JPanel();
 		all.setLayout( new BoxLayout(all, BoxLayout.Y_AXIS));
@@ -93,6 +95,7 @@ public class AboutDialog extends JDialog implements MenuAdder, ActionListener {
 		all.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 		contentPane.add(all, BorderLayout.PAGE_START);
 		pack();
+		setLocationRelativeTo(InterfaceMain.getInstance().getFrame());
     }
 
 	/**
@@ -118,7 +121,11 @@ public class AboutDialog extends JDialog implements MenuAdder, ActionListener {
         if(e.getActionCommand() == CLOSE_COMMAND) {
             setVisible(false);
         } else {
-            setVisible(true);
+			// Ensure it shows in front of the main window.
+			setLocationRelativeTo(InterfaceMain.getInstance().getFrame());
+			setVisible(true);
+			toFront();
+			repaint();
         }
     }
 }
