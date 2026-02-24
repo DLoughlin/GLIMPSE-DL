@@ -776,7 +776,7 @@ public class PaneNewScenarioComponent extends gui.ScenarioBuilder {
 	 * @param text The button label
 	 * @return A new Button instance
 	 */
-	private Button createDialogButton(String text) {
+	protected Button createDialogButton(String text) {
 		return utils.createButton(text, styles.getBigButtonWidth(), null);
 	}
 }

@@ -71,7 +71,7 @@ public class CsvToXmlWidget {
 	public void csvToXmlWidget() {
 		System.out.println("Created CSV to XML Widget");
 	}
-	
+
 	public void createAndShow() {
 		String title="CSV to XML Converter";
 
@@ -80,6 +80,7 @@ public class CsvToXmlWidget {
 		//stage.setWidth(200);
 		//stage.setHeight(100);
 		Scene scene = new Scene(new Group());
+		gui.ScenarioBuilder.applyModernTheme(scene);
 		//stage.setResizable(false);
 		
 		Label topLabel=utils.createLabel("Input files:");

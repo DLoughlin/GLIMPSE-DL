@@ -121,7 +121,8 @@ class PaneCreateScenario extends ScenarioBuilder {
     private static final String WARNING_INVALID_NAME = "Please specify a name for the scenario. The name should not include any of these special characters: [! @#$%&*()+=|<>?{}[]~]\\//";
     private static final String DIALOG_TITLE_CREATE = "Creating Scenario";
     private static final int DIALOG_HEIGHT = 550;
-    private static final int DIALOG_WIDTH = 400;
+    // Make the Creating Scenario dialog about 50% wider than before
+    private static final int DIALOG_WIDTH = 600;
     private static final String META_DATA_HEADER = "##################### Scenario Meta Data #####################";
     private static final String META_DATA_SEPARATOR = "###############################################################";
     private static final String COMPONENTS_HEADER = "Components:";
@@ -638,17 +639,16 @@ class PaneCreateScenario extends ScenarioBuilder {
         grid.add(textArea, 0, 9, 2, 1);
 
         // Dialog stage and scene
-        Stage stage = new Stage();
-        stage.setTitle(DIALOG_TITLE_CREATE);
-        stage.setWidth(DIALOG_WIDTH);
-        stage.setHeight(DIALOG_HEIGHT);
+        Stage stage = createDialogStage(DIALOG_TITLE_CREATE, DIALOG_WIDTH, DIALOG_HEIGHT);
         Scene scene = new Scene(new Group());
-        stage.setResizable(false);
-        stage.setAlwaysOnTop(true);
 
+        // Ensure dialog uses the same modern theme as the main app
+        applyModernTheme(scene);
+
+        // Use centralized dialog button creation to match New Scenario Component Creator look-and-feel
         // OK and Cancel buttons
-        Button okButton = utils.createButton("OK", styles.getBigButtonWidth(), null);
-        Button cancelButton = utils.createButton("Cancel", styles.getBigButtonWidth(), null);
+        Button okButton = createDialogButton("OK");
+        Button cancelButton = createDialogButton("Cancel");
         okButton.setOnAction(e -> {
             String isSelected = "false";
             if (createDebugCheckBox.isSelected()) isSelected = "true";

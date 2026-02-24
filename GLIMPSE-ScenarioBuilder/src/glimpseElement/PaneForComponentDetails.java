@@ -166,11 +166,51 @@ public class PaneForComponentDetails extends VBox {
         // Use centralized small top padding
         inputHBox.setPadding(styles.getSmallTopPadding());
 
+        // Initially disable Add until both fields contain text
+        buttonAdd.setDisable(true);
+
+        // Enable Add only when both text fields have non-empty trimmed text
+        textFieldYear.textProperty().addListener((obs, oldV, newV) -> {
+            boolean disable = textFieldYear.getText() == null || textFieldYear.getText().trim().isEmpty()
+                    || textFieldValue.getText() == null || textFieldValue.getText().trim().isEmpty();
+            buttonAdd.setDisable(disable);
+        });
+        textFieldValue.textProperty().addListener((obs, oldV, newV) -> {
+            boolean disable = textFieldYear.getText() == null || textFieldYear.getText().trim().isEmpty()
+                    || textFieldValue.getText() == null || textFieldValue.getText().trim().isEmpty();
+            buttonAdd.setDisable(disable);
+        });
+
+        // Allow pressing Enter in either field to trigger Add when enabled
+        textFieldYear.setOnAction(e -> {
+            if (!buttonAdd.isDisabled())
+                buttonAdd.fire();
+        });
+        textFieldValue.setOnAction(e -> {
+            if (!buttonAdd.isDisabled())
+                buttonAdd.fire();
+        });
+
         // Add button action: add new DataPoint if valid
         buttonAdd.setOnAction(e -> {
-            DataPoint dp = new DataPoint(textFieldYear.getText(), textFieldValue.getText());
-            if (dp.qaDataPoint(enforceYrValPair))
+            // If either input field is empty do nothing
+            if (textFieldYear.getText() == null || textFieldYear.getText().trim().isEmpty()
+                    || textFieldValue.getText() == null || textFieldValue.getText().trim().isEmpty()) {
+                return;
+            }
+            // Trim inputs before creating the DataPoint
+            String year = textFieldYear.getText().trim();
+            String value = textFieldValue.getText().trim();
+            DataPoint dp = new DataPoint(year, value);
+            if (dp.qaDataPoint(enforceYrValPair)){
                 data.add(dp);
+                // clear fields and disable Add until new input is provided
+                textFieldYear.clear();
+                textFieldValue.clear();
+                buttonAdd.setDisable(true);
+                // move focus back to the Year field
+                textFieldYear.requestFocus();
+            }
         });
 
         this.getChildren().addAll(table, inputHBox);

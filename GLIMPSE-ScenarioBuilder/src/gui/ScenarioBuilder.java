@@ -67,6 +67,9 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Optional;
 import java.util.stream.Stream;
+import javafx.scene.Scene;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 
 /**
  * ScenarioBuilder is responsible for constructing the main user interface and core logic for the GLIMPSE Scenario Builder application.
@@ -136,6 +139,9 @@ public class ScenarioBuilder {
 	protected final GLIMPSEStyles styles = GLIMPSEStyles.getInstance();
 	protected final GLIMPSEFiles files = GLIMPSEFiles.getInstance();
 	protected final GLIMPSEUtils utils = GLIMPSEUtils.getInstance();
+
+	/** Default CSS resource used for the modern look and feel. */
+	protected static final String MODERN_CSS_RESOURCE = "/resources/modern.css";
 
 	/**
 	 * Returns the singleton instance of ScenarioBuilder.
@@ -541,5 +547,55 @@ public class ScenarioBuilder {
 		if (Client.paneScenarioLibrary != null) {
 			Client.paneScenarioLibrary.updateRunStatus();
 		}
+	}
+
+	/**
+	 * Applies the application's modern stylesheet to the provided Scene (if available).
+	 *
+	 * @param scene Scene to style
+	 */
+	public static void applyModernTheme(Scene scene) {
+		if (scene == null)
+			return;
+		try {
+			java.net.URL cssUrl = ScenarioBuilder.class.getResource(MODERN_CSS_RESOURCE);
+			if (cssUrl != null) {
+				String css = cssUrl.toExternalForm();
+				if (!scene.getStylesheets().contains(css)) {
+					scene.getStylesheets().add(css);
+				}
+			}
+		} catch (Exception ex) {
+			// ignore stylesheet load failures and fall back to default styles
+		}
+	}
+
+	/**
+	 * Creates and returns a dialog Stage configured with standardized styling and modality.
+	 *
+	 * @param title  dialog title
+	 * @param width  preferred width
+	 * @param height preferred height
+	 * @return configured Stage
+	 */
+	protected Stage createDialogStage(String title, int width, int height) {
+		Stage stage = new Stage();
+		stage.setTitle(title);
+		stage.setWidth(width);
+		stage.setHeight(height);
+		stage.initModality(Modality.APPLICATION_MODAL);
+		stage.setResizable(false);
+		stage.setAlwaysOnTop(true);
+		return stage;
+	}
+
+	/**
+	 * Wrapper for creating dialog buttons with the application's standard size/style.
+	 *
+	 * @param text button label
+	 * @return styled Button
+	 */
+	protected javafx.scene.control.Button createDialogButton(String text) {
+		return utils.createButton(text, styles.getBigButtonWidth(), null);
 	}
 }
