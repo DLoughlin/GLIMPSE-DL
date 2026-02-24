@@ -529,14 +529,18 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 					if (evt.getOldValue().equals(controlStr) || evt.getOldValue().equals(controlStr + "Same")) {
 						menuManage.setEnabled(false);
 						JMenuItem batchMenu = main.getBatchMenu();
-						batchMenu.removeActionListener(thisListener);
-						batchMenu.addActionListener(main);
+						if(batchMenu != null) {
+							batchMenu.removeActionListener(thisListener);
+							batchMenu.addActionListener(main);
+						}
 					}
 					if (evt.getNewValue().equals(controlStr)) {
 						menuManage.setEnabled(true);
 						JMenuItem batchMenu = main.getBatchMenu();
-						batchMenu.removeActionListener(main);
-						batchMenu.addActionListener(thisListener);
+						if(batchMenu != null) {
+							batchMenu.removeActionListener(main);
+							batchMenu.addActionListener(thisListener);
+						}
 					}
 				}
 			}
@@ -606,7 +610,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addMenuItem(enableUnitConversionsMenu, 11);
 
 		// Select Years
-		JMenuItem yearsMn = new JMenuItem("Select Years");
+		JMenuItem yearsMn = new JMenuItem("Select Years to Show");
 		yearsMn.addActionListener(e -> new FilterTreePaneYears());
 		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addSeparator(20);
 		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addMenuItem(yearsMn, 21);

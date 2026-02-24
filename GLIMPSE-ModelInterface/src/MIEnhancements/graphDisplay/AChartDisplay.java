@@ -232,10 +232,15 @@ public class AChartDisplay {
 				if (jfreechart.getCategoryPlot().getDataset() instanceof DefaultBoxAndWhiskerCategoryDataset) {
 					dataPane = new BoxAndWhiskerDataPane(jfreechart);
 				} else {
-					if (charts == null)
-						dataPane = new CategoryDatasetDataPane(jfreechart);
-					else
+					// Always use the units-aware constructor when we have a Chart instance,
+					// regardless of whether this display was opened from a thumbnail array.
+					// The prior logic only passed unitLookup when charts != null, which caused
+					// the units column to be blank in the expanded view in some cases.
+					if (unitLookup != null) {
 						dataPane = new CategoryDatasetDataPane(charts, id, unitLookup);
+					} else {
+						dataPane = new CategoryDatasetDataPane(jfreechart);
+					}
 				}
 			} else if (jfreechart.getPlot().getPlotType().contains("XY")) {
 				if (charts == null)

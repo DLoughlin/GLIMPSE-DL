@@ -213,11 +213,16 @@ public class FilteredTable {
         graphButton.addActionListener(e -> {
                 if (debug)
                     System.out.println("FilteredTable: graph press: " + chartName + " " + Arrays.toString(unit) + " " + path + " " + doubleIndex + " " + jtable.getColumnCount() + "  " + jtable.getRowCount());
-                if (tn == null) {
-                    Map<String, Integer[]> metaMap = ModelInterfaceUtil.getMetaIndex2(jtable, doubleIndex);
-                    HashMap<String, String> unitsMap = ModelInterfaceUtil.getUnitDataFromTableByLastNamedCol(jTable);
-                    tn = new Thumbnail(chartName, unit, path, doubleIndex, jtable, metaMap, sp, unitsMap);
-                }
+
+                // Always regenerate thumbnails when the user clicks Graph.
+                // Previously, thumbnails were cached in 'tn' and repeat clicks were a no-op.
+                tn = null;
+                System.gc();
+
+                Map<String, Integer[]> metaMap = ModelInterfaceUtil.getMetaIndex2(jtable, doubleIndex);
+                HashMap<String, String> unitsMap = ModelInterfaceUtil.getUnitDataFromTableByLastNamedCol(jTable);
+                tn = new Thumbnail(chartName, unit, path, doubleIndex, jtable, metaMap, sp, unitsMap);
+
                 JPanel graphPanel = tn.getJp();
                 if (graphPanel != null)
                     setRightComponent(graphPanel);
@@ -518,9 +523,28 @@ public class FilteredTable {
      */
     public static String toSigFigs(double value, int significantDigits) {
         if (significantDigits < 0) throw new IllegalArgumentException();
+        // If the global toggle disables significant digits, show raw values.
         if (DbViewer.disable3Digits) {
             return Double.toString(value);
         }
+
+        // Honor user preference from Preferences dialog when available.
+        // The sig-fig argument is kept for backward compatibility (callers currently pass 3).
+        int sigDigitsToUse = significantDigits;
+        try {
+            if (InterfaceMain.getInstance() != null) {
+                String pref = InterfaceMain.getInstance().getProperties().getProperty("significantDigits", "3");
+                if (pref != null) {
+                    pref = pref.trim();
+                    if (pref.equals("2") || pref.equals("3") || pref.equals("5")) {
+                        sigDigitsToUse = Integer.parseInt(pref);
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+            // Ignore and use the provided significantDigits.
+        }
+
         BigDecimal bd;
         try {
             bd = new BigDecimal(value, MathContext.DECIMAL64);
@@ -528,10 +552,10 @@ public class FilteredTable {
             bd = new BigDecimal(0.0);
             System.out.println("Could not create Decimal: " + e.toString());
         }
-        bd = bd.round(new MathContext(significantDigits, RoundingMode.HALF_UP));
+        bd = bd.round(new MathContext(sigDigitsToUse, RoundingMode.HALF_UP));
         final int precision = bd.precision();
-        if (precision < significantDigits)
-            bd = bd.setScale(bd.scale() + (significantDigits - precision));
+        if (precision < sigDigitsToUse)
+            bd = bd.setScale(bd.scale() + (sigDigitsToUse - precision));
         return bd.toPlainString();
     }
 
