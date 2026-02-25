@@ -37,10 +37,12 @@ package glimpseBuilder;
 
 import java.io.File;
 import java.util.Date;
+import java.util.Objects;
 
 import javafx.event.EventHandler;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.Tooltip;
 import javafx.scene.input.MouseEvent;
@@ -96,6 +98,60 @@ public class SetupTableScenariosLibrary {
 		ScenarioTable.tableScenariosLibrary.getColumns().addAll(scenNameCol, createdCol, /*startedCol,*/ completedCol, statusCol,unsolvedMarketsCol,runtimeCol);
 		ScenarioTable.tableScenariosLibrary.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
+		// Show tooltip for the row currently being hovered (no selection required)
+		ScenarioTable.tableScenariosLibrary.setRowFactory(tv -> {
+			TableRow<ScenarioRow> row = new TableRow<>();
+			row.setOnMouseEntered(e -> {
+				ScenarioRow item = row.getItem();
+				if (item == null) {
+					row.setTooltip(null);
+					return;
+				}
+
+				String scenarioName = item.getScenarioName();
+				String databaseName = "";
+				try {
+					String configFilename = vars.getScenarioDir() + File.separator + scenarioName + File.separator
+							+ "configuration_" + scenarioName + ".xml";
+					File configFile = new File(configFilename);
+					if (configFile.exists()) {
+						String databaseLine = files.searchForTextInFileS(configFile, "xmldb-location", "#");
+						databaseName = utils.getStringBetweenCharSequences(databaseLine, ">", "</");
+						if (databaseName == null) databaseName = "";
+						databaseName = databaseName.trim();
+					}
+				} catch (Exception ex) {
+					// keep tooltip functional even if config parsing fails
+					databaseName = "";
+				}
+
+				String components = item.getComponents();
+				String componentsFormatted = (components == null) ? "" : components.replace(";", vars.getEol()).trim();
+
+				if (databaseName.isEmpty() && componentsFormatted.isEmpty()) {
+					row.setTooltip(null);
+					return;
+				}
+
+				String eol = vars.getEol();
+				String sep = "----------------------------------------";
+				String tt = "";
+				if (!databaseName.isEmpty()) {
+					tt += "Database: " + databaseName;
+				}
+				if (!componentsFormatted.isEmpty()) {
+					if (!tt.isEmpty()) {
+						tt += eol + sep + eol;
+					}
+					tt += componentsFormatted;
+				}
+
+				row.setTooltip(new Tooltip(tt));
+			});
+			row.setOnMouseExited(e -> row.setTooltip(null));
+			return row;
+		});
+
 		ScenarioTable.tableScenariosLibrary.setOnMousePressed(new EventHandler<MouseEvent>() {
 			@Override
 			public void handle(MouseEvent event) {
@@ -106,45 +162,8 @@ public class SetupTableScenariosLibrary {
 							+ File.separator+"configuration_" + mfr.getScenarioName() + ".xml";
 
 					files.showFileInXmlEditor(filename);
-					
-//					try {
-//						String cmd = vars.getXmlEditor()) + " " + filename;
-//
-//						java.lang.Runtime rt = java.lang.Runtime.getRuntime();
-//						@SuppressWarnings("unused")
-//						java.lang.Process p = rt.exec(cmd);
-//					} catch (Exception e) {
-//						System.out.println("Could not use xml editor specified in options file. Using system default.");
-//						try {
-//							File file=new File(filename);
-//							java.awt.Desktop.getDesktop().edit(file);
-//						} catch (Exception e1) {						
-//							utils.warningMessage("Problem trying to open file with editor.");
-//							System.out.println("Error trying to open file to view with editor.");
-//							System.out.println("   file: " + filename);
-//							System.out.println("   editor: " + vars.getTextEditor());
-//							System.out.println("Error: " + e);
-//						}
-//					}
-					//String componentList=mfr.getComponents().replace(";",vars.getEol());
-					//ScenarioTable.tableRunScenarios.setTooltip(new Tooltip(componentList));
 				}
-
-				if (event.isPrimaryButtonDown()) {
-					ScenarioRow mfr = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItem();
-					
-					if (ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedCells().size()==1) {
-						String componentList=mfr.getComponents().replace(";",vars.getEol());
-						ScenarioTable.tableScenariosLibrary.setTooltip(new Tooltip(componentList));	
-					} else {
-						ScenarioTable.tableScenariosLibrary.setTooltip(null);
-					}
-					
-					
-					
-				}
-				
-
+				// Tooltip is handled by row hover (rowFactory). No selection-based tooltip here.
 			}
 		});
 
