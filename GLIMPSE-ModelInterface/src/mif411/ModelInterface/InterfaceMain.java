@@ -664,7 +664,7 @@ public class InterfaceMain implements ActionListener {
 		main = null;
 		main = new InterfaceMain();
 		main.mainFrame = new JFrame("Model Interface");
-		String image_str = ".\\results.png";
+		String image_str = "./config/results.png";
 		main.mainFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(image_str));
 		main.mainFrame.getContentPane().setBackground(UNIFIED_BG);
 		// Do not override default fonts; let the platform Look & Feel decide.
