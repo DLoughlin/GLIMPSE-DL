@@ -53,8 +53,15 @@ import javax.xml.transform.stream.StreamResult;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+
+// Added for optional fallback pretty printer
+import org.w3c.dom.bootstrap.DOMImplementationRegistry;
+import org.w3c.dom.ls.DOMImplementationLS;
+import org.w3c.dom.ls.LSOutput;
+import org.w3c.dom.ls.LSSerializer;
 
 public class XMLModifier {
 
@@ -83,18 +90,115 @@ public class XMLModifier {
 	}
 
 	public static void writeXmlDocument(Document doc, String filename) {
+		writeXmlDocument(doc, filename, 4);
+	}
+
+	/**
+	 * Writes an XML document to a file with pretty-print indentation.
+	 * Note: indentation behavior can vary across JRE transformer implementations.
+	 */
+	public static void writeXmlDocument(Document doc, String filename, int indentSpaces) {
 		try {
+			// IMPORTANT:
+			// If the document was parsed from an already-indented XML, the DOM typically contains
+			// whitespace-only text nodes ("\n  "), and most serializers/transformers will preserve
+			// those nodes instead of re-indenting. Remove them first so pretty-print can take effect.
+			stripWhitespaceOnlyTextNodes(doc);
 			doc.getDocumentElement().normalize();
-			TransformerFactory transformerFactory = TransformerFactory.newInstance();
-			Transformer transformer = transformerFactory.newTransformer();
-			DOMSource source = new DOMSource(doc);
-			StreamResult result = new StreamResult(new File(filename));
-			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-			transformer.transform(source, result);
-			System.out.println("XML file updated successfully"); System.out.println("---");
+
+			// First attempt: JAXP Transformer pretty-print
+			boolean wrote = tryWriteWithTransformer(doc, new File(filename), indentSpaces);
+			if (!wrote) {
+				// Fallback: DOM Load/Save serializer pretty-print (often succeeds when Transformer ignores indentation)
+				tryWriteWithLSSerializer(doc, new File(filename), indentSpaces);
+			}
+
+			System.out.println("XML file updated successfully");
+			System.out.println("---");
 		} catch (Exception e) {
 			System.out.println("Error updating XML file: " + e);
 		}
+	}
+
+	/**
+	 * Removes whitespace-only text nodes from the DOM. These nodes are commonly introduced
+	 * when parsing pretty-printed XML and can prevent re-indentation on write.
+	 */
+	private static void stripWhitespaceOnlyTextNodes(Node node) {
+		if (node == null) return;
+
+		Node child = node.getFirstChild();
+		while (child != null) {
+			Node next = child.getNextSibling();
+			switch (child.getNodeType()) {
+				case Node.TEXT_NODE:
+					if (child.getTextContent() != null && child.getTextContent().trim().isEmpty()) {
+						node.removeChild(child);
+					}
+					break;
+				case Node.ELEMENT_NODE:
+				case Node.DOCUMENT_NODE:
+					stripWhitespaceOnlyTextNodes(child);
+					break;
+				default:
+					// Keep comments, CDATA, processing instructions, etc.
+					break;
+			}
+			child = next;
+		}
+	}
+
+	private static boolean tryWriteWithTransformer(Document doc, File outFile, int indentSpaces) {
+		try {
+			TransformerFactory transformerFactory = TransformerFactory.newInstance();
+			Transformer transformer = transformerFactory.newTransformer();
+
+			transformer.setOutputProperty(OutputKeys.METHOD, "xml");
+			transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+
+			// Different transformer implementations look for different knobs.
+			String indent = String.valueOf(Math.max(0, indentSpaces));
+			try {
+				transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", indent);
+			} catch (IllegalArgumentException ignored) {
+				// Ignore if unsupported
+			}
+			try {
+				transformer.setOutputProperty("{http://xml.apache.org/xalan}indent-amount", indent);
+			} catch (IllegalArgumentException ignored) {
+				// Ignore if unsupported
+			}
+
+			DOMSource source = new DOMSource(doc);
+			StreamResult result = new StreamResult(outFile);
+			transformer.transform(source, result);
+			return true;
+		} catch (TransformerException e) {
+			return false;
+		}
+	}
+
+	private static void tryWriteWithLSSerializer(Document doc, File outFile, int indentSpaces) throws Exception {
+		DOMImplementationRegistry registry = DOMImplementationRegistry.newInstance();
+		DOMImplementationLS impl = (DOMImplementationLS) registry.getDOMImplementation("LS");
+		LSSerializer serializer = impl.createLSSerializer();
+
+		// Pretty print if supported
+		if (serializer.getDomConfig().canSetParameter("format-pretty-print", Boolean.TRUE)) {
+			serializer.getDomConfig().setParameter("format-pretty-print", Boolean.TRUE);
+		}
+		// Prevent errors on some parsers when encountering CDATA sections
+		if (serializer.getDomConfig().canSetParameter("cdata-sections", Boolean.TRUE)) {
+			serializer.getDomConfig().setParameter("cdata-sections", Boolean.TRUE);
+		}
+
+		LSOutput output = impl.createLSOutput();
+		output.setSystemId(outFile.toURI().toString());
+		output.setEncoding("UTF-8");
+
+		// Note: LSSerializer does not allow controlling indent width portably.
+		serializer.write(doc, output);
 	}
 
 	public static void main(String[] args) {
@@ -125,6 +229,7 @@ public class XMLModifier {
 			StreamResult result = new StreamResult(new File(
 					"c:\\projects\\GCAM-GUI\\test\\configuration_GCAM_4p2_Updated.xml"));
 			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+			transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2"); // Added for pretty-printing
 			transformer.transform(source, result);
 			System.out.println("XML file updated successfully"); System.out.println("---");
 

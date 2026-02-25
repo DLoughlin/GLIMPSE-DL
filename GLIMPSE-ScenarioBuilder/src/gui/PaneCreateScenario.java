@@ -120,7 +120,7 @@ class PaneCreateScenario extends ScenarioBuilder {
     private static final String DIALOG_TITLE_CREATE = "Creating Scenario";
     private static final int DIALOG_HEIGHT = 550;
     // Make the Creating Scenario dialog about 50% wider than before
-    private static final int DIALOG_WIDTH = 600;
+    private static final int DIALOG_WIDTH = 500;
     private static final String META_DATA_HEADER = "##################### Scenario Meta Data #####################";
     private static final String META_DATA_SEPARATOR = "###############################################################";
     private static final String COMPONENTS_HEADER = "Components:";
@@ -612,6 +612,8 @@ class PaneCreateScenario extends ScenarioBuilder {
         // Allow the text area to grow with its container instead of using a fixed preferred size
         textArea.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         textArea.setMinHeight(0);
+        GridPane.setVgrow(textArea, javafx.scene.layout.Priority.ALWAYS);
+        GridPane.setHgrow(textArea, javafx.scene.layout.Priority.ALWAYS);
 
         // Layout grid
         GridPane grid = new GridPane();
@@ -670,14 +672,16 @@ class PaneCreateScenario extends ScenarioBuilder {
         root.setAlignment(Pos.TOP_LEFT);
         String text = "";
         textArea.setText(text);
+        VBox.setVgrow(grid, javafx.scene.layout.Priority.ALWAYS);
+        VBox.setVgrow(textArea, javafx.scene.layout.Priority.ALWAYS);
         HBox buttonBox = new HBox();
         // Use centralized button/small padding
         buttonBox.setPadding(styles.getSmallPadding());
         buttonBox.setSpacing(5);
         buttonBox.setAlignment(Pos.CENTER);
-         buttonBox.getChildren().addAll(okButton, cancelButton);
-         root.getChildren().addAll(grid, buttonBox);
-         scene.setRoot(root);
+        buttonBox.getChildren().addAll(okButton, cancelButton);
+        root.getChildren().addAll(grid, buttonBox);
+        scene.setRoot(root);
         stage.setScene(scene);
         stage.showAndWait();
 
