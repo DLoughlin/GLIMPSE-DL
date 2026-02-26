@@ -37,6 +37,7 @@
 import java.util.Date;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ScenarioRow {
 
@@ -51,6 +52,11 @@ public class ScenarioRow {
 	private final StringProperty unsolvedMarkets = new SimpleStringProperty(this, "unsolvedMarkets");
 	private final StringProperty noIter = new SimpleStringProperty(this, "noIter");
 	private final StringProperty runtime = new SimpleStringProperty(this, "runtime");
+
+	// Cached tooltip text; null = not yet computed, "" = no content, else tooltip text
+	private volatile String cachedTooltipText = null;
+	// Guards against launching duplicate background threads for the same row
+	private final AtomicBoolean computingTooltip = new AtomicBoolean(false);
 	
 	public ScenarioRow(String name) {
 		this.scenName.set(name);
@@ -117,6 +123,18 @@ public class ScenarioRow {
 	public final void setRuntime(String txt) {
 		runtime.set(txt);
 	}	
+
+	public final String getCachedTooltipText() {
+		return cachedTooltipText;
+	}
+
+	public final void setCachedTooltipText(String text) {
+		cachedTooltipText = text;
+	}
+
+	public final boolean markTooltipComputationStarted() {
+		return computingTooltip.compareAndSet(false, true);
+	}
 
 	public final String getCreatedDate() {
 		return createdDate.get();
