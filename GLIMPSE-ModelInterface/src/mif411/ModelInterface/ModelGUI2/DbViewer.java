@@ -1407,18 +1407,12 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			@Override
 			public void componentRemoved(ContainerEvent e) {
 				java.awt.Component removed = e.getChild();
-				// Only count completion for tabs we registered as query/diff results.
-				if (removed != null && activeQueryTabs.remove(removed)) {
-					registerQueryCompleted();
+				// Only track and clean up tabs we registered as query/diff results.
+				if (removed != null) {
+					activeQueryTabs.remove(removed);
 					// If all tabs were closed/reset, keep the internal set clean.
 					if (tablesTabs.getTabCount() == 0) {
 						activeQueryTabs.clear();
-						// If user closes all tabs before queries finish, treat as completed/cleared.
-						if (completedQueries < totalQueries) {
-							completedQueries = totalQueries;
-							updateProgressUI();
-							finishProgressUI();
-						}
 					}
 				}
 			}
