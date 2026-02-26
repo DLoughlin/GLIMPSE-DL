@@ -148,7 +148,8 @@ public class XMLModifier {
 		}
 	}
 
-	private static boolean tryWriteWithTransformer(Document doc, File outFile, int indentSpaces) {
+	private static boolean tryWriteWithTransformer(Document doc, File outFile, int indentSpaces)
+			throws TransformerException {
 		try {
 			TransformerFactory transformerFactory = TransformerFactory.newInstance();
 			Transformer transformer = transformerFactory.newTransformer();
@@ -175,6 +176,13 @@ public class XMLModifier {
 			transformer.transform(source, result);
 			return true;
 		} catch (TransformerException e) {
+			// If the failure is due to an I/O error (e.g. permission denied, disk full),
+			// it is not recoverable — re-throw to prevent a silent fallback overwriting the error.
+			if (e.getCause() instanceof IOException) {
+				throw e;
+			}
+			// Otherwise the transformer may simply not support pretty-print; log and fall back.
+			System.out.println("Transformer write attempt failed (will try fallback): " + e.getMessage());
 			return false;
 		}
 	}
