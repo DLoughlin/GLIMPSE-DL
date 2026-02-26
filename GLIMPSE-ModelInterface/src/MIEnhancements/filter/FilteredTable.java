@@ -251,23 +251,38 @@ public class FilteredTable {
         exportBgButton.addActionListener(e -> {
                 final Component parent = SwingUtilities.getWindowAncestor(jtable);
 
+                // Snapshot table data on the EDT before handing off to the background thread,
+                // since Swing components are not thread-safe.
+                final int colCount = jtable.getColumnCount();
+                final String[] colNames = new String[colCount];
+                for (int c = 0; c < colCount; c++) {
+                    colNames[c] = jtable.getColumnName(c);
+                }
+                final int rowCount = jtable.getRowCount();
+                final Object[][] rowData = new Object[rowCount][colCount];
+                for (int r = 0; r < rowCount; r++) {
+                    for (int c = 0; c < colCount; c++) {
+                        rowData[r][c] = jtable.getValueAt(r, c);
+                    }
+                }
+
                 SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
                     private int rowsExported = 0;
                     @Override
                     protected Void doInBackground() throws Exception {
-                        StringBuilder sb = new StringBuilder(Math.min(1024, jtable.getColumnCount() * 32));
+                        StringBuilder sb = new StringBuilder(Math.min(1024, colCount * 32));
                         // header
-                        for (int c = 0; c < jtable.getColumnCount(); c++) {
-                            sb.append(jtable.getColumnName(c));
-                            if (c < jtable.getColumnCount() - 1) sb.append('\t');
+                        for (int c = 0; c < colCount; c++) {
+                            sb.append(colNames[c]);
+                            if (c < colCount - 1) sb.append('\t');
                         }
                         sb.append('\n');
                         // rows
-                        for (int r = 0; r < jtable.getRowCount(); r++) {
-                            for (int c = 0; c < jtable.getColumnCount(); c++) {
-                                Object val = jtable.getValueAt(r, c);
+                        for (int r = 0; r < rowCount; r++) {
+                            for (int c = 0; c < colCount; c++) {
+                                Object val = rowData[r][c];
                                 sb.append(val == null ? "" : val.toString());
-                                if (c < jtable.getColumnCount() - 1) sb.append('\t');
+                                if (c < colCount - 1) sb.append('\t');
                             }
                             sb.append('\n');
                             rowsExported = r + 1;
