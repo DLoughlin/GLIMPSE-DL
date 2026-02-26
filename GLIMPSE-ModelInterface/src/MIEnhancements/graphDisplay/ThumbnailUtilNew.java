@@ -53,7 +53,12 @@ import listener.IconMouseListener;
 public class ThumbnailUtilNew {
 
 	private static final Logger LOGGER = Logger.getLogger(ThumbnailUtilNew.class.getName());
-	private static final int DEFAULT_THUMBNAIL_SIZE = 240; // 320 * 0.75
+
+    // Thresholds to avoid generating charts that will overwhelm memory/UI.
+    private static final int MAX_SERIES_PER_CHART = 200; // max series (legend entries) per single chart
+    private static final int MAX_TOTAL_SERIES = 2000; // total series across all charts
+    private static final int MAX_LEGEND_CHARACTERS = 5000; // estimated total legend label characters
+ 	private static final int DEFAULT_THUMBNAIL_SIZE = 240; // 320 * 0.75
 	private static final int MIN_THUMBNAIL_SIZE = 135; // 180 * 0.75
 	private static final int MAX_THUMBNAIL_SIZE = 240; // 320 * 0.75
 	private static final int DEFAULT_GRID_WIDTH = 2;
@@ -87,11 +92,42 @@ public class ThumbnailUtilNew {
 	 * @return Array of Chart objects
 	 */
 	public static Chart[] createChart(String chartName, String[] unit, String[] col_units, String column,
-			String[][] tableData, Map<String, Integer[]> metaMap, String[] legendG, String path, String metaCol,
-			HashMap<String, String> unitLookup) {
-		// Extract keys from metadata map
-		String[] keys = metaMap.keySet().toArray(new String[0]);
-		ArrayList<Chart> chartL = new ArrayList<>();
+ 			String[][] tableData, Map<String, Integer[]> metaMap, String[] legendG, String path, String metaCol,
+ 			HashMap<String, String> unitLookup) {
+ 		// Extract keys from metadata map
+ 		String[] keys = metaMap.keySet().toArray(new String[0]);
+
+ 		// Pre-check: estimate series size and abort early if thresholds are exceeded.
+ 		try {
+ 			int totalSeries = 0;
+ 			int maxSeries = 0;
+ 			for (String key : keys) {
+ 				// Cooperative cancellation check
+				if (Thread.currentThread().isInterrupted()) {
+					LOGGER.log(Level.INFO, "Thumbnail generation interrupted during pre-check.");
+					Chart[] abortChart = new Chart[1];
+					abortChart[0] = new Chart(new String[] { chartName, "Thumbnail generation cancelled" });
+					return abortChart;
+				}
+ 				Integer[] range = metaMap.get(key);
+ 				if (range != null) {
+ 					totalSeries += range.length;
+ 					maxSeries = Math.max(maxSeries, range.length);
+ 				}
+ 			}
+ 			if (maxSeries > MAX_SERIES_PER_CHART || totalSeries > MAX_TOTAL_SERIES) {
+ 				LOGGER.log(Level.WARNING, "Too many series to generate thumbnails: totalSeries={0} maxSeries={1}",
+ 					new Object[]{totalSeries, maxSeries});
+ 				// Return a single placeholder Chart to indicate abort and avoid heavy processing.
+ 				Chart[] abortChart = new Chart[1];
+ 				abortChart[0] = new Chart(new String[] { chartName, "Too many series to generate thumbnails" });
+ 				return abortChart;
+ 			}
+ 		} catch (Exception e) {
+ 			// If pre-check fails for any reason, log but continue with generation as fallback.
+ 			LOGGER.log(Level.FINE, "Pre-check for series size failed, proceeding: " + e.getMessage());
+ 		}
+ 		ArrayList<Chart> chartL = new ArrayList<>();
 		String[] my_unit = new String[2];
 		my_unit[0] = unit[0];
 		// Ignore 'year' as a unit for axis
@@ -102,77 +138,91 @@ public class ThumbnailUtilNew {
 				: "";
 
 		for (int i = 0; i < keys.length; i++) {
-			try {
-				String key = keys[i];
-				Integer[] range = metaMap.get(key);
-				if (range != null) {
-					// Copy relevant rows from table data
-					String[][] temp = copyArrayRange(tableData, range);
-					// Validate and sanitize numeric data
-					for (int row = 0; row < temp.length; row++) {
-						for (int colu = 1; colu < temp[row].length; colu++) {
-							try {
-								Double.parseDouble(temp[row][colu]);
-							} catch (NumberFormatException e) {
-								temp[row][colu] = "0.0";
-							}
-						}
-					}
-					// Prepare data for chart
-					String[][] data = new String[temp.length][temp[0].length - 1];
-					String[] l = new String[temp.length];
-					// Determine unit for columns
-					String str_unit = (col_units != null && col_units.length > 0) ? col_units[range[0]] : "";
-					if (col_units != null) {
-						for (int j = 0; j < range.length; j++) {
-							int t = range[j];
-							if (!col_units[t].equals(str_unit)) {
-								str_unit = "various";
-								break;
-							}
-						}
-					}
-					// Compose unit string for chart
-					my_unit[1] = item_shown + " (" + str_unit + ")";
-					// Extract legend and data
-					for (int k = 0; k < l.length; k++) {
-						l[k] = temp[k][0].trim().replace(",", "-");
-						data[k] = Arrays.copyOfRange(temp[k], 1, temp[k].length);
-					}
-					// Generate subtitle for chart
-					String stitle = getSubTitle(keys, keys[i], metaCol);
-					// Create chart using factory
-					Chart tempC = null;
-					try {
-						tempC = MyChartFactory.createChart(CATEGORY_LINE_CHART, path, chartName,
-								keys[i] + "|" + metaCol, new String[] { chartName, stitle }, my_unit,
-								ArrayConversion.array2String(l), column, null, data, -1);
-						if (unitLookup != null) {
-							HashMap<String, String> normalizedLookup = new HashMap<>();
-							for (String unitKey : unitLookup.keySet()) {
-								if (unitKey != null) {
-									normalizedLookup.put(unitKey.trim().replace(",", "-"), unitLookup.get(unitKey));
-								}
-							}
-							tempC.setUnitsLookup(normalizedLookup);
-						}
-						chartL.add(tempC);
-					} catch (ClassNotFoundException | NullPointerException e) {
-						LOGGER.log(Level.WARNING, "Chart creation failed for key: " + key, e);
-						chartL.add(new Chart(new String[] { chartName, keys[i] }));
-					}
-				} else {
-					// Fallback for missing range
-					chartL.add(new Chart(new String[] { chartName, keys[i] }));
-				}
-			} catch (Exception e) {
-				LOGGER.log(Level.SEVERE, "Error in createChart for key: " + keys[i], e);
-				chartL.add(new Chart(new String[] { chartName, keys[i] }));
+			// Check for cancellation between keys
+			if (Thread.currentThread().isInterrupted()) {
+				LOGGER.log(Level.INFO, "Thumbnail generation interrupted before processing key index {0}.", i);
+				Chart[] abortChart = new Chart[1];
+				abortChart[0] = new Chart(new String[] { chartName, "Thumbnail generation cancelled" });
+				return abortChart;
 			}
-		}
-		Chart[] chart = chartL.toArray(new Chart[0]);
-		return chart;
-	}
+ 			try {
+ 				String key = keys[i];
+ 				Integer[] range = metaMap.get(key);
+ 				if (range != null) {
+ 					// Copy relevant rows from table data
+ 					String[][] temp = copyArrayRange(tableData, range);
+ 					// Validate and sanitize numeric data
+ 					for (int row = 0; row < temp.length; row++) {
+ 						// Check for cancellation during row processing every so often
+						if (row % 50 == 0 && Thread.currentThread().isInterrupted()) {
+							LOGGER.log(Level.INFO, "Thumbnail generation interrupted while processing key {0}, row {1}.", new Object[]{key, row});
+							Chart[] abortChart = new Chart[1];
+							abortChart[0] = new Chart(new String[] { chartName, "Thumbnail generation cancelled" });
+							return abortChart;
+						}
+ 						for (int colu = 1; colu < temp[row].length; colu++) {
+ 							try {
+ 								Double.parseDouble(temp[row][colu]);
+ 							} catch (NumberFormatException e) {
+ 								temp[row][colu] = "0.0";
+ 							}
+ 						}
+ 					}
+ 					// Prepare data for chart
+ 					String[][] data = new String[temp.length][temp[0].length - 1];
+ 					String[] l = new String[temp.length];
+ 					// Determine unit for columns
+ 					String str_unit = (col_units != null && col_units.length > 0) ? col_units[range[0]] : "";
+ 					if (col_units != null) {
+ 						for (int j = 0; j < range.length; j++) {
+ 							int t = range[j];
+ 							if (!col_units[t].equals(str_unit)) {
+ 								str_unit = "various";
+ 								break;
+ 							}
+ 						}
+ 					}
+ 					// Compose unit string for chart
+ 					my_unit[1] = item_shown + " (" + str_unit + ")";
+ 					// Extract legend and data
+ 					for (int k = 0; k < l.length; k++) {
+ 						l[k] = temp[k][0].trim().replace(",", "-");
+ 						data[k] = Arrays.copyOfRange(temp[k], 1, temp[k].length);
+ 					}
+ 					// Generate subtitle for chart
+ 					String stitle = getSubTitle(keys, keys[i], metaCol);
+ 					// Create chart using factory
+ 					Chart tempC = null;
+ 					try {
+ 						tempC = MyChartFactory.createChart(CATEGORY_LINE_CHART, path, chartName,
+ 								keys[i] + "|" + metaCol, new String[] { chartName, stitle }, my_unit,
+ 								ArrayConversion.array2String(l), column, null, data, -1);
+ 						if (unitLookup != null) {
+ 							HashMap<String, String> normalizedLookup = new HashMap<>();
+ 							for (String unitKey : unitLookup.keySet()) {
+ 								if (unitKey != null) {
+ 									normalizedLookup.put(unitKey.trim().replace(",", "-"), unitLookup.get(unitKey));
+ 								}
+ 							}
+ 							tempC.setUnitsLookup(normalizedLookup);
+ 						}
+ 						chartL.add(tempC);
+ 					} catch (ClassNotFoundException | NullPointerException e) {
+ 						LOGGER.log(Level.WARNING, "Chart creation failed for key: " + key, e);
+ 						chartL.add(new Chart(new String[] { chartName, keys[i] }));
+ 					}
+ 				} else {
+ 					// Fallback for missing range
+ 					chartL.add(new Chart(new String[] { chartName, keys[i] }));
+ 				}
+ 			} catch (Exception e) {
+ 				LOGGER.log(Level.SEVERE, "Error in createChart for key: " + keys[i], e);
+ 				chartL.add(new Chart(new String[] { chartName, keys[i] }));
+ 			}
+ 		}
+ 		Chart[] chart = chartL.toArray(new Chart[0]);
+ 		return chart;
+ 	}
 
 	/**
 	 * Overload for legacy usage (no col_units/unitLookup).
@@ -197,27 +247,59 @@ public class ThumbnailUtilNew {
 	 */
 	public static Chart[] createTransposeChart(String queryName, String[] units, String column, String meta,
 			String[] newSeriesNames, String[] newGraphNames, ArrayList<String[][]> transposedData) {
-
-		newSeriesNames = removeDateFromScenarios(newSeriesNames); // removes dates from scenario names
-		ArrayList<Chart> chartL = new ArrayList<>();
-		for (int i = 0; i < transposedData.size(); i++) {
-			// Clean series from plot if all values are zero?
-			String[][] data = transposedData.get(i);
-			try {
-				String plotName = newGraphNames[i].trim();
-				chartL.add(MyChartFactory.createTransposedChart(queryName, // query name
-						plotName, // item being plotted
-						newSeriesNames, // series in plot
-						meta, // metadata
-						column, // column names
-						units, // units associated with series
-						data)); // data to plot
-			} catch (NullPointerException e) {
-				e.printStackTrace();
+		// Pre-check for transpose charts: avoid creating when too many series overall.
+		try {
+			int totalSeries = (newSeriesNames != null) ? newSeriesNames.length : 0;
+			int dataSeriesSum = 0;
+			for (String[][] data : transposedData) {
+				if (data != null) dataSeriesSum += data.length;
 			}
+			if (totalSeries > MAX_SERIES_PER_CHART || dataSeriesSum > MAX_TOTAL_SERIES) {
+				LOGGER.log(Level.WARNING, "Too many series for transposed charts: series={0} dataSeries={1}",
+					new Object[]{totalSeries, dataSeriesSum});
+				Chart[] abortChart = new Chart[1];
+				abortChart[0] = new Chart(new String[] { queryName, "Too many series to generate thumbnails" });
+				return abortChart;
+			}
+		} catch (Exception e) {
+			LOGGER.log(Level.FINE, "Pre-check for transpose charts failed, proceeding: " + e.getMessage());
 		}
-		return chartL.toArray(new Chart[0]);
-	}
+
+		// Cooperative cancellation: if worker was cancelled before/while generating
+		if (Thread.currentThread().isInterrupted()) {
+			LOGGER.log(Level.INFO, "Thumbnail transposed generation interrupted before start.");
+			Chart[] abortChart = new Chart[1];
+			abortChart[0] = new Chart(new String[] { queryName, "Thumbnail generation cancelled" });
+			return abortChart;
+		}
+ 
+ 		newSeriesNames = removeDateFromScenarios(newSeriesNames); // removes dates from scenario names
+ 		ArrayList<Chart> chartL = new ArrayList<>();
+		for (int i = 0; i < transposedData.size(); i++) {
+			// Periodically check for cancellation while building transposed charts
+			if (i % 5 == 0 && Thread.currentThread().isInterrupted()) {
+				LOGGER.log(Level.INFO, "Thumbnail transposed generation interrupted at index {0}.", i);
+				Chart[] abortChart = new Chart[1];
+				abortChart[0] = new Chart(new String[] { queryName, "Thumbnail generation cancelled" });
+				return abortChart;
+			}
+ 			// Clean series from plot if all values are zero?
+ 			String[][] data = transposedData.get(i);
+ 			try {
+ 				String plotName = newGraphNames[i].trim();
+				chartL.add(MyChartFactory.createTransposedChart(queryName, // query name
+ 						plotName, // item being plotted
+ 						newSeriesNames, // series in plot
+ 						meta, // metadata
+ 						column, // column names
+ 						units, // units associated with series
+ 						data)); // data to plot
+ 			} catch (NullPointerException e) {
+ 				e.printStackTrace();
+ 			}
+ 		}
+ 		return chartL.toArray(new Chart[0]);
+ 	}
 
 	// --- Utility Methods ---
 	/**

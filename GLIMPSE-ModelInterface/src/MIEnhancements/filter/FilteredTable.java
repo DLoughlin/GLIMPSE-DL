@@ -39,6 +39,8 @@ package filter;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
@@ -47,15 +49,16 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
-
+import java.awt.event.InputEvent;
+import graphDisplay.Thumbnail;
+import graphDisplay.StateMapPanel;
+import graphDisplay.SankeyDiagramFromTable;
+import graphDisplay.WorldMapPanel;
+import graphDisplay.ModelInterfaceUtil;
+import chart.LegendUtil;
 import ModelInterface.InterfaceMain;
 import ModelInterface.ModelGUI2.DbViewer;
-import chart.LegendUtil;
-import graphDisplay.StateMapPanel;
-import graphDisplay.ModelInterfaceUtil;
-import graphDisplay.SankeyDiagramFromTable;
-import graphDisplay.Thumbnail;
-import graphDisplay.WorldMapPanel;
+import javax.swing.SwingWorker;
 
 /**
  * Handles a JTable filtered by meta data of another JTable, then displays on a split pane.
@@ -94,7 +97,8 @@ public class FilteredTable {
 	/** List of selected years to display */
     private List<String> selectedYears;
 	private static final int MAX_AUTO_CHARTS = 125; // Max number of charts to auto-generate before skipping auto-graphics
-	private JButton graphButton;
+    private static final int MAX_AUTO_ROWS = 2000; // Do not auto-generate thumbnails if table has more rows than this
+    private JButton graphButton;
 
     /**
      * Constructs a FilteredTable and sets up the UI and filtering logic.
@@ -179,7 +183,8 @@ public class FilteredTable {
                 }
             };
             jtable = new JTable(dtm);
-            jtable.setDragEnabled(true);
+            // Note: DnD size checks and user warnings are handled centrally by TableTransferHandler.
+            // Keep default drag behavior for the JTable and avoid per-table listeners that duplicate that logic.
             jtable.setRowHeight(jtable.getFont().getSize() + 5);
             tableModel = jtable.getModel();
             sorter = new TableRowSorter<>(tableModel);
@@ -206,28 +211,84 @@ public class FilteredTable {
         graphButton = new JButton("Graph");
         graphButton.setBackground(LegendUtil.getRGB(-8205574));
         graphButton.addActionListener(e -> {
-                if (debug)
-                    System.out.println("FilteredTable: graph press: " + chartName + " " + Arrays.toString(unit) + " " + path + " " + doubleIndex + " " + jtable.getColumnCount() + "  " + jtable.getRowCount());
-
-                // Always regenerate thumbnails when the user clicks Graph.
-                // Previously, thumbnails were cached in 'tn' and repeat clicks were a no-op.
-                tn = null;
-                System.gc();
-
-                Map<String, Integer[]> metaMap = ModelInterfaceUtil.getMetaIndex2(jtable, doubleIndex);
-                HashMap<String, String> unitsMap = ModelInterfaceUtil.getUnitDataFromTableByLastNamedCol(jTable);
-                tn = new Thumbnail(chartName, unit, path, doubleIndex, jtable, metaMap, sp, unitsMap);
-
-                JPanel graphPanel = tn.getJp();
-                if (graphPanel != null)
-                    setRightComponent(graphPanel);
-                else {
-                    tn = null;
-                    System.gc();
+                // Prevent generating thumbnails if the table is too large.
+                int rowCountCheck = (jtable != null) ? jtable.getRowCount() : 0;
+                if (rowCountCheck >= MAX_AUTO_ROWS) {
+                    System.out.println("Graph suppressed: Result has " + rowCountCheck + " rows (limit is " + MAX_AUTO_ROWS + ") — auto graphics won't be generated.");
+                    return;
                 }
-        });
+                 if (debug)
+                     System.out.println("FilteredTable: graph press: " + chartName + " " + Arrays.toString(unit) + " " + path + " " + doubleIndex + " " + jtable.getColumnCount() + "  " + jtable.getRowCount());
+
+                 // Always regenerate thumbnails when the user clicks Graph.
+                 // Cancel any in-progress thumbnail generation and free previous thumbnail before creating a new one.
+                 if (tn != null) {
+                     try {
+                         tn.cancelGeneration();
+                     } catch (Exception ignored) {}
+                     tn = null;
+                     System.gc();
+                 }
+
+                 Map<String, Integer[]> metaMap = ModelInterfaceUtil.getMetaIndex2(jtable, doubleIndex);
+                 HashMap<String, String> unitsMap = ModelInterfaceUtil.getUnitDataFromTableByLastNamedCol(jTable);
+                 tn = new Thumbnail(chartName, unit, path, doubleIndex, jtable, metaMap, sp, unitsMap);
+
+                 JPanel graphPanel = tn.getJp();
+                 if (graphPanel != null)
+                     setRightComponent(graphPanel);
+                 else {
+                     tn = null;
+                     System.gc();
+                 }
+         });
         box.add(graphButton);
-        box.add(new JLabel(" "));
+        // Background export button: builds tab-delimited text off the EDT and places it on clipboard
+        JButton exportBgButton = new JButton("Copy");
+        exportBgButton.setBackground(LegendUtil.getRGB(-8205574));
+        exportBgButton.setToolTipText("Assemble full table in background and copy to clipboard");
+        exportBgButton.addActionListener(e -> {
+                final Component parent = SwingUtilities.getWindowAncestor(jtable);
+
+                SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+                    private int rowsExported = 0;
+                    @Override
+                    protected Void doInBackground() throws Exception {
+                        StringBuilder sb = new StringBuilder(Math.min(1024, jtable.getColumnCount() * 32));
+                        // header
+                        for (int c = 0; c < jtable.getColumnCount(); c++) {
+                            sb.append(jtable.getColumnName(c));
+                            if (c < jtable.getColumnCount() - 1) sb.append('\t');
+                        }
+                        sb.append('\n');
+                        // rows
+                        for (int r = 0; r < jtable.getRowCount(); r++) {
+                            for (int c = 0; c < jtable.getColumnCount(); c++) {
+                                Object val = jtable.getValueAt(r, c);
+                                sb.append(val == null ? "" : val.toString());
+                                if (c < jtable.getColumnCount() - 1) sb.append('\t');
+                            }
+                            sb.append('\n');
+                            rowsExported = r + 1;
+                            // occasional yield to keep UI responsive for very large tables
+                            if ((r & 0x3FF) == 0) Thread.yield();
+                        }
+                        StringSelection sel = new StringSelection(sb.toString());
+                        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, null);
+                        return null;
+                    }
+
+                    @Override
+                    protected void done() {
+                        JOptionPane.showMessageDialog(parent, "Exported " + rowsExported + " rows to clipboard.");
+                    }
+                };
+
+                // Start worker (no progress dialog shown)
+                worker.execute();
+        });
+        box.add(exportBgButton);
+         box.add(new JLabel(" "));
         // Mapping button
         jb = new JButton("Mapping");
         jb.setBackground(LegendUtil.getRGB(-8205574));
@@ -648,15 +709,23 @@ public class FilteredTable {
     /**
      * Auto-generates graphics if enabled and conditions are met.
      */
-	public void autoGraph() {
-		if (InterfaceMain.autoGenerateGraphics) {
-			int chartCount = estimateChartCount(jtable);
-			if (chartCount < MAX_AUTO_CHARTS) {
-				System.out.println("Auto-graphics proceeding: Result has " + chartCount + " charts.");
-				clickGraphButton();
-			} else {
-				System.out.println("Auto-graphics skipped: Result has " + chartCount + " charts (limit is " + MAX_AUTO_CHARTS + ").");
-			}
+ 	public void autoGraph() {
+		if (!InterfaceMain.autoGenerateGraphics) return;
+
+		// If the result set is very large, skip auto-generating thumbnails to avoid heavy UI work.
+ 		int rowCount = (jtable != null) ? jtable.getRowCount() : 0;
+		// If the number of rows has reached or exceeded the configured threshold, skip auto graphics.
+		if (rowCount >= MAX_AUTO_ROWS) {
+			System.out.println("Auto-graphics skipped: Result has " + rowCount + " rows (limit is " + MAX_AUTO_ROWS + ") — auto graphics won't be generated.");
+			return;
+		}
+
+		int chartCount = estimateChartCount(jtable);
+		if (chartCount < MAX_AUTO_CHARTS) {
+			System.out.println("Auto-graphics proceeding: Result has " + chartCount + " charts.");
+			clickGraphButton();
+		} else {
+			System.out.println("Auto-graphics skipped: Result has " + chartCount + " charts (limit is " + MAX_AUTO_CHARTS + ").");
 		}
 	}
 

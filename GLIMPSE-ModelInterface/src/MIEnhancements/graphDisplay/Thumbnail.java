@@ -32,16 +32,20 @@
 */
 package graphDisplay;
 
+import java.awt.Component;
 import java.awt.Cursor;
+import java.awt.BorderLayout;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
-
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import chart.Chart;
 import conversionUtil.ArrayConversion;
 
@@ -58,6 +62,8 @@ public class Thumbnail {
     private static final int WAIT_CURSOR_TYPE = Cursor.WAIT_CURSOR;
     private boolean debug = false;
     private JPanel jp;
+    private final JPanel placeholderPanel = new JPanel();
+    private SwingWorker<Chart[], Void> worker;
     private final Cursor waitCursor = new Cursor(WAIT_CURSOR_TYPE);
     private final Cursor defaultCursor = new Cursor(DEFAULT_CURSOR_TYPE);
     private HashMap<String, String> unitLookup;
@@ -82,28 +88,96 @@ public class Thumbnail {
         Objects.requireNonNull(unit, "unit must not be null");
         Objects.requireNonNull(jtable, "jtable must not be null");
         Objects.requireNonNull(sp, "JSplitPane must not be null");
+        // Immediate UI response: set a placeholder panel with inline status and Cancel button
+        // Use an empty placeholder panel while thumbnails are generated; hide status/progress UI for now.
+        placeholderPanel.setLayout(new BorderLayout());
+        // Intentionally do not add a status label, progress bar, or cancel button to keep the UI minimal.
+        jp = placeholderPanel;
         sp.setCursor(waitCursor);
         this.unitLookup = unitLookup;
-        if (metaMap == null) {
-            metaMap = ModelInterfaceUtil.getMetaIndex2(jtable, cnt);
+
+        // Run chart data creation in background to avoid blocking the EDT.
+        final Map<String, Integer[]> metaMapFinal = metaMap; // capture for worker
+        worker = new SwingWorker<Chart[], Void>() {
+            private String metaCol;
+            private String col;
+
+            @Override
+            protected Chart[] doInBackground() throws Exception {
+                Map<String, Integer[]> effectiveMeta = metaMapFinal;
+                if (effectiveMeta == null) {
+                    effectiveMeta = ModelInterfaceUtil.getMetaIndex2(jtable, cnt);
+                }
+                metaCol = ArrayConversion.array2String(ModelInterfaceUtil.getColumnFromTable(jtable, cnt, 2));
+                col = ArrayConversion.array2String(ModelInterfaceUtil.getColumnFromTable(jtable, cnt, 0));
+
+                // Heavy work: create Chart objects (done off EDT)
+                Chart[] chart = ThumbnailUtilNew.createChart(chartName, unit,
+                        ModelInterfaceUtil.getColDataFromTable(jtable, jtable.getColumnCount() - 1),
+                        col,
+                        ModelInterfaceUtil.getDataFromTable(jtable, cnt, 0), effectiveMeta,
+                        ModelInterfaceUtil.getLegend2(effectiveMeta, ModelInterfaceUtil.getDataFromTable(jtable, cnt, 1)), path,
+                        metaCol, unitLookup);
+                return chart;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    if (isCancelled()) {
+                        LOGGER.log(Level.INFO, "Thumbnail generation cancelled.");
+                        jp = new JPanel();
+                    } else {
+                        Chart[] chart = get();
+                        final int idx = ThumbnailUtilNew.getFirstNonNullChart(chart);
+                        if (idx != -1 && chart[idx] != null) {
+                            // Must update Swing components on EDT
+                            SwingUtilities.invokeLater(() -> {
+                                JPanel chartPanel = ThumbnailUtilNew.setChartPane(chart, idx, false, true, sp);
+                                if (chartPanel != null) jp = chartPanel;
+                                // Replace right component of split pane with generated panel
+                                Component currentRight = sp.getRightComponent();
+                                boolean isExistingGraph = false;
+                                int currentWidth = 0;
+                                if (currentRight instanceof JComponent) {
+                                    Boolean prop = (Boolean) ((JComponent) currentRight).getClientProperty("isGraph");
+                                    isExistingGraph = prop != null && prop;
+                                    currentWidth = currentRight.getWidth();
+                                }
+                                if (currentRight != null) sp.remove(currentRight);
+                                sp.setRightComponent(jp);
+                                if (!isExistingGraph || currentWidth < 50) {
+                                    sp.setDividerLocation(0.678);
+                                }
+                                sp.updateUI();
+                            });
+                        } else {
+                            LOGGER.log(Level.WARNING, "No valid chart found for thumbnail creation.");
+                            jp = new JPanel();
+                        }
+                    }
+                } catch (Exception ex) {
+                    LOGGER.log(Level.SEVERE, "Thumbnail generation failed.", ex);
+                    jp = new JPanel();
+                } finally {
+                    // Reset cursor and log memory; placeholder component stays in the right pane and
+                    // will be replaced by the generated panel above when ready.
+                    sp.setCursor(defaultCursor);
+                    logDebugMemory();
+                }
+             }
+         };
+         worker.execute();
+         // placeholderPanel already shown by caller; worker is running and placeholder displays progress.
+     }
+
+    /**
+     * Cancel thumbnail generation if it's still running.
+     */
+    public void cancelGeneration() {
+        if (worker != null && !worker.isDone()) {
+            worker.cancel(true);
         }
-        String metaCol = ArrayConversion.array2String(ModelInterfaceUtil.getColumnFromTable(jtable, cnt, 2));
-        String col = ArrayConversion.array2String(ModelInterfaceUtil.getColumnFromTable(jtable, cnt, 0));
-        Chart[] chart = ThumbnailUtilNew.createChart(chartName, unit,
-                ModelInterfaceUtil.getColDataFromTable(jtable, jtable.getColumnCount() - 1),
-                col,
-                ModelInterfaceUtil.getDataFromTable(jtable, cnt, 0), metaMap,
-                ModelInterfaceUtil.getLegend2(metaMap, ModelInterfaceUtil.getDataFromTable(jtable, cnt, 1)), path,
-                metaCol, unitLookup);
-        int idx = ThumbnailUtilNew.getFirstNonNullChart(chart);
-        if (idx != -1 && chart[idx] != null) {
-            jp = ThumbnailUtilNew.setChartPane(chart, idx, false, true, sp);
-        } else {
-            LOGGER.log(Level.WARNING, "No valid chart found for thumbnail creation.");
-            jp = new JPanel();
-        }
-        sp.setCursor(defaultCursor);
-        logDebugMemory();
     }
 
     /**
