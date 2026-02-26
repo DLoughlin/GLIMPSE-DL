@@ -244,7 +244,7 @@ public class InterfaceMain implements ActionListener {
 	// New: stable root container so status bar is never lost.
 	private JPanel rootContent;
 	// Guard to avoid re-entrant contentPane handling
-	private transient boolean suppressContentPaneListener = false;
+	private boolean suppressContentPaneListener = false;
 
 	// Status bar widgets.
 	private JLabel activeDbStatusLabel;
