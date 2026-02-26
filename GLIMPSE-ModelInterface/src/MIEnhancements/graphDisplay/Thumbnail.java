@@ -61,7 +61,8 @@ public class Thumbnail {
     private static final int DEFAULT_CURSOR_TYPE = Cursor.DEFAULT_CURSOR;
     private static final int WAIT_CURSOR_TYPE = Cursor.WAIT_CURSOR;
     private boolean debug = false;
-    private JPanel jp;
+    private final BorderLayout containerLayout = new BorderLayout();
+    private final JPanel containerPanel = new JPanel(containerLayout);
     private final JPanel placeholderPanel = new JPanel();
     private SwingWorker<Chart[], Void> worker;
     private final Cursor waitCursor = new Cursor(WAIT_CURSOR_TYPE);
@@ -90,16 +91,18 @@ public class Thumbnail {
         Objects.requireNonNull(sp, "JSplitPane must not be null");
 
         placeholderPanel.setLayout(new BorderLayout());
-        jp = placeholderPanel;
+        // Add placeholder inside the stable container; containerPanel is the fixed reference
+        // returned by getJp() so callers never hold a stale reference.
+        containerPanel.add(placeholderPanel, BorderLayout.CENTER);
 
         // Ensure a stable right component while work is in progress.
         // Some call paths create the Thumbnail and then later update the split pane;
         // installing the placeholder immediately avoids transient UI states.
         final Component currentRight = sp.getRightComponent();
-        if (currentRight != jp) {
+        if (currentRight != containerPanel) {
             SwingUtilities.invokeLater(() -> {
-                if (sp.getRightComponent() != jp) {
-                    sp.setRightComponent(jp);
+                if (sp.getRightComponent() != containerPanel) {
+                    sp.setRightComponent(containerPanel);
                     sp.revalidate();
                     sp.repaint();
                 }
@@ -190,7 +193,7 @@ public class Thumbnail {
                 try {
                     if (isCancelled()) {
                         LOGGER.log(Level.INFO, "Thumbnail generation cancelled.");
-                        jp = new JPanel();
+                        // Leave containerPanel as-is (showing placeholder); no jp reassignment needed.
                     } else {
                         Chart[] chart = get();
                         final int idx = ThumbnailUtilNew.getFirstNonNullChart(chart);
@@ -198,31 +201,39 @@ public class Thumbnail {
                             // Must update Swing components on EDT
                             SwingUtilities.invokeLater(() -> {
                                 JPanel chartPanel = ThumbnailUtilNew.setChartPane(chart, idx, false, true, sp);
-                                if (chartPanel != null) jp = chartPanel;
-                                // Replace right component of split pane with generated panel
-                                Component currentRight = sp.getRightComponent();
-                                boolean isExistingGraph = false;
-                                int currentWidth = 0;
-                                if (currentRight instanceof JComponent) {
-                                    Boolean prop = (Boolean) ((JComponent) currentRight).getClientProperty("isGraph");
-                                    isExistingGraph = prop != null && prop;
-                                    currentWidth = currentRight.getWidth();
+                                if (chartPanel != null) {
+                                    // Check if container already holds a graph (for divider logic).
+                                    // containerPanel is always the split pane's right component, so
+                                    // inspect its center child rather than sp.getRightComponent().
+                                    Component currentChild = containerLayout.getLayoutComponent(BorderLayout.CENTER);
+                                    boolean isExistingGraph = currentChild instanceof JComponent
+                                            && Boolean.TRUE.equals(((JComponent) currentChild).getClientProperty("isGraph"));
+                                    int currentWidth = containerPanel.getWidth();
+
+                                    // Update contents in-place; containerPanel reference stays stable
+                                    containerPanel.removeAll();
+                                    containerPanel.add(chartPanel, BorderLayout.CENTER);
+                                    containerPanel.revalidate();
+                                    containerPanel.repaint();
+
+                                    // Ensure the split pane still points to our stable container
+                                    if (sp.getRightComponent() != containerPanel) {
+                                        sp.setRightComponent(containerPanel);
+                                    }
+                                    if (!isExistingGraph || currentWidth < 50) {
+                                        sp.setDividerLocation(0.678);
+                                    }
+                                    sp.updateUI();
                                 }
-                                if (currentRight != null) sp.remove(currentRight);
-                                sp.setRightComponent(jp);
-                                if (!isExistingGraph || currentWidth < 50) {
-                                    sp.setDividerLocation(0.678);
-                                }
-                                sp.updateUI();
                             });
                         } else {
                             LOGGER.log(Level.WARNING, "No valid chart found for thumbnail creation.");
-                            jp = new JPanel();
+                            // Leave containerPanel as-is (showing placeholder).
                         }
                     }
                 } catch (Exception ex) {
                     LOGGER.log(Level.SEVERE, "Thumbnail generation failed.", ex);
-                    jp = new JPanel();
+                    // Leave containerPanel as-is (showing placeholder).
                 } finally {
                     // Reset cursor and log memory; placeholder component stays in the right pane and
                     // will be replaced by the generated panel above when ready.
@@ -232,7 +243,7 @@ public class Thumbnail {
              }
          };
          worker.execute();
-         // placeholderPanel already shown by caller; worker is running and placeholder displays progress.
+         // containerPanel (with placeholder) is already the right component; worker updates its contents when done.
      }
 
     /**
@@ -245,11 +256,13 @@ public class Thumbnail {
     }
 
     /**
-     * Returns the JPanel containing the chart thumbnails.
-     * @return JPanel with chart thumbnails
+     * Returns the stable JPanel container for the chart thumbnails.
+     * The returned panel is a fixed reference; its contents are updated in-place
+     * when the background worker completes, so callers always hold a valid reference.
+     * @return JPanel container with chart thumbnails
      */
     public JPanel getJp() {
-        return jp;
+        return containerPanel;
     }
 
     /**
