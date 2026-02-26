@@ -42,6 +42,8 @@ import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.math.BigDecimal;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.*;
@@ -295,7 +297,19 @@ public class FilteredTable {
 
             @Override
             protected void done() {
-                JOptionPane.showMessageDialog(parent, "Exported " + rowsExported + " rows to clipboard.");
+                try {
+                    get();
+                    JOptionPane.showMessageDialog(parent, "Exported " + rowsExported + " rows to clipboard.");
+                } catch (CancellationException ex) {
+                    JOptionPane.showMessageDialog(parent, "Export was cancelled.", "Export Cancelled", JOptionPane.WARNING_MESSAGE);
+                } catch (ExecutionException ex) {
+                    Throwable cause = ex.getCause();
+                    String msg = (cause != null && cause.getMessage() != null) ? cause.getMessage() : ex.getMessage();
+                    JOptionPane.showMessageDialog(parent, "Export failed: " + msg, "Export Error", JOptionPane.ERROR_MESSAGE);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    JOptionPane.showMessageDialog(parent, "Export was interrupted.", "Export Interrupted", JOptionPane.WARNING_MESSAGE);
+                }
             }
         };
 
