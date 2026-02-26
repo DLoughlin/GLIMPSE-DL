@@ -48,7 +48,6 @@ import javax.swing.TransferHandler;
 
 import ModelInterface.ModelGUI2.DbViewer;
 import ModelInterface.ModelGUI2.QueryResultsPanel;
-import filter.FilteredTable;
 
 /**
  *   Author			Action							Date		Flag
