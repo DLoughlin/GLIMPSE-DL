@@ -845,7 +845,7 @@ public class ComboTableModel extends BaseTableModel {
 
 		// Create a title for the chart.
 		TextTitle ttitle = new TextTitle(title);
-		chart.setTitle(title);
+		chart.setTitle(ttitle);
 		return chart;
 	}
 
