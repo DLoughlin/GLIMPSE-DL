@@ -197,11 +197,13 @@ public class GLIMPSEUtils {
 			javafx.scene.control.DialogPane pane = dialog.getDialogPane();
 			if (pane == null)
 				return;
-			// Ensure there's a Scene so we can attach stylesheets.
-			if (pane.getScene() == null) {
-				new Scene(pane);
+			java.net.URL cssUrl = gui.ScenarioBuilder.class.getResource(gui.ScenarioBuilder.MODERN_CSS_RESOURCE);
+			if (cssUrl != null) {
+				String css = cssUrl.toExternalForm();
+				if (!pane.getStylesheets().contains(css)) {
+					pane.getStylesheets().add(css);
+				}
 			}
-			gui.ScenarioBuilder.applyModernTheme(pane.getScene());
 		} catch (Exception e) {
 			// ignore theme failures; fall back to default Alert styling
 		}
