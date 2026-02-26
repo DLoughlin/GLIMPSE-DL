@@ -817,6 +817,9 @@ public class InterfaceMain implements ActionListener {
 	 * Ensure the status bar is present even if another view replaced the frame content pane.
 	 */
 	private void ensureStatusBarInstalled() {
+		if (mainFrame == null) {
+			return;
+		}
 		if (statusBar == null) {
 			initStatusBar();
 			return;
