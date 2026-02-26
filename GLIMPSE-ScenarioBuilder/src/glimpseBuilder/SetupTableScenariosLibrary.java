@@ -138,45 +138,62 @@ public class SetupTableScenariosLibrary {
 				if (!item.markTooltipComputationStarted()) {
 					return;
 				}
+
 				tooltipExecutor.submit(() -> {
 					String databaseName = "";
+
 					try {
-						String configFilename = vars.getScenarioDir() + File.separator + item.getScenarioName()
-								+ File.separator + "configuration_" + item.getScenarioName() + ".xml";
-						File configFile = new File(configFilename);
-						if (configFile.exists()) {
-							String databaseLine = files.searchForTextInFileS(configFile, "xmldb-location", "#");
-							databaseName = utils.getStringBetweenCharSequences(databaseLine, ">", "</");
-							if (databaseName == null) databaseName = "";
-							databaseName = databaseName.trim();
+						String databaseName = "";
+						try {
+							String configFilename = vars.getScenarioDir() + File.separator + item.getScenarioName()
+									+ File.separator + "configuration_" + item.getScenarioName() + ".xml";
+							File configFile = new File(configFilename);
+							if (configFile.exists()) {
+								String databaseLine = files.searchForTextInFileS(configFile, "xmldb-location", "#");
+								databaseName = utils.getStringBetweenCharSequences(databaseLine, ">", "</");
+								if (databaseName == null) databaseName = "";
+								databaseName = databaseName.trim();
+							}
+						} catch (Exception ex) {
+							databaseName = "";
 						}
-					} catch (Exception ex) {
-						databaseName = "";
-					}
 
-					String components = item.getComponents();
-					String componentsFormatted = (components == null) ? "" : components.replace(";", vars.getEol()).trim();
+						String components = item.getComponents();
+						String componentsFormatted = (components == null) ? "" : components.replace(";", vars.getEol()).trim();
 
-					String eol = vars.getEol();
-					String sep = "----------------------------------------";
-					String tt = "";
-					if (!databaseName.isEmpty()) {
-						tt += "Database: " + databaseName;
-					}
-					if (!componentsFormatted.isEmpty()) {
-						if (!tt.isEmpty()) {
-							tt += eol + sep + eol;
+						String eol = vars.getEol();
+						String sep = "----------------------------------------";
+						String tt = "";
+						if (!databaseName.isEmpty()) {
+							tt += "Database: " + databaseName;
 						}
-						tt += componentsFormatted;
-					}
-
-					final String tooltipText = tt;
-					item.setCachedTooltipText(tooltipText);
-					Platform.runLater(() -> {
-						if (row.getItem() == item) {
-							row.setTooltip(tooltipText.isEmpty() ? null : new Tooltip(tooltipText));
+						if (!componentsFormatted.isEmpty()) {
+							if (!tt.isEmpty()) {
+								tt += eol + sep + eol;
+							}
+							tt += componentsFormatted;
 						}
-					});
+
+						final String tooltipText = tt;
+						item.setCachedTooltipText(tooltipText);
+						Platform.runLater(() -> {
+							if (row.getItem() == item) {
+								row.setTooltip(tooltipText.isEmpty() ? null : new Tooltip(tooltipText));
+							}
+						});
+					} finally {
+						// Only one background thread runs per item at a time (enforced by the
+						// markTooltipComputationStarted() CAS above), so this check-then-set
+						// is safe: no other thread can have written cachedTooltipText since
+						// this thread started.
+						// Ensure cachedTooltipText is set (even to "") so future hover events
+						// do not attempt recomputation, and reset the flag so a retry is
+						// possible if cachedTooltipText was never set due to an error.
+						if (item.getCachedTooltipText() == null) {
+							item.setCachedTooltipText("");
+						}
+						item.markTooltipComputationFinished();
+					}
 				});
 			});
 			row.setOnMouseExited(e -> row.setTooltip(null));
