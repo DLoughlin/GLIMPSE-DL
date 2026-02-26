@@ -137,9 +137,11 @@ public class Thumbnail {
                 // data. This is safe as long as no EDT thread is blocking on this worker
                 // (which would cause a deadlock). Callers must never hold the EDT lock while
                 // waiting for this SwingWorker to complete.
-                assert !SwingUtilities.isEventDispatchThread()
-                        : "Thumbnail SwingWorker must not run on the EDT; "
-                        + "invokeAndWait below would deadlock if it did.";
+                if (SwingUtilities.isEventDispatchThread()) {
+                    throw new IllegalStateException(
+                            "Thumbnail SwingWorker must not run on the EDT; "
+                            + "invokeAndWait would deadlock if it did.");
+                }
                 SwingUtilities.invokeAndWait(new Runnable() {
                     @Override
                     public void run() {
