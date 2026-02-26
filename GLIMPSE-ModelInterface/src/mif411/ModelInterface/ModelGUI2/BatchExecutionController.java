@@ -195,7 +195,7 @@ public class BatchExecutionController {
 					// Register total queries to run so the progress UI can track them
 					int totalToRegister = numQueries * toRunScns.size();
 					for (int qi = 0; qi < totalToRegister; ++qi) {
-						DbViewer.registerNewQuery();
+						DbViewer.registerNewQuery(null);
 					}
 					BatchWindow runner = new BatchWindow(outFile, toRunScns, allRegions, singleSheet, includeCharts,
 							numQueries, res, replaceResults, numCoresToUse);

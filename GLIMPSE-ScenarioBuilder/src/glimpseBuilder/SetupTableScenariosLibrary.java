@@ -143,7 +143,7 @@ public class SetupTableScenariosLibrary {
 					String databaseName = "";
 
 					try {
-						String databaseName = "";
+
 						try {
 							String configFilename = vars.getScenarioDir() + File.separator + item.getScenarioName()
 									+ File.separator + "configuration_" + item.getScenarioName() + ".xml";

@@ -236,8 +236,10 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 
 	/**
 	 * Registers that a new query is starting so the progress UI can track it.
+	 * @param tab The component for the tab in which the query will run.
 	 */
-	public static void registerNewQuery() {
+	public static void registerNewQuery(java.awt.Component tab) {
+		activeQueryTabs.add(tab);
 		totalQueries++;
 		updateProgressUI();
 	}
@@ -248,8 +250,9 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 * subsequent tab-close does not count the same query as completed a second time.
 	 */
 	static void registerQueryCompleted(java.awt.Component tab) {
-		activeQueryTabs.remove(tab);
-		registerQueryCompleted();
+		if (activeQueryTabs.remove(tab)) {
+			registerQueryCompleted();
+		}
 	}
 
 	/**
@@ -836,7 +839,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		default:
 			// No action
 			break;
-		}
+	}
 	}
 	/**
 	 * Handles the "Open DB" action event. Prompts the user to select a database
@@ -1419,7 +1422,10 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 				java.awt.Component removed = e.getChild();
 				// Only track and clean up tabs we registered as query/diff results.
 				if (removed != null) {
-					activeQueryTabs.remove(removed);
+					// A tab was closed; if it was still active, count it as completed.
+					if (activeQueryTabs.remove(removed)) {
+						registerQueryCompleted();
+					}
 					// If all tabs were closed/reset, keep the internal set clean.
 					if (tablesTabs.getTabCount() == 0) {
 						activeQueryTabs.clear();
@@ -1636,15 +1642,14 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 							}
 							// add loading icon to QueryResultsPanel
 							TabCloseIcon loadingIcon = new TabCloseIcon(tablesTabs);
-							// Register that a new query is starting so the progress UI can track it
-							registerNewQuery();
 							// creating new panel for holding the results of the queries
 							JComponent ret = new QueryResultsPanel(qg, singleBinding, scnList.getSelectedValues(),
 									regionList.getSelectedValues(), loadingIcon, doTotalCheckBox.isSelected());
+							// Register that a new query is starting so the progress UI can track it
+							registerNewQuery(ret);
 
 							// adds new tab for query results panel
 							tablesTabs.addTab(qg.toString(), loadingIcon, ret, createCommentTooltip(selPaths[i]));
-							activeQueryTabs.add(ret);
 							if (!movedTabAlready) {
 								tablesTabs.setSelectedIndex(tablesTabs.getTabCount() - 1);
 								movedTabAlready = true;
@@ -1701,15 +1706,14 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 							}
 							// add loading icon to QueryResultsPanel
 							TabCloseIcon loadingIcon = new TabCloseIcon(tablesTabs);
-							// Register that a new diff query is starting so the progress UI can track it
-							registerNewQuery();
 							// creating new panel for holding the results of the queries
 							JComponent ret = new DiffResultsPanel(qg, singleBinding, scnList.getSelectedValues(),
 									regionList.getSelectedValues(), loadingIcon, doTotalCheckBox.isSelected());
+							// Register that a new diff query is starting so the progress UI can track it
+							registerNewQuery(ret);
 							// adds new tab for query results panel
 							tablesTabs.addTab("Diff: " + qg.toString(), loadingIcon, ret,
 									createCommentTooltip(selPaths[i]));
-							activeQueryTabs.add(ret);
 							if (!movedTabAlready) {
 								tablesTabs.setSelectedIndex(tablesTabs.getTabCount() - 1);
 								movedTabAlready = true;
