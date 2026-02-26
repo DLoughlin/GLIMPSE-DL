@@ -164,6 +164,14 @@ public class Thumbnail {
                         path,
                         metaCol,
                         unitLookup);
+
+                // If the background thread was interrupted during chart creation, propagate cancellation
+                // so that done() follows the cancellation path instead of displaying an "aborted" chart.
+                if (Thread.currentThread().isInterrupted() || isCancelled()) {
+                    LOGGER.log(Level.INFO, "Thumbnail generation interrupted during chart creation; cancelling worker.");
+                    cancel(true);
+                    return null;
+                }
                 return chart;
             }
 
