@@ -49,6 +49,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.URI;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -681,7 +682,7 @@ public class InterfaceMain implements ActionListener {
 		main = null;
 		main = new InterfaceMain();
 		main.mainFrame = new JFrame("Model Interface");
-		String image_str = "./config/results.png";
+		String image_str = Paths.get(".", "config", "results.png").toString();
 		main.mainFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(image_str));
 		main.mainFrame.getContentPane().setBackground(UNIFIED_BG);
 		// Do not override default fonts; let the platform Look & Feel decide.
