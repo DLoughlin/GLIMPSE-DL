@@ -136,6 +136,10 @@ public class ScenarioRow {
 		return computingTooltip.compareAndSet(false, true);
 	}
 
+	public final void markTooltipComputationFinished() {
+		computingTooltip.set(false);
+	}
+
 	public final String getCreatedDate() {
 		return createdDate.get();
 	}
