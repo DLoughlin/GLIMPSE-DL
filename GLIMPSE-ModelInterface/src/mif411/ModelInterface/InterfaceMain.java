@@ -793,21 +793,35 @@ public class InterfaceMain implements ActionListener {
 			@Override
 			public void propertyChange(java.beans.PropertyChangeEvent evt) {
 				if (suppressContentPaneListener) return;
-				javax.swing.SwingUtilities.invokeLater(() -> {
-					try {
-						suppressContentPaneListener = true;
-						java.awt.Container newPane = mainFrame.getContentPane();
-						// If someone replaced the content pane, take that new pane and mount
-						// it into our rootContent center so the status bar remains visible.
-						if (newPane != rootContent) {
-							// Detach the newPane from the frame and install under rootContent.
-							mainFrame.setContentPane(rootContent);
-							setMainView(newPane);
+				Runnable restoreTask = new Runnable() {
+					@Override
+					public void run() {
+						try {
+							suppressContentPaneListener = true;
+							java.awt.Container newPane = mainFrame.getContentPane();
+							// If someone replaced the content pane, take that new pane and mount
+							// it into our rootContent center so the status bar remains visible.
+							if (newPane != rootContent) {
+								// Detach the newPane from the frame and install under rootContent.
+								mainFrame.setContentPane(rootContent);
+								setMainView(newPane);
+							}
+						} finally {
+							suppressContentPaneListener = false;
 						}
-					} finally {
-						suppressContentPaneListener = false;
 					}
-				});
+				};
+				if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+					restoreTask.run();
+				} else {
+					try {
+						javax.swing.SwingUtilities.invokeAndWait(restoreTask);
+					} catch (InterruptedException | java.lang.reflect.InvocationTargetException e) {
+						// Restore interrupted status and log; avoid silently swallowing failures.
+						Thread.currentThread().interrupt();
+						System.err.println("Failed to restore content pane with status bar: " + e);
+					}
+				}
 			}
 		});
 
