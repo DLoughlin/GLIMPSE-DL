@@ -44,7 +44,6 @@ import graphDisplay.DifferenceChartPane;
 import graphDisplay.Breakout;
 import java.util.function.Consumer;
 import java.awt.Component;
-import javax.swing.JPanel;
 
 /**
  * Handles Thumbnail Box Popup events for chart panels.
