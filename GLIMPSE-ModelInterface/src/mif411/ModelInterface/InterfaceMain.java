@@ -1656,7 +1656,20 @@ public class InterfaceMain implements ActionListener {
 		gc.gridwidth = 2;
 		gc.weightx = 1.0;
 		zipExportedScenariosCheckbox = new javax.swing.JCheckBox("Automatically zip scenarios when exported");
-		zipExportedScenariosCheckbox.setSelected(Boolean.parseBoolean(savedProperties.getProperty("zipExportedScenarios", "false")));
+		String zipExportedScenariosValue = savedProperties.getProperty("zipExportedScenarios");
+		boolean zipExportedScenariosSelected;
+		if (zipExportedScenariosValue == null) {
+			zipExportedScenariosSelected = false;
+		} else if ("true".equalsIgnoreCase(zipExportedScenariosValue) || "false".equalsIgnoreCase(zipExportedScenariosValue)) {
+			zipExportedScenariosSelected = Boolean.parseBoolean(zipExportedScenariosValue);
+			// Normalize the stored value to a lowercase canonical form.
+			savedProperties.setProperty("zipExportedScenarios", Boolean.toString(zipExportedScenariosSelected));
+		} else {
+			// Invalid value encountered; fall back to a safe default and sanitize the property.
+			zipExportedScenariosSelected = false;
+			savedProperties.setProperty("zipExportedScenarios", "false");
+		}
+		zipExportedScenariosCheckbox.setSelected(zipExportedScenariosSelected);
 		generalPanel.add(zipExportedScenariosCheckbox, gc);
 
 		// Significant digits preference
