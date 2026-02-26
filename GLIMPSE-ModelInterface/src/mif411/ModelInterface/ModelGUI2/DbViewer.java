@@ -1810,12 +1810,6 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	}
 
 	/**
-	 * Collapses a query group in the tree if it does not contain the filtering
-	 * keywords.
-	 *
-	 * @param myTree      The JTree containing the query group.
-	 * @param mySubGroup  The QueryGroup to check and potentially collapse.
-	 *//**
 	 * Gets the full TreePath for a query group by its name.
 	 *
 	 * @param tree      The JTree to search in.
