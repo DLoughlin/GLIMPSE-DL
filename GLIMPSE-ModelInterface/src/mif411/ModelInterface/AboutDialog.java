@@ -118,7 +118,7 @@ public class AboutDialog extends JDialog implements MenuAdder, ActionListener {
      * @param e The even which needs to be hanlded.
      */
     public void actionPerformed(ActionEvent e) {
-        if(e.getActionCommand() == CLOSE_COMMAND) {
+        if (CLOSE_COMMAND.equals(e.getActionCommand())) {
             setVisible(false);
         } else {
 			// Ensure it shows in front of the main window.
