@@ -46,7 +46,6 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -109,15 +108,6 @@ public class DiffResultsPanel extends QueryResultsPanel {
 	protected boolean show_pct_diff = false;
 	protected static final int MAX_AUTO_CHARTS = 125; // Max number of charts to auto-generate before skipping auto-graphics
 
-	/**
-	 * Referring to the thread that is running. Used to track which thread is being
-	 * used/closed
-	 */
-	Thread runThread;
-
-	/** The context for running queries which can be used to cancel it */
-	DbProcInterrupt context = null;
-
 	/** The Constant serialVersionUID. */
 	private static final long serialVersionUID = 1L;
 
@@ -135,119 +125,11 @@ public class DiffResultsPanel extends QueryResultsPanel {
 	public DiffResultsPanel(final QueryGenerator qg, final QueryBinding singleBinding,
 			final Object[] scenarioListValues, final Object[] regionListValues, final TabCloseIcon icon,
 			final boolean generateTotals) {
-		super();
-		initializeWaiting();
-		context = new DbProcInterrupt();
-		final DiffResultsPanel thisThread = this;
-		runThread = new Thread() {
-			public void run() {
-				try {
-					JComponent ret = null;
-					String errorMessage = null;
-					// do computations, return a JComponent
-					try {
-						ret = createSingleTableContent(qg, singleBinding, scenarioListValues, regionListValues,
-							generateTotals);
-					} catch (Exception e) {
-						System.out.println("Error creating diff table:" + e);
-						errorMessage = e.getMessage();
-					}
-					// Stop process if the user terminated the process
-					if (isInterrupted()) {
-						return;
-					}
-
-					// clear the text box in preparation of adding the new component
-					removeAll();
-
-					// icon is changed to the finished state
-					icon.finishedLoading();
-
-					// error message displayed
-					if (ret == null) {
-						JPanel tempPanel = new JPanel();
-						tempPanel.setLayout(new BoxLayout(tempPanel, BoxLayout.X_AXIS));
-						tempPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-						tempPanel.add(new JLabel(errorMessage));
-						add(tempPanel);
-					}
-					// the new JPanel is added where the text box was
-					else {
-						setLayout(new BoxLayout(thisThread, BoxLayout.X_AXIS));
-						add(ret);
-					}
-					// the panel is refreshed to show the changes
-					revalidate();
-					
-					final JComponent finalRet = ret;
-					javax.swing.SwingUtilities.invokeLater(new Runnable() {
-						public void run() {
-							if (InterfaceMain.autoGenerateGraphics) {
-								if (finalRet instanceof JSplitPane) {
-									JSplitPane sp = (JSplitPane) finalRet;
-									// Check if we should graph based on chart count
-									boolean shouldGraph = true;
-									
-									// Try to inspect the table to get chart count
-									JTable table = thisThread.getJTableFromComponent(thisThread);
-									int chartCount = estimateChartCount(table);
-									if (table != null && chartCount >= MAX_AUTO_CHARTS) {
-										shouldGraph = false;
-										System.out.println("Auto-graphics skipped: Result has " + chartCount + " charts (limit is "+MAX_AUTO_CHARTS+").");
-									} else if (table != null) {
-										System.out.println("Auto-graphics proceeding: Result has " + chartCount + " charts.");
-									}
-
-									if (shouldGraph && sp.getLeftComponent() instanceof JPanel) {
-										JPanel jp = (JPanel) sp.getLeftComponent();
-										clickGraphButton(jp);
-									} else {
-										//System.out.println("Auto-graphics: Left component is not JPanel or shoudGraph is false.");
-									}
-								} else {
-									//System.out.println("Auto-graphics: result is not JSplitPane");
-								}
-							}
-						}
-					});
-				} finally {
-					// Notify DbViewer that this query has completed regardless of outcome
-					DbViewer.registerQueryCompleted();
-				}
-			}
-
-			private void clickGraphButton(java.awt.Container container) {
-				for (java.awt.Component comp : container.getComponents()) {
-					if (comp instanceof JButton) {
-						JButton button = (JButton) comp;
-						if ("Graph".equals(button.getText())) {
-							System.out.println("Auto-graphics: Found Graph button, clicking...");
-							button.doClick();
-							return;
-						}
-					} else if (comp instanceof java.awt.Container) {
-						clickGraphButton((java.awt.Container) comp);
-					}
-				}
-			}
-		};
-		runThread.start();
+		super(qg, singleBinding, scenarioListValues, regionListValues, icon, generateTotals);
 	}
 
-	/**
-	 * Creates the single table content.
-	 * 
-	 * @param qg                 the qg
-	 * @param singleBinding
-	 * @param scenarioListValues
-	 * @param regionListValues
-	 * 
-	 * 
-	 * @return a JComponent with the results in it as a JScrollingPane
-	 * @throws Exception thrown if the multiTableModel returns an invalid result
-	 * 
-	 */
-	private JComponent createSingleTableContent(QueryGenerator qg, QueryBinding singleBinding,
+	@Override
+	protected JComponent createSingleTableContent(QueryGenerator qg, QueryBinding singleBinding,
 			final Object[] scenarioListValues, final Object[] regionListValues, final boolean generateTotals)
 			throws Exception {
 		// aseTableModel bt = new ComboTableModel(qg, scenarioListValues,

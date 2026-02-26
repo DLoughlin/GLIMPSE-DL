@@ -52,8 +52,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
-import javax.swing.WindowConstants;
-
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
@@ -63,6 +61,7 @@ import org.jfree.data.statistics.DefaultBoxAndWhiskerCategoryDataset;
 import org.jfree.data.xy.IntervalXYDataset;
 
 import ModelInterface.ModelGUI2.DbViewer;
+import ModelInterface.InterfaceMain;
 import chart.Chart;
 import chart.ChartMarker;
 import chartOptions.ChartOptionsUtil;
@@ -174,6 +173,7 @@ public class AChartDisplay {
 			jb_legend.setText(legendShowing ? "Hide Legend" : "Show Legend");
 			smallSizeX = dialog.getWidth();
 			smallSizeY = dialog.getHeight();
+			dialog.setLocation(InterfaceMain.getInstance().getFrame().getLocation());
 			dialog.setVisible(true);
 			DbViewer.openWindows.add(dialog);
 		}
@@ -198,7 +198,7 @@ public class AChartDisplay {
 			dialog.setContentPane(chartPane);
 		}
 		dialog.pack();
-		dialog.setVisible(true);
+		// dialog.setVisible(true); // YD moved to init()
 	}
 
 	/**
@@ -232,10 +232,15 @@ public class AChartDisplay {
 				if (jfreechart.getCategoryPlot().getDataset() instanceof DefaultBoxAndWhiskerCategoryDataset) {
 					dataPane = new BoxAndWhiskerDataPane(jfreechart);
 				} else {
-					if (charts == null)
-						dataPane = new CategoryDatasetDataPane(jfreechart);
-					else
+					// Always use the units-aware constructor when we have a Chart instance,
+					// regardless of whether this display was opened from a thumbnail array.
+					// The prior logic only passed unitLookup when charts != null, which caused
+					// the units column to be blank in the expanded view in some cases.
+					if (unitLookup != null) {
 						dataPane = new CategoryDatasetDataPane(charts, id, unitLookup);
+					} else {
+						dataPane = new CategoryDatasetDataPane(jfreechart);
+					}
 				}
 			} else if (jfreechart.getPlot().getPlotType().contains("XY")) {
 				if (charts == null)

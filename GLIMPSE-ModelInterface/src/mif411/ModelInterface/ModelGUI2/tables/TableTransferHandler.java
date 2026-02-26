@@ -37,11 +37,13 @@ import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.IOException;
 
 import javax.swing.JComponent;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
+import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
 
 import ModelInterface.ModelGUI2.DbViewer;
@@ -57,6 +59,8 @@ import ModelInterface.ModelGUI2.QueryResultsPanel;
  */
 
 public class TableTransferHandler extends TransferHandler {
+    private static final int MAX_DND_ROWS = 3000; // threshold to block DnD and show warning
+
 	public boolean canImport(JComponent comp, DataFlavor[] transferFlavors) {
 		return false;
 	}
@@ -70,18 +74,37 @@ public class TableTransferHandler extends TransferHandler {
 	}
 
 	protected Transferable createTransferable(JComponent comp) {
-		return new TransferableTable(comp);
+		TransferableTable tt;
+		try {
+			tt = new TransferableTable(comp);
+		} catch (UnsupportedOperationException e) {
+			return null;
+		}
+		int estimatedRows = tt.getEstimatedRowCount();
+		if (estimatedRows > MAX_DND_ROWS) {
+			Component parent = SwingUtilities.getWindowAncestor(comp);
+			JOptionPane.showMessageDialog(parent,
+					"For large tables (>"+MAX_DND_ROWS+" rows), use Copy button or Ctrl+C / Ctrl+V on selected rows",
+					"Large table - use clipboard or CSV export", JOptionPane.INFORMATION_MESSAGE);
+			System.out.println("DnD blocked: table has " + estimatedRows + " rows (limit " + MAX_DND_ROWS + ")");
+			return null; // cancel the drag
+		}
+		return tt;
 	}
 	// @1
 	protected void exportDone(JComponent c, Transferable data, int action) {
-		//Popup was unnecessary. Dan commented this out and replaced with print statement to stdout
-//		JOptionPane pane = new JOptionPane(((TransferableTable)data).getCurRowCount() //jtable.getRowCount() 
-//				+ " Rows Exported",
-//				JOptionPane.INFORMATION_MESSAGE);
-//		JDialog dialog = pane.createDialog(null, "");
-//		dialog.setVisible(true);
-		System.out.println("Exported row count: "+((TransferableTable)data).getCurRowCount());
-	}// @1
+        // Guard: createTransferable may have returned null to cancel the DnD.
+        if (data == null) {
+            // Nothing exported because we cancelled the drag - avoid NPE.
+            return;
+        }
+        if (data instanceof TransferableTable) {
+            System.out.println("Exported row count: " + ((TransferableTable) data).getCurRowCount());
+        } else {
+            // Unknown transferable type; do not attempt to inspect it.
+            System.out.println("Export completed with non-table transferable.");
+        }
+    }// @1
 
 	public class TransferableTable implements Transferable {
 		private BaseTableModel bt;
@@ -89,6 +112,7 @@ public class TableTransferHandler extends TransferHandler {
 		private DataFlavor[] transFlavors;
 		private String fs;// --tai add
 		private int curRowCount = 0;//@1
+		private int estimatedRowCount = 0;
 
 		public TransferableTable(JComponent comp) {
 
@@ -120,9 +144,22 @@ public class TableTransferHandler extends TransferHandler {
 			} else {
 				throw new UnsupportedOperationException("Can't transfer this component");
 			}
-			transFlavors = new DataFlavor[1];
-			transFlavors[0] = DataFlavor.stringFlavor;
+			// Estimate row count quickly without building the full transfer string
+			if (bt != null) {
+				estimatedRowCount = bt.getRowCount();
+			} else if (jtable != null) {
+				estimatedRowCount = jtable.getRowCount();
+			} else {
+				estimatedRowCount = 0;
+			}
 
+			transFlavors = new DataFlavor[1];
+             transFlavors[0] = DataFlavor.stringFlavor;
+
+         }
+
+		public int getEstimatedRowCount() {
+			return estimatedRowCount;
 		}
 
 		public DataFlavor[] getTransferDataFlavors() {
@@ -171,7 +208,7 @@ public class TableTransferHandler extends TransferHandler {
 						fs = fs + (String) jtable.getValueAt(i, j) + "\t";
 				}
 				fs = fs + "\n";
-				curRowCount = i;
+				curRowCount = i + 1; // record exported rows correctly
 			}
 			return fs;
 		}
@@ -184,4 +221,3 @@ public class TableTransferHandler extends TransferHandler {
 	}
 
 }
-

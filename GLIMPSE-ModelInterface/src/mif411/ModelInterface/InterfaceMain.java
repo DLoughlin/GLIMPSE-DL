@@ -49,6 +49,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.URI;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -61,18 +62,12 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.Vector;
 
-import javax.swing.JButton;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
-import javax.swing.JTree;
-import javax.swing.KeyStroke;
 import javax.swing.UIManager;
-import javax.swing.tree.TreePath;
 import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
@@ -81,11 +76,6 @@ import org.basex.query.QueryException;
 import org.basex.query.QueryProcessor;
 import org.basex.query.iter.Iter;
 import org.basex.query.value.item.Item;
-//import org.hsqldb.persist.DirectoryBlockCachedObject;
-import org.jfree.chart.ChartPanel;
-import org.jfree.chart.JFreeChart;
-import org.jfree.chart.plot.flow.FlowPlot;
-import org.jfree.data.flow.DefaultFlowDataset;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -99,15 +89,12 @@ import ModelInterface.ModelGUI2.CSVFilter;
 //import ModelInterface.DMsource.DMViewer;
 import ModelInterface.ModelGUI2.DbViewer;
 import ModelInterface.ModelGUI2.InputViewer;
-import ModelInterface.ModelGUI2.QueryTreeModel;
 import ModelInterface.ModelGUI2.XMLFilter;
-import ModelInterface.ModelGUI2.QueryTreeModel.QueryGroup;
 import ModelInterface.ModelGUI2.xmldb.XMLDB;
 import ModelInterface.PPsource.PPViewer;
 import ModelInterface.common.FileChooser;
 import ModelInterface.common.FileChooserFactory;
 import ModelInterface.common.RecentFilesList;
-import graphDisplay.SankeyDiagramPanel;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -115,11 +102,14 @@ import joptsimple.OptionSet;
 import com.sun.media.imageioimpl.common.PackageUtil;
 import java.lang.reflect.Field;
 
-import java.awt.Font;
 import java.awt.Color;
 
+import javax.swing.BorderFactory;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+
 public class InterfaceMain implements ActionListener {
-	private static final Font UNIFIED_FONT = new Font("Segoe UI", Font.PLAIN, 14);
+	// Use platform Look & Feel defaults for fonts (do not force a unified size).
 	private static final Color UNIFIED_BG = new Color(245, 245, 250); // Soft background
 	private static final Color UNIFIED_PANEL_BG = new Color(255, 255, 255); // Panel background
 	private static final Color UNIFIED_BTN_BG = new Color(230, 235, 245); // Button background
@@ -152,9 +142,10 @@ public class InterfaceMain implements ActionListener {
 	public static final int FILE_MENU_POS = 0;
 	public static final int EDIT_MENU_POS = 1;
 	public static final int VIEW_MENU_POS = 2;
-	// public static final int TOOLS_MENU_POS = 80; // YD added
+	
 	public static final int TOOLS_MENU_POS = 90; // YD added
-	public static final int TOOLS_SUBMENU1_POS = 0; // YD added
+	// Legacy name used by DbViewer to locate the Edit -> Query Tree submenu.
+	public static final int TOOLS_SUBMENU1_POS = 2; // alias of EDIT_QUERY_SUBMENU_POS
 	public static final int TOOLS_SUBMENU15_POS = 2; // YD added
 	public static final int TOOLS_SUBMENU2_POS = 5; // YD added
 	public static final int QUERIES_UNDO_MENUITEM_POS = 25; // YD added
@@ -168,9 +159,12 @@ public class InterfaceMain implements ActionListener {
 	public static final int QUERIES_SAVE_MENUITEM_POS = 35; // YD changed
 	public static final int QUERIES_SAVEAS_MENUITEM_POS = 40; // YD changed
 
-	public static final int EDIT_QUERY_SUBMENU_POS = 18; // YD added
+	public static final int EDIT_QUERY_SUBMENU_POS = 2; // Edit -> Query Tree submenu position
+	// Favorites submenu under Edit (used by DbViewer to register favorite query actions)
+	public static final int EDIT_FAVORITES_SUBMENU_POS = 3;
 	public static final int EDIT_COPY_MENUITEM_POS = 10;
 	public static final int EDIT_PASTE_MENUITEM_POS = 11;
+	
 	public static final int TOOLS_CSV_MENUITEM_POS = 20; // YD added
 	public static final int TOOLS_UNIT_MENUITEM_POS = 2; // YD added
 	public static final int TOOLS_SANKEY_MENUITEM_POS = 3;// YD added
@@ -197,7 +191,7 @@ public class InterfaceMain implements ActionListener {
 	private JMenuItem toolsUnitMenu; // YD added
 	private JMenuItem editRegionsMenu; // Added: Edit Regions menu item
 	private JMenuItem selectQueryMenu;
-	// private JMenuItem toolsSankeyMenu; // YD moved to "DbViewer.java"
+	private JMenuItem editQueryFileMenu; // Open current query file in XML editor
 
 	// New Config menu items
 	private JMenuItem selectQueryFileMenu;
@@ -214,6 +208,9 @@ public class InterfaceMain implements ActionListener {
 
 	// New: Help menu primary item
 	private JMenuItem helpItem;
+
+	// New: Edit -> Query File menu item (enabled only when a query file is set)
+	private JMenuItem queryTreeFileMenu;
 
 	private MenuAdder dbView = null;
 
@@ -240,6 +237,20 @@ public class InterfaceMain implements ActionListener {
 	 * on.
 	 */
 	private JFrame mainFrame;
+
+	/**
+	 * Status bar (bottom of main frame)
+	 */
+	private JPanel statusBar;
+	// New: stable root container so status bar is never lost.
+	private JPanel rootContent;
+	// Guard to avoid re-entrant contentPane handling
+	private boolean suppressContentPaneListener = false;
+
+	// Status bar widgets.
+	private JLabel activeDbStatusLabel;
+	private JLabel queryProgressLabel;
+	private javax.swing.JProgressBar queryProgressBar;
 
 	/**
 	 * Main function, creates a new thread for the gui and runs it.
@@ -671,10 +682,10 @@ public class InterfaceMain implements ActionListener {
 		main = null;
 		main = new InterfaceMain();
 		main.mainFrame = new JFrame("Model Interface");
-		String image_str = ".\\results.png";
+		String image_str = Paths.get(".", "config", "results.png").toString();
 		main.mainFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(image_str));
 		main.mainFrame.getContentPane().setBackground(UNIFIED_BG);
-		main.mainFrame.getContentPane().setFont(UNIFIED_FONT);
+		// Do not override default fonts; let the platform Look & Feel decide.
 		main.mainFrame.getRootPane().setBorder(javax.swing.BorderFactory.createLineBorder(UNIFIED_BORDER, 1));
 		if (Boolean.parseBoolean(main.savedProperties.getProperty("isMaximized", "false"))) {
 			main.mainFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
@@ -706,11 +717,239 @@ public class InterfaceMain implements ActionListener {
 
 		main.mainFrame.setLayout(new BorderLayout());
 		main.initialize();
+		main.initStatusBar();
 		// main.pack();
 		main.mainFrame.setVisible(false);
 		if (path != null) {
 			main.fireControlChange("DbViewer");
 
+		}
+	}
+
+	private void initStatusBar() {
+		if (statusBar != null) {
+			return;
+		}
+
+		// Ensure a stable root container is installed exactly once.
+		if (rootContent == null) {
+			rootContent = new JPanel(new BorderLayout());
+		}
+		if (mainFrame.getContentPane() != rootContent) {
+			// Preserve existing CENTER if someone set a different content pane already.
+			java.awt.Container old = mainFrame.getContentPane();
+			java.awt.Component oldCenter = null;
+			if (old != null && old.getLayout() instanceof BorderLayout) {
+				oldCenter = ((BorderLayout) old.getLayout()).getLayoutComponent(BorderLayout.CENTER);
+			}
+			mainFrame.setContentPane(rootContent);
+			if (oldCenter != null) {
+				rootContent.add(oldCenter, BorderLayout.CENTER);
+			}
+		}
+
+		statusBar = new JPanel(new BorderLayout());
+		statusBar.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, UNIFIED_BORDER));
+		statusBar.setBackground(UNIFIED_BG);
+
+		activeDbStatusLabel = new JLabel();
+		activeDbStatusLabel.setOpaque(false);
+		activeDbStatusLabel.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+		statusBar.add(activeDbStatusLabel, BorderLayout.WEST);
+
+		// Right side: query progress (hidden unless multiple queries are running)
+		JPanel rightPanel = new JPanel();
+		rightPanel.setOpaque(false);
+		rightPanel.setLayout(new javax.swing.BoxLayout(rightPanel, javax.swing.BoxLayout.X_AXIS));
+		rightPanel.setBorder(BorderFactory.createEmptyBorder(2, 8, 2, 8));
+
+		queryProgressLabel = new JLabel();
+		queryProgressLabel.setOpaque(false);
+		queryProgressLabel.setVisible(false);
+
+		queryProgressBar = new javax.swing.JProgressBar(0, 100);
+		queryProgressBar.setStringPainted(false);
+		queryProgressBar.setVisible(false);
+		queryProgressBar.setBorderPainted(true);
+		queryProgressBar.setPreferredSize(new java.awt.Dimension(140, 14));
+		queryProgressBar.setMaximumSize(new java.awt.Dimension(180, 14));
+
+		rightPanel.add(javax.swing.Box.createHorizontalGlue());
+		rightPanel.add(queryProgressLabel);
+		rightPanel.add(javax.swing.Box.createHorizontalStrut(8));
+		rightPanel.add(queryProgressBar);
+		statusBar.add(rightPanel, BorderLayout.EAST);
+
+		// Mount into the stable root container.
+		rootContent.add(statusBar, BorderLayout.SOUTH);
+		updateActiveDatabaseStatus(path);
+		resetQueryProgressUI();
+
+		// Listen for any code that replaces the frame content pane and restore our
+		// stable rootContent with the status bar. This prevents transient UI code
+		// from accidentally removing the status bar when running queries or
+		// switching views.
+		mainFrame.addPropertyChangeListener("contentPane", new java.beans.PropertyChangeListener() {
+			@Override
+			public void propertyChange(java.beans.PropertyChangeEvent evt) {
+				if (suppressContentPaneListener) return;
+				Runnable restoreTask = new Runnable() {
+					@Override
+					public void run() {
+						try {
+							suppressContentPaneListener = true;
+							java.awt.Container newPane = mainFrame.getContentPane();
+							// If someone replaced the content pane, take that new pane and mount
+							// it into our rootContent center so the status bar remains visible.
+							if (newPane != rootContent) {
+								// Detach the newPane from the frame and install under rootContent.
+								mainFrame.setContentPane(rootContent);
+								setMainView(newPane);
+							}
+						} finally {
+							suppressContentPaneListener = false;
+						}
+					}
+				};
+				if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+					restoreTask.run();
+				} else {
+					try {
+						javax.swing.SwingUtilities.invokeAndWait(restoreTask);
+					} catch (InterruptedException | java.lang.reflect.InvocationTargetException e) {
+						// Restore interrupted status and log; avoid silently swallowing failures.
+						Thread.currentThread().interrupt();
+						System.err.println("Failed to restore content pane with status bar: " + e);
+					}
+				}
+			}
+		});
+
+	}
+
+	/**
+	 * Ensure the status bar is present even if another view replaced the frame content pane.
+	 */
+	private void ensureStatusBarInstalled() {
+		if (mainFrame == null) {
+			return;
+		}
+		if (statusBar == null) {
+			initStatusBar();
+			return;
+		}
+		if (rootContent == null) {
+			rootContent = new JPanel(new BorderLayout());
+		}
+		if (mainFrame.getContentPane() != rootContent) {
+			mainFrame.setContentPane(rootContent);
+		}
+		if (statusBar.getParent() != rootContent) {
+			rootContent.add(statusBar, BorderLayout.SOUTH);
+		}
+	}
+
+	/**
+	 * Replace the main view in the CENTER while keeping the global status bar visible.
+	 */
+	public void setMainView(java.awt.Component view) {
+		ensureStatusBarInstalled();
+		java.awt.Component existing = ((BorderLayout) rootContent.getLayout()).getLayoutComponent(BorderLayout.CENTER);
+		if (existing != null) {
+			rootContent.remove(existing);
+		}
+		if (view != null) {
+			rootContent.add(view, BorderLayout.CENTER);
+		}
+		rootContent.revalidate();
+		rootContent.repaint();
+	}
+
+	private void resetQueryProgressUI() {
+		if (queryProgressBar == null || queryProgressLabel == null) {
+			return;
+		}
+		queryProgressBar.setValue(0);
+		queryProgressBar.setVisible(false);
+		queryProgressLabel.setText("");
+		queryProgressLabel.setVisible(false);
+	}
+
+	/**
+	 * Update the status bar query progress UI.
+	 *
+	 * @param completed number completed
+	 * @param total total number of queries
+	 */
+	public void updateQueryProgressStatus(final int completed, final int total) {
+		ensureStatusBarInstalled();
+		if (queryProgressBar == null || queryProgressLabel == null) {
+			return;
+		}
+		final Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				if (total <= 1) {
+					resetQueryProgressUI();
+					return;
+				}
+				queryProgressBar.setVisible(true);
+				queryProgressLabel.setVisible(true);
+				int safeCompleted = Math.max(0, Math.min(completed, total));
+				int percent = (int) Math.round((safeCompleted * 100.0) / total);
+				queryProgressBar.setValue(percent);
+				queryProgressLabel.setText("Queries: " + safeCompleted + "/" + total);
+			}
+		};
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			r.run();
+		} else {
+			javax.swing.SwingUtilities.invokeLater(r);
+		}
+	}
+
+	/** Hide and reset query progress in the status bar. */
+	public void clearQueryProgressStatus() {
+		ensureStatusBarInstalled();
+		if (queryProgressBar == null || queryProgressLabel == null) {
+			return;
+		}
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			resetQueryProgressUI();
+		} else {
+			javax.swing.SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {
+					resetQueryProgressUI();
+				}
+			});
+		}
+	}
+
+	/**
+	 * Update the status bar text showing the active database.
+	 * @param dbPath database path or null for none
+	 */
+	public void updateActiveDatabaseStatus(final String dbPath) {
+		ensureStatusBarInstalled();
+		final String text;
+		if (dbPath == null || dbPath.trim().isEmpty()) {
+			text = "Database: (none)";
+		} else {
+			text = "Database: " + dbPath;
+		}
+		if (activeDbStatusLabel == null) {
+			return;
+		}
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			activeDbStatusLabel.setText(text);
+		} else {
+			javax.swing.SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {
+					activeDbStatusLabel.setText(text);
+				}
+			});
 		}
 	}
 
@@ -795,6 +1034,9 @@ public class InterfaceMain implements ActionListener {
 		if (!savedProperties.containsKey("isMaximized")) {
 			savedProperties.setProperty("isMaximized", "false");
 		}
+		if (!savedProperties.containsKey("zipExportedScenarios")) {
+			savedProperties.setProperty("zipExportedScenarios", "false");
+		}
 		if (!savedProperties.containsKey("presetRegionList")) {
 			savedProperties.setProperty("presetRegionList", ".\\config\\preset_region_list.txt");
 		}
@@ -824,23 +1066,7 @@ public class InterfaceMain implements ActionListener {
 		addMenuItems(menuMan);
 		addMenuAdderMenuItems(menuMan);
 		finalizeMenu(menuMan);
-		// Set font for menu bar and items
-		JMenuBar menuBar = mainFrame.getJMenuBar();
-		if (menuBar != null) {
-			menuBar.setFont(UNIFIED_FONT);
-			for (int i = 0; i < menuBar.getMenuCount(); i++) {
-				JMenu menu = menuBar.getMenu(i);
-				if (menu != null) {
-					menu.setFont(UNIFIED_FONT);
-					for (int j = 0; j < menu.getItemCount(); j++) {
-						JMenuItem item = menu.getItem(j);
-						if (item != null) {
-							item.setFont(UNIFIED_FONT);
-						}
-					}
-				}
-			}
-		}
+		// Do not force fonts for the menu bar/items; use platform Look & Feel defaults.
 		// if path to DB was provided, dispatch to DBViewer to open database
 //		  if (path != null) fireControlChange("DbViewer");		 
 	}
@@ -850,82 +1076,97 @@ public class InterfaceMain implements ActionListener {
 	}
 
 	private void addMenuItems(MenuManager menuMan) {
-        JMenu fileMenu = new JMenu("File");
-        fileMenu.setMnemonic(KeyEvent.VK_F);
-        menuMan.addMenuItem(fileMenu, FILE_MENU_POS);
-        // Add Save / Save As to File menu
-        saveMenu = new JMenuItem("Save");
-        saveMenu.setEnabled(false);
-        // Removed accelerator: saveMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, getMenuShortcutMask()));
-        // menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveMenu, 20);
-        saveAsMenu = new JMenuItem("Save As…");
-        saveAsMenu.setEnabled(false);
-        // Removed accelerator: saveAsMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, getMenuShortcutMask() | java.awt.event.InputEvent.SHIFT_DOWN_MASK));
-        // menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(saveAsMenu, 25);
-        // menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(FILE_MENU_SEPERATOR);
+		addFileMenu(menuMan);
+		addEditMenu(menuMan);
+		addViewMenu(menuMan);
+		addToolsMenu(menuMan);
+		addHelpMenu(menuMan);
+		setupUndo(menuMan);
+	}
 
-        selectQueryMenu = makeMenuItem("Select Query File");
-        menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(25);
-        menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(selectQueryMenu, 26);
-        menuMan.getSubMenuManager(FILE_MENU_POS).addSeparator(27);
+	private void addFileMenu(MenuManager menuMan) {
+		JMenu fileMenu = new JMenu("File");
+		fileMenu.setMnemonic(KeyEvent.VK_F);
+		menuMan.addMenuItem(fileMenu, FILE_MENU_POS);
+		MenuManager fileMM = menuMan.getSubMenuManager(FILE_MENU_POS);
 
-        quitMenu = makeMenuItem("Quit");
-        quitMenu.setMnemonic(KeyEvent.VK_Q);
-        // Removed accelerator: quitMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, getMenuShortcutMask()));
-        menuMan.getSubMenuManager(FILE_MENU_POS).addMenuItem(quitMenu, FILE_QUIT_MENUITEM_POS);
+		// Initialize actions (some are managed by other viewers)
+		saveMenu = new JMenuItem("Save");
+		saveMenu.setEnabled(false);
+		saveAsMenu = new JMenuItem("Save As…");
+		saveAsMenu.setEnabled(false);
 
-        JMenu editMenu = new JMenu("Edit");
-        editMenu.setMnemonic(KeyEvent.VK_E);
-        menuMan.addMenuItem(editMenu, EDIT_MENU_POS);
+		selectQueryMenu = makeMenuItem("Select Query File");
+		fileMM.addSeparator(25);
+		fileMM.addMenuItem(selectQueryMenu, 26);
+		fileMM.addSeparator(27);
 
-        // Remove Config menu (replaced by Preferences… under Edit)
-        // menuMan.addMenuItem(new JMenu("Config"), CONFIG_MENU_POS);
+		quitMenu = makeMenuItem("Quit");
+		quitMenu.setMnemonic(KeyEvent.VK_Q);
+		fileMM.addMenuItem(quitMenu, FILE_QUIT_MENUITEM_POS);
+	}
 
-        JMenu viewMenu = new JMenu("View");
-        viewMenu.setMnemonic(KeyEvent.VK_V);
-        menuMan.addMenuItem(viewMenu, VIEW_MENU_POS);
+	private void addEditMenu(MenuManager menuMan) {
+		JMenu editMenu = new JMenu("Edit");
+		editMenu.setMnemonic(KeyEvent.VK_E);
+		menuMan.addMenuItem(editMenu, EDIT_MENU_POS);
+		MenuManager editMM = menuMan.getSubMenuManager(EDIT_MENU_POS);
 
-        toggleAutoGraphicsMenu = makeMenuItem(autoGenerateGraphics ? "Disable Auto Graphics" : "Enable Auto Graphics");
-        menuMan.getSubMenuManager(VIEW_MENU_POS).addMenuItem(toggleAutoGraphicsMenu, 9);
+		// 1) Query File
+		editQueryFileMenu = makeMenuItem("Query File");
+		editQueryFileMenu.setActionCommand("Edit Queries File");
+		editMM.addMenuItem(editQueryFileMenu, 0);
 
-        JMenu toolsMenu = new JMenu("Tools");
-        toolsMenu.setMnemonic(KeyEvent.VK_T);
-        menuMan.addMenuItem(toolsMenu, TOOLS_MENU_POS);
-        // Ensure expected submenus exist for downstream menu adders
-        MenuManager toolsMM = menuMan.getSubMenuManager(TOOLS_MENU_POS);
-        if (toolsMM != null) {
-            // Removed empty "Queries" submenu under Tools
-            toolsMM.addMenuItem(new JMenu("Open Files"), TOOLS_SUBMENU2_POS);
-        }
+		// 2) Separator
+		editMM.addSeparator(1);
 
-        // Move Run Batch… under Tools (position 10). A separator is already added
-        // before CSV to XML at position 19, keeping a separator between them.
-        batchMenu = new JMenuItem("Run Batch…");
-        // Removed accelerator: batchMenu.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, getMenuShortcutMask()));
-        batchMenu.addActionListener(this);
-        menuMan.getSubMenuManager(TOOLS_MENU_POS).addMenuItem(batchMenu, 18);
-        menuMan.getSubMenuManager(TOOLS_MENU_POS).addSeparator(19);
+		// 3) Query Tree submenu (DbViewer will populate it)
+		if (editMM.getSubMenuManager(EDIT_QUERY_SUBMENU_POS) == null) {
+			editMM.addMenuItem(new JMenu("Query Tree"), EDIT_QUERY_SUBMENU_POS);
+		}
 
-        JMenu helpMenu = new JMenu("Help");
-        helpMenu.setMnemonic(KeyEvent.VK_H);
-        menuMan.addMenuItem(helpMenu, HELP_MENU_POS);
+		// 4) Favorites List submenu (DbViewer will populate it)
+		if (editMM.getSubMenuManager(EDIT_FAVORITES_SUBMENU_POS) == null) {
+			editMM.addMenuItem(new JMenu("Favorites List"), EDIT_FAVORITES_SUBMENU_POS);
+		}
 
-        // Preferences… under Edit
-        JMenuItem optionalFeatures = new JMenuItem("Optional Features...");
-        optionalFeatures.setMnemonic(KeyEvent.VK_P);
-        // Removed accelerator: preferences.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, getMenuShortcutMask()));
-        optionalFeatures.addActionListener(this);
-        menuMan.getSubMenuManager(EDIT_MENU_POS).addMenuItem(optionalFeatures, 5);
+		// 5) Separator
+		editMM.addSeparator(5);
 
-        // Add Help (F1) under Help menu
-        helpItem = new JMenuItem("Help");
-        helpItem.setMnemonic(KeyEvent.VK_H);
-        // Removed accelerator: helpItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0));
-        helpItem.addActionListener(this);
-        menuMan.getSubMenuManager(HELP_MENU_POS).addMenuItem(helpItem, 0);
+		// 6) Preferences...
+		JMenuItem setPreferences = new JMenuItem("Preferences...");
+		setPreferences.setMnemonic(KeyEvent.VK_P);
+		setPreferences.addActionListener(this);
+		editMM.addMenuItem(setPreferences, 6);
+	}
 
-        setupUndo(menuMan);
-    }
+	private void addViewMenu(MenuManager menuMan) {
+		JMenu viewMenu = new JMenu("View");
+		viewMenu.setMnemonic(KeyEvent.VK_V);
+		menuMan.addMenuItem(viewMenu, VIEW_MENU_POS);
+	}
+
+	private void addToolsMenu(MenuManager menuMan) {
+		JMenu toolsMenu = new JMenu("Tools");
+		toolsMenu.setMnemonic(KeyEvent.VK_T);
+		menuMan.addMenuItem(toolsMenu, TOOLS_MENU_POS);
+		MenuManager toolsMM = menuMan.getSubMenuManager(TOOLS_MENU_POS);
+		if (toolsMM != null && toolsMM.getSubMenuManager(TOOLS_SUBMENU2_POS) == null) {
+			toolsMM.addMenuItem(new JMenu("Open Files"), TOOLS_SUBMENU2_POS);
+		}
+	}
+
+	private void addHelpMenu(MenuManager menuMan) {
+		JMenu helpMenu = new JMenu("Help");
+		helpMenu.setMnemonic(KeyEvent.VK_H);
+		menuMan.addMenuItem(helpMenu, HELP_MENU_POS);
+		MenuManager helpMM = menuMan.getSubMenuManager(HELP_MENU_POS);
+
+		helpItem = new JMenuItem("Help");
+		helpItem.setMnemonic(KeyEvent.VK_H);
+		helpItem.addActionListener(this);
+		helpMM.addMenuItem(helpItem, 0);
+	}
 
     // second round YD edited the following lines to move "Undo" and "Redo" to be
     // under "Advanced" >> "Queries"
@@ -1027,20 +1268,7 @@ public class InterfaceMain implements ActionListener {
 
 	private void finalizeMenu(MenuManager menuMan) {
 		JMenuBar mb = menuMan.createMenu();
-		// Keep system Look & Feel colors; avoid forcing custom colors
-		mb.setFont(UNIFIED_FONT);
-		for (int i = 0; i < mb.getMenuCount(); i++) {
-			JMenu menu = mb.getMenu(i);
-			if (menu != null) {
-				menu.setFont(UNIFIED_FONT);
-				for (int j = 0; j < menu.getItemCount(); j++) {
-					JMenuItem item = menu.getItem(j);
-					if (item != null) {
-						item.setFont(UNIFIED_FONT);
-					}
-				}
-			}
-		}
+		// Keep system Look & Feel defaults for fonts/colors.
 		mainFrame.setJMenuBar(mb);
 	}
 
@@ -1111,8 +1339,13 @@ public class InterfaceMain implements ActionListener {
 			// YD edits second round, when user choose "Query File", check the query file
 			// saved in the savedProperties file
 			// and open the system editor, allowing user to edit it
-		} else if (e.getActionCommand().equals("Optional Features...")) {
-			showOptionalFeaturesDialog();
+		} else if (e.getActionCommand().equals("Preferences...")) {
+			showPreferencesDialog();
+		} else if (e.getActionCommand().equals("Query File")) {
+			openConfiguredQueryFileInXmlEditor();
+		} else if (e.getActionCommand().equals("Edit Queries File")) {
+			// Backwards compatible handler for the previous Edit menu entry
+			openConfiguredQueryFileInXmlEditor();
 		} else if (e.getActionCommand().equals("Disable Auto Graphics") || e.getActionCommand().equals("Enable Auto Graphics")) {
 			autoGenerateGraphics = !autoGenerateGraphics;
 			toggleAutoGraphicsMenu.setText(autoGenerateGraphics ? "Disable Auto Graphics" : "Enable Auto Graphics");
@@ -1122,30 +1355,15 @@ public class InterfaceMain implements ActionListener {
 			fireProperty("SelectQuery", null, null);
 		} else if (e.getActionCommand().equals("Help")) {
 			try {
-				Desktop.getDesktop().browse(new URI("https://github.com/USEPA/GLIMPSE"));
+				Desktop.getDesktop().browse(new URI("https://github.com/DLoughlin/GLIMPSE-CE"));
 			} catch (Exception ex) {
 				JOptionPane.showMessageDialog(mainFrame, "Unable to open help page.", "Help", JOptionPane.INFORMATION_MESSAGE);
-			}
-		} else if (e.getActionCommand().equals("Query File")) {
-			if (propertiesFile.exists()) {
-				String theCurrentQueryFile = savedProperties.getProperty("queryFile", null);
-				System.out.println(
-						"check the current query file path in the savedProperties file: " + theCurrentQueryFile);
-				try {
-					Desktop.getDesktop().edit(new File(theCurrentQueryFile));
-				} catch (IOException ioe) {
-					ioe.printStackTrace();
-				}
 			}
 		} else if (e.getActionCommand().equals("Unit Conversions")) {
 			if (propertiesFile.exists()) {
 				String unitsFileName = InterfaceMain.unitFileLocation;
 				if (unitsFileName != null && unitsFileName.length() > 0) {
-					try {
-						Desktop.getDesktop().edit(new File(unitsFileName));
-					} catch (IOException ioe) {
-						ioe.printStackTrace();
-					}
+					openEditorForFile(new File(unitsFileName), "csv");
 				} else {
 					JOptionPane.showMessageDialog(null, "No unit file specified, please add to launch arguments");
 				}
@@ -1154,11 +1372,7 @@ public class InterfaceMain implements ActionListener {
 			if (propertiesFile.exists()) {
 				String regionsFileName = InterfaceMain.presetRegionListLocation;
 				if (regionsFileName != null && regionsFileName.length() > 0) {
-					try {
-						Desktop.getDesktop().edit(new File(regionsFileName));
-					} catch (IOException ioe) {
-						ioe.printStackTrace();
-					}
+					openEditorForFile(new File(regionsFileName), "txt");
 				} else {
 					JOptionPane.showMessageDialog(null, "No regions file specified, please set one in Config > Select Regions File");
 				}
@@ -1179,6 +1393,7 @@ public class InterfaceMain implements ActionListener {
 				savedProperties.setProperty("lastDirectory", file.getParent());
 				System.out.println("Selected query file: " + file.getAbsolutePath());
 				persistProperties();
+				refreshQueryFileMenuEnabled();
 			}
 		} else if (e.getActionCommand().equals("Select Units File")) {
 			FileChooser fc = FileChooserFactory.getFileChooser();
@@ -1275,6 +1490,385 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
+	private String safeTrim(String s) {
+		return s == null ? "" : s.trim();
+	}
+
+	private File promptForExecutable(String title) {
+		FileChooser fc = FileChooserFactory.getFileChooser();
+		File[] files = fc.doFilePrompt(mainFrame, title, FileChooser.LOAD_DIALOG,
+				new File(getProperties().getProperty("lastDirectory", ".")), null);
+		if (files != null && files.length > 0) {
+			File file = files[0];
+			savedProperties.setProperty("lastDirectory", file.getParent());
+			persistProperties();
+			return file;
+		}
+		return null;
+	}
+
+	private void openEditorForFile(File file, String type) {
+		if (file == null || !file.exists()) {
+			showMessageDialog("File does not exist: " + (file != null ? file.getAbsolutePath() : "(null)"),
+					"Open Editor", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		String editorCmd = savedProperties.getProperty(type + "Editor", "").trim();
+		try {
+			if (!editorCmd.isEmpty()) {
+				java.util.List<String> cmdTokens = parseCommandTokens(editorCmd);
+				cmdTokens.add(file.getAbsolutePath());
+				new ProcessBuilder(cmdTokens).start();
+			} else {
+				// Use default system editor
+				if (Desktop.isDesktopSupported()) {
+					Desktop.getDesktop().edit(file);
+				} else {
+					showMessageDialog("Cannot open editor. Please configure an editor command in Preferences.",
+							"Open Editor", JOptionPane.WARNING_MESSAGE);
+				}
+			}
+		} catch (IOException ex) {
+			showMessageDialog("Error opening editor for " + file.getName() + ":\n" + ex.getMessage(),
+					"Open Editor", JOptionPane.ERROR_MESSAGE);
+		}
+	}
+
+	// Preferences dialog implementation
+	private javax.swing.JLabel unitsFileLabel;
+	private javax.swing.JLabel regionsFileLabel;
+	private javax.swing.JLabel mapResourceFolderLabel;
+	private javax.swing.JTextField xmlEditorField;
+	private javax.swing.JTextField csvEditorField;
+	private javax.swing.JTextField txtEditorField;
+	private javax.swing.JTextField unitsFileField;
+	private javax.swing.JTextField regionsFileField;
+	private javax.swing.JTextField mapResourceFolderField;
+	private javax.swing.JComboBox<String> sigDigitsCombo;
+	private javax.swing.JCheckBox zipExportedScenariosCheckbox;
+
+	private void showPreferencesDialog() {
+		javax.swing.JDialog dlg = new javax.swing.JDialog(mainFrame, "Preferences", true);
+		dlg.setDefaultCloseOperation(javax.swing.JDialog.DISPOSE_ON_CLOSE);
+		javax.swing.JTabbedPane tabs = new javax.swing.JTabbedPane();
+
+		// -----------------
+		// General tab
+		// -----------------
+		javax.swing.JPanel generalPanel = new javax.swing.JPanel(new java.awt.GridBagLayout());
+		generalPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+		java.awt.GridBagConstraints gc = new java.awt.GridBagConstraints();
+		gc.gridx = 0;
+		gc.gridy = 0;
+		gc.anchor = java.awt.GridBagConstraints.WEST;
+		gc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+		gc.weightx = 0.0;
+		gc.insets = new java.awt.Insets(6, 6, 6, 6);
+
+		// Section label
+		javax.swing.JLabel fileEditorsLbl = new javax.swing.JLabel("File editors:");
+		fileEditorsLbl.setFont(fileEditorsLbl.getFont().deriveFont(java.awt.Font.BOLD));
+		gc.gridx = 0;
+		gc.gridwidth = 3;
+		gc.weightx = 1.0;
+		generalPanel.add(fileEditorsLbl, gc);
+		gc.gridwidth = 1;
+
+		gc.gridy++;
+		gc.weightx = 0.0;
+		javax.swing.JLabel xmlLbl = new javax.swing.JLabel("XML editor command:");
+		generalPanel.add(xmlLbl, gc);
+		gc.gridx = 1;
+		gc.weightx = 1.0;
+		xmlEditorField = new javax.swing.JTextField(savedProperties.getProperty("xmlEditor", ""));
+		generalPanel.add(xmlEditorField, gc);
+		gc.gridx = 2;
+		gc.weightx = 0.0;
+		javax.swing.JButton xmlBrowse = new javax.swing.JButton("Browse…");
+		xmlBrowse.addActionListener(ev -> {
+			File exe = promptForExecutable("Select XML editor executable");
+			if (exe != null) {
+				xmlEditorField.setText(exe.getAbsolutePath());
+			}
+		});
+		generalPanel.add(xmlBrowse, gc);
+
+		gc.gridy++;
+		gc.gridx = 0;
+		javax.swing.JLabel csvLbl = new javax.swing.JLabel("CSV editor command:");
+		generalPanel.add(csvLbl, gc);
+		gc.gridx = 1;
+		gc.weightx = 1.0;
+		csvEditorField = new javax.swing.JTextField(savedProperties.getProperty("csvEditor", ""));
+		generalPanel.add(csvEditorField, gc);
+		gc.gridx = 2;
+		gc.weightx = 0.0;
+		javax.swing.JButton csvBrowse = new javax.swing.JButton("Browse…");
+		csvBrowse.addActionListener(ev -> {
+			File exe = promptForExecutable("Select CSV editor executable");
+			if (exe != null) {
+				csvEditorField.setText(exe.getAbsolutePath());
+			}
+		});
+		generalPanel.add(csvBrowse, gc);
+
+		gc.gridy++;
+		gc.gridx = 0;
+		javax.swing.JLabel txtLbl = new javax.swing.JLabel("TXT editor command:");
+		generalPanel.add(txtLbl, gc);
+		gc.gridx = 1;
+		gc.weightx = 1.0;
+		txtEditorField = new javax.swing.JTextField(savedProperties.getProperty("txtEditor", ""));
+		generalPanel.add(txtEditorField, gc);
+		gc.gridx = 2;
+		gc.weightx = 0.0;
+		javax.swing.JButton txtBrowse = new javax.swing.JButton("Browse…");
+		txtBrowse.addActionListener(ev -> {
+			File exe = promptForExecutable("Select TXT editor executable");
+			if (exe != null) {
+				txtEditorField.setText(exe.getAbsolutePath());
+			}
+		});
+		generalPanel.add(txtBrowse, gc);
+
+		gc.gridy++;
+		gc.gridx = 0;
+		gc.gridwidth = 3;
+		gc.weightx = 1.0;
+		javax.swing.JLabel hint = new javax.swing.JLabel(
+				"<html>Tip: leave blank to use the default system editor, or enter a command such as<br>"
+				+ "<i>notepad.exe</i>, <i>code</i>, or <i>\"C:\\Program Files\\editor.exe\" --arg</i>.<br>"
+				+ "Arguments are supported; quote paths that contain spaces.</html>");
+		generalPanel.add(hint, gc);
+
+		// Horizontal separator
+		gc.gridy++;
+		gc.gridx = 0;
+		gc.gridwidth = 3;
+		gc.weightx = 1.0;
+		generalPanel.add(new javax.swing.JSeparator(javax.swing.SwingConstants.HORIZONTAL), gc);
+		gc.gridwidth = 1;
+
+		// Zip exported scenarios preference
+		gc.gridy++;
+		gc.gridx = 0;
+		gc.gridwidth = 2;
+		gc.weightx = 1.0;
+		zipExportedScenariosCheckbox = new javax.swing.JCheckBox("Automatically zip scenarios when exported");
+		String zipExportedScenariosValue = savedProperties.getProperty("zipExportedScenarios");
+		boolean zipExportedScenariosSelected;
+		if (zipExportedScenariosValue == null) {
+			zipExportedScenariosSelected = false;
+		} else if ("true".equalsIgnoreCase(zipExportedScenariosValue) || "false".equalsIgnoreCase(zipExportedScenariosValue)) {
+			zipExportedScenariosSelected = Boolean.parseBoolean(zipExportedScenariosValue);
+			// Normalize the stored value to a lowercase canonical form.
+			savedProperties.setProperty("zipExportedScenarios", Boolean.toString(zipExportedScenariosSelected));
+		} else {
+			// Invalid value encountered; fall back to a safe default and sanitize the property.
+			zipExportedScenariosSelected = false;
+			savedProperties.setProperty("zipExportedScenarios", "false");
+		}
+		zipExportedScenariosCheckbox.setSelected(zipExportedScenariosSelected);
+		generalPanel.add(zipExportedScenariosCheckbox, gc);
+
+		// Significant digits preference
+		gc.gridy++;
+		gc.gridx = 0;
+		gc.gridwidth = 1;
+		gc.weightx = 0.0;
+		generalPanel.add(new javax.swing.JLabel("Significant digits for results:"), gc);
+		gc.gridx = 1;
+		gc.weightx = 1.0;
+		gc.gridwidth = 2;
+		sigDigitsCombo = new javax.swing.JComboBox<>(new String[] { "2", "3", "4", "5" });
+		sigDigitsCombo.setSelectedItem(savedProperties.getProperty("significantDigits", "3"));
+		generalPanel.add(sigDigitsCombo, gc);
+
+
+		tabs.addTab("General", generalPanel);
+
+		// -----------------
+		// Optional Features tab
+		// -----------------
+		javax.swing.JPanel optionalPanel = new javax.swing.JPanel(new java.awt.GridBagLayout());
+		optionalPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+		java.awt.GridBagConstraints oc = new java.awt.GridBagConstraints();
+		oc.gridx = 0;
+		oc.gridy = 0;
+		oc.anchor = java.awt.GridBagConstraints.WEST;
+		oc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+		oc.insets = new java.awt.Insets(6, 6, 6, 6);
+		oc.weightx = 0.0;
+
+		// Convert Units
+		javax.swing.JLabel unitsLbl = new javax.swing.JLabel("Convert Units (CSV):");
+		optionalPanel.add(unitsLbl, oc);
+		oc.gridx = 1;
+		oc.weightx = 1.0;
+		unitsFileField = new javax.swing.JTextField(savedProperties.getProperty("unitsFile", ""));
+		optionalPanel.add(unitsFileField, oc);
+		oc.gridx = 2;
+		oc.weightx = 0.0;
+		javax.swing.JButton unitsBrowse = new javax.swing.JButton("Browse…");
+		unitsBrowse.addActionListener(ev -> {
+			actionPerformed(new ActionEvent(unitsBrowse, ActionEvent.ACTION_PERFORMED, "Select Units File"));
+			unitsFileField.setText(savedProperties.getProperty("unitsFile", ""));
+		});
+		optionalPanel.add(unitsBrowse, oc);
+		oc.gridx = 3;
+		javax.swing.JButton unitsEdit = new javax.swing.JButton("Edit");
+		unitsEdit.addActionListener(ev -> openEditorForFile(new File(unitsFileField.getText()), "csv"));
+		optionalPanel.add(unitsEdit, oc);
+
+		// Preset Regions
+		oc.gridy++;
+		oc.gridx = 0;
+		javax.swing.JLabel regionsLbl = new javax.swing.JLabel("Preset Regions:");
+		optionalPanel.add(regionsLbl, oc);
+		oc.gridx = 1;
+		oc.weightx = 1.0;
+		regionsFileField = new javax.swing.JTextField(savedProperties.getProperty("presetRegionList", ""));
+		optionalPanel.add(regionsFileField, oc);
+		oc.gridx = 2;
+		oc.weightx = 0.0;
+		javax.swing.JButton regionsBrowse = new javax.swing.JButton("Browse…");
+		regionsBrowse.addActionListener(ev -> {
+			actionPerformed(new ActionEvent(regionsBrowse, ActionEvent.ACTION_PERFORMED, "Select Regions File"));
+			regionsFileField.setText(savedProperties.getProperty("presetRegionList", ""));
+		});
+		optionalPanel.add(regionsBrowse, oc);
+		oc.gridx = 3;
+		javax.swing.JButton regionsEdit = new javax.swing.JButton("Edit");
+		regionsEdit.addActionListener(ev -> openEditorForFile(new File(regionsFileField.getText()), "txt"));
+		optionalPanel.add(regionsEdit, oc);
+
+		// Mapping Resources
+		oc.gridy++;
+					oc.gridx = 0;
+		javax.swing.JLabel mapLbl = new javax.swing.JLabel("Mapping Resources:");
+		optionalPanel.add(mapLbl, oc);
+		oc.gridx = 1;
+		oc.weightx = 1.0;
+		mapResourceFolderField = new javax.swing.JTextField(savedProperties.getProperty("mapResourceFolder", ""));
+		optionalPanel.add(mapResourceFolderField, oc);
+		oc.gridx = 2;
+		oc.weightx = 0.0;
+		javax.swing.JButton mapBrowse = new javax.swing.JButton("Browse…");
+		mapBrowse.addActionListener(ev -> {
+			actionPerformed(new ActionEvent(mapBrowse, ActionEvent.ACTION_PERFORMED, "Select Map Resource Folder"));
+			mapResourceFolderField.setText(savedProperties.getProperty("mapResourceFolder", ""));
+		});
+		optionalPanel.add(mapBrowse, oc);
+		oc.gridx = 3;
+		optionalPanel.add(new javax.swing.JLabel(""), oc);
+
+		// Make column 1 grow; keep buttons compact
+		oc.gridy++;
+		oc.gridx = 0;
+		oc.gridwidth = 4;
+		oc.weightx = 1.0;
+		optionalPanel.add(new javax.swing.JLabel(""), oc);
+
+		tabs.addTab("Optional Features", optionalPanel);
+
+		// Main content
+		javax.swing.JPanel content = new javax.swing.JPanel(new java.awt.BorderLayout());
+		content.add(tabs, java.awt.BorderLayout.CENTER);
+
+		// Bottom buttons: Save / Close
+		javax.swing.JPanel bottom = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 8));
+		javax.swing.JButton save = new javax.swing.JButton("Save");
+		save.addActionListener(ev -> {
+			updateProperties(p -> {
+				p.setProperty("xmlEditor", safeTrim(xmlEditorField.getText()));
+				p.setProperty("csvEditor", safeTrim(csvEditorField.getText()));
+				if (txtEditorField != null) { p.setProperty("txtEditor", safeTrim(txtEditorField.getText())); }
+				if (sigDigitsCombo != null && sigDigitsCombo.getSelectedItem() != null) {
+					p.setProperty("significantDigits", sigDigitsCombo.getSelectedItem().toString());
+				}
+				if (zipExportedScenariosCheckbox != null) {
+					p.setProperty("zipExportedScenarios", Boolean.toString(zipExportedScenariosCheckbox.isSelected()));
+				}
+				// persist latest optional paths too (in case user typed directly)
+				if (unitsFileField != null) { p.setProperty("unitsFile", safeTrim(unitsFileField.getText())); }
+				if (regionsFileField != null) { p.setProperty("presetRegionList", safeTrim(regionsFileField.getText())); }
+				if (mapResourceFolderField != null) { p.setProperty("mapResourceFolder", safeTrim(mapResourceFolderField.getText())); }
+			});
+			dlg.dispose();
+		});
+		javax.swing.JButton close = new javax.swing.JButton("Close");
+		close.addActionListener(ev -> dlg.dispose());
+		bottom.add(save);
+		bottom.add(close);
+		content.add(bottom, java.awt.BorderLayout.SOUTH);
+
+		dlg.setContentPane(content);
+		dlg.pack();
+		dlg.setSize(dlg.getWidth(), dlg.getHeight() + 20);
+		dlg.setLocationRelativeTo(mainFrame);
+		dlg.setVisible(true);
+	}
+
+	/**
+	 * Splits a shell-style command string into a list of tokens suitable for
+	 * passing to {@link ProcessBuilder}. Handles double- and single-quoted
+	 * substrings so that paths containing spaces can be quoted (e.g.,
+	 * {@code "C:\Program Files\editor.exe" --flag} → two tokens). Note:
+	 * escaped quotes inside a quoted string (e.g., {@code "say \"hi\""}) are
+	 * not supported.
+	 */
+	private java.util.List<String> parseCommandTokens(String cmd) {
+		// Match: "…" (group 1) | '…' (group 2) | non-whitespace run (group 3)
+		final java.util.regex.Pattern TOKEN_PATTERN =
+				java.util.regex.Pattern.compile("\"([^\"]*)\"|'([^']*)'|(\\S+)");
+		java.util.List<String> tokens = new java.util.ArrayList<>();
+		java.util.regex.Matcher m = TOKEN_PATTERN.matcher(cmd.trim());
+		while (m.find()) {
+			if (m.group(1) != null) {
+				tokens.add(m.group(1));
+			} else if (m.group(2) != null) {
+				tokens.add(m.group(2));
+			} else {
+				tokens.add(m.group(3));
+			}
+		}
+		return tokens;
+	}
+
+	private boolean hasQueryFileConfigured() {
+		String qFile = (queryFilename != null && !queryFilename.trim().isEmpty())
+				? queryFilename
+				: (savedProperties != null ? savedProperties.getProperty("queryFile", "") : "");
+		return qFile != null && !qFile.trim().isEmpty() && new File(qFile).exists();
+	}
+
+	private void refreshQueryFileMenuEnabled() {
+		if (editQueryFileMenu != null) {
+			editQueryFileMenu.setEnabled(hasQueryFileConfigured());
+		}
+	}
+
+	private void openConfiguredQueryFileInXmlEditor() {
+		String qFile = (queryFilename != null && !queryFilename.trim().isEmpty())
+				? queryFilename
+				: savedProperties.getProperty("queryFile", "");
+		if (qFile == null || qFile.trim().isEmpty()) {
+			showMessageDialog("No query file is configured. Use File > Select Query File first.",
+					"Query File", JOptionPane.INFORMATION_MESSAGE);
+			refreshQueryFileMenuEnabled();
+			return;
+		}
+		File f = new File(qFile);
+		if (!f.exists()) {
+			showMessageDialog("Query file does not exist: " + f.getAbsolutePath(), "Query File",
+					JOptionPane.ERROR_MESSAGE);
+			refreshQueryFileMenuEnabled();
+			return;
+		}
+		openEditorForFile(f, "xml");
+	}
+
 	// Re-add previously existing methods and inner classes removed by accident
 	public static InterfaceMain getInstance() { return main; }
 
@@ -1293,7 +1887,7 @@ public class InterfaceMain implements ActionListener {
 	public void fireControlChange(String newValue) {
 		if (newValue.equals(oldControl)) { oldControl += "Same"; }
 		fireProperty("Control", oldControl, newValue);
-		oldControl = newValue;
+	 oldControl = newValue;
 	}
 	public void fireProperty(String propertyName, Object oldValue, Object newValue) {
 		final PropertyChangeEvent event = new PropertyChangeEvent(this, propertyName, oldValue, newValue);
@@ -1302,6 +1896,23 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
+	/**
+	 * Manages a hierarchical menu structure by wrapping {@link JMenuItem} and
+	 * {@link JMenu} instances in a tree of {@code MenuManager} nodes.
+	 *
+	 * <p><b>Automatic JMenuItem-to-JMenu promotion:</b> If a node was originally
+	 * created with a leaf {@code JMenuItem} (i.e. not a {@code JMenu}) and
+	 * {@link #addMenuItem} is subsequently called to attach children to it, the
+	 * node is <em>automatically promoted</em> to a {@code JMenu}. During
+	 * promotion the following properties are copied from the original item to the
+	 * new menu: text, mnemonic, enabled state, tool-tip text, icon, accelerator
+	 * key, action command, and all registered {@code ActionListener}s.
+	 *
+	 * <p>Callers that require an immutable menu structure (i.e. a node should
+	 * never change type after creation) should ensure that any item intended to
+	 * have sub-items is registered as a {@code JMenu} from the outset, rather
+	 * than relying on this implicit promotion.
+	 */
 	public class MenuManager {
 		private JMenuItem menuValue;
 		private Map<Integer, MenuManager> subItems;
@@ -1318,6 +1929,34 @@ public class InterfaceMain implements ActionListener {
 			sepList.add(where);
 		}
 		public int addMenuItem(JMenuItem menu, int where) {
+			// If this node currently represents a leaf JMenuItem but callers are trying
+			// to add children, promote it to a JMenu.
+			if (subItems == null && menuValue instanceof JMenuItem && !(menuValue instanceof JMenu)) {
+				final JMenuItem old = menuValue;
+				final JMenu promoted = new JMenu(old.getText());
+				promoted.setMnemonic(old.getMnemonic());
+				promoted.setEnabled(old.isEnabled());
+				promoted.setToolTipText(old.getToolTipText());
+				promoted.setIcon(old.getIcon());
+				promoted.setAccelerator(old.getAccelerator());
+
+				// Preserve listeners and action command.
+				promoted.setActionCommand(old.getActionCommand());
+				for (java.awt.event.ActionListener l : old.getActionListeners()) {
+					promoted.addActionListener(l);
+				}
+
+				menuValue = promoted;
+				subItems = new TreeMap<Integer, MenuManager>();
+			}
+
+			if (subItems == null) {
+				if (menuValue == null || menuValue instanceof JMenu) {
+					subItems = new TreeMap<Integer, MenuManager>();
+				} else {
+					throw new IllegalStateException("Cannot add menu item to non-menu parent: " + menuValue);
+				}
+			}
 			if (subItems.containsKey(where)) { return addMenuItem(menu, where + 1); }
 			subItems.put(where, new MenuManager(menu));
 			return where;
@@ -1346,13 +1985,6 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
-	/**
-	 * Returns a defensive copy of the saved properties to avoid exposing
-	 * the internal representation. Callers can read and modify the returned
-	 * Properties without affecting the internal savedProperties field.
-	 *
-	 * @return a copy of the saved properties
-	 */
 	public Properties getProperties() {
 		Properties copy = new Properties();
 		if (savedProperties != null) {
@@ -1361,14 +1993,6 @@ public class InterfaceMain implements ActionListener {
 		return copy;
 	}
 
-	/**
-	 * Sets a property and persists it to disk immediately.
-	 * This method should be used instead of modifying the defensive copy
-	 * returned by getProperties() when changes need to be saved.
-	 *
-	 * @param key the property key
-	 * @param value the property value
-	 */
 	public void setProperty(String key, String value) {
 		if (savedProperties != null) {
 			savedProperties.setProperty(key, value);
@@ -1376,13 +2000,6 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
-	/**
-	 * Removes a property and persists the change to disk immediately.
-	 * This method should be used instead of modifying the defensive copy
-	 * returned by getProperties() when changes need to be saved.
-	 *
-	 * @param key the property key to remove
-	 */
 	public void removeProperty(String key) {
 		if (savedProperties != null) {
 			savedProperties.remove(key);
@@ -1390,12 +2007,6 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
-	/**
-	 * Performs multiple property updates in a batch and persists them once.
-	 * This is more efficient than multiple individual setProperty/removeProperty calls.
-	 *
-	 * @param updates a consumer that performs updates on the provided Properties object
-	 */
 	public void updateProperties(java.util.function.Consumer<Properties> updates) {
 		if (savedProperties != null) {
 			updates.accept(savedProperties);
@@ -1403,7 +2014,6 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
-	// Copied from DbViewer.java helper
 	protected Vector getRegions() {
 		Vector funcTemp = new Vector<String>(1, 0);
 		funcTemp.add("distinct-values");
@@ -1430,26 +2040,20 @@ public class InterfaceMain implements ActionListener {
 	}
 
 	public void runBatch() {
-		// TODO: make it so recent files could work with this
 		FileChooser fc = FileChooserFactory.getFileChooser();
 		final File[] result = fc.doFilePrompt(mainFrame, "Open Batch File", FileChooser.LOAD_DIALOG,
 				new File(getProperties().getProperty("lastDirectory", ".")), new XMLFilter());
-		// these should be run off the GUI thread
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
 				if (result != null) {
 					for (File file : result) {
 						Document doc = FileUtils.loadDocument(file, null);
-						// Only run if the batch file was parsed correctly
-						// note an error would have already been given if it wasn't
-						// parsed correctly
 						if (doc != null) {
 							runBatch(doc.getDocumentElement());
 						}
 					}
 				}
-				// TODO: message that all were run
 			}
 		}).start();
 	}
@@ -1476,53 +2080,80 @@ public class InterfaceMain implements ActionListener {
 		showMessageDialog("Finished running batch file", "Batch File Complete", JOptionPane.INFORMATION_MESSAGE);
 	}
 
-	private static String convertMessageTypeToString(int messageType) {
-		switch (messageType) {
-		case JOptionPane.ERROR_MESSAGE: return "ERROR";
-		case JOptionPane.INFORMATION_MESSAGE: return "INFO";
-		case JOptionPane.PLAIN_MESSAGE: return "PLAIN";
-		case JOptionPane.QUESTION_MESSAGE: return "QUESTION";
-		case JOptionPane.WARNING_MESSAGE: return "WARNING";
-		default: return "UNKNOWN";
-		}
-	}
-
 	public void showMessageDialog(Object message, String title, int messageType) {
 		if (GraphicsEnvironment.isHeadless()) {
-			System.out.print(convertMessageTypeToString(messageType));
-			System.out.print("; ");
 			System.out.println(message);
 			return;
 		}
 		JOptionPane.showMessageDialog(mainFrame, message, title, messageType);
 	}
 
-	private static String convertOptionTypeToString(int optionType) {
-		switch (optionType) {
-		case JOptionPane.CANCEL_OPTION: return "CANCEL";
-		case JOptionPane.CLOSED_OPTION: return "CLOSED";
-		case JOptionPane.NO_OPTION: return "NO";
-		case JOptionPane.YES_OPTION: return "YES";
-		default: return "UNKNOWN";
-		}
+	/**
+	 * Wrapper around JOptionPane.showConfirmDialog with a consistent signature used
+	 * throughout the application.
+	 */
+	public int showConfirmDialog(Object message, String title, int optionType, int messageType) {
+		return showConfirmDialog(message, title, optionType, messageType, JOptionPane.YES_OPTION);
 	}
 
+	/**
+	 * Wrapper around JOptionPane.showConfirmDialog with a default option.
+	 */
 	public int showConfirmDialog(Object message, String title, int optionType, int messageType, int defaultOption) {
 		if (GraphicsEnvironment.isHeadless()) {
-			System.out.print("YES/NO/CANCEL");
-			System.out.print("; ");
-			System.out.print(message);
-			System.out.print("; ");
-			System.out.println(convertOptionTypeToString(defaultOption));
+			// In headless mode, just return the default to keep batch runs deterministic.
 			return defaultOption;
 		}
-		return JOptionPane.showConfirmDialog(mainFrame, message, title, optionType, messageType);
+		try {
+			Object[] options;
+			switch (optionType) {
+			case JOptionPane.YES_NO_OPTION:
+				options = new Object[] { "Yes", "No" };
+				break;
+			case JOptionPane.OK_CANCEL_OPTION:
+				options = new Object[] { "OK", "Cancel" };
+				break;
+			case JOptionPane.YES_NO_CANCEL_OPTION:
+				options = new Object[] { "Yes", "No", "Cancel" };
+				break;
+			default:
+				// Fallback to JOptionPane defaults when we don't recognize the option type.
+				return JOptionPane.showConfirmDialog(mainFrame, message, title, optionType, messageType);
+			}
+
+			int initialIndex = 0;
+			if (optionType == JOptionPane.OK_CANCEL_OPTION) {
+				initialIndex = (defaultOption == JOptionPane.CANCEL_OPTION) ? 1 : 0;
+			} else if (optionType == JOptionPane.YES_NO_OPTION) {
+				initialIndex = (defaultOption == JOptionPane.NO_OPTION) ? 1 : 0;
+			} else if (optionType == JOptionPane.YES_NO_CANCEL_OPTION) {
+				initialIndex = (defaultOption == JOptionPane.NO_OPTION) ? 1 : (defaultOption == JOptionPane.CANCEL_OPTION ? 2 : 0);
+			}
+
+			Object initialValue = options[Math.max(0, Math.min(initialIndex, options.length - 1))];
+			int result = JOptionPane.showOptionDialog(mainFrame, message, title, optionType, messageType, null, options,
+					initialValue);
+			// showOptionDialog returns 0..n-1 for options; map to JOptionPane constants
+			if (optionType == JOptionPane.OK_CANCEL_OPTION) {
+				return (result == 0) ? JOptionPane.OK_OPTION : (result == 1 ? JOptionPane.CANCEL_OPTION : JOptionPane.CLOSED_OPTION);
+			}
+			if (optionType == JOptionPane.YES_NO_OPTION) {
+				return (result == 0) ? JOptionPane.YES_OPTION : (result == 1 ? JOptionPane.NO_OPTION : JOptionPane.CLOSED_OPTION);
+			}
+			if (optionType == JOptionPane.YES_NO_CANCEL_OPTION) {
+				return (result == 0) ? JOptionPane.YES_OPTION
+						: (result == 1 ? JOptionPane.NO_OPTION
+								: (result == 2 ? JOptionPane.CANCEL_OPTION : JOptionPane.CLOSED_OPTION));
+			}
+			return result;
+		} catch (Exception ex) {
+			// Fallback to standard confirm dialog if any of the mapping logic fails.
+			return JOptionPane.showConfirmDialog(mainFrame, message, title, optionType, messageType);
+		}
 	}
 
-	// Persist properties to model_interface.properties immediately after changes
 	private void persistProperties() {
 		try (FileOutputStream fos = new FileOutputStream(propertiesFile)) {
-			// Create a custom Properties class that sorts keys for consistent output
 			Properties sortedProps = new Properties() {
 				@Override
 				public java.util.Enumeration<Object> keys() {
@@ -1536,128 +2167,6 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
-	// Preferences dialog implementation
-	private javax.swing.JLabel unitsFileLabel;
-	private javax.swing.JLabel regionsFileLabel;
-	private javax.swing.JLabel mapResourceFolderLabel;
-
-	private void showOptionalFeaturesDialog() {
-		javax.swing.JDialog dlg = new javax.swing.JDialog(mainFrame, "Optional Features", true);
-		dlg.setDefaultCloseOperation(javax.swing.JDialog.DISPOSE_ON_CLOSE);
-		javax.swing.JTabbedPane tabs = new javax.swing.JTabbedPane();
-
-		// Initialize labels with current values
-		unitsFileLabel = new javax.swing.JLabel("Units CSV: " + (savedProperties.getProperty("unitsFile", "<none>")));
-		regionsFileLabel = new javax.swing.JLabel("Regions List: " + (savedProperties.getProperty("presetRegionList", "<none>")));
-		mapResourceFolderLabel = new javax.swing.JLabel("Map Resource Folder: " + (savedProperties.getProperty("mapResourceFolder", "<none>")));
-
-		// Units tab
-		javax.swing.JPanel unitsPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
-		unitsPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
-		javax.swing.JPanel unitsInner = new javax.swing.JPanel(new java.awt.GridBagLayout());
-		java.awt.GridBagConstraints uc = new java.awt.GridBagConstraints();
-		uc.gridx = 0; uc.gridy = 0; uc.fill = java.awt.GridBagConstraints.HORIZONTAL; uc.weightx = 1.0; uc.insets = new java.awt.Insets(6, 6, 6, 6);
-		unitsInner.add(unitsFileLabel, uc);
-		uc.gridy++;
-		JPanel uBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
-		JButton btnUnits = new JButton("Select");
-		btnUnits.addActionListener(e -> {
-			actionPerformed(new ActionEvent(btnUnits, ActionEvent.ACTION_PERFORMED, "Select Units File"));
-			unitsFileLabel.setText("Units CSV: " + (savedProperties.getProperty("unitsFile", "<none>")));
-		});
-		uBtns.add(btnUnits);
-		JButton editUnits = new JButton("Edit");
-		editUnits.addActionListener(e -> {
-			String unitsFile = savedProperties.getProperty("unitsFile");
-			if (unitsFile != null && !unitsFile.isEmpty()) {
-				try {
-					Desktop.getDesktop().edit(new File(unitsFile));
-				} catch (IOException ex) {
-					showMessageDialog("Unable to open file: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-				}
-			} else {
-				showMessageDialog("No units file selected.", "Edit File", JOptionPane.INFORMATION_MESSAGE);
-			}
-		});
-		uBtns.add(editUnits);
-		unitsInner.add(uBtns, uc);
-		unitsPanel.add(unitsInner, java.awt.BorderLayout.NORTH);
-		tabs.addTab("Convert Units", unitsPanel);
-
-		// Regions tab
-		javax.swing.JPanel regionsPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
-		regionsPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
-		javax.swing.JPanel regionsInner = new javax.swing.JPanel(new java.awt.GridBagLayout());
-		java.awt.GridBagConstraints rc = new java.awt.GridBagConstraints();
-		rc.gridx = 0; rc.gridy = 0; rc.fill = java.awt.GridBagConstraints.HORIZONTAL; rc.weightx = 1.0; rc.insets = new java.awt.Insets(6, 6, 6, 6);
-		regionsInner.add(regionsFileLabel, rc);
-		rc.gridy++;
-		JPanel rBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
-		JButton btnRegions = new JButton("Select");
-		btnRegions.addActionListener(e -> {
-			actionPerformed(new ActionEvent(btnRegions, ActionEvent.ACTION_PERFORMED, "Select Regions File"));
-			regionsFileLabel.setText("Regions List: " + (savedProperties.getProperty("presetRegionList", "<none>")));
-		});
-		rBtns.add(btnRegions);
-		JButton editRegions = new JButton("Edit");
-		editRegions.addActionListener(e -> {
-			String regionsFile = savedProperties.getProperty("presetRegionList");
-			if (regionsFile != null && !regionsFile.isEmpty()) {
-				try {
-					Desktop.getDesktop().edit(new File(regionsFile));
-				} catch (IOException ex) {
-					showMessageDialog("Unable to open file: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-				}
-			} else {
-				showMessageDialog("No regions file selected.", "Edit File", JOptionPane.INFORMATION_MESSAGE);
-			}
-		});
-		rBtns.add(editRegions);
-		regionsInner.add(rBtns, rc);
-		regionsPanel.add(regionsInner, java.awt.BorderLayout.NORTH);
-		tabs.addTab("Preset Regions", regionsPanel);
-
-		// Maps tab
-		javax.swing.JPanel mapsPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
-		mapsPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
-		javax.swing.JPanel mapsInner = new javax.swing.JPanel(new java.awt.GridBagLayout());
-		java.awt.GridBagConstraints mc = new java.awt.GridBagConstraints();
-		mc.gridx = 0; mc.gridy = 0; mc.fill = java.awt.GridBagConstraints.HORIZONTAL; mc.weightx = 1.0; mc.insets = new java.awt.Insets(6, 6, 6, 6);
-		mapsInner.add(mapResourceFolderLabel, mc);
-		mc.gridy++;
-		JPanel mBtns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
-		JButton btnMaps = new JButton("Select");
-		btnMaps.addActionListener(e -> {
-			actionPerformed(new ActionEvent(btnMaps, ActionEvent.ACTION_PERFORMED, "Select Map Resource Folder"));
-			mapResourceFolderLabel.setText("Map Resource Folder: " + (savedProperties.getProperty("mapResourceFolder", "<none>")));
-		});
-		mBtns.add(btnMaps);
-		mapsInner.add(mBtns, mc);
-		mapsPanel.add(mapsInner, java.awt.BorderLayout.NORTH);
-		tabs.addTab("Maps", mapsPanel);
-
-		// Main content
-		javax.swing.JPanel content = new javax.swing.JPanel(new java.awt.BorderLayout());
-		content.add(tabs, java.awt.BorderLayout.CENTER);
-
-		// Bottom buttons: Close
-		javax.swing.JPanel bottom = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 8));
-		JButton close = new JButton("Close");
-		close.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) { dlg.dispose(); }
-		});
-		close.setPreferredSize(new java.awt.Dimension(90, 26));
-		bottom.add(close);
-		content.add(bottom, java.awt.BorderLayout.SOUTH);
-
-		dlg.setContentPane(content);
-		// Make dialog a bit larger to reduce cramped feeling, but not too large
-		dlg.setSize(Math.max(520, mainFrame.getWidth() / 2), Math.max(360, mainFrame.getHeight() / 3));
-		dlg.setLocationRelativeTo(mainFrame);
-		dlg.setVisible(true);
-	}
-
 	private static boolean isMac() {
 		String os = System.getProperty("os.name", "").toLowerCase();
 		return os.contains("mac");
@@ -1665,11 +2174,9 @@ public class InterfaceMain implements ActionListener {
 
 	private int getMenuShortcutMask() {
 		try {
-			// Java 9+
 			return (Integer) Toolkit.class.getMethod("getMenuShortcutKeyMaskEx").invoke(Toolkit.getDefaultToolkit());
 		} catch (Exception ex) {
 			try {
-				// Java 8 fallback
 				return (Integer) Toolkit.class.getMethod("getMenuShortcutKeyMask").invoke(Toolkit.getDefaultToolkit());
 			} catch (Exception ex2) {
 				return java.awt.event.InputEvent.CTRL_DOWN_MASK;

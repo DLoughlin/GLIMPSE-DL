@@ -41,7 +41,6 @@ import glimpseUtil.GLIMPSEStyles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
 import gui.Client;
-import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
@@ -75,6 +74,7 @@ public class NewDBWidget {
 		// stage.setWidth(200);
 		// stage.setHeight(100);
 		Scene scene = new Scene(new Group());
+		gui.ScenarioBuilder.applyModernTheme(scene);
 		// stage.setResizable(false);
 
 		Label topLabel = utils

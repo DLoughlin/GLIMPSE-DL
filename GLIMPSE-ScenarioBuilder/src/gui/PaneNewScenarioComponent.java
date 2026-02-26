@@ -63,7 +63,6 @@ import glimpseElement.TabTechTax;
 import glimpseUtil.FileChooserPlus;
 import glimpseElement.TabTechAvailable;
 import glimpseElement.TabTechBound;
-import glimpseElement.TabTechBound;
 import glimpseElement.TabTechParam;
 import glimpseElement.TabFixedDemand;
 import javafx.application.Platform;
@@ -770,13 +769,4 @@ public class PaneNewScenarioComponent extends gui.ScenarioBuilder {
 		return hbox;
 	}
 
-	/**
-	 * Creates and returns a dialog button with the specified text and default style.
-	 *
-	 * @param text The button label
-	 * @return A new Button instance
-	 */
-	private Button createDialogButton(String text) {
-		return utils.createButton(text, styles.getBigButtonWidth(), null);
-	}
 }

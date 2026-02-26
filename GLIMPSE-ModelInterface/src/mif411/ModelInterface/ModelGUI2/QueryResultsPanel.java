@@ -37,7 +37,6 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -47,7 +46,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import javax.swing.BorderFactory;
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
 import javax.swing.JButton;
@@ -134,12 +132,26 @@ public class QueryResultsPanel extends JPanel {
 						ret = createSingleTableContent(qg, singleBinding, scenarioListValues, regionListValues,
 								generateTotals);
 					}
+				} catch (org.basex.core.jobs.JobException e) {
+					// This is expected when a query is interrupted by the user.
+					// We can ignore it.
+					errorMessage = "Query cancelled.";
 				} catch (Exception e) {
-					errorMessage = e.getMessage();
-					e.printStackTrace();
+					if (e.getCause() instanceof org.basex.core.jobs.JobException) {
+						// This is expected when a query is interrupted by the user.
+						// We can ignore it.
+						errorMessage = "Query cancelled.";
+					} else {
+						errorMessage = e.getMessage();
+						e.printStackTrace();
+					}
 				} finally {
-					// Ensure we always mark this query as completed so the progress UI stays in sync
-					DbViewer.registerQueryCompleted();
+					// Ensure we always mark this query as completed so the progress UI stays in sync.
+					// Pass thisThread so it is removed from the in-flight set and cannot be
+					// double-counted if the tab is closed after the query finishes.
+					if (!isInterrupted()) {
+						DbViewer.registerQueryCompleted(thisThread);
+					}
 				}
 				// Stop process if the user terminated the process
 				if (isInterrupted())
@@ -313,7 +325,7 @@ public class QueryResultsPanel extends JPanel {
 	 * @throws Exception thrown if the multiTableModel returns an invalid result
 	 * 
 	 */
-	private JComponent createSingleTableContent(QueryGenerator qg, QueryBinding singleBinding,
+	protected JComponent createSingleTableContent(QueryGenerator qg, QueryBinding singleBinding,
 			final Object[] scenarioListValues, final Object[] regionListValues, final boolean generateTotals)
 			throws Exception {
 		// aseTableModel bt = new ComboTableModel(qg, scenarioListValues,
@@ -322,7 +334,8 @@ public class QueryResultsPanel extends JPanel {
 		final InterfaceMain main = InterfaceMain.getInstance(); // @1
 		JSplitPane sp = new JSplitPane();
 		// BaseTableModel
-		ComboTableModel bt = new ComboTableModel(qg, scenarioListValues, regionListValues, singleBinding, context);
+		ComboTableModel bt;
+		bt = new ComboTableModel(qg, scenarioListValues, regionListValues, singleBinding, context);
 
 		JTable jTable = null;
 

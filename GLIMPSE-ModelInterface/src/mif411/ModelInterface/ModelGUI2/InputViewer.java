@@ -108,7 +108,6 @@ import ModelInterface.ModelGUI2.tables.TableSelector;
 import ModelInterface.ModelGUI2.tables.TableSorter;
 import ModelInterface.common.FileChooser;
 import ModelInterface.common.FileChooserFactory;
-import ModelInterface.common.RecentFilesList;
 import ModelInterface.common.RecentFilesList.RecentFile;
 
 public class InputViewer implements ActionListener, TableModelListener, MenuAdder, BatchRunner {
@@ -270,7 +269,21 @@ public class InputViewer implements ActionListener, TableModelListener, MenuAdde
 						documentation = null;
 						main.getUndoManager().discardAllEdits();
 						main.refreshUndoRedo();
-						parentFrame.getContentPane().removeAll();
+
+						// Do not clear the entire content pane; InterfaceMain installs a status bar
+						// in BorderLayout.SOUTH that must remain visible.
+						java.awt.Container cp = parentFrame.getContentPane();
+						java.awt.Component existingCenter = null;
+						if (cp.getLayout() instanceof java.awt.BorderLayout) {
+							existingCenter = ((java.awt.BorderLayout) cp.getLayout())
+									.getLayoutComponent(java.awt.BorderLayout.CENTER);
+						}
+						if (existingCenter != null) {
+							cp.remove(existingCenter);
+							cp.revalidate();
+							cp.repaint();
+						}
+
 						parentFrame.setTitle("GLIMPSE ModelInterface");
 						if(splitPane != null) {
 							main.getProperties().setProperty("dividerLocation", 
@@ -358,8 +371,21 @@ public class InputViewer implements ActionListener, TableModelListener, MenuAdde
 	 */
 	public void displayJtree() {
         final JFrame parentFrame = InterfaceMain.getInstance().getFrame();
-		Container contentPane = parentFrame.getContentPane();
-		contentPane.removeAll();
+        Container contentPane = parentFrame.getContentPane();
+
+        // Do not clear the entire content pane; InterfaceMain installs a status bar in SOUTH.
+        // Replace CENTER only.
+        java.awt.Component existingCenter = null;
+        if (contentPane.getLayout() instanceof java.awt.BorderLayout) {
+            existingCenter = ((java.awt.BorderLayout) contentPane.getLayout())
+                    .getLayoutComponent(java.awt.BorderLayout.CENTER);
+        } else {
+            contentPane.setLayout(new java.awt.BorderLayout());
+        }
+        if (existingCenter != null) {
+            contentPane.remove(existingCenter);
+        }
+
 		// Set up the tree
 		jtree = new JTree(new DOMmodel(doc));
 		jtree.setEditable(true);
@@ -453,6 +479,8 @@ public class InputViewer implements ActionListener, TableModelListener, MenuAdde
 		splitPane.setPreferredSize(new Dimension(parentFrame.getWidth()+ 10, parentFrame.getHeight()+ 10));
 		// Add GUI components
 		contentPane.add("Center", splitPane);
+		contentPane.revalidate();
+		contentPane.repaint();
 
 		treeMenu = makePopupTreeMenu();
 

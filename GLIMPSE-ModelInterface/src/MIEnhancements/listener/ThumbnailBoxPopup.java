@@ -40,11 +40,10 @@ import javax.swing.JPopupMenu;
 import javax.swing.JSplitPane;
 import chart.Chart;
 import graphDisplay.AChartDisplay;
-import graphDisplay.BoxAndWhiskerChartPane;
 import graphDisplay.DifferenceChartPane;
-import graphDisplay.SumAcrossChartPane;
 import graphDisplay.Breakout;
 import java.util.function.Consumer;
+import java.awt.Component;
 
 /**
  * Handles Thumbnail Box Popup events for chart panels.
@@ -59,7 +58,7 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
 
     private static final long serialVersionUID = 1L;
     /** Menu options for chart operations */
-    private final String[] menuOptions = { "Difference", "Transpose", "Breakout View" };
+    private final String[] menuOptions = { "Difference", "Transpose", "Breakout" };
     private Chart[] charts;
     private int thumbnailWidth;
     private int gridWidth;
@@ -116,7 +115,7 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
      */
     private void createMenuItems() {
         for (String option : menuOptions) {
-            if (hideOptions && (option.equals("Transpose") || option.equals("Breakout View"))) {
+            if (hideOptions && (option.equals("Transpose") || option.equals("Breakout"))) {
                 continue;
             }
             JMenuItem menuItem = new JMenuItem(option);
@@ -166,9 +165,36 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
                     } else if (selected.equalsIgnoreCase("Transpose")) {
                         // Show transposed chart
                         new Breakout(charts.clone(), thumbnailWidth, gridWidth, useSameScale, splitPane, false);
-                    } else if (selected.equalsIgnoreCase("Breakout View")) {
+                    } else if (selected.equalsIgnoreCase("Breakout")) {
                         // Show breakout chart
                         new Breakout(charts.clone(), thumbnailWidth, gridWidth, useSameScale, splitPane, true);
+                        // After showing the breakout dialog, clear thumbnails from the query tab's right component
+                        try {
+                            if (splitPane != null) {
+                                // Remove the right component entirely so the left component can fill the area
+                                Component currentRight = splitPane.getRightComponent();
+                                if (currentRight != null) {
+                                    try {
+                                        splitPane.remove(currentRight);
+                                    } catch (Exception ignore) {
+                                    }
+                                }
+                                // Ensure no right component remains
+                                splitPane.setRightComponent(null);
+                                // Move divider fully to the right so left component occupies full width
+                                try {
+                                    splitPane.setDividerLocation(1.0);
+                                } catch (Exception ignore) {
+                                    // Fallback: set to max integer
+                                    splitPane.setDividerLocation(splitPane.getWidth());
+                                }
+                                splitPane.revalidate();
+                                splitPane.repaint();
+                            }
+                        } catch (Exception ex) {
+                            // Non-fatal: log or ignore to avoid breaking the popup action
+                            ex.printStackTrace();
+                        }
                     }
                 }
             } catch (ClassNotFoundException | NullPointerException ex) {

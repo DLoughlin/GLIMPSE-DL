@@ -32,7 +32,6 @@
 package chart;
 
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.TexturePaint;
 import java.io.DataInputStream;
 import java.io.FileNotFoundException;

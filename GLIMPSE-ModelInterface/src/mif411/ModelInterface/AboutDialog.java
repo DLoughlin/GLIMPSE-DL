@@ -68,14 +68,25 @@ public class AboutDialog extends JDialog implements MenuAdder, ActionListener {
     /**
      * The license text which must be included in this dialog.
      */
-	public static final String LICENSE_TEXT = "<html><body><br>LEGAL NOTICE<br>This computer software has been modified by the U.S. EPA and by Dan Loughlin, <br> and is derived from the open-source ModelInterface prepared by Battelle<br>Memorial Institute, hereinafter the Contractor, under Contract No.<br> DE-AC05-76RL0 1830 with the Department of Energy (DOE).<br><br>NEITHER THE GOVERNMENT NOR THE CONTRACTOR NOR OTHER CONTRIBUTORS <br>MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY<br>LIABILITY FOR THE USE OF THIS SOFTWARE. This notice including this<br>sentence must appear on any copies of this computer software.<br><br>Copyright 2012 Battelle Memorial Institute.  All Rights Reserved.<br>Distributed as open-source under the terms of the Educational Community <br>License version 2.0 (ECL 2.0). http://www.opensource.org/licenses/ecl2.php<br><br>EXPORT CONTROL<br>User agrees that the Software will not be shipped, transferred or<br>exported into any country or used in any manner prohibited by the<br>United States Export Administration Act or any other applicable<br>export laws, restrictions or regulations (collectively the \"Export Laws\").<br>Export of the Software may require some form of license or other<br>authority from the U.S. Government, and failure to obtain such<br>export control license may result in criminal liability under<br>U.S. laws. In addition, if the Software is identified as export controlled<br>items under the Export Laws, User represents and warrants that User<br>is not a citizen, or otherwise located within, an embargoed nation<br>(including without limitation Iran, Syria, Sudan, Cuba, and North Korea)<br>and that User is not otherwise prohibited<br>under the Export Laws from receiving the Software.<br><br>Please check <i>Additional Licenses</i> folder for third party licenses.</body></html>";
+	public static final String LICENSE_TEXT = "<html><body><br>LEGAL NOTICE<br>This computer software is derived from the open-source ModelInterface prepared by<br> Battelle Memorial Institute, hereinafter the Contractor, under Contract No.<br> DE-AC05-76RL0 1830 with the Department of Energy (DOE).<br><br>NEITHER THE GOVERNMENT NOR THE CONTRACTOR NOR OTHER CONTRIBUTORS <br>MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY<br>LIABILITY FOR THE USE OF THIS SOFTWARE. This notice including this<br>sentence must appear on any copies of this computer software.<br><br>Copyright 2012 Battelle Memorial Institute.  All Rights Reserved.<br>Distributed as open-source under the terms of the Educational Community <br>License version 2.0 (ECL 2.0). http://www.opensource.org/licenses/ecl2.php<br><br>EXPORT CONTROL<br>User agrees that the Software will not be shipped, transferred or<br>exported into any country or used in any manner prohibited by the<br>United States Export Administration Act or any other applicable<br>export laws, restrictions or regulations (collectively the \"Export Laws\").<br>Export of the Software may require some form of license or other<br>authority from the U.S. Government, and failure to obtain such<br>export control license may result in criminal liability under<br>U.S. laws. In addition, if the Software is identified as export controlled<br>items under the Export Laws, User represents and warrants that User<br>is not a citizen, or otherwise located within, an embargoed nation<br>(including without limitation Iran, Syria, Sudan, Cuba, and North Korea)<br>and that User is not otherwise prohibited<br>under the Export Laws from receiving the Software.<br><br>Please check <i>Additional Licenses</i> folder for third party licenses.</body></html>";
+
+    /**
+     * Returns the main application frame, or null if the InterfaceMain
+     * singleton or its frame is not available (e.g. in batch mode).
+     */
+    private static java.awt.Frame getOwnerFrame() {
+        InterfaceMain main = InterfaceMain.getInstance();
+        return main != null ? main.getFrame() : null;
+    }
 
     /**
      * Constructor which forwards to the super class and sets the text to
      * display in the About dialog.
      */
     public AboutDialog() {
-        super(InterfaceMain.getInstance().getFrame(), "About");
+        super(getOwnerFrame(), "About", true);
+		setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
+		setAlwaysOnTop(true);
 
 		JPanel all = new JPanel();
 		all.setLayout( new BoxLayout(all, BoxLayout.Y_AXIS));
@@ -93,6 +104,7 @@ public class AboutDialog extends JDialog implements MenuAdder, ActionListener {
 		all.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 		contentPane.add(all, BorderLayout.PAGE_START);
 		pack();
+		setLocationRelativeTo(getOwnerFrame());
     }
 
 	/**
@@ -115,10 +127,14 @@ public class AboutDialog extends JDialog implements MenuAdder, ActionListener {
      * @param e The even which needs to be hanlded.
      */
     public void actionPerformed(ActionEvent e) {
-        if(e.getActionCommand() == CLOSE_COMMAND) {
+        if (CLOSE_COMMAND.equals(e.getActionCommand())) {
             setVisible(false);
         } else {
-            setVisible(true);
+			// Ensure it shows in front of the main window.
+			setLocationRelativeTo(getOwnerFrame());
+			setVisible(true);
+			toFront();
+			repaint();
         }
     }
 }

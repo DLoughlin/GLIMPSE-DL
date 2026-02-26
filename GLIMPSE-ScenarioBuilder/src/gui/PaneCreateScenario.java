@@ -52,10 +52,8 @@ import glimpseElement.ScenarioRow;
 import glimpseElement.ScenarioTable;
 import glimpseUtil.CSVToXMLMain;
 
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
@@ -121,7 +119,8 @@ class PaneCreateScenario extends ScenarioBuilder {
     private static final String WARNING_INVALID_NAME = "Please specify a name for the scenario. The name should not include any of these special characters: [! @#$%&*()+=|<>?{}[]~]\\//";
     private static final String DIALOG_TITLE_CREATE = "Creating Scenario";
     private static final int DIALOG_HEIGHT = 550;
-    private static final int DIALOG_WIDTH = 400;
+    // Make the Creating Scenario dialog about 50% wider than before
+    private static final int DIALOG_WIDTH = 500;
     private static final String META_DATA_HEADER = "##################### Scenario Meta Data #####################";
     private static final String META_DATA_SEPARATOR = "###############################################################";
     private static final String COMPONENTS_HEADER = "Components:";
@@ -613,6 +612,8 @@ class PaneCreateScenario extends ScenarioBuilder {
         // Allow the text area to grow with its container instead of using a fixed preferred size
         textArea.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         textArea.setMinHeight(0);
+        GridPane.setVgrow(textArea, javafx.scene.layout.Priority.ALWAYS);
+        GridPane.setHgrow(textArea, javafx.scene.layout.Priority.ALWAYS);
 
         // Layout grid
         GridPane grid = new GridPane();
@@ -638,17 +639,16 @@ class PaneCreateScenario extends ScenarioBuilder {
         grid.add(textArea, 0, 9, 2, 1);
 
         // Dialog stage and scene
-        Stage stage = new Stage();
-        stage.setTitle(DIALOG_TITLE_CREATE);
-        stage.setWidth(DIALOG_WIDTH);
-        stage.setHeight(DIALOG_HEIGHT);
+        Stage stage = createDialogStage(DIALOG_TITLE_CREATE, DIALOG_WIDTH, DIALOG_HEIGHT);
         Scene scene = new Scene(new Group());
-        stage.setResizable(false);
-        stage.setAlwaysOnTop(true);
 
+        // Ensure dialog uses the same modern theme as the main app
+        applyModernTheme(scene);
+
+        // Use centralized dialog button creation to match New Scenario Component Creator look-and-feel
         // OK and Cancel buttons
-        Button okButton = utils.createButton("OK", styles.getBigButtonWidth(), null);
-        Button cancelButton = utils.createButton("Cancel", styles.getBigButtonWidth(), null);
+        Button okButton = createDialogButton("OK");
+        Button cancelButton = createDialogButton("Cancel");
         okButton.setOnAction(e -> {
             String isSelected = "false";
             if (createDebugCheckBox.isSelected()) isSelected = "true";
@@ -672,14 +672,16 @@ class PaneCreateScenario extends ScenarioBuilder {
         root.setAlignment(Pos.TOP_LEFT);
         String text = "";
         textArea.setText(text);
+        VBox.setVgrow(grid, javafx.scene.layout.Priority.ALWAYS);
+        VBox.setVgrow(textArea, javafx.scene.layout.Priority.ALWAYS);
         HBox buttonBox = new HBox();
         // Use centralized button/small padding
         buttonBox.setPadding(styles.getSmallPadding());
         buttonBox.setSpacing(5);
         buttonBox.setAlignment(Pos.CENTER);
-         buttonBox.getChildren().addAll(okButton, cancelButton);
-         root.getChildren().addAll(grid, buttonBox);
-         scene.setRoot(root);
+        buttonBox.getChildren().addAll(okButton, cancelButton);
+        root.getChildren().addAll(grid, buttonBox);
+        scene.setRoot(root);
         stage.setScene(scene);
         stage.showAndWait();
 

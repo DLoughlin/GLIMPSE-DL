@@ -33,8 +33,6 @@
 package graphDisplay;
 
 import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -46,6 +44,7 @@ import javax.swing.JSplitPane;
 import chart.Chart;
 import chart.DatasetUtil;
 import conversionUtil.ArrayConversion;
+import ModelInterface.InterfaceMain;
 
 /**
  * Handles transposing rows and columns of a dataset and displaying charts in a
@@ -78,6 +77,7 @@ public class Breakout extends JDialog {
 	 * @param isBreakout
 	 */
 	public Breakout(Chart[] chart, int w, int gridWidth, boolean sameScale, JSplitPane sp, boolean isBreakout) {
+		super(InterfaceMain.getInstance().getFrame());
 		this.chart = chart;
 		this.w = w;
 		this.gridWidth = gridWidth;
@@ -95,6 +95,7 @@ public class Breakout extends JDialog {
 			setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 			pack();
 			setSize(800, 600);
+			setLocation(InterfaceMain.getInstance().getFrame().getLocation());
 			setVisible(true);
 		}
 		else {
@@ -163,6 +164,7 @@ public class Breakout extends JDialog {
 			setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 			pack();
 			setSize(800, 600);
+			setLocation(InterfaceMain.getInstance().getFrame().getLocation());
 			setVisible(true);
 		}
 	}

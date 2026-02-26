@@ -128,25 +128,19 @@ public class PPViewer implements ActionListener, MenuAdder, BatchRunner
         {
           if(evt.getOldValue().equals(controlStr)||evt.getOldValue().equals(controlStr+"Same"))
           {
-            //TODO relinquish control of the interface Panel
-            /* - pralit's stuff
-            ((InterfaceMain)parentFrame).getSaveMenu().removeActionListener(thisViewer);
-            ((InterfaceMain)parentFrame).getSaveAsMenu().removeActionListener(thisViewer);
-            ((InterfaceMain)parentFrame).getSaveAsMenu().setEnabled(false);
-            ((InterfaceMain)parentFrame).removePropertyChangeListener(savePropListener);
-            // ((InterfaceMain)parentFrame).getQuitMenu().removeActionListener(thisViewer);
-            ((InterfaceMain)parentFrame).getSaveMenu().setEnabled(false);
-            doc = null;
-            documentation = null;
-            parentFrame.getContentPane().removeAll();
-            parentFrame.setTitle("ModelInterface");
-            if(splitPane!=null)
-            {
-              ((InterfaceMain)parentFrame).getProperties().setProperty("dividerLocation",
-                  String.valueOf(splitPane.getDividerLocation()));
+            // Do not clear the entire content pane; InterfaceMain installs a status bar
+            // in BorderLayout.SOUTH that must remain visible.
+            java.awt.Container cp = parentFrame.getContentPane();
+            java.awt.Component existingCenter = null;
+            if (cp.getLayout() instanceof java.awt.BorderLayout) {
+              existingCenter = ((java.awt.BorderLayout) cp.getLayout())
+                      .getLayoutComponent(java.awt.BorderLayout.CENTER);
             }
-            */
-            parentFrame.getContentPane().removeAll();
+            if (existingCenter != null) {
+              cp.remove(existingCenter);
+              cp.revalidate();
+              cp.repaint();
+            }
           }
           if(evt.getNewValue().equals(controlStr))
           {
@@ -358,8 +352,23 @@ public class PPViewer implements ActionListener, MenuAdder, BatchRunner
     pane.add(cButton);
     pane.add(scrollPane);
     
-    parentFrame.setContentPane(pane);
-    parentFrame.pack();
+    // Replace CENTER only so the global status bar (BorderLayout.SOUTH) remains visible.
+    java.awt.Container cp = parentFrame.getContentPane();
+    java.awt.Component existingCenter = null;
+    if (cp.getLayout() instanceof java.awt.BorderLayout) {
+        existingCenter = ((java.awt.BorderLayout) cp.getLayout())
+                .getLayoutComponent(java.awt.BorderLayout.CENTER);
+    } else {
+        cp.setLayout(new java.awt.BorderLayout());
+    }
+    if (existingCenter != null) {
+        cp.remove(existingCenter);
+    }
+    // Use InterfaceMain to set the center view so the global status bar (installed in InterfaceMain) is preserved.
+    InterfaceMain.getInstance().setMainView(pane);
+     cp.revalidate();
+     cp.repaint();
+     parentFrame.pack();
   }
   
   private void writeFile()

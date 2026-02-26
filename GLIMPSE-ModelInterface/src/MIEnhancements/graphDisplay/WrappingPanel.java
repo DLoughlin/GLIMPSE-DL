@@ -1,6 +1,5 @@
 package graphDisplay;
 
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.LayoutManager;
 import javax.swing.JPanel;

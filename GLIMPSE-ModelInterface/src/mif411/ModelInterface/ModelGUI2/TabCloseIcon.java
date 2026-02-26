@@ -67,20 +67,24 @@ public class TabCloseIcon implements Icon {
 					final int index = tabPane.indexAtLocation(e.getX(), e.getY());
 					
 					QueryResultsPanel closeThread = (QueryResultsPanel)(tabPane.getComponentAt(index));
-					//closeThread.killThreadAndWait();
-					//System.out.println("Attempting to close "+closeThread.getName());
 					
-					//reworked a bit in an attempt to identify when btm=null and to avoid hanging
-					//Dan-Debug-call to kill tab
-					//Commented out the line below...was it doing anything? btm didn't appear to be getting used
-					//BaseTableModel btm=DbViewer.getTableModelFromComponent(closeThread);
-					BaseTableModel btm=DbViewer.getTableModelFromComponent(closeThread);
-					
-					//added the if statement to head off problem with closing pane if the tableModel is null
-					if (btm!=null) {
-					    InterfaceMain.getInstance().fireProperty("Query",btm,null);  
-					    closeThread.killThreadAndWait(); //moved to after line and made killThreadAndWait
+					// Fire the standard "Query" property-change completion event so DbViewer
+					// (and other listeners) can treat closing/termination as completion.
+					// Prefer to use the table model when possible but still fire even if it is
+					// not yet available (e.g., closed while still loading).
+					BaseTableModel btm = DbViewer.getTableModelFromComponent(closeThread);
+					if (InterfaceMain.getInstance() != null) {
+						InterfaceMain.getInstance().fireProperty("Query", btm, null);
 					}
+
+					// Always attempt to stop the running query thread before removing the tab.
+					// killThreadAndWait is safe even if the query hasn't fully initialized yet.
+					try {
+						closeThread.killThreadAndWait();
+					} catch (Exception ex) {
+						// Best-effort shutdown; still allow the tab to close.
+					}
+
 					tabPane.removeMouseListener(this);
 					tabPane.remove( index );
 					e.consume();

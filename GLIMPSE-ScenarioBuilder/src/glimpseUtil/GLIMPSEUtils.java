@@ -188,6 +188,28 @@ public class GLIMPSEUtils {
 	}
 
 	/**
+	 * Applies the ScenarioBuilder modern theme to a JavaFX Alert/Dialog.
+	 */
+	private void applyModernThemeToDialog(javafx.scene.control.Dialog<?> dialog) {
+		if (dialog == null)
+			return;
+		try {
+			javafx.scene.control.DialogPane pane = dialog.getDialogPane();
+			if (pane == null)
+				return;
+			java.net.URL cssUrl = gui.ScenarioBuilder.class.getResource(gui.ScenarioBuilder.getModernCssResource());
+			if (cssUrl != null) {
+				String css = cssUrl.toExternalForm();
+				if (!pane.getStylesheets().contains(css)) {
+					pane.getStylesheets().add(css);
+				}
+			}
+		} catch (Exception e) {
+			// ignore theme failures; fall back to default Alert styling
+		}
+	}
+
+	/**
 	 * Checks if a string matches any item in the provided list.
 	 *
 	 * @param str        String to check
@@ -303,7 +325,8 @@ public class GLIMPSEUtils {
 		if (msg == null)
 			return;
 		if (Platform.isFxApplicationThread()) {
-			Alert alert = new Alert(AlertType.WARNING); 
+			Alert alert = new Alert(AlertType.WARNING);
+			applyModernThemeToDialog(alert);
 			alert.setTitle(LABEL_WARNING);
 			alert.setHeaderText(LABEL_WARNING);
 			alert.setContentText(msg);
@@ -311,6 +334,7 @@ public class GLIMPSEUtils {
 		} else {
 			Platform.runLater(() -> {
 				Alert alert = new Alert(AlertType.WARNING);
+				applyModernThemeToDialog(alert);
 				alert.setTitle(LABEL_WARNING);
 				alert.setHeaderText(LABEL_WARNING);
 				alert.setContentText(msg);
@@ -343,6 +367,7 @@ public class GLIMPSEUtils {
 			stage.setWidth(400);
 			stage.setHeight(400);
 			Scene scene = new Scene(new Group());
+			gui.ScenarioBuilder.applyModernTheme(scene);
 			stage.setResizable(false);
 			stage.setAlwaysOnTop(true);
 
@@ -513,6 +538,7 @@ public class GLIMPSEUtils {
 	public boolean confirmDelete() {
 		boolean continueWithDelete = true;
 		Alert alert = new Alert(AlertType.CONFIRMATION);
+		applyModernThemeToDialog(alert);
 		alert.setTitle(LABEL_CONFIRMATION_DIALOG);
 		alert.setHeaderText(LABEL_DELETE_SELECTED_ITEMS);
 		alert.setContentText(LABEL_PLEASE_CONFIRM_DELETION);
@@ -1300,6 +1326,7 @@ public class GLIMPSEUtils {
 		// confirmation of delete
 		boolean continueAction = true;
 		Alert alert = new Alert(AlertType.CONFIRMATION);
+		applyModernThemeToDialog(alert);
 		alert.setTitle("Confirmation Dialog");
 		alert.setHeaderText(s);
 		alert.setContentText("Please confirm.");
@@ -1374,6 +1401,7 @@ public class GLIMPSEUtils {
 			return false;
 		// asks the user to confirm that they want to delete the trash
 		Alert alert = new Alert(AlertType.CONFIRMATION);
+		applyModernThemeToDialog(alert);
 		alert.setTitle(LABEL_CONFIRMATION_DIALOG);
 		alert.setHeaderText(LABEL_ARCHIVE_SCENARIO);
 		alert.setContentText(LABEL_PLEASE_CONFIRM_ARCHIVE);
@@ -1389,6 +1417,7 @@ public class GLIMPSEUtils {
 			return false;
 		// asks the user to confirm that they want to delete the trash
 		Alert alert = new Alert(AlertType.INFORMATION);
+		applyModernThemeToDialog(alert);
 		alert.setTitle(title);
 		alert.setHeaderText(header);
 		alert.setContentText(content);
@@ -1400,6 +1429,7 @@ public class GLIMPSEUtils {
 			return false;
 		// asks the user to confirm that they want to delete the trash
 		Alert alert = new Alert(AlertType.INFORMATION);
+		applyModernThemeToDialog(alert);
 		alert.setTitle(title);
 		alert.setHeaderText(header);
 		alert.setContentText(content);
