@@ -244,6 +244,16 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 
 	/**
 	 * Registers that a query has completed so the progress UI can track it.
+	 * Also removes the given tab component from the in-flight set so that a
+	 * subsequent tab-close does not count the same query as completed a second time.
+	 */
+	static void registerQueryCompleted(java.awt.Component tab) {
+		activeQueryTabs.remove(tab);
+		registerQueryCompleted();
+	}
+
+	/**
+	 * Registers that a query has completed so the progress UI can track it.
 	 */
 	static void registerQueryCompleted() {
 		completedQueries++;
