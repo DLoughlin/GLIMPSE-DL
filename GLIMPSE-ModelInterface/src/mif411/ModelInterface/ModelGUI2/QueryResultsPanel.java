@@ -146,9 +146,11 @@ public class QueryResultsPanel extends JPanel {
 						e.printStackTrace();
 					}
 				} finally {
-					// Ensure we always mark this query as completed so the progress UI stays in sync
+					// Ensure we always mark this query as completed so the progress UI stays in sync.
+					// Pass thisThread so it is removed from the in-flight set and cannot be
+					// double-counted if the tab is closed after the query finishes.
 					if (!isInterrupted()) {
-						DbViewer.registerQueryCompleted();
+						DbViewer.registerQueryCompleted(thisThread);
 					}
 				}
 				// Stop process if the user terminated the process
