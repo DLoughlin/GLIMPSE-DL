@@ -183,6 +183,7 @@ public class FilteredTable {
                 }
             };
             jtable = new JTable(dtm);
+            jtable.setDragEnabled(true);
             // Note: DnD size checks and user warnings are handled centrally by TableTransferHandler.
             // Keep default drag behavior for the JTable and avoid per-table listeners that duplicate that logic.
             jtable.setRowHeight(jtable.getFont().getSize() + 5);
