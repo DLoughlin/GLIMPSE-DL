@@ -38,6 +38,8 @@ package glimpseBuilder;
 import java.io.File;
 import java.util.Date;
 
+import javafx.application.Platform;
+
 import javafx.event.EventHandler;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TableColumn;
@@ -97,7 +99,9 @@ public class SetupTableScenariosLibrary {
 		ScenarioTable.tableScenariosLibrary.getColumns().addAll(scenNameCol, createdCol, /*startedCol,*/ completedCol, statusCol,unsolvedMarketsCol,runtimeCol);
 		ScenarioTable.tableScenariosLibrary.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
-		// Show tooltip for the row currently being hovered (no selection required)
+		// Show tooltip for the row currently being hovered (no selection required).
+		// Tooltip text is computed once per ScenarioRow on a background thread to
+		// avoid filesystem I/O on the JavaFX UI thread.
 		ScenarioTable.tableScenariosLibrary.setRowFactory(tv -> {
 			TableRow<ScenarioRow> row = new TableRow<>();
 			row.setOnMouseEntered(e -> {
@@ -107,45 +111,60 @@ public class SetupTableScenariosLibrary {
 					return;
 				}
 
-				String scenarioName = item.getScenarioName();
-				String databaseName = "";
-				try {
-					String configFilename = vars.getScenarioDir() + File.separator + scenarioName + File.separator
-							+ "configuration_" + scenarioName + ".xml";
-					File configFile = new File(configFilename);
-					if (configFile.exists()) {
-						String databaseLine = files.searchForTextInFileS(configFile, "xmldb-location", "#");
-						databaseName = utils.getStringBetweenCharSequences(databaseLine, ">", "</");
-						if (databaseName == null) databaseName = "";
-						databaseName = databaseName.trim();
-					}
-				} catch (Exception ex) {
-					// keep tooltip functional even if config parsing fails
-					databaseName = "";
-				}
-
-				String components = item.getComponents();
-				String componentsFormatted = (components == null) ? "" : components.replace(";", vars.getEol()).trim();
-
-				if (databaseName.isEmpty() && componentsFormatted.isEmpty()) {
-					row.setTooltip(null);
+				String cached = item.getCachedTooltipText();
+				if (cached != null) {
+					// Use pre-computed tooltip text (empty string means no tooltip)
+					row.setTooltip(cached.isEmpty() ? null : new Tooltip(cached));
 					return;
 				}
 
-				String eol = vars.getEol();
-				String sep = "----------------------------------------";
-				String tt = "";
-				if (!databaseName.isEmpty()) {
-					tt += "Database: " + databaseName;
+				// Compute tooltip off the UI thread to avoid stalls from filesystem I/O.
+				// markTooltipComputationStarted() uses CAS to ensure only one thread runs per item.
+				if (!item.markTooltipComputationStarted()) {
+					return;
 				}
-				if (!componentsFormatted.isEmpty()) {
-					if (!tt.isEmpty()) {
-						tt += eol + sep + eol;
+				Thread bgThread = new Thread(() -> {
+					String databaseName = "";
+					try {
+						String configFilename = vars.getScenarioDir() + File.separator + item.getScenarioName()
+								+ File.separator + "configuration_" + item.getScenarioName() + ".xml";
+						File configFile = new File(configFilename);
+						if (configFile.exists()) {
+							String databaseLine = files.searchForTextInFileS(configFile, "xmldb-location", "#");
+							databaseName = utils.getStringBetweenCharSequences(databaseLine, ">", "</");
+							if (databaseName == null) databaseName = "";
+							databaseName = databaseName.trim();
+						}
+					} catch (Exception ex) {
+						databaseName = "";
 					}
-					tt += componentsFormatted;
-				}
 
-				row.setTooltip(new Tooltip(tt));
+					String components = item.getComponents();
+					String componentsFormatted = (components == null) ? "" : components.replace(";", vars.getEol()).trim();
+
+					String eol = vars.getEol();
+					String sep = "----------------------------------------";
+					String tt = "";
+					if (!databaseName.isEmpty()) {
+						tt += "Database: " + databaseName;
+					}
+					if (!componentsFormatted.isEmpty()) {
+						if (!tt.isEmpty()) {
+							tt += eol + sep + eol;
+						}
+						tt += componentsFormatted;
+					}
+
+					final String tooltipText = tt;
+					item.setCachedTooltipText(tooltipText);
+					Platform.runLater(() -> {
+						if (row.getItem() == item) {
+							row.setTooltip(tooltipText.isEmpty() ? null : new Tooltip(tooltipText));
+						}
+					});
+				});
+				bgThread.setDaemon(true);
+				bgThread.start();
 			});
 			row.setOnMouseExited(e -> row.setTooltip(null));
 			return row;
