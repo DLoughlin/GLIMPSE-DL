@@ -165,8 +165,9 @@ public class PaneForComponentDetails extends VBox {
         // Use centralized small top padding
         inputHBox.setPadding(styles.getSmallTopPadding());
 
-        // Initially disable Add until both fields contain text
-        buttonAdd.setDisable(true);
+        // Set initial Add button state based on current field content
+        buttonAdd.setDisable(textFieldYear.getText() == null || textFieldYear.getText().trim().isEmpty()
+                || textFieldValue.getText() == null || textFieldValue.getText().trim().isEmpty());
 
         // Enable Add only when both text fields have non-empty trimmed text
         textFieldYear.textProperty().addListener((obs, oldV, newV) -> {
