@@ -126,6 +126,16 @@ public class Thumbnail {
                 final String[][][] data0Holder = new String[1][][];
                 final String[][] colUnitsHolder = new String[1][];
 
+                // invokeAndWait is intentionally used here (not invokeLater) because the
+                // background thread must capture a consistent snapshot of all JTable-derived
+                // data before the heavy chart-creation work begins. Using invokeLater would
+                // allow the background thread to proceed with stale or partially-updated
+                // data. This is safe as long as no EDT thread is blocking on this worker
+                // (which would cause a deadlock). Callers must never hold the EDT lock while
+                // waiting for this SwingWorker to complete.
+                assert !SwingUtilities.isEventDispatchThread()
+                        : "Thumbnail SwingWorker must not run on the EDT; "
+                        + "invokeAndWait below would deadlock if it did.";
                 SwingUtilities.invokeAndWait(new Runnable() {
                     @Override
                     public void run() {
