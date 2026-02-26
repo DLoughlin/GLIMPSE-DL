@@ -261,9 +261,16 @@ public class FilteredTable {
         }
         final int rowCount = jtable.getRowCount();
         final Object[][] rowData = new Object[rowCount][colCount];
-        for (int rowIdx = 0; rowIdx < rowCount; rowIdx++) {
-            for (int colIdx = 0; colIdx < colCount; colIdx++) {
-                rowData[rowIdx][colIdx] = jtable.getValueAt(rowIdx, colIdx);
+        final TableModel model = jtable.getModel();
+        // Read cell data from the TableModel (source of truth) under synchronization,
+        // using view-to-model index conversion to preserve current sorting/filtering.
+        synchronized (model) {
+            for (int rowIdx = 0; rowIdx < rowCount; rowIdx++) {
+                int modelRow = jtable.convertRowIndexToModel(rowIdx);
+                for (int colIdx = 0; colIdx < colCount; colIdx++) {
+                    int modelCol = jtable.convertColumnIndexToModel(colIdx);
+                    rowData[rowIdx][colIdx] = model.getValueAt(modelRow, modelCol);
+                }
             }
         }
 
