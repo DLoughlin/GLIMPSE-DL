@@ -769,13 +769,4 @@ public class PaneNewScenarioComponent extends gui.ScenarioBuilder {
 		return hbox;
 	}
 
-	/**
-	 * Creates and returns a dialog button with the specified text and default style.
-	 *
-	 * @param text The button label
-	 * @return A new Button instance
-	 */
-	protected Button createDialogButton(String text) {
-		return utils.createButton(text, styles.getBigButtonWidth(), null);
-	}
 }
