@@ -37,6 +37,8 @@ package glimpseBuilder;
 
 import java.io.File;
 import java.util.Date;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javafx.application.Platform;
 
@@ -54,6 +56,19 @@ import glimpseUtil.GLIMPSEVariables;
 import glimpseElement.ScenarioRow;
 
 public class SetupTableScenariosLibrary {
+
+	// Bounded single-thread executor for tooltip background computations.
+	// Limits concurrency to one thread and queues excess requests rather than
+	// spawning an unbounded number of raw threads.
+	private static final ExecutorService tooltipExecutor = Executors.newSingleThreadExecutor(r -> {
+		Thread t = new Thread(r, "tooltip-bg");
+		t.setDaemon(true);
+		return t;
+	});
+
+	static {
+		Runtime.getRuntime().addShutdownHook(new Thread(tooltipExecutor::shutdownNow, "tooltip-bg-shutdown"));
+	}
 
 	// initiates the singleton that holds program parameters
 	GLIMPSEVariables vars = GLIMPSEVariables.getInstance();
@@ -119,11 +134,11 @@ public class SetupTableScenariosLibrary {
 				}
 
 				// Compute tooltip off the UI thread to avoid stalls from filesystem I/O.
-				// markTooltipComputationStarted() uses CAS to ensure only one thread runs per item.
+				// markTooltipComputationStarted() uses CAS to ensure only one task runs per item.
 				if (!item.markTooltipComputationStarted()) {
 					return;
 				}
-				Thread bgThread = new Thread(() -> {
+				tooltipExecutor.submit(() -> {
 					String databaseName = "";
 					try {
 						String configFilename = vars.getScenarioDir() + File.separator + item.getScenarioName()
@@ -163,8 +178,6 @@ public class SetupTableScenariosLibrary {
 						}
 					});
 				});
-				bgThread.setDaemon(true);
-				bgThread.start();
 			});
 			row.setOnMouseExited(e -> row.setTooltip(null));
 			return row;
