@@ -37,7 +37,6 @@ package glimpseBuilder;
 
 import java.io.File;
 import java.util.Date;
-import java.util.Objects;
 
 import javafx.event.EventHandler;
 import javafx.scene.control.SelectionMode;
