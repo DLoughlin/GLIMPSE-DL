@@ -144,6 +144,11 @@ public class SetupTableScenariosLibrary {
 
 					try {
 
+						// Exit early if the executor has been shut down to avoid unnecessary I/O.
+						if (Thread.currentThread().isInterrupted()) {
+							return;
+						}
+
 						try {
 							String configFilename = vars.getScenarioDir() + File.separator + item.getScenarioName()
 									+ File.separator + "configuration_" + item.getScenarioName() + ".xml";
@@ -156,6 +161,11 @@ public class SetupTableScenariosLibrary {
 							}
 						} catch (Exception ex) {
 							databaseName = "";
+						}
+
+						// Exit early if interrupted during file I/O (e.g. JVM shutdown).
+						if (Thread.currentThread().isInterrupted()) {
+							return;
 						}
 
 						String components = item.getComponents();
