@@ -590,10 +590,23 @@ public class ScenarioBuilder {
 	}
 
 	/**
-	 * Wrapper for creating dialog buttons with the application's standard size/style.
+	 * Creates a dialog button with the application's standard size and style.
 	 *
-	 * @param text button label
-	 * @return styled Button
+	 * <p>Subclasses should use this method whenever they need to create buttons inside
+	 * dialogs or panels, rather than calling {@code utils.createButton} directly.
+	 * This ensures consistent sizing (governed by {@code styles.getBigButtonWidth()})
+	 * and appearance across the entire UI. Bypass this method only when a button
+	 * genuinely requires non-standard dimensions or styling that cannot be achieved
+	 * through the shared style system.
+	 *
+	 * <p>Subclasses may override this method to apply additional or alternative
+	 * styling, but overrides should still delegate to the parent implementation
+	 * (via {@code super.createDialogButton(text)}) unless a fundamentally different
+	 * button type is required.
+	 *
+	 * @param text the label to display on the button
+	 * @return a {@link javafx.scene.control.Button} styled with the application's
+	 *         standard dialog-button dimensions
 	 */
 	protected javafx.scene.control.Button createDialogButton(String text) {
 		return utils.createButton(text, styles.getBigButtonWidth(), null);
