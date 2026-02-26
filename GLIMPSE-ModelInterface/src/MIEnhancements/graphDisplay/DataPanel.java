@@ -37,6 +37,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -83,6 +84,8 @@ public class DataPanel extends JPanel implements ListSelectionListener {
 	protected XYDataset ds;
 	protected String dataValue[][];
 	protected boolean addRow = true;
+	/** Cached significant-digits preference; -1 means not yet loaded. Thread-safe via AtomicInteger. */
+	private final AtomicInteger cachedSignificantDigits = new AtomicInteger(-1);
 
 	public DataPanel(JFreeChart ch) {
 		init(ch);
@@ -174,12 +177,19 @@ public class DataPanel extends JPanel implements ListSelectionListener {
 	/**
 	 * Read the significant digits preference from properties (Preferences dialog).
 	 * Falls back to defaultDigits if missing/invalid.
+	 * The result is cached in an AtomicInteger so repeated calls (including from
+	 * background threads) avoid repeated calls to InterfaceMain.getInstance().
 	 */
 	protected int getPreferredSignificantDigits(int defaultDigits) {
+		int cached = cachedSignificantDigits.get();
+		if (cached >= 0) {
+			return cached;
+		}
 		int ret = defaultDigits;
 		try {
-			if (InterfaceMain.getInstance() != null) {
-				String pref = InterfaceMain.getInstance().getProperties().getProperty("significantDigits",
+			InterfaceMain instance = InterfaceMain.getInstance();
+			if (instance != null) {
+				String pref = instance.getProperties().getProperty("significantDigits",
 						String.valueOf(defaultDigits));
 				if (pref != null) {
 					pref = pref.trim();
@@ -193,6 +203,7 @@ public class DataPanel extends JPanel implements ListSelectionListener {
 		} catch (Exception ignored) {
 			// use defaultDigits
 		}
+		cachedSignificantDigits.set(ret);
 		return ret;
 	}
 
