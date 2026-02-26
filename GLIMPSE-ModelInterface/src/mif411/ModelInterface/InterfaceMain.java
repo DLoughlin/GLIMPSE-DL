@@ -1896,6 +1896,23 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
+	/**
+	 * Manages a hierarchical menu structure by wrapping {@link JMenuItem} and
+	 * {@link JMenu} instances in a tree of {@code MenuManager} nodes.
+	 *
+	 * <p><b>Automatic JMenuItem-to-JMenu promotion:</b> If a node was originally
+	 * created with a leaf {@code JMenuItem} (i.e. not a {@code JMenu}) and
+	 * {@link #addMenuItem} is subsequently called to attach children to it, the
+	 * node is <em>automatically promoted</em> to a {@code JMenu}. During
+	 * promotion the following properties are copied from the original item to the
+	 * new menu: text, mnemonic, enabled state, tool-tip text, icon, accelerator
+	 * key, action command, and all registered {@code ActionListener}s.
+	 *
+	 * <p>Callers that require an immutable menu structure (i.e. a node should
+	 * never change type after creation) should ensure that any item intended to
+	 * have sub-items is registered as a {@code JMenu} from the outset, rather
+	 * than relying on this implicit promotion.
+	 */
 	public class MenuManager {
 		private JMenuItem menuValue;
 		private Map<Integer, MenuManager> subItems;
@@ -1921,8 +1938,9 @@ public class InterfaceMain implements ActionListener {
 				promoted.setEnabled(old.isEnabled());
 				promoted.setToolTipText(old.getToolTipText());
 				promoted.setIcon(old.getIcon());
+				promoted.setAccelerator(old.getAccelerator());
 
-				// Attempt to preserve listeners and action command.
+				// Preserve listeners and action command.
 				promoted.setActionCommand(old.getActionCommand());
 				for (java.awt.event.ActionListener l : old.getActionListeners()) {
 					promoted.addActionListener(l);
