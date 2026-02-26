@@ -1020,6 +1020,9 @@ public class InterfaceMain implements ActionListener {
 		if (!savedProperties.containsKey("isMaximized")) {
 			savedProperties.setProperty("isMaximized", "false");
 		}
+		if (!savedProperties.containsKey("zipExportedScenarios")) {
+			savedProperties.setProperty("zipExportedScenarios", "false");
+		}
 		if (!savedProperties.containsKey("presetRegionList")) {
 			savedProperties.setProperty("presetRegionList", ".\\config\\preset_region_list.txt");
 		}
@@ -1473,6 +1476,51 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
+	private String safeTrim(String s) {
+		return s == null ? "" : s.trim();
+	}
+
+	private File promptForExecutable(String title) {
+		FileChooser fc = FileChooserFactory.getFileChooser();
+		File[] files = fc.doFilePrompt(mainFrame, title, FileChooser.LOAD_DIALOG,
+				new File(getProperties().getProperty("lastDirectory", ".")), null);
+		if (files != null && files.length > 0) {
+			File file = files[0];
+			savedProperties.setProperty("lastDirectory", file.getParent());
+			persistProperties();
+			return file;
+		}
+		return null;
+	}
+
+	private void openEditorForFile(File file, String type) {
+		if (file == null || !file.exists()) {
+			showMessageDialog("File does not exist: " + (file != null ? file.getAbsolutePath() : "(null)"),
+					"Open Editor", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		String editorCmd = savedProperties.getProperty(type + "Editor", "").trim();
+		try {
+			if (!editorCmd.isEmpty()) {
+				java.util.List<String> cmdTokens = parseCommandTokens(editorCmd);
+				cmdTokens.add(file.getAbsolutePath());
+				new ProcessBuilder(cmdTokens).start();
+			} else {
+				// Use default system editor
+				if (Desktop.isDesktopSupported()) {
+					Desktop.getDesktop().edit(file);
+				} else {
+					showMessageDialog("Cannot open editor. Please configure an editor command in Preferences.",
+							"Open Editor", JOptionPane.WARNING_MESSAGE);
+				}
+			}
+		} catch (IOException ex) {
+			showMessageDialog("Error opening editor for " + file.getName() + ":\n" + ex.getMessage(),
+					"Open Editor", JOptionPane.ERROR_MESSAGE);
+		}
+	}
+
 	// Preferences dialog implementation
 	private javax.swing.JLabel unitsFileLabel;
 	private javax.swing.JLabel regionsFileLabel;
@@ -1484,6 +1532,7 @@ public class InterfaceMain implements ActionListener {
 	private javax.swing.JTextField regionsFileField;
 	private javax.swing.JTextField mapResourceFolderField;
 	private javax.swing.JComboBox<String> sigDigitsCombo;
+	private javax.swing.JCheckBox zipExportedScenariosCheckbox;
 
 	private void showPreferencesDialog() {
 		javax.swing.JDialog dlg = new javax.swing.JDialog(mainFrame, "Preferences", true);
@@ -1579,7 +1628,7 @@ public class InterfaceMain implements ActionListener {
 				+ "Arguments are supported; quote paths that contain spaces.</html>");
 		generalPanel.add(hint, gc);
 
-		// Horizontal separator (moved above Significant digits preference)
+		// Horizontal separator
 		gc.gridy++;
 		gc.gridx = 0;
 		gc.gridwidth = 3;
@@ -1587,25 +1636,28 @@ public class InterfaceMain implements ActionListener {
 		generalPanel.add(new javax.swing.JSeparator(javax.swing.SwingConstants.HORIZONTAL), gc);
 		gc.gridwidth = 1;
 
+		// Zip exported scenarios preference
+		gc.gridy++;
+		gc.gridx = 0;
+		gc.gridwidth = 2;
+		gc.weightx = 1.0;
+		zipExportedScenariosCheckbox = new javax.swing.JCheckBox("Automatically zip scenarios when exported");
+		zipExportedScenariosCheckbox.setSelected(Boolean.parseBoolean(savedProperties.getProperty("zipExportedScenarios", "false")));
+		generalPanel.add(zipExportedScenariosCheckbox, gc);
+
 		// Significant digits preference
 		gc.gridy++;
 		gc.gridx = 0;
 		gc.gridwidth = 1;
 		gc.weightx = 0.0;
-		javax.swing.JLabel sigLbl = new javax.swing.JLabel("Number of significant digits:");
-		generalPanel.add(sigLbl, gc);
+		generalPanel.add(new javax.swing.JLabel("Significant digits for results:"), gc);
 		gc.gridx = 1;
 		gc.weightx = 1.0;
-		sigDigitsCombo = new javax.swing.JComboBox<>(new String[] { "2", "3", "5" });
-		String sigPref = savedProperties.getProperty("significantDigits", "3").trim();
-		if (!sigPref.equals("2") && !sigPref.equals("3") && !sigPref.equals("5")) {
-		 sigPref = "3";
-		}
-		sigDigitsCombo.setSelectedItem(sigPref);
+		gc.gridwidth = 2;
+		sigDigitsCombo = new javax.swing.JComboBox<>(new String[] { "2", "3", "4", "5" });
+		sigDigitsCombo.setSelectedItem(savedProperties.getProperty("significantDigits", "3"));
 		generalPanel.add(sigDigitsCombo, gc);
-		gc.gridx = 2;
-		gc.weightx = 0.0;
-		generalPanel.add(new javax.swing.JLabel(""), gc);
+
 
 		tabs.addTab("General", generalPanel);
 
@@ -1666,7 +1718,7 @@ public class InterfaceMain implements ActionListener {
 
 		// Mapping Resources
 		oc.gridy++;
-		oc.gridx = 0;
+					oc.gridx = 0;
 		javax.swing.JLabel mapLbl = new javax.swing.JLabel("Mapping Resources:");
 		optionalPanel.add(mapLbl, oc);
 		oc.gridx = 1;
@@ -1708,6 +1760,9 @@ public class InterfaceMain implements ActionListener {
 				if (sigDigitsCombo != null && sigDigitsCombo.getSelectedItem() != null) {
 					p.setProperty("significantDigits", sigDigitsCombo.getSelectedItem().toString());
 				}
+				if (zipExportedScenariosCheckbox != null) {
+					p.setProperty("zipExportedScenarios", Boolean.toString(zipExportedScenariosCheckbox.isSelected()));
+				}
 				// persist latest optional paths too (in case user typed directly)
 				if (unitsFileField != null) { p.setProperty("unitsFile", safeTrim(unitsFileField.getText())); }
 				if (regionsFileField != null) { p.setProperty("presetRegionList", safeTrim(regionsFileField.getText())); }
@@ -1722,75 +1777,10 @@ public class InterfaceMain implements ActionListener {
 		content.add(bottom, java.awt.BorderLayout.SOUTH);
 
 		dlg.setContentPane(content);
-		dlg.setSize(Math.max(720, mainFrame.getWidth() / 2), Math.max(360, mainFrame.getHeight() / 3));
+		dlg.pack();
+		dlg.setSize(dlg.getWidth(), dlg.getHeight() + 20);
 		dlg.setLocationRelativeTo(mainFrame);
 		dlg.setVisible(true);
-	}
-
-	private static String safeTrim(String s) {
-		return s == null ? "" : s.trim();
-	}
-
-	private File promptForExecutable(String title) {
-		javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
-		chooser.setDialogTitle(title);
-		chooser.setFileSelectionMode(javax.swing.JFileChooser.FILES_ONLY);
-		int res = chooser.showOpenDialog(mainFrame);
-		if (res == javax.swing.JFileChooser.APPROVE_OPTION) {
-			return chooser.getSelectedFile();
-		}
-		return null;
-	}
-
-	private void openEditorForFile(File file, String fileTypeHint) {
-		if (file == null) {
-			return;
-		}
-		String path = file.getPath();
-		if (path == null || path.trim().isEmpty()) {
-			showMessageDialog("No file selected.", "Edit File", JOptionPane.INFORMATION_MESSAGE);
-			return;
-		}
-		if (!file.exists()) {
-			showMessageDialog("File does not exist: " + file.getAbsolutePath(), "Edit File", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-
-		String editorCmd = null;
-		if (fileTypeHint != null) {
-			String hint = fileTypeHint.toLowerCase();
-			if (hint.equals("xml")) {
-				editorCmd = savedProperties.getProperty("xmlEditor", "");
-			} else if (hint.equals("csv")) {
-				editorCmd = savedProperties.getProperty("csvEditor", "");
-			} else if (hint.equals("txt")) {
-				editorCmd = savedProperties.getProperty("txtEditor", "");
-			}
-		}
-
-		// Fallback on extension if no hint
-		if ((editorCmd == null || editorCmd.trim().isEmpty())) {
-			String name = file.getName().toLowerCase();
-			if (name.endsWith(".xml")) {
-				editorCmd = savedProperties.getProperty("xmlEditor", "");
-			} else if (name.endsWith(".csv")) {
-				editorCmd = savedProperties.getProperty("csvEditor", "");
-			} else if (name.endsWith(".txt")) {
-				editorCmd = savedProperties.getProperty("txtEditor", "");
-			}
-		}
-
-		try {
-			if (editorCmd != null && !editorCmd.trim().isEmpty()) {
-				java.util.List<String> cmdTokens = parseCommandTokens(editorCmd);
-				cmdTokens.add(file.getAbsolutePath());
-				new ProcessBuilder(cmdTokens).start();
-			} else {
-				Desktop.getDesktop().edit(file);
-			}
-		} catch (Exception ex) {
-			showMessageDialog("Unable to open editor: " + ex.getMessage(), "Edit File", JOptionPane.ERROR_MESSAGE);
-		}
 	}
 
 	/**

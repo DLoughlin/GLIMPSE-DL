@@ -48,6 +48,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import chart.Chart;
 import conversionUtil.ArrayConversion;
+import ModelInterface.InterfaceMain;
 
 /**
  * The class to handle multiple charts displaying with added on functions.
@@ -213,6 +214,8 @@ public class Thumbnail {
                                     // Update contents in-place; containerPanel reference stays stable
                                     containerPanel.removeAll();
                                     containerPanel.add(chartPanel, BorderLayout.CENTER);
+                                    // YD, 2/26/2026, align breakout window with the main window
+									chartPanel.setLocation(InterfaceMain.getInstance().getFrame().getLocation());
                                     containerPanel.revalidate();
                                     containerPanel.repaint();
 

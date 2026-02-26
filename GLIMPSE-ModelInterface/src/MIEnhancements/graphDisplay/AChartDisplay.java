@@ -61,6 +61,7 @@ import org.jfree.data.statistics.DefaultBoxAndWhiskerCategoryDataset;
 import org.jfree.data.xy.IntervalXYDataset;
 
 import ModelInterface.ModelGUI2.DbViewer;
+import ModelInterface.InterfaceMain;
 import chart.Chart;
 import chart.ChartMarker;
 import chartOptions.ChartOptionsUtil;
@@ -172,6 +173,7 @@ public class AChartDisplay {
 			jb_legend.setText(legendShowing ? "Hide Legend" : "Show Legend");
 			smallSizeX = dialog.getWidth();
 			smallSizeY = dialog.getHeight();
+			dialog.setLocation(InterfaceMain.getInstance().getFrame().getLocation());
 			dialog.setVisible(true);
 			DbViewer.openWindows.add(dialog);
 		}
@@ -196,7 +198,7 @@ public class AChartDisplay {
 			dialog.setContentPane(chartPane);
 		}
 		dialog.pack();
-		dialog.setVisible(true);
+		// dialog.setVisible(true); // YD moved to init()
 	}
 
 	/**

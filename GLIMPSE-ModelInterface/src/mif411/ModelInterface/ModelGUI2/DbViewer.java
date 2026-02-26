@@ -1292,6 +1292,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		}
 		queryList.setRowHeight(queryList.getFont().getSize() + 5);
 		ToolTipManager.sharedInstance().registerComponent(queryList);
+		ToolTipManager.sharedInstance().setInitialDelay(1200); // set tooltip delay
 		queryList.setCellRenderer(new DefaultTreeCellRenderer() {
 			public Component getTreeCellRendererComponent(JTree tree, Object value, boolean sel, boolean expanded,
 					boolean leaf, int row, boolean hasFocus) {

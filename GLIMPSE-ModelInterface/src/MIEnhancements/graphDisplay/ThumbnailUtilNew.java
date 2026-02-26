@@ -44,6 +44,7 @@ import chart.MyChartFactory;
 import chart.XYChart;
 import conversionUtil.ArrayConversion;
 import listener.IconMouseListener;
+import ModelInterface.InterfaceMain;
 
 /**
  * Utility class for creating and displaying thumbnail charts in a grid layout.
@@ -682,6 +683,8 @@ public class ThumbnailUtilNew {
 			scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
 			scrollPane.getVerticalScrollBar().setUnitIncrement(20);
 			jp.add(scrollPane, BorderLayout.CENTER);
+			// YD, 2/26/2026, align breakout window with the main window
+			jp.setLocation(InterfaceMain.getInstance().getFrame().getLocation());
 			
 			final int finalW = w;
 			final int finalGridWidth = gridWidth;

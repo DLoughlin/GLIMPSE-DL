@@ -15,6 +15,10 @@ import java.util.List;
 import java.util.Vector;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -344,14 +348,28 @@ public class ManageDatabaseDialog extends JDialog {
 
     private void handleExportScenarios() {
         final Object[] selectedList = list.getSelectedValues();
-        final boolean isSingleSelection = false; 
+        final boolean isSingleSelection = selectedList.length == 1;
+        final boolean zipExport = Boolean.parseBoolean(main.getProperties().getProperty("zipExportedScenarios", "false"));
 
         FileFilter fileFilter;
         String saveDialogTitle;
 
-        if (isSingleSelection) {
+        if (isSingleSelection && !zipExport) {
             fileFilter = new XMLFileFilter();
             saveDialogTitle = "Save As XML";
+        } else if (zipExport) {
+            fileFilter = new FileFilter() {
+                @Override
+                public boolean accept(File f) {
+                    return f.getName().toLowerCase().endsWith(".zip") || f.isDirectory();
+                }
+
+                @Override
+                public String getDescription() {
+                    return "Zip Archive (*.zip)";
+                }
+            };
+            saveDialogTitle = "Export as Zip Archive";
         } else {
             fileFilter = new FileFilter() {
                 @Override
@@ -368,16 +386,26 @@ public class ManageDatabaseDialog extends JDialog {
         }
         FileChooser fc = FileChooserFactory.getFileChooser();
 
+        File defaultSaveFile = new File(main.getProperties().getProperty("lastDirectory", "."));
+        if (isSingleSelection && zipExport) {
+            ScenarioListItem item = (ScenarioListItem) selectedList[0];
+            String zipName = item.getScnName() + ".zip";
+            defaultSaveFile = new File(defaultSaveFile, zipName);
+        }
+
         final File[] exportLocation = fc.doFilePrompt(null, saveDialogTitle, FileChooser.SAVE_DIALOG,
-                new File(main.getProperties().getProperty("lastDirectory", ".")), fileFilter);
+                defaultSaveFile, fileFilter);
         
         if (exportLocation == null) return;
         
-        if (isSingleSelection && !exportLocation[0].getName().endsWith(".xml")) {
-            exportLocation[0] = new File(exportLocation[0].getParentFile(), exportLocation[0].getName() + ".xml");
+        File finalExportFile = exportLocation[0];
+        if (isSingleSelection && !zipExport && !finalExportFile.getName().toLowerCase().endsWith(".xml")) {
+            finalExportFile = new File(finalExportFile.getParentFile(), finalExportFile.getName() + ".xml");
+        } else if (zipExport && !finalExportFile.getName().toLowerCase().endsWith(".zip")) {
+            finalExportFile = new File(finalExportFile.getParentFile(), finalExportFile.getName() + ".zip");
         }
         
-        statusField.setText("Exporting runs to selected directory...");
+        statusField.setText("Exporting runs...");
 
         final JProgressBar progBar = new JProgressBar(0, selectedList.length);
         final JLabel curLabel = new JLabel("Exporting runs from the database");
@@ -388,21 +416,54 @@ public class ManageDatabaseDialog extends JDialog {
 
         if (jd != null) jd.setVisible(true);
 
+        final File finalFile = finalExportFile;
         new Thread(() -> {
             boolean success = true;
-            for (Object o : selectedList) {
-                ScenarioListItem currItem = (ScenarioListItem) o;
-                File exportFile;
+            if (zipExport) {
+                try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(finalFile))) {
+                    for (Object o : selectedList) {
+                        ScenarioListItem currItem = (ScenarioListItem) o;
+                        String exportFileName = currItem.getScnName() + "_" + currItem.getScnDate().replaceAll(":", "_")
+                                + ".xml";
+                        
+                        File tempFile = File.createTempFile("scenario-export", ".xml");
+                        tempFile.deleteOnExit();
 
-                if (isSingleSelection) {
-                    exportFile = exportLocation[0];
-                } else {
-                    String exportFileName = currItem.getScnName() + "_" + currItem.getScnDate().replaceAll(":", "_")
-                            + ".xml";
-                    exportFile = new File(exportLocation[0], exportFileName);
+                        if (XMLDB.getInstance().exportDoc(currItem.getDocName(), tempFile)) {
+                            zos.putNextEntry(new ZipEntry(exportFileName));
+                            try (FileInputStream fis = new FileInputStream(tempFile)) {
+                                byte[] buffer = new byte[1024];
+                                int len;
+                                while ((len = fis.read(buffer)) > 0) {
+                                    zos.write(buffer, 0, len);
+                                }
+                            }
+                            zos.closeEntry();
+                        } else {
+                            success = false;
+                        }
+                        tempFile.delete();
+                        SwingUtilities.invokeLater(incProgress);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    success = false;
                 }
-                success = success && XMLDB.getInstance().exportDoc(currItem.getDocName(), exportFile);
-                SwingUtilities.invokeLater(incProgress);
+            } else {
+                for (Object o : selectedList) {
+                    ScenarioListItem currItem = (ScenarioListItem) o;
+                    File exportFile;
+
+                    if (isSingleSelection) {
+                        exportFile = finalFile;
+                    } else {
+                        String exportFileName = currItem.getScnName() + "_" + currItem.getScnDate().replaceAll(":", "_")
+                                + ".xml";
+                        exportFile = new File(finalFile, exportFileName);
+                    }
+                    success = success && XMLDB.getInstance().exportDoc(currItem.getDocName(), exportFile);
+                    SwingUtilities.invokeLater(incProgress);
+                }
             }
             if (jd != null) jd.setVisible(false);
             final boolean finalSuccess = success;
