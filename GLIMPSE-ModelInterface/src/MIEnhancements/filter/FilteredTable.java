@@ -49,7 +49,6 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
-import java.awt.event.InputEvent;
 import graphDisplay.Thumbnail;
 import graphDisplay.StateMapPanel;
 import graphDisplay.SankeyDiagramFromTable;
