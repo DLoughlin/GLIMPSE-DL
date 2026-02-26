@@ -1565,8 +1565,8 @@ public class InterfaceMain implements ActionListener {
 	}
 
 	private void refreshQueryFileMenuEnabled() {
-		if (queryTreeFileMenu != null) {
-			queryTreeFileMenu.setEnabled(hasQueryFileConfigured());
+		if (editQueryFileMenu != null) {
+			editQueryFileMenu.setEnabled(hasQueryFileConfigured());
 		}
 	}
 
