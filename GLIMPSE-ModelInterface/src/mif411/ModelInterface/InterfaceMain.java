@@ -1571,7 +1571,9 @@ public class InterfaceMain implements ActionListener {
 		gc.gridwidth = 3;
 		gc.weightx = 1.0;
 		javax.swing.JLabel hint = new javax.swing.JLabel(
-				"Tip: leave blank to use the default system editor or specify options\n such as notepad.exe, Notepad++, VS Code, etc.");
+				"<html>Tip: leave blank to use the default system editor, or enter a command such as<br>"
+				+ "<i>notepad.exe</i>, <i>code</i>, or <i>\"C:\\Program Files\\editor.exe\" --arg</i>.<br>"
+				+ "Arguments are supported; quote paths that contain spaces.</html>");
 		generalPanel.add(hint, gc);
 
 		// Horizontal separator (moved above Significant digits preference)
@@ -1777,13 +1779,41 @@ public class InterfaceMain implements ActionListener {
 
 		try {
 			if (editorCmd != null && !editorCmd.trim().isEmpty()) {
-				new ProcessBuilder(editorCmd, file.getAbsolutePath()).start();
+				java.util.List<String> cmdTokens = parseCommandTokens(editorCmd);
+				cmdTokens.add(file.getAbsolutePath());
+				new ProcessBuilder(cmdTokens).start();
 			} else {
 				Desktop.getDesktop().edit(file);
 			}
 		} catch (Exception ex) {
 			showMessageDialog("Unable to open editor: " + ex.getMessage(), "Edit File", JOptionPane.ERROR_MESSAGE);
 		}
+	}
+
+	/**
+	 * Splits a shell-style command string into a list of tokens suitable for
+	 * passing to {@link ProcessBuilder}. Handles double- and single-quoted
+	 * substrings so that paths containing spaces can be quoted (e.g.,
+	 * {@code "C:\Program Files\editor.exe" --flag} → two tokens). Note:
+	 * escaped quotes inside a quoted string (e.g., {@code "say \"hi\""}) are
+	 * not supported.
+	 */
+	private java.util.List<String> parseCommandTokens(String cmd) {
+		// Match: "…" (group 1) | '…' (group 2) | non-whitespace run (group 3)
+		final java.util.regex.Pattern TOKEN_PATTERN =
+				java.util.regex.Pattern.compile("\"([^\"]*)\"|'([^']*)'|(\\S+)");
+		java.util.List<String> tokens = new java.util.ArrayList<>();
+		java.util.regex.Matcher m = TOKEN_PATTERN.matcher(cmd.trim());
+		while (m.find()) {
+			if (m.group(1) != null) {
+				tokens.add(m.group(1));
+			} else if (m.group(2) != null) {
+				tokens.add(m.group(2));
+			} else {
+				tokens.add(m.group(3));
+			}
+		}
+		return tokens;
 	}
 
 	private boolean hasQueryFileConfigured() {
