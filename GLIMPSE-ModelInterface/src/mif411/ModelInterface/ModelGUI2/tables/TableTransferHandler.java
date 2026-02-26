@@ -85,7 +85,7 @@ public class TableTransferHandler extends TransferHandler {
 		if (estimatedRows > MAX_DND_ROWS) {
 			Component parent = SwingUtilities.getWindowAncestor(comp);
 			JOptionPane.showMessageDialog(parent,
-					"For large tables (>"+MAX_DND_ROWS+" rows), use Copy button or Cntl-C/V on selected rows",
+					"For large tables (>"+MAX_DND_ROWS+" rows), use Copy button or Ctrl+C / Ctrl+V on selected rows",
 					"Large table - use clipboard or CSV export", JOptionPane.INFORMATION_MESSAGE);
 			System.out.println("DnD blocked: table has " + estimatedRows + " rows (limit " + MAX_DND_ROWS + ")");
 			return null; // cancel the drag
