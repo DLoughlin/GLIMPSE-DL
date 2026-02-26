@@ -812,66 +812,6 @@ public class InterfaceMain implements ActionListener {
 
 	}
 
-	private void initStatusBarOld() {
-		if (statusBar != null) {
-			return;
-		}
-
-		// Ensure a stable root container is installed exactly once.
-		if (rootContent == null) {
-			rootContent = new JPanel(new BorderLayout());
-		}
-		if (mainFrame.getContentPane() != rootContent) {
-			// Preserve existing CENTER if someone set a different content pane already.
-			java.awt.Container old = mainFrame.getContentPane();
-			java.awt.Component oldCenter = null;
-			if (old != null && old.getLayout() instanceof BorderLayout) {
-				oldCenter = ((BorderLayout) old.getLayout()).getLayoutComponent(BorderLayout.CENTER);
-			}
-			mainFrame.setContentPane(rootContent);
-			if (oldCenter != null) {
-				rootContent.add(oldCenter, BorderLayout.CENTER);
-			}
-		}
-
-		statusBar = new JPanel(new BorderLayout());
-		statusBar.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, UNIFIED_BORDER));
-		statusBar.setBackground(UNIFIED_BG);
-
-		activeDbStatusLabel = new JLabel();
-		activeDbStatusLabel.setOpaque(false);
-		activeDbStatusLabel.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
-		statusBar.add(activeDbStatusLabel, BorderLayout.WEST);
-
-		// Right side: query progress (hidden unless multiple queries are running)
-		JPanel rightPanel = new JPanel();
-		rightPanel.setOpaque(false);
-		rightPanel.setLayout(new javax.swing.BoxLayout(rightPanel, javax.swing.BoxLayout.X_AXIS));
-		rightPanel.setBorder(BorderFactory.createEmptyBorder(2, 8, 2, 8));
-
-		queryProgressLabel = new JLabel();
-		queryProgressLabel.setOpaque(false);
-		queryProgressLabel.setVisible(false);
-
-		queryProgressBar = new javax.swing.JProgressBar(0, 100);
-		queryProgressBar.setStringPainted(false);
-		queryProgressBar.setVisible(false);
-		queryProgressBar.setBorderPainted(true);
-		queryProgressBar.setPreferredSize(new java.awt.Dimension(140, 14));
-		queryProgressBar.setMaximumSize(new java.awt.Dimension(180, 14));
-
-		rightPanel.add(javax.swing.Box.createHorizontalGlue());
-		rightPanel.add(queryProgressLabel);
-		rightPanel.add(javax.swing.Box.createHorizontalStrut(8));
-		rightPanel.add(queryProgressBar);
-		statusBar.add(rightPanel, BorderLayout.EAST);
-
-		// Mount into the stable root container.
-		rootContent.add(statusBar, BorderLayout.SOUTH);
-		updateActiveDatabaseStatus(path);
-		resetQueryProgressUI();
-	}
-
 	/**
 	 * Ensure the status bar is present even if another view replaced the frame content pane.
 	 */
