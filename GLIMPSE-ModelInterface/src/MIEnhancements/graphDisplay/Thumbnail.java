@@ -104,20 +104,53 @@ public class Thumbnail {
 
             @Override
             protected Chart[] doInBackground() throws Exception {
-                Map<String, Integer[]> effectiveMeta = metaMapFinal;
-                if (effectiveMeta == null) {
-                    effectiveMeta = ModelInterfaceUtil.getMetaIndex2(jtable, cnt);
-                }
-                metaCol = ArrayConversion.array2String(ModelInterfaceUtil.getColumnFromTable(jtable, cnt, 2));
-                col = ArrayConversion.array2String(ModelInterfaceUtil.getColumnFromTable(jtable, cnt, 0));
+                // Snapshot all JTable-dependent data on the EDT to avoid accessing Swing components
+                // from the background thread.
+                final Map<String, Integer[]>[] effectiveMetaHolder = new Map[1];
+                final String[] metaColHolder = new String[1];
+                final String[] colHolder = new String[1];
+                final Object[] colDataHolder = new Object[1];
+                final Object[] data0Holder = new Object[1];
+                final Object[] data1Holder = new Object[1];
 
-                // Heavy work: create Chart objects (done off EDT)
-                Chart[] chart = ThumbnailUtilNew.createChart(chartName, unit,
-                        ModelInterfaceUtil.getColDataFromTable(jtable, jtable.getColumnCount() - 1),
+                SwingUtilities.invokeAndWait(new Runnable() {
+                    @Override
+                    public void run() {
+                        Map<String, Integer[]> effectiveMeta = metaMapFinal;
+                        if (effectiveMeta == null) {
+                            effectiveMeta = ModelInterfaceUtil.getMetaIndex2(jtable, cnt);
+                        }
+                        effectiveMetaHolder[0] = effectiveMeta;
+
+                        metaColHolder[0] = ArrayConversion.array2String(
+                                ModelInterfaceUtil.getColumnFromTable(jtable, cnt, 2));
+                        colHolder[0] = ArrayConversion.array2String(
+                                ModelInterfaceUtil.getColumnFromTable(jtable, cnt, 0));
+
+                        colDataHolder[0] = ModelInterfaceUtil.getColDataFromTable(
+                                jtable, jtable.getColumnCount() - 1);
+                        data0Holder[0] = ModelInterfaceUtil.getDataFromTable(jtable, cnt, 0);
+                        data1Holder[0] = ModelInterfaceUtil.getDataFromTable(jtable, cnt, 1);
+                    }
+                });
+
+                // Copy snapshot values into instance fields to preserve existing behavior.
+                metaCol = metaColHolder[0];
+                col = colHolder[0];
+                Map<String, Integer[]> effectiveMeta = effectiveMetaHolder[0];
+
+                // Heavy work: create Chart objects using only snapshot data (no Swing access here).
+                Chart[] chart = ThumbnailUtilNew.createChart(
+                        chartName,
+                        unit,
+                        colDataHolder[0],
                         col,
-                        ModelInterfaceUtil.getDataFromTable(jtable, cnt, 0), effectiveMeta,
-                        ModelInterfaceUtil.getLegend2(effectiveMeta, ModelInterfaceUtil.getDataFromTable(jtable, cnt, 1)), path,
-                        metaCol, unitLookup);
+                        data0Holder[0],
+                        effectiveMeta,
+                        ModelInterfaceUtil.getLegend2(effectiveMeta, data1Holder[0]),
+                        path,
+                        metaCol,
+                        unitLookup);
                 return chart;
             }
 
