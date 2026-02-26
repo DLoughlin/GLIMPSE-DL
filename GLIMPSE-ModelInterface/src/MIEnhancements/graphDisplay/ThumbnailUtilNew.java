@@ -57,7 +57,6 @@ public class ThumbnailUtilNew {
     // Thresholds to avoid generating charts that will overwhelm memory/UI.
     private static final int MAX_SERIES_PER_CHART = 200; // max series (legend entries) per single chart
     private static final int MAX_TOTAL_SERIES = 2000; // total series across all charts
-    private static final int MAX_LEGEND_CHARACTERS = 5000; // estimated total legend label characters
  	private static final int DEFAULT_THUMBNAIL_SIZE = 240; // 320 * 0.75
 	private static final int MIN_THUMBNAIL_SIZE = 135; // 180 * 0.75
 	private static final int MAX_THUMBNAIL_SIZE = 240; // 320 * 0.75
