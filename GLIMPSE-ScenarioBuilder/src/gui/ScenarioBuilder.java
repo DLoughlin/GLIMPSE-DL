@@ -141,7 +141,7 @@ public class ScenarioBuilder {
 	protected final GLIMPSEUtils utils = GLIMPSEUtils.getInstance();
 
 	/** Default CSS resource used for the modern look and feel. */
-	protected static final String MODERN_CSS_RESOURCE = "/resources/modern.css";
+	private static final String MODERN_CSS_RESOURCE = "/resources/modern.css";
 
 	/**
 	 * Returns the singleton instance of ScenarioBuilder.
@@ -558,7 +558,7 @@ public class ScenarioBuilder {
 		if (scene == null)
 			return;
 		try {
-			java.net.URL cssUrl = ScenarioBuilder.class.getResource(MODERN_CSS_RESOURCE);
+			java.net.URL cssUrl = ScenarioBuilder.class.getResource(getModernCssResource());
 			if (cssUrl != null) {
 				String css = cssUrl.toExternalForm();
 				if (!scene.getStylesheets().contains(css)) {
@@ -597,5 +597,9 @@ public class ScenarioBuilder {
 	 */
 	protected javafx.scene.control.Button createDialogButton(String text) {
 		return utils.createButton(text, styles.getBigButtonWidth(), null);
+	}
+
+	public static String getModernCssResource() {
+		return MODERN_CSS_RESOURCE;
 	}
 }

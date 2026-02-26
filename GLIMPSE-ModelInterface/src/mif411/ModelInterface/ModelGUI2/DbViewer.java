@@ -39,6 +39,8 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ContainerAdapter;
+import java.awt.event.ContainerEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
@@ -167,7 +169,7 @@ import filter.FilterTreePaneYears;
  * @version 1.1
  * @since 2012
  */
-public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
+public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	private Document queriesDoc;
 
 	private static String controlStr = "DbViewer";
@@ -220,17 +222,61 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 
 	public static ArrayList openWindows = new ArrayList();
 	
-	private static JProgressBar queryProgressBar; 
-	private static int totalQueries = 0; 
-	private static int completedQueries = 0;
-	private JFrame parentFrame = null;
-	private FavoriteQueriesManager favoriteQueriesManager;
+	private JFrame parentFrame;
 	private BatchExecutionController batchExecutionController;
+	private FavoriteQueriesManager favoriteQueriesManager;
+	
+	// Progress is now shown in InterfaceMain's status bar.
+	// Keep counters here to compute progress.
+	private static int totalQueries = 0;
+	private static int completedQueries = 0;
+	// Track tab closures so we only count completion once per tab.
+	private static final java.util.Set<java.awt.Component> activeQueryTabs = java.util.Collections
+			.synchronizedSet(new java.util.HashSet<java.awt.Component>());
 
 	/**
-	 * Constructs a new DbViewer, initializing the user interface and setting up
-	 * property change listeners for application-level events.
+	 * Registers that a new query is starting so the progress UI can track it.
 	 */
+	public static void registerNewQuery() {
+		totalQueries++;
+		updateProgressUI();
+	}
+
+	/**
+	 * Registers that a query has completed so the progress UI can track it.
+	 */
+	static void registerQueryCompleted() {
+		completedQueries++;
+		updateProgressUI();
+		if (completedQueries >= totalQueries) {
+			finishProgressUI();
+		}
+	}
+
+	private static void updateProgressUI() {
+		InterfaceMain main = InterfaceMain.getInstance();
+		if (main == null) {
+			return;
+		}
+		main.updateQueryProgressStatus(completedQueries, totalQueries);
+	}
+
+	private static void finishProgressUI() {
+		final InterfaceMain main = InterfaceMain.getInstance();
+		if (main == null) {
+			totalQueries = 0;
+			completedQueries = 0;
+			return;
+		}
+		javax.swing.Timer timer = new javax.swing.Timer(800, ev -> {
+			main.clearQueryProgressStatus();
+			totalQueries = 0;
+			completedQueries = 0;
+		});
+		timer.setRepeats(false);
+		timer.start();
+	}
+
 	public DbViewer() {
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
@@ -238,11 +284,6 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		final DbViewer thisViewer = this;
 		this.batchExecutionController = new BatchExecutionController(this);
 		
-		queryProgressBar = new JProgressBar(0, 100);
-		queryProgressBar.setVisible(false);
-		queryProgressBar.setStringPainted(false); // cleaner look
-		queryProgressBar.setPreferredSize(new Dimension(120, 16));
-
 
 		try {
 			DOMImplementationRegistry reg = DOMImplementationRegistry.newInstance();
@@ -263,6 +304,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		if (parentFrame == null) {
 			// no gui components available such as in batch mode.
 			return;
+
 		}
 
 		parentFrame.addPropertyChangeListener(new PropertyChangeListener() {
@@ -291,7 +333,19 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 						main.getSaveAsMenu().removeActionListener(thisViewer);
 						main.getSaveAsMenu().setEnabled(false);
 						main.getSaveMenu().setEnabled(false);
-						parentFrame.getContentPane().removeAll();
+						
+						// Do not clear the entire content pane; InterfaceMain installs a status bar
+						// in BorderLayout.SOUTH that must remain visible.
+						Container cp = parentFrame.getContentPane();
+						java.awt.Component existingCenter = null;
+						if (cp.getLayout() instanceof BorderLayout) {
+							existingCenter = ((BorderLayout) cp.getLayout()).getLayoutComponent(BorderLayout.CENTER);
+						}
+						if (existingCenter != null) {
+							cp.remove(existingCenter);
+							cp.revalidate();
+							cp.repaint();
+						}
 
 						XMLDB.closeDatabase();
 					}
@@ -774,7 +828,6 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 			break;
 		}
 	}
-
 	/**
 	 * Handles the "Open DB" action event. Prompts the user to select a database
 	 * directory and opens it.
@@ -1059,7 +1112,11 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		tablesTabs.addMouseMotionListener(dragListener);
 
 		createTableSelector();
-		parentFrame.setTitle("GLIMPSE-CE ModelInterface [" + dbFile + "]");
+		// Keep a consistent app title; show active DB in the InterfaceMain status bar instead.
+		parentFrame.setTitle("GLIMPSE-CE ModelInterface");
+		// Persist and broadcast active DB selection.
+		main.setProperty("paramPath", dbFile.getAbsolutePath());
+		main.updateActiveDatabaseStatus(dbFile.getAbsolutePath());
 	}
 
 	/**
@@ -1181,6 +1238,8 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		setupQueryPanel();
 		setupButtonPanel();
 		setupSplitPanes();
+		// Track tab closure as completion.
+		installResultsTabCompletionTracking();
 		setupPresetRegionDropdown();
 		favoriteQueriesManager = new FavoriteQueriesManager(queryList, listScrollQueries);
 		setupListeners();
@@ -1312,8 +1371,8 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		// Add a 20px buffer between the Favorites button and the progress bar
 		buttonPanel.add(Box.createHorizontalStrut(20));
 		// Ensure the progress bar keeps its preferred size and does not expand vertically
-		queryProgressBar.setMaximumSize(queryProgressBar.getPreferredSize());
-		buttonPanel.add(queryProgressBar);
+		// queryProgressBar.setMaximumSize(queryProgressBar.getPreferredSize());
+		// buttonPanel.add(queryProgressBar);
 		// Add a 20px buffer between the progress bar and the right edge of the panel
 		buttonPanel.add(Box.createHorizontalStrut(20));
 		// Add glue so any extra space is consumed to the right of the progress bar
@@ -1339,61 +1398,33 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	}
 	
 	/**
-	 * Registers that a new query is starting so the progress UI can track it.
+	 * Install listeners on the results tabbed pane so when a tab is closed we count
+	 * that query as completed for the status bar progress UI.
 	 */
-	public static void registerNewQuery() {
-	    totalQueries++;
-	    updateProgressBar();
+	private void installResultsTabCompletionTracking() {
+		// This will be called after tablesTabs is created.
+		tablesTabs.addContainerListener(new ContainerAdapter() {
+			@Override
+			public void componentRemoved(ContainerEvent e) {
+				java.awt.Component removed = e.getChild();
+				// Only count completion for tabs we registered as query/diff results.
+				if (removed != null && activeQueryTabs.remove(removed)) {
+					registerQueryCompleted();
+					// If all tabs were closed/reset, keep the internal set clean.
+					if (tablesTabs.getTabCount() == 0) {
+						activeQueryTabs.clear();
+						// If user closes all tabs before queries finish, treat as completed/cleared.
+						if (completedQueries < totalQueries) {
+							completedQueries = totalQueries;
+							updateProgressUI();
+							finishProgressUI();
+						}
+					}
+				}
+			}
+		});
 	}
 
-	/**
-	 * Registers that a query has completed so the progress UI can track it.
-	 */
-	public static void registerQueryCompleted() {
-	    completedQueries++;
-	    updateProgressBar();
-
-	    if (completedQueries == totalQueries) {
-	        finishProgressBar();
-	    }
-	}
-
-	/**
-	 * Updates the progress bar's visibility and value based on the current state of
-	 * query execution.
-	 */
-	private static void updateProgressBar() {
-	    if (totalQueries > 1) {
-	        if (queryProgressBar != null) {
-	            queryProgressBar.setVisible(true);
-	            int percent = (int) (((double) completedQueries / totalQueries) * 100);
-	            queryProgressBar.setValue(percent);
-	        }
-	    }
-	}
-
-	/**
-	 * Finalizes the progress bar when all queries are complete. It sets the value
-	 * to 100% and then hides it after a short delay.
-	 */
-	private static void finishProgressBar() {
-	    if (queryProgressBar != null) {
-	        queryProgressBar.setValue(100);
-
-	        Timer timer = new Timer(1000, e -> {
-	            queryProgressBar.setVisible(false);
-	            totalQueries = 0;
-	            completedQueries = 0;
-	        });
-	        timer.setRepeats(false);
-	        timer.start();
-	    } else {
-	        totalQueries = 0;
-	        completedQueries = 0;
-	    }
-	}
-
-	
 	/**
 	 * Sets up the split panes that organize the main UI areas: scenarios/regions,
 	 * queries, and the results tabs.
@@ -1602,13 +1633,14 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 							// add loading icon to QueryResultsPanel
 							TabCloseIcon loadingIcon = new TabCloseIcon(tablesTabs);
 							// Register that a new query is starting so the progress UI can track it
-                            registerNewQuery();
+							registerNewQuery();
 							// creating new panel for holding the results of the queries
 							JComponent ret = new QueryResultsPanel(qg, singleBinding, scnList.getSelectedValues(),
 									regionList.getSelectedValues(), loadingIcon, doTotalCheckBox.isSelected());
 
 							// adds new tab for query results panel
 							tablesTabs.addTab(qg.toString(), loadingIcon, ret, createCommentTooltip(selPaths[i]));
+							activeQueryTabs.add(ret);
 							if (!movedTabAlready) {
 								tablesTabs.setSelectedIndex(tablesTabs.getTabCount() - 1);
 								movedTabAlready = true;
@@ -1666,13 +1698,14 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 							// add loading icon to QueryResultsPanel
 							TabCloseIcon loadingIcon = new TabCloseIcon(tablesTabs);
 							// Register that a new diff query is starting so the progress UI can track it
-                            registerNewQuery();
+							registerNewQuery();
 							// creating new panel for holding the results of the queries
 							JComponent ret = new DiffResultsPanel(qg, singleBinding, scnList.getSelectedValues(),
 									regionList.getSelectedValues(), loadingIcon, doTotalCheckBox.isSelected());
 							// adds new tab for query results panel
 							tablesTabs.addTab("Diff: " + qg.toString(), loadingIcon, ret,
 									createCommentTooltip(selPaths[i]));
+							activeQueryTabs.add(ret);
 							if (!movedTabAlready) {
 								tablesTabs.setSelectedIndex(tablesTabs.getTabCount() - 1);
 								movedTabAlready = true;
@@ -1709,7 +1742,9 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		
 		JFrame parentFrame = InterfaceMain.getInstance().getFrame();
 		Container contentPane = parentFrame.getContentPane();
-		contentPane.add(tableCreatorSplit);
+		// Use InterfaceMain.setMainView to replace the CENTER component while keeping the
+		// global status bar (installed in InterfaceMain.SOUTH) intact.
+		InterfaceMain.getInstance().setMainView(tableCreatorSplit);
 
 		// have to get rid of the wait cursor
 		parentFrame.getGlassPane().setVisible(false);
@@ -1803,7 +1838,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	public void restoreExpansionState(Enumeration enumeration, JTree tree) {
 		if (enumeration != null) {
 			while (enumeration.hasMoreElements()) {
-				TreePath treePath = (TreePath) enumeration.nextElement();
+			 TreePath treePath = (TreePath) enumeration.nextElement();
 				tree.expandPath(treePath);
 			}
 		}
@@ -1818,7 +1853,7 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 	 */
 	// YD added,2024
 	// this method is to get the full tree path for a query group name,YD added
-	private TreePath getFullTreePath(JTree tree, String groupName) {
+ private TreePath getFullTreePath(JTree tree, String groupName) {
 		Enumeration<TreePath> allPath = tree.getExpandedDescendants(new TreePath(tree.getModel().getRoot()));
 		TreePath myTreePath = null;
 		if (allPath != null) {
@@ -1906,8 +1941,20 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		// need to disable the export tabs option
 		if (menuExpPrn != null) menuExpPrn.setEnabled(false);
 
-		// grab the panel
 		if (tablesTabs.getTabCount() > 0) {
+			// Treat all open query tabs as completed when user closes them.
+			int toComplete;
+			synchronized (activeQueryTabs) {
+				toComplete = activeQueryTabs.size();
+				activeQueryTabs.clear();
+			}
+			if (toComplete > 0) {
+				completedQueries = Math.min(totalQueries, completedQueries + toComplete);
+				updateProgressUI();
+				if (completedQueries >= totalQueries) {
+					finishProgressUI();
+				}
+			}
 			// iterate over children and close each one
 			tablesTabs.removeAll();
 		}
@@ -2124,9 +2171,10 @@ public class DbViewer implements ActionListener, MenuAdder, BatchRunner {
 		if (parentFrame == null)
 			return;
 		Container contentPane = parentFrame.getContentPane();
-		contentPane.removeAll();
-		contentPane.setLayout(new BorderLayout());
-		contentPane.add(tableCreatorSplit, BorderLayout.CENTER);
+
+		// Replace the CENTER view via InterfaceMain so the status bar remains visible.
+		InterfaceMain.getInstance().setMainView(tableCreatorSplit);
+
 		parentFrame.setLocationRelativeTo(null);
 		parentFrame.setVisible(true);
 		parentFrame.getGlassPane().setVisible(false);

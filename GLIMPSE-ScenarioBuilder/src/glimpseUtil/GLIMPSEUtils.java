@@ -197,7 +197,7 @@ public class GLIMPSEUtils {
 			javafx.scene.control.DialogPane pane = dialog.getDialogPane();
 			if (pane == null)
 				return;
-			java.net.URL cssUrl = gui.ScenarioBuilder.class.getResource(gui.ScenarioBuilder.MODERN_CSS_RESOURCE);
+			java.net.URL cssUrl = gui.ScenarioBuilder.class.getResource(gui.ScenarioBuilder.getModernCssResource());
 			if (cssUrl != null) {
 				String css = cssUrl.toExternalForm();
 				if (!pane.getStylesheets().contains(css)) {

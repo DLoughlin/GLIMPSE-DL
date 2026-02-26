@@ -101,8 +101,11 @@ import joptsimple.OptionSet;
 import com.sun.media.imageioimpl.common.PackageUtil;
 import java.lang.reflect.Field;
 
-import java.awt.Font;
 import java.awt.Color;
+
+import javax.swing.BorderFactory;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 
 public class InterfaceMain implements ActionListener {
 	// Use platform Look & Feel defaults for fonts (do not force a unified size).
@@ -233,6 +236,20 @@ public class InterfaceMain implements ActionListener {
 	 * on.
 	 */
 	private JFrame mainFrame;
+
+	/**
+	 * Status bar (bottom of main frame)
+	 */
+	private JPanel statusBar;
+	// New: stable root container so status bar is never lost.
+	private JPanel rootContent;
+	// Guard to avoid re-entrant contentPane handling
+	private transient boolean suppressContentPaneListener = false;
+
+	// Status bar widgets.
+	private JLabel activeDbStatusLabel;
+	private JLabel queryProgressLabel;
+	private javax.swing.JProgressBar queryProgressBar;
 
 	/**
 	 * Main function, creates a new thread for the gui and runs it.
@@ -699,11 +716,282 @@ public class InterfaceMain implements ActionListener {
 
 		main.mainFrame.setLayout(new BorderLayout());
 		main.initialize();
+		main.initStatusBar();
 		// main.pack();
 		main.mainFrame.setVisible(false);
 		if (path != null) {
 			main.fireControlChange("DbViewer");
 
+		}
+	}
+
+	private void initStatusBar() {
+		if (statusBar != null) {
+			return;
+		}
+
+		// Ensure a stable root container is installed exactly once.
+		if (rootContent == null) {
+			rootContent = new JPanel(new BorderLayout());
+		}
+		if (mainFrame.getContentPane() != rootContent) {
+			// Preserve existing CENTER if someone set a different content pane already.
+			java.awt.Container old = mainFrame.getContentPane();
+			java.awt.Component oldCenter = null;
+			if (old != null && old.getLayout() instanceof BorderLayout) {
+				oldCenter = ((BorderLayout) old.getLayout()).getLayoutComponent(BorderLayout.CENTER);
+			}
+			mainFrame.setContentPane(rootContent);
+			if (oldCenter != null) {
+				rootContent.add(oldCenter, BorderLayout.CENTER);
+			}
+		}
+
+		statusBar = new JPanel(new BorderLayout());
+		statusBar.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, UNIFIED_BORDER));
+		statusBar.setBackground(UNIFIED_BG);
+
+		activeDbStatusLabel = new JLabel();
+		activeDbStatusLabel.setOpaque(false);
+		activeDbStatusLabel.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+		statusBar.add(activeDbStatusLabel, BorderLayout.WEST);
+
+		// Right side: query progress (hidden unless multiple queries are running)
+		JPanel rightPanel = new JPanel();
+		rightPanel.setOpaque(false);
+		rightPanel.setLayout(new javax.swing.BoxLayout(rightPanel, javax.swing.BoxLayout.X_AXIS));
+		rightPanel.setBorder(BorderFactory.createEmptyBorder(2, 8, 2, 8));
+
+		queryProgressLabel = new JLabel();
+		queryProgressLabel.setOpaque(false);
+		queryProgressLabel.setVisible(false);
+
+		queryProgressBar = new javax.swing.JProgressBar(0, 100);
+		queryProgressBar.setStringPainted(false);
+		queryProgressBar.setVisible(false);
+		queryProgressBar.setBorderPainted(true);
+		queryProgressBar.setPreferredSize(new java.awt.Dimension(140, 14));
+		queryProgressBar.setMaximumSize(new java.awt.Dimension(180, 14));
+
+		rightPanel.add(javax.swing.Box.createHorizontalGlue());
+		rightPanel.add(queryProgressLabel);
+		rightPanel.add(javax.swing.Box.createHorizontalStrut(8));
+		rightPanel.add(queryProgressBar);
+		statusBar.add(rightPanel, BorderLayout.EAST);
+
+		// Mount into the stable root container.
+		rootContent.add(statusBar, BorderLayout.SOUTH);
+		updateActiveDatabaseStatus(path);
+		resetQueryProgressUI();
+
+		// Listen for any code that replaces the frame content pane and restore our
+		// stable rootContent with the status bar. This prevents transient UI code
+		// from accidentally removing the status bar when running queries or
+		// switching views.
+		mainFrame.addPropertyChangeListener("contentPane", new java.beans.PropertyChangeListener() {
+			@Override
+			public void propertyChange(java.beans.PropertyChangeEvent evt) {
+				if (suppressContentPaneListener) return;
+				javax.swing.SwingUtilities.invokeLater(() -> {
+					try {
+						suppressContentPaneListener = true;
+						java.awt.Container newPane = mainFrame.getContentPane();
+						// If someone replaced the content pane, take that new pane and mount
+						// it into our rootContent center so the status bar remains visible.
+						if (newPane != rootContent) {
+							// Detach the newPane from the frame and install under rootContent.
+							mainFrame.setContentPane(rootContent);
+							setMainView(newPane);
+						}
+					} finally {
+						suppressContentPaneListener = false;
+					}
+				});
+			}
+		});
+
+	}
+
+	private void initStatusBarOld() {
+		if (statusBar != null) {
+			return;
+		}
+
+		// Ensure a stable root container is installed exactly once.
+		if (rootContent == null) {
+			rootContent = new JPanel(new BorderLayout());
+		}
+		if (mainFrame.getContentPane() != rootContent) {
+			// Preserve existing CENTER if someone set a different content pane already.
+			java.awt.Container old = mainFrame.getContentPane();
+			java.awt.Component oldCenter = null;
+			if (old != null && old.getLayout() instanceof BorderLayout) {
+				oldCenter = ((BorderLayout) old.getLayout()).getLayoutComponent(BorderLayout.CENTER);
+			}
+			mainFrame.setContentPane(rootContent);
+			if (oldCenter != null) {
+				rootContent.add(oldCenter, BorderLayout.CENTER);
+			}
+		}
+
+		statusBar = new JPanel(new BorderLayout());
+		statusBar.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, UNIFIED_BORDER));
+		statusBar.setBackground(UNIFIED_BG);
+
+		activeDbStatusLabel = new JLabel();
+		activeDbStatusLabel.setOpaque(false);
+		activeDbStatusLabel.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+		statusBar.add(activeDbStatusLabel, BorderLayout.WEST);
+
+		// Right side: query progress (hidden unless multiple queries are running)
+		JPanel rightPanel = new JPanel();
+		rightPanel.setOpaque(false);
+		rightPanel.setLayout(new javax.swing.BoxLayout(rightPanel, javax.swing.BoxLayout.X_AXIS));
+		rightPanel.setBorder(BorderFactory.createEmptyBorder(2, 8, 2, 8));
+
+		queryProgressLabel = new JLabel();
+		queryProgressLabel.setOpaque(false);
+		queryProgressLabel.setVisible(false);
+
+		queryProgressBar = new javax.swing.JProgressBar(0, 100);
+		queryProgressBar.setStringPainted(false);
+		queryProgressBar.setVisible(false);
+		queryProgressBar.setBorderPainted(true);
+		queryProgressBar.setPreferredSize(new java.awt.Dimension(140, 14));
+		queryProgressBar.setMaximumSize(new java.awt.Dimension(180, 14));
+
+		rightPanel.add(javax.swing.Box.createHorizontalGlue());
+		rightPanel.add(queryProgressLabel);
+		rightPanel.add(javax.swing.Box.createHorizontalStrut(8));
+		rightPanel.add(queryProgressBar);
+		statusBar.add(rightPanel, BorderLayout.EAST);
+
+		// Mount into the stable root container.
+		rootContent.add(statusBar, BorderLayout.SOUTH);
+		updateActiveDatabaseStatus(path);
+		resetQueryProgressUI();
+	}
+
+	/**
+	 * Ensure the status bar is present even if another view replaced the frame content pane.
+	 */
+	private void ensureStatusBarInstalled() {
+		if (statusBar == null) {
+			initStatusBar();
+			return;
+		}
+		if (rootContent == null) {
+			rootContent = new JPanel(new BorderLayout());
+		}
+		if (mainFrame.getContentPane() != rootContent) {
+			mainFrame.setContentPane(rootContent);
+		}
+		if (statusBar.getParent() != rootContent) {
+			rootContent.add(statusBar, BorderLayout.SOUTH);
+		}
+	}
+
+	/**
+	 * Replace the main view in the CENTER while keeping the global status bar visible.
+	 */
+	public void setMainView(java.awt.Component view) {
+		ensureStatusBarInstalled();
+		java.awt.Component existing = ((BorderLayout) rootContent.getLayout()).getLayoutComponent(BorderLayout.CENTER);
+		if (existing != null) {
+			rootContent.remove(existing);
+		}
+		if (view != null) {
+			rootContent.add(view, BorderLayout.CENTER);
+		}
+		rootContent.revalidate();
+		rootContent.repaint();
+	}
+
+	private void resetQueryProgressUI() {
+		if (queryProgressBar == null || queryProgressLabel == null) {
+			return;
+		}
+		queryProgressBar.setValue(0);
+		queryProgressBar.setVisible(false);
+		queryProgressLabel.setText("");
+		queryProgressLabel.setVisible(false);
+	}
+
+	/**
+	 * Update the status bar query progress UI.
+	 *
+	 * @param completed number completed
+	 * @param total total number of queries
+	 */
+	public void updateQueryProgressStatus(final int completed, final int total) {
+		ensureStatusBarInstalled();
+		if (queryProgressBar == null || queryProgressLabel == null) {
+			return;
+		}
+		final Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				if (total <= 1) {
+					resetQueryProgressUI();
+					return;
+				}
+				queryProgressBar.setVisible(true);
+				queryProgressLabel.setVisible(true);
+				int safeCompleted = Math.max(0, Math.min(completed, total));
+				int percent = (int) Math.round((safeCompleted * 100.0) / total);
+				queryProgressBar.setValue(percent);
+				queryProgressLabel.setText("Queries: " + safeCompleted + "/" + total);
+			}
+		};
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			r.run();
+		} else {
+			javax.swing.SwingUtilities.invokeLater(r);
+		}
+	}
+
+	/** Hide and reset query progress in the status bar. */
+	public void clearQueryProgressStatus() {
+		ensureStatusBarInstalled();
+		if (queryProgressBar == null || queryProgressLabel == null) {
+			return;
+		}
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			resetQueryProgressUI();
+		} else {
+			javax.swing.SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {
+					resetQueryProgressUI();
+				}
+			});
+		}
+	}
+
+	/**
+	 * Update the status bar text showing the active database.
+	 * @param dbPath database path or null for none
+	 */
+	public void updateActiveDatabaseStatus(final String dbPath) {
+		ensureStatusBarInstalled();
+		final String text;
+		if (dbPath == null || dbPath.trim().isEmpty()) {
+			text = "Database: (none)";
+		} else {
+			text = "Database: " + dbPath;
+		}
+		if (activeDbStatusLabel == null) {
+			return;
+		}
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			activeDbStatusLabel.setText(text);
+		} else {
+			javax.swing.SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {
+					activeDbStatusLabel.setText(text);
+				}
+			});
 		}
 	}
 

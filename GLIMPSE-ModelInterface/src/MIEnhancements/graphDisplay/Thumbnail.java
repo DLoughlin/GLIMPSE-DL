@@ -88,11 +88,24 @@ public class Thumbnail {
         Objects.requireNonNull(unit, "unit must not be null");
         Objects.requireNonNull(jtable, "jtable must not be null");
         Objects.requireNonNull(sp, "JSplitPane must not be null");
-        // Immediate UI response: set a placeholder panel with inline status and Cancel button
-        // Use an empty placeholder panel while thumbnails are generated; hide status/progress UI for now.
+
         placeholderPanel.setLayout(new BorderLayout());
-        // Intentionally do not add a status label, progress bar, or cancel button to keep the UI minimal.
         jp = placeholderPanel;
+
+        // Ensure a stable right component while work is in progress.
+        // Some call paths create the Thumbnail and then later update the split pane;
+        // installing the placeholder immediately avoids transient UI states.
+        final Component currentRight = sp.getRightComponent();
+        if (currentRight != jp) {
+            SwingUtilities.invokeLater(() -> {
+                if (sp.getRightComponent() != jp) {
+                    sp.setRightComponent(jp);
+                    sp.revalidate();
+                    sp.repaint();
+                }
+            });
+        }
+
         sp.setCursor(waitCursor);
         this.unitLookup = unitLookup;
 
@@ -109,9 +122,9 @@ public class Thumbnail {
                 final Map<String, Integer[]>[] effectiveMetaHolder = new Map[1];
                 final String[] metaColHolder = new String[1];
                 final String[] colHolder = new String[1];
-                final Object[] colDataHolder = new Object[1];
-                final Object[] data0Holder = new Object[1];
-                final Object[] data1Holder = new Object[1];
+                final String[][][] data1Holder = new String[1][][];
+                final String[][][] data0Holder = new String[1][][];
+                final String[][] colUnitsHolder = new String[1][];
 
                 SwingUtilities.invokeAndWait(new Runnable() {
                     @Override
@@ -127,7 +140,7 @@ public class Thumbnail {
                         colHolder[0] = ArrayConversion.array2String(
                                 ModelInterfaceUtil.getColumnFromTable(jtable, cnt, 0));
 
-                        colDataHolder[0] = ModelInterfaceUtil.getColDataFromTable(
+                        colUnitsHolder[0] = ModelInterfaceUtil.getColDataFromTable(
                                 jtable, jtable.getColumnCount() - 1);
                         data0Holder[0] = ModelInterfaceUtil.getDataFromTable(jtable, cnt, 0);
                         data1Holder[0] = ModelInterfaceUtil.getDataFromTable(jtable, cnt, 1);
@@ -143,7 +156,7 @@ public class Thumbnail {
                 Chart[] chart = ThumbnailUtilNew.createChart(
                         chartName,
                         unit,
-                        colDataHolder[0],
+                        colUnitsHolder[0],
                         col,
                         data0Holder[0],
                         effectiveMeta,

@@ -249,60 +249,60 @@ public class FilteredTable {
         exportBgButton.setBackground(LegendUtil.getRGB(-8205574));
         exportBgButton.setToolTipText("Assemble full table in background and copy to clipboard");
         exportBgButton.addActionListener(e -> {
-                final Component parent = SwingUtilities.getWindowAncestor(jtable);
+        final Component parent = SwingUtilities.getWindowAncestor(jtable);
 
-                // Snapshot table data on the EDT before handing off to the background thread,
-                // since Swing components are not thread-safe.
-                final int colCount = jtable.getColumnCount();
-                final String[] colNames = new String[colCount];
-                for (int c = 0; c < colCount; c++) {
-                    colNames[c] = jtable.getColumnName(c);
+        // Snapshot table data on the EDT before handing off to the background thread,
+        // since Swing components are not thread-safe.
+        final int colCount = jtable.getColumnCount();
+        final String[] colNames = new String[colCount];
+        for (int colIdx = 0; colIdx < colCount; colIdx++) {
+            colNames[colIdx] = jtable.getColumnName(colIdx);
+        }
+        final int rowCount = jtable.getRowCount();
+        final Object[][] rowData = new Object[rowCount][colCount];
+        for (int rowIdx = 0; rowIdx < rowCount; rowIdx++) {
+            for (int colIdx = 0; colIdx < colCount; colIdx++) {
+                rowData[rowIdx][colIdx] = jtable.getValueAt(rowIdx, colIdx);
+            }
+        }
+
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+            private int rowsExported = 0;
+            @Override
+            protected Void doInBackground() throws Exception {
+                StringBuilder sb = new StringBuilder(Math.min(1024, colCount * 32));
+                // header
+                for (int colIdx = 0; colIdx < colCount; colIdx++) {
+                    sb.append(colNames[colIdx]);
+                    if (colIdx < colCount - 1) sb.append('\t');
                 }
-                final int rowCount = jtable.getRowCount();
-                final Object[][] rowData = new Object[rowCount][colCount];
-                for (int r = 0; r < rowCount; r++) {
-                    for (int c = 0; c < colCount; c++) {
-                        rowData[r][c] = jtable.getValueAt(r, c);
+                sb.append('\n');
+                // rows
+                for (int rowIdx = 0; rowIdx < rowCount; rowIdx++) {
+                    for (int colIdx = 0; colIdx < colCount; colIdx++) {
+                        Object val = rowData[rowIdx][colIdx];
+                        sb.append(val == null ? "" : val.toString());
+                        if (colIdx < colCount - 1) sb.append('\t');
                     }
+                    sb.append('\n');
+                    rowsExported = rowIdx + 1;
+                    // occasional yield to keep UI responsive for very large tables
+                    if ((rowIdx & 0x3FF) == 0) Thread.yield();
                 }
+                StringSelection sel = new StringSelection(sb.toString());
+                Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, null);
+                return null;
+            }
 
-                SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-                    private int rowsExported = 0;
-                    @Override
-                    protected Void doInBackground() throws Exception {
-                        StringBuilder sb = new StringBuilder(Math.min(1024, colCount * 32));
-                        // header
-                        for (int c = 0; c < colCount; c++) {
-                            sb.append(colNames[c]);
-                            if (c < colCount - 1) sb.append('\t');
-                        }
-                        sb.append('\n');
-                        // rows
-                        for (int r = 0; r < rowCount; r++) {
-                            for (int c = 0; c < colCount; c++) {
-                                Object val = rowData[r][c];
-                                sb.append(val == null ? "" : val.toString());
-                                if (c < colCount - 1) sb.append('\t');
-                            }
-                            sb.append('\n');
-                            rowsExported = r + 1;
-                            // occasional yield to keep UI responsive for very large tables
-                            if ((r & 0x3FF) == 0) Thread.yield();
-                        }
-                        StringSelection sel = new StringSelection(sb.toString());
-                        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, null);
-                        return null;
-                    }
+            @Override
+            protected void done() {
+                JOptionPane.showMessageDialog(parent, "Exported " + rowsExported + " rows to clipboard.");
+            }
+        };
 
-                    @Override
-                    protected void done() {
-                        JOptionPane.showMessageDialog(parent, "Exported " + rowsExported + " rows to clipboard.");
-                    }
-                };
-
-                // Start worker (no progress dialog shown)
-                worker.execute();
-        });
+        // Start worker (no progress dialog shown)
+        worker.execute();
+});
         box.add(exportBgButton);
          box.add(new JLabel(" "));
         // Mapping button

@@ -845,7 +845,7 @@ public class ComboTableModel extends BaseTableModel {
 
 		// Create a title for the chart.
 		TextTitle ttitle = new TextTitle(title);
-		chart.setTitle(ttitle);
+		chart.setTitle(title);
 		return chart;
 	}
 
@@ -995,6 +995,11 @@ public class ComboTableModel extends BaseTableModel {
 				retMap.put("Units;" + axisValues.getValue(), units);
 			}
 		} catch (Exception e) {
+			// if this is a job exception it means the user has cancelled the query
+			// so we should just re-throw it and not print the stack trace
+			if (e.getCause() instanceof org.basex.core.jobs.JobException) {
+				throw e;
+			}
 			e.printStackTrace();
 			throw e;
 		} finally {

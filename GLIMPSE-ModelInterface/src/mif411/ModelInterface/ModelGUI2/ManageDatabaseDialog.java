@@ -49,7 +49,7 @@ public class ManageDatabaseDialog extends JDialog {
     private JList list;
     private JTextField statusField;
     private Vector<ScenarioListItem> scns;
-    private static final int BOTTOM_PANE_HEIGHT = 25;
+    private static final int BOTTOM_PANE_HEIGHT = 36;
 
     public ManageDatabaseDialog(JFrame parentFrame, DbViewer dbViewer) {
         super(parentFrame, "Manage Database", true);
@@ -95,7 +95,7 @@ public class ManageDatabaseDialog extends JDialog {
         exportButton.setEnabled(false);
         rebuildButton.setEnabled(true);
 
-        java.awt.Insets btnPadding = new java.awt.Insets(2, 2, 2, 2);
+        java.awt.Insets btnPadding = new java.awt.Insets(4, 8, 4, 8);
         addButton.setMargin(btnPadding);
         removeButton.setMargin(btnPadding);
         renameButton.setMargin(btnPadding);
