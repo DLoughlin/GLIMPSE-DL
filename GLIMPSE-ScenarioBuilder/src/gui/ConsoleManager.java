@@ -28,11 +28,19 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
-import javafx.scene.control.TextArea;
 import javafx.scene.control.ToolBar;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.ScrollPane.ScrollBarPolicy;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
+import javafx.scene.layout.Background;
+import javafx.scene.layout.BackgroundFill;
+import javafx.scene.layout.CornerRadii;
+import javafx.geometry.Insets;
 
 /**
  * Small tabbed console window used to view stdout/stderr from external processes.
@@ -45,101 +53,212 @@ final class ConsoleManager {
 
     enum StreamSource {
         GLIMPSE_STDOUT,
+        /**
+         * Deprecated: GLIMPSE stderr is routed to {@link #GLIMPSE_STDOUT}.
+         * Kept for backward compatibility.
+         */
+        @Deprecated
         GLIMPSE_STDERR,
         GCAM_STDOUT,
+        /**
+         * Deprecated: GCAM currently doesn't produce meaningful stderr in this app.
+         * Kept for backward compatibility; it will be routed to {@link #GCAM_STDOUT}.
+         */
+        @Deprecated
         GCAM_STDERR,
         MODEL_INTERFACE
     }
 
+    /**
+     * Visual styling for a line written to a console tab.
+     */
+    enum MessageKind {
+        /** Text that originated from the external model (GCAM stdout). */
+        MODEL_STDOUT,
+        /** Text that originated from GLIMPSE itself (status/info). */
+        GLIMPSE_INFO,
+        /** Any stderr (GLIMPSE or external process). */
+        STDERR
+    }
+
     private static Stage stage;
-    private static TextArea glimpseStdoutTextArea;
-    private static TextArea glimpseStderrTextArea;
-    private static TextArea gcamStdoutTextArea;
-    private static TextArea gcamStderrTextArea;
-    private static TextArea modelInterfaceTextArea;
+
+    private static ScrollPane glimpseStdoutScroll;
+    // GLIMPSE stderr UI was removed (stderr is routed to GLIMPSE stdout).
+    // private static ScrollPane glimpseStderrScroll;
+    private static ScrollPane gcamStdoutScroll;
+    private static ScrollPane modelInterfaceScroll;
+
+    private static TextFlow glimpseStdoutFlow;
+    // private static TextFlow glimpseStderrFlow;
+    private static TextFlow gcamStdoutFlow;
+    private static TextFlow modelInterfaceFlow;
 
     private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private ConsoleManager() {}
 
     static void show() {
-        if (stage == null) {
-            createStage();
-        }
-        stage.show();
-        stage.toFront();
-    }
-
-    static void appendLine(StreamSource source, String line) {
-        if (line == null) {
-            return;
-        }
         Platform.runLater(() -> {
             if (stage == null) {
                 createStage();
             }
-            TextArea ta;
+            stage.show();
+            stage.toFront();
+        });
+    }
+
+    static void appendLine(StreamSource source, String line) {
+        appendLine(source, defaultKindFor(source), line);
+    }
+
+    static void appendLine(StreamSource source, MessageKind kind, String line) {
+        if (line == null) {
+            return;
+        }
+        Platform.runLater(() -> {
+            ensureModelCreated();
+            if (stage == null) {
+                createStage();
+            }
+
+            TextFlow flow;
+            ScrollPane scroll;
             switch (source) {
-            case GLIMPSE_STDOUT:
-                ta = glimpseStdoutTextArea;
-                break;
             case GLIMPSE_STDERR:
-                ta = glimpseStderrTextArea;
+                // GLIMPSE stderr tab was removed; route to stdout.
+                flow = glimpseStdoutFlow;
+                scroll = glimpseStdoutScroll;
                 break;
-            case GCAM_STDERR:
-                ta = gcamStderrTextArea;
+            case GLIMPSE_STDOUT:
+                flow = glimpseStdoutFlow;
+                scroll = glimpseStdoutScroll;
                 break;
             case MODEL_INTERFACE:
-                ta = modelInterfaceTextArea;
+                flow = modelInterfaceFlow;
+                scroll = modelInterfaceScroll;
+                break;
+            case GCAM_STDERR:
+                // GCAM stderr tab was removed; route to stdout.
+                flow = gcamStdoutFlow;
+                scroll = gcamStdoutScroll;
                 break;
             case GCAM_STDOUT:
             default:
-                ta = gcamStdoutTextArea;
+                flow = gcamStdoutFlow;
+                scroll = gcamStdoutScroll;
                 break;
             }
-            if (ta == null) {
+            if (flow == null) {
                 return;
             }
-            ta.appendText(line);
-            if (!line.endsWith("\n")) {
-                ta.appendText(System.lineSeparator());
+
+            String out = line;
+            if (!out.endsWith("\n")) {
+                out = out + System.lineSeparator();
             }
+
+            Text t = new Text(out);
+            t.setFill(colorFor(kind));
+            flow.getChildren().add(t);
+
+            autoScrollToBottom(scroll);
         });
     }
 
     static void appendHeader(StreamSource source, String header) {
         String msg = "[" + TS.format(LocalDateTime.now()) + "] " + header;
-        appendLine(source, msg);
+        appendLine(source, MessageKind.GLIMPSE_INFO, msg);
+    }
+
+    private static MessageKind defaultKindFor(StreamSource source) {
+        if (source == null) {
+            return MessageKind.GLIMPSE_INFO;
+        }
+        switch (source) {
+        case GCAM_STDOUT:
+            return MessageKind.MODEL_STDOUT;
+        case GCAM_STDERR:
+            return MessageKind.STDERR;
+        case GLIMPSE_STDERR:
+            return MessageKind.STDERR;
+        case MODEL_INTERFACE:
+        case GLIMPSE_STDOUT:
+        default:
+            return MessageKind.GLIMPSE_INFO;
+        }
+    }
+
+    private static Color colorFor(MessageKind kind) {
+        if (kind == null) {
+            return Color.BLACK;
+        }
+        switch (kind) {
+        case STDERR:
+            return Color.FIREBRICK;
+        case GLIMPSE_INFO:
+            // Dark-ish blue for GLIMPSE-originated messages.
+            return Color.DARKBLUE;
+        case MODEL_STDOUT:
+        default:
+            return Color.BLACK;
+        }
+    }
+
+    private static void autoScrollToBottom(ScrollPane scroll) {
+        if (scroll == null) {
+            return;
+        }
+        // Defer until after layout so scroll bounds update.
+        Platform.runLater(() -> {
+            try {
+                scroll.setVvalue(1.0);
+            } catch (Exception ignored) {}
+        });
+    }
+
+    /** Ensure TextFlow models exist even if the Stage hasn't been created yet. Must be called on FX thread. */
+    private static void ensureModelCreated() {
+        if (glimpseStdoutFlow == null) {
+            glimpseStdoutFlow = createConsoleTextFlow();
+        }
+        if (gcamStdoutFlow == null) {
+            gcamStdoutFlow = createConsoleTextFlow();
+        }
+        if (modelInterfaceFlow == null) {
+            modelInterfaceFlow = createConsoleTextFlow();
+        }
     }
 
     private static void createStage() {
+        // Ensure model exists before wiring it into the view.
+        ensureModelCreated();
+
         stage = new Stage();
         stage.setTitle("GLIMPSE Console");
 
-        glimpseStdoutTextArea = createConsoleTextArea();
-        glimpseStderrTextArea = createConsoleTextArea();
-        gcamStdoutTextArea = createConsoleTextArea();
-        gcamStderrTextArea = createConsoleTextArea();
-        modelInterfaceTextArea = createConsoleTextArea();
+        glimpseStdoutScroll = createConsoleScrollPane(glimpseStdoutFlow);
+        gcamStdoutScroll = createConsoleScrollPane(gcamStdoutFlow);
+        modelInterfaceScroll = createConsoleScrollPane(modelInterfaceFlow);
 
         TabPane tabPane = new TabPane();
-        Tab t0 = new Tab("GLIMPSE stdout", glimpseStdoutTextArea);
+        Tab t0 = new Tab("GLIMPSE stdout", glimpseStdoutScroll);
         t0.setClosable(false);
-        Tab t0b = new Tab("GLIMPSE stderr", glimpseStderrTextArea);
-        t0b.setClosable(false);
-        Tab t1 = new Tab("GCAM stdout", gcamStdoutTextArea);
+        Tab t1 = new Tab("GCAM stdout", gcamStdoutScroll);
         t1.setClosable(false);
-        Tab t1b = new Tab("GCAM stderr", gcamStderrTextArea);
-        t1b.setClosable(false);
-        Tab t2 = new Tab("ModelInterface stdout", modelInterfaceTextArea);
+        Tab t2 = new Tab("ModelInterface stdout", modelInterfaceScroll);
         t2.setClosable(false);
-        tabPane.getTabs().addAll(t0, t0b, t1, t1b, t2);
+        tabPane.getTabs().addAll(t0, t1, t2);
 
         Button clearActive = new Button("Clear");
         clearActive.setOnAction(e -> {
             Tab selected = tabPane.getSelectionModel().getSelectedItem();
-            if (selected != null && selected.getContent() instanceof TextArea) {
-                ((TextArea) selected.getContent()).clear();
+            if (selected != null) {
+                Object content = selected.getContent();
+                TextFlow flow = extractFlow(content);
+                if (flow != null) {
+                    flow.getChildren().clear();
+                }
             }
         });
 
@@ -157,14 +276,56 @@ final class ConsoleManager {
         stage.setScene(scene);
     }
 
+    private static TextFlow createConsoleTextFlow() {
+        TextFlow tf = new TextFlow();
+        // Keep text readable and wrapping like a console.
+        tf.setLineSpacing(0.0);
+
+        // 4px internal padding so text doesn't touch the edges.
+        tf.setPadding(new Insets(4, 4, 4, 4));
+
+        // Ensure padding area stays white.
+        try {
+            tf.setBackground(new Background(new BackgroundFill(Color.WHITE, CornerRadii.EMPTY, Insets.EMPTY)));
+        } catch (Exception ignored) {}
+
+        return tf;
+    }
+
+    private static ScrollPane createConsoleScrollPane(TextFlow flow) {
+        ScrollPane sp = new ScrollPane(flow);
+        // Allow content to size naturally so scrollbars appear as needed.
+        sp.setFitToWidth(false);
+        sp.setFitToHeight(false);
+        sp.setHbarPolicy(ScrollBarPolicy.AS_NEEDED);
+        sp.setVbarPolicy(ScrollBarPolicy.AS_NEEDED);
+
+        // Keep viewport background white (matches padding/background).
+        try {
+            sp.setStyle("-fx-background: white; -fx-background-color: white;");
+        } catch (Exception ignored) {}
+
+        return sp;
+    }
+
+    private static TextFlow extractFlow(Object tabContent) {
+        if (tabContent instanceof ScrollPane) {
+            Object c = ((ScrollPane) tabContent).getContent();
+            if (c instanceof TextFlow) {
+                return (TextFlow) c;
+            }
+        }
+        return null;
+    }
+
     private static void saveSelectedTabToFile(TabPane tabPane) {
         Tab selected = (tabPane == null) ? null : tabPane.getSelectionModel().getSelectedItem();
-        if (selected == null || !(selected.getContent() instanceof TextArea)) {
+        TextFlow flow = (selected == null) ? null : extractFlow(selected.getContent());
+        if (selected == null || flow == null) {
             showAlert(Alert.AlertType.INFORMATION, "Save As", null, "No console tab is selected.");
             return;
         }
 
-        TextArea ta = (TextArea) selected.getContent();
         String tabName = selected.getText();
 
         FileChooser chooser = new FileChooser();
@@ -193,12 +354,25 @@ final class ConsoleManager {
         }
 
         try {
-            Files.write(outFile.toPath(), ta.getText().getBytes(StandardCharsets.UTF_8));
+            Files.write(outFile.toPath(), getFlowText(flow).getBytes(StandardCharsets.UTF_8));
             appendHeader(StreamSource.GLIMPSE_STDOUT, "Saved '" + tabName + "' to: " + outFile.getAbsolutePath());
         } catch (IOException ex) {
             showAlert(Alert.AlertType.ERROR, "Save As", "Failed to write file:", ex.getMessage());
             appendHeader(StreamSource.GLIMPSE_STDERR, "Save As failed: " + ex);
         }
+    }
+
+    private static String getFlowText(TextFlow flow) {
+        if (flow == null || flow.getChildren() == null || flow.getChildren().isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder(Math.max(256, flow.getChildren().size() * 32));
+        flow.getChildren().forEach(n -> {
+            if (n instanceof Text) {
+                sb.append(((Text) n).getText());
+            }
+        });
+        return sb.toString();
     }
 
     private static void zipAllTabsToFile(TabPane tabPane) {
@@ -254,8 +428,8 @@ final class ConsoleManager {
                     entryName = ensureUniqueEntryName(entryName, usedEntryNames);
 
                     String text = "";
-                    if (t.getContent() instanceof TextArea) {
-                        text = ((TextArea) t.getContent()).getText();
+                    if (t.getContent() instanceof TextFlow) {
+                        text = getFlowText((TextFlow) t.getContent());
                     }
 
                     ZipEntry entry = new ZipEntry(entryName);
@@ -342,10 +516,34 @@ final class ConsoleManager {
         }
     }
 
-    private static TextArea createConsoleTextArea() {
-        TextArea ta = new TextArea();
-        ta.setEditable(false);
-        ta.setWrapText(false);
-        return ta;
+    /** Clears the text for the given console stream (best-effort). */
+    static void clear(StreamSource source) {
+        Platform.runLater(() -> {
+            // Create model buffers even if the window hasn't been opened yet.
+            ensureModelCreated();
+
+            TextFlow flow = null;
+            switch (source) {
+            case GLIMPSE_STDERR:
+                flow = glimpseStdoutFlow;
+                break;
+            case GLIMPSE_STDOUT:
+                flow = glimpseStdoutFlow;
+                break;
+            case MODEL_INTERFACE:
+                flow = modelInterfaceFlow;
+                break;
+            case GCAM_STDERR:
+                flow = gcamStdoutFlow;
+                break;
+            case GCAM_STDOUT:
+            default:
+                flow = gcamStdoutFlow;
+                break;
+            }
+            if (flow != null) {
+                flow.getChildren().clear();
+            }
+        });
     }
 }

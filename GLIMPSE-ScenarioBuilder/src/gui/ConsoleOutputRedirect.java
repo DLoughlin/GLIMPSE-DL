@@ -109,12 +109,25 @@ final class ConsoleOutputRedirect {
 
     private static final class LineBufferingFxOutputStream extends OutputStream {
         private final ConsoleManager.StreamSource source;
+        private final ConsoleManager.MessageKind kind;
         private final String charsetName;
         private final StringBuilder sb = new StringBuilder(256);
 
         LineBufferingFxOutputStream(ConsoleManager.StreamSource source, String charsetName) {
+            this(source, defaultKindFor(source), charsetName);
+        }
+
+        LineBufferingFxOutputStream(ConsoleManager.StreamSource source, ConsoleManager.MessageKind kind, String charsetName) {
             this.source = source;
+            this.kind = kind;
             this.charsetName = charsetName;
+        }
+
+        private static ConsoleManager.MessageKind defaultKindFor(ConsoleManager.StreamSource source) {
+            if (source == ConsoleManager.StreamSource.GLIMPSE_STDERR) {
+                return ConsoleManager.MessageKind.STDERR;
+            }
+            return ConsoleManager.MessageKind.GLIMPSE_INFO;
         }
 
         @Override
@@ -156,10 +169,10 @@ final class ConsoleOutputRedirect {
 
         private void flushLine() {
             if (sb.length() == 0) {
-                ConsoleManager.appendLine(source, "");
+                ConsoleManager.appendLine(source, kind, "");
                 return;
             }
-            ConsoleManager.appendLine(source, sb.toString());
+            ConsoleManager.appendLine(source, kind, sb.toString());
             sb.setLength(0);
         }
 

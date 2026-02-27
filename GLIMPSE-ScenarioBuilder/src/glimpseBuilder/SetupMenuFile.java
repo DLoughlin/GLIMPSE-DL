@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
+import javafx.application.Platform;
 
 /**
  * Manages the setup of the "File" menu in the GLIMPSE application.
@@ -109,7 +110,7 @@ public final class SetupMenuFile {
                 createMenuItem("Import Scenario", () -> Client.buttonImportScenario.fire()),
                 new SeparatorMenuItem(),
                 // Menu item to exit the application
-                createMenuItem("Exit", () -> System.exit(0))
+                createMenuItem("Exit", () -> Platform.exit())
         );
     }
 

@@ -34,6 +34,8 @@
  */
 package gui;
 
+import java.io.File;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -43,6 +45,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import glimpseUtil.ProcessRunner;
+import glimpseUtil.ProcessResult;
 import glimpseUtil.StatusChecker;
 
 /** 
@@ -76,6 +80,12 @@ public class ExecutionThread implements AutoCloseable {
     private int numDone = 0;
 
     /**
+     * Best-effort pointer to the task currently running on the executor worker thread
+     * (reliable for the common single-thread executor case).
+     */
+    private volatile Future<?> currentRunningFuture;
+
+    /**
      * Checks if the number of completed jobs has changed since the last check.
      * <p>
      * Iterates over the jobs list and counts the number of jobs that are done. If the count has changed
@@ -103,9 +113,9 @@ public class ExecutionThread implements AutoCloseable {
     }
 
     /**
-     * Adds an array of command strings as RunnableCmds to the execution queue.
+     * Adds an array of command strings as background jobs to the execution queue.
      * <p>
-     * Each command string is wrapped in a RunnableCmd and submitted to the executor.
+     * Each command string is submitted to the executor as a task executed via {@link glimpseUtil.ProcessRunner}.
      * </p>
      * <b>Thread safety:</b> This method is thread-safe. It synchronizes on the jobs list.
      *
@@ -179,14 +189,19 @@ public class ExecutionThread implements AutoCloseable {
         }
         startStatusCheckerIfNeeded();
         System.out.println("Submitting to queue: " + runnable);
-        Future<?> f = executorService.submit(runnable);
+
+        java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
+        Future<?> f = executorService.submit(wrapRunnableForTracking(runnable, ref));
+        ref.set(f);
+
         jobs.add(f);
     }
 
     /**
-     * Submits an array of command strings as RunnableCmds to the executor.
+     * Submits an array of command strings as background tasks to the executor.
      * <p>
-     * Each command string is wrapped in a RunnableCmd and submitted as a background job.
+     * Each command string is submitted as a background job executed via the system shell
+     * (cmd.exe on Windows, /bin/sh on Unix-like systems) for backward compatibility.
      * </p>
      * <b>Thread safety:</b> This method is thread-safe. It synchronizes on the jobs list.
      *
@@ -200,11 +215,11 @@ public class ExecutionThread implements AutoCloseable {
     }
 
     /**
-     * Submits a single command string as a RunnableCmd to the executor.
+     * Submits a single command string as a background task to the executor.
      * <p>
-     * The command is wrapped in a RunnableCmd and submitted as a background job.
+     * This overload runs the command through the platform shell for backward compatibility.
+     * Prefer the array-based overloads to avoid quoting/tokenization issues.
      * </p>
-     * <b>Thread safety:</b> This method is thread-safe. It synchronizes on the jobs list.
      *
      * @param command The command string to execute.
      * @return Future representing the submitted task.
@@ -214,10 +229,28 @@ public class ExecutionThread implements AutoCloseable {
             throw new IllegalStateException("ExecutorService not started.");
         }
         startStatusCheckerIfNeeded();
-        RunnableCmd gr = new RunnableCmd();
-        gr.setCmd(command);
-        System.out.println("Submitting to queue: " + command);
-        Future<?> f = executorService.submit(gr);
+
+        // Legacy string commands are inherently platform fragile (quoting/spaces).
+        // Keep support for backward compatibility by passing through the system shell.
+        Callable<ProcessResult> task = () -> {
+            boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
+            java.util.List<String> cmd = new java.util.ArrayList<>();
+            if (isWindows) {
+                cmd.add("cmd.exe");
+                cmd.add("/c");
+                cmd.add(command);
+            } else {
+                cmd.add("/bin/sh");
+                cmd.add("-c");
+                cmd.add(command);
+            }
+            return ProcessRunner.run(cmd, null, null, null);
+        };
+
+        System.out.println("Submitting to queue (shell): " + command);
+        java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
+        Future<?> f = executorService.submit(wrapCallableForTracking(task, ref));
+        ref.set(f);
         synchronized (jobs) {
             jobs.add(f);
         }
@@ -225,28 +258,7 @@ public class ExecutionThread implements AutoCloseable {
     }
 
     /**
-     * Submits an array of command strings as RunnableCmds to the executor, specifying a working directory for each.
-     * <p>
-     * Each command is wrapped in a RunnableCmd and submitted as a background job with the specified working directory.
-     * </p>
-     * <b>Thread safety:</b> This method is thread-safe. It synchronizes on the jobs list.
-     *
-     * @param commands Array of command strings to execute.
-     * @param directory The working directory for all commands.
-     * @throws InterruptedException if interrupted while submitting tasks.
-     */
-    public void submitCommandsWithDirectory(String[] commands, String directory) throws InterruptedException {
-        for (String command : commands) {
-            submitCommandWithDirectory(command, directory);
-        }
-    }
-
-    /**
-     * Submits a single command string as a RunnableCmd to the executor, specifying a working directory.
-     * <p>
-     * The command is wrapped in a RunnableCmd and submitted as a background job with the specified working directory.
-     * </p>
-     * <b>Thread safety:</b> This method is thread-safe. It synchronizes on the jobs list.
+     * Submits a single command string as a background task to the executor, specifying a working directory.
      *
      * @param command The command string to execute.
      * @param directory The working directory for the command.
@@ -256,15 +268,44 @@ public class ExecutionThread implements AutoCloseable {
         if (executorService == null) {
             throw new IllegalStateException("ExecutorService not started.");
         }
-        RunnableCmd gr = new RunnableCmd();
-        gr.setCmd(command, directory);
-        
-        System.out.println("Submitting to queue: " + command + " with dir " + directory);
-        Future<?> f = executorService.submit(gr);
+        startStatusCheckerIfNeeded();
+
+        Callable<ProcessResult> task = () -> {
+            boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
+            java.util.List<String> cmd = new java.util.ArrayList<>();
+            if (isWindows) {
+                cmd.add("cmd.exe");
+                cmd.add("/c");
+                cmd.add(command);
+            } else {
+                cmd.add("/bin/sh");
+                cmd.add("-c");
+                cmd.add(command);
+            }
+            return ProcessRunner.run(cmd, directory == null ? null : new File(directory), null, null);
+        };
+
+        System.out.println("Submitting to queue (shell): " + command + " with dir " + directory);
+        java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
+        Future<?> f = executorService.submit(wrapCallableForTracking(task, ref));
+        ref.set(f);
         synchronized (jobs) {
             jobs.add(f);
         }
         return f;
+    }
+
+    /**
+     * Submits an array of command strings as background tasks to the executor, specifying a working directory.
+     *
+     * @param commands Array of command strings to execute.
+     * @param directory The working directory for all commands.
+     * @throws InterruptedException if interrupted while submitting tasks.
+     */
+    public void submitCommandsWithDirectory(String[] commands, String directory) throws InterruptedException {
+        for (String command : commands) {
+            submitCommandWithDirectory(command, directory);
+        }
     }
 
     /**
@@ -282,11 +323,18 @@ public class ExecutionThread implements AutoCloseable {
         if (executorService == null) {
             throw new IllegalStateException("ExecutorService not started.");
         }
-        RunnableCmd gr = new RunnableCmd();
-        gr.setCmd(commandArray, directory);
+        startStatusCheckerIfNeeded();
+
+        Callable<ProcessResult> task = () -> ProcessRunner.run(
+                java.util.Arrays.asList(commandArray),
+                directory == null ? null : new File(directory),
+                null,
+                null);
 
         System.out.println("Submitting to queue: " + java.util.Arrays.toString(commandArray) + " with dir " + directory);
-        Future<?> f = executorService.submit(gr);
+        java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
+        Future<?> f = executorService.submit(wrapCallableForTracking(task, ref));
+        ref.set(f);
         synchronized (jobs) {
             jobs.add(f);
         }
@@ -318,10 +366,17 @@ public class ExecutionThread implements AutoCloseable {
             throw new IllegalStateException("ExecutorService not started.");
         }
         startStatusCheckerIfNeeded();
-        RunnableCmd gr = new RunnableCmd();
-        gr.setCmd(commandArray);
+
+        Callable<ProcessResult> task = () -> ProcessRunner.run(
+                java.util.Arrays.asList(commandArray),
+                null,
+                null,
+                null);
+
         System.out.println("Submitting to queue: " + java.util.Arrays.toString(commandArray));
-        Future<?> f = executorService.submit(gr);
+        java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
+        Future<?> f = executorService.submit(wrapCallableForTracking(task, ref));
+        ref.set(f);
         synchronized (jobs) {
             jobs.add(f);
         }
@@ -345,7 +400,11 @@ public class ExecutionThread implements AutoCloseable {
         }
         startStatusCheckerIfNeeded();
         System.out.println("Submitting callable to queue: " + callable);
-        Future<V> f = executorService.submit(callable);
+
+        java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
+        Future<V> f = executorService.submit(wrapCallableForTracking(callable, ref));
+        ref.set(f);
+
         synchronized (jobs) {
             jobs.add(f);
         }
@@ -376,6 +435,63 @@ public class ExecutionThread implements AutoCloseable {
         synchronized (jobs) {
             jobs.removeIf(Future::isDone);
         }
+    }
+
+    /**
+     * Attempts to cancel any queued (not-yet-started) jobs while leaving the currently running job alone.
+     * <p>
+     * This is best-effort: it cancels all Futures after the first not-done Future in our jobs list, which
+     * should correspond to the executor's FIFO queue for the common single-threaded GCAM execution thread.
+     * </p>
+     *
+     * @return number of jobs we attempted to cancel
+     */
+    public int cancelQueuedJobsKeepRunningCurrent() {
+        int cancelled = 0;
+        synchronized (jobs) {
+            // Prefer an explicit pointer if we have one.
+            Future<?> running = currentRunningFuture;
+            int runningIdx = -1;
+            if (running != null) {
+                for (int i = 0; i < jobs.size(); i++) {
+                    if (jobs.get(i) == running) {
+                        runningIdx = i;
+                        break;
+                    }
+                }
+            }
+
+            // Fallback: find the first job that isn't done; that's the one likely running right now.
+            if (runningIdx < 0) {
+                for (int i = 0; i < jobs.size(); i++) {
+                    Future<?> f = jobs.get(i);
+                    if (f != null && !f.isDone()) {
+                        runningIdx = i;
+                        break;
+                    }
+                }
+            }
+
+            if (runningIdx < 0) {
+                return 0;
+            }
+
+            for (int i = runningIdx + 1; i < jobs.size(); i++) {
+                Future<?> f = jobs.get(i);
+                if (f == null || f.isDone()) {
+                    continue;
+                }
+                try {
+                    f.cancel(true);
+                    cancelled++;
+                } catch (Exception ignored) {
+                    cancelled++;
+                }
+            }
+
+            jobs.removeIf(Future::isDone);
+        }
+        return cancelled;
     }
 
     /**
@@ -547,10 +663,16 @@ public class ExecutionThread implements AutoCloseable {
         if (executorService == null) {
             throw new IllegalStateException("ExecutorService not started.");
         }
-        RunnableCmd gr = new RunnableCmd();
-        gr.setCmd(commandArray);
+        Callable<ProcessResult> task = () -> ProcessRunner.run(
+                java.util.Arrays.asList(commandArray),
+                null,
+                null,
+                null);
+
         System.out.println("Submitting to queue (no status checker): " + java.util.Arrays.toString(commandArray));
-        Future<?> f = executorService.submit(gr);
+        java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
+        Future<?> f = executorService.submit(wrapCallableForTracking(task, ref));
+        ref.set(f);
         synchronized (jobs) {
             jobs.add(f);
         }
@@ -578,5 +700,32 @@ public class ExecutionThread implements AutoCloseable {
     @Deprecated
     public Future<?> executeRunnableCmd(String arg) {
         return submitCommand(arg);
+    }
+
+    private <T> Callable<T> wrapCallableForTracking(Callable<T> delegate, java.util.concurrent.atomic.AtomicReference<Future<?>> futureRef) {
+        return () -> {
+            currentRunningFuture = futureRef.get();
+            try {
+                return delegate.call();
+            } finally {
+                // Only clear if we still point at ourselves.
+                if (currentRunningFuture == futureRef.get()) {
+                    currentRunningFuture = null;
+                }
+            }
+        };
+    }
+
+    private Runnable wrapRunnableForTracking(Runnable delegate, java.util.concurrent.atomic.AtomicReference<Future<?>> futureRef) {
+        return () -> {
+            currentRunningFuture = futureRef.get();
+            try {
+                delegate.run();
+            } finally {
+                if (currentRunningFuture == futureRef.get()) {
+                    currentRunningFuture = null;
+                }
+            }
+        };
     }
 }

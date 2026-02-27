@@ -154,6 +154,7 @@ public class Client extends Application {
     static Button buttonConsole;
     static Button buttonDeleteScenario;
     static Button buttonRunScenario;
+    static Button buttonStopScenario;
     static Button buttonResults;
     static Button buttonResultsForSelected;
     public static Button buttonArchiveScenario;
@@ -173,7 +174,21 @@ public class Client extends Application {
     private final GLIMPSEFiles files = GLIMPSEFiles.getInstance();
     private final glimpseUtil.GLIMPSEUtils utils = glimpseUtil.GLIMPSEUtils.getInstance();
     private final StatusBar sb = new StatusBar();
+
+    /** Startup timing anchor (nanoseconds). */
+    private static final long STARTUP_T0_NANOS = System.nanoTime();
     // endregion
+
+    /** True once GLIMPSEFiles.loadFiles() has completed successfully (or at least attempted). */
+    private static volatile boolean filesLoaded = false;
+
+    /** Returns whether required GLIMPSEFiles content has been loaded. */
+    public static boolean isFilesLoaded() {
+        return filesLoaded;
+    }
+
+    /** Keep a global handle so deferred/background tasks can update the status bar safely. */
+    private static Client instanceForStatus;
 
     /**
      * The entry point of the application. Sets up JavaFX and launches the GUI.
@@ -200,24 +215,34 @@ public class Client extends Application {
         // Install console redirection as early as possible so startup prints are captured.
         ConsoleOutputRedirect.install();
 
+        final long t0 = System.nanoTime();
         System.out.println("Loading settings and initializing.");
+
         // Initialize utility/variable objects with references to each other
         vars.init(utils, vars, styles, files);
         files.init(utils, vars, styles, files);
         utils.init(utils, vars, styles, files);
+
         // Parse command-line arguments for options file
         processArgs();
+
         // Load options into the vars singleton
         vars.loadOptions(optionsFilename);
         final String setup = vars.examineGLIMPSESetup();
         if (setup.length() > 0) {
             System.out.println(setup);
         }
+
         // Reset log file and log computer stats
         utils.resetLogFile(utils.getComputerStatString());
-        // Load data files into files singleton
-        files.loadFiles();
+
+        // NOTE: Intentionally NOT calling files.loadFiles() here.
+        // It can be heavy and would delay first window paint.
+
         utils.sb = this.sb;
+        instanceForStatus = this;
+
+        logStartupCheckpoint("Client.init complete", t0);
     }
 
     /**
@@ -229,27 +254,41 @@ public class Client extends Application {
      */
     @Override
     public void start(Stage primaryStage) {
+        final long t0 = System.nanoTime();
         System.out.println("Starting GLIMPSE Graphical User Interface...");
         Client.primaryStage = primaryStage;
+
         // Ensure threads are properly terminated on window close
         primaryStage.setOnCloseRequest(event -> {
-            // Terminate status checkers and shutdown execution threads
-            // If any UI updates are needed here in the future, use Platform.runLater
-            Client.gCAMExecutionThread.getStatusChecker().terminate();
-            Client.modelInterfaceExecutionThread.getStatusChecker().terminate();
-            Client.gCAMExecutionThread.shutdownNow();
-            Client.modelInterfaceExecutionThread.shutdownNow();
+            // Don't let exceptions prevent shutdown.
+            safeShutdownExecutionThreads();
             Platform.exit();
         });
+
         // Build GUI panels and layout
         getScenarioBuilder().build();
-        // Set up the main window with menu and content
+
+        // Disable file-dependent actions until deferred file loading completes.
+        setFileDependentUiEnabled(false);
+        setStatusBarTextStatic("Loading required files...");
+
+        // Set up the main window with menu and content (this calls primaryStage.show())
         setMainWindow(combineAllElementsIntoOnePane(), createMenuBar());
+
         // Set up execution threads for GCAM and post-processor
         setupExecutionThreads();
+
         // Set application icon
         final String iconFile = "file:" + vars.getGlimpseResourceDir() + File.separator + "GLIMPSE_icon_large.png";
         primaryStage.getIcons().add(new Image(iconFile));
+
+        // Log time-to-window and schedule post-show work.
+        Platform.runLater(() -> {
+            logStartupCheckpoint("Primary stage shown (first FX pulse after show)", STARTUP_T0_NANOS);
+            startDeferredFileLoading();
+        });
+
+        logStartupCheckpoint("Client.start complete", t0);
     }
 
     /**
@@ -385,6 +424,90 @@ public class Client extends Application {
     }
 
     /**
+     * Loads GLIMPSEFiles on a background thread so UI can show quickly.
+     * This is safe as long as GLIMPSEFiles.loadFiles() does not touch JavaFX objects.
+     */
+    private void startDeferredFileLoading() {
+        final Thread t = new Thread(() -> {
+            final long t0 = System.nanoTime();
+            try {
+                System.out.println("Loading GLIMPSE files (deferred)...");
+                files.loadFiles();
+                filesLoaded = true;
+                logStartupCheckpoint("files.loadFiles complete (deferred)", t0);
+
+                // Now that required files are loaded, refresh any panes that depend on them.
+                Platform.runLater(() -> {
+                    try {
+                        if (Client.getPaneComponentLibrary() != null) {
+                            Client.getPaneComponentLibrary().refreshComponentLibraryTable();
+                        }
+                    } catch (Throwable ignored) {
+                    }
+                    try {
+                        if (Client.getPaneScenarioLibrary() != null) {
+                            Client.getPaneScenarioLibrary().clearAndRefreshScenarioTable();
+                        }
+                    } catch (Throwable ignored) {
+                    }
+                    setFileDependentUiEnabled(true);
+                    setStatusBarTextStatic("Ready");
+                });
+
+            } catch (Throwable ex) {
+                System.err.println("Deferred file loading failed: " + ex.getMessage());
+                ex.printStackTrace();
+                // Even on failure, re-enable UI so user can inspect options/paths and recover.
+                Platform.runLater(() -> {
+                    setFileDependentUiEnabled(true);
+                    setStatusBarTextStatic("Error loading required files (see console)");
+                });
+            }
+        }, "glimpse-deferred-file-loader");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    /** Updates the status bar text (safe from any thread). */
+    private static void setStatusBarTextStatic(String text) {
+        final Client inst = instanceForStatus;
+        if (inst == null) {
+            return;
+        }
+        if (Platform.isFxApplicationThread()) {
+            inst.sb.setText(text);
+        } else {
+            Platform.runLater(() -> {
+                try {
+                    inst.sb.setText(text);
+                } catch (Throwable ignored) {
+                }
+            });
+        }
+    }
+
+    /**
+     * Enables/disables UI actions that rely on GLIMPSEFiles having been loaded.
+     * Keep this method on the JavaFX Application Thread.
+     */
+    private static void setFileDependentUiEnabled(boolean enabled) {
+        if (!Platform.isFxApplicationThread()) {
+            Platform.runLater(() -> setFileDependentUiEnabled(enabled));
+            return;
+        }
+        // Primary dependency: New Scenario Component Creator uses loaded file content.
+        if (Client.buttonNewComponent != null) {
+            Client.buttonNewComponent.setDisable(!enabled);
+        }
+        if (Client.buttonEditComponent != null) {
+            Client.buttonEditComponent.setDisable(!enabled);
+        }
+        if (Client.buttonRefreshComponents != null) {
+            Client.buttonRefreshComponents.setDisable(!enabled);
+        }
+    }
+
+    /**
      * Loads and displays the splash screen with fade-in and fade-out effects.
      *
      * Shows a splash image on startup if enabled in user options. Handles errors gracefully if the image is missing.
@@ -444,22 +567,47 @@ public class Client extends Application {
         return true;
     }
 
-    /**
-     * Sets the text of the status bar at the bottom of the application window.
-     * If called from a background thread, wraps the update in Platform.runLater.
-     *
-     * Used throughout the application to provide user feedback and status updates.
-     *
-     * @param text The text to display in the status bar
-     */
-    protected void setStatusBarText(String text) {
-        if (Platform.isFxApplicationThread()) {
-            sb.setText(text);
-        } else {
-            Platform.runLater(() -> sb.setText(text));
+    /** Safely terminates/interrupts execution threads if they exist. */
+    private static void safeShutdownExecutionThreads() {
+        try {
+            if (Client.gCAMExecutionThread != null) {
+                try {
+                    if (Client.gCAMExecutionThread.getStatusChecker() != null) {
+                        Client.gCAMExecutionThread.getStatusChecker().terminate();
+                    }
+                } catch (Throwable ignored) {
+                    // Best-effort; continue shutdown.
+                }
+                try {
+                    Client.gCAMExecutionThread.shutdownNow();
+                } catch (Throwable ignored) {
+                }
+            }
+        } finally {
+            // Continue with model interface thread regardless.
+            if (Client.modelInterfaceExecutionThread != null) {
+                try {
+                    if (Client.modelInterfaceExecutionThread.getStatusChecker() != null) {
+                        Client.modelInterfaceExecutionThread.getStatusChecker().terminate();
+                    }
+                } catch (Throwable ignored) {
+                }
+                try {
+                    Client.modelInterfaceExecutionThread.shutdownNow();
+                } catch (Throwable ignored) {
+                }
+            }
         }
     }
-    
+
+    /** Prints a consistent elapsed-time marker for startup profiling. */
+    private static void logStartupCheckpoint(String label, long t0Nanos) {
+        final long now = System.nanoTime();
+        final long msSinceT0 = (now - t0Nanos) / 1_000_000L;
+        final long msSinceProcessStart = (now - STARTUP_T0_NANOS) / 1_000_000L;
+        System.out.println("[startup] " + label + " | +" + msSinceT0 + "ms | total=" + msSinceProcessStart + "ms");
+    }
+
     // region Getters for private static fields
     /**
      * Gets the primary application stage.
@@ -606,6 +754,11 @@ public class Client extends Application {
      * @return Button the run scenario button
      */
     public static Button getButtonRunScenario() { return buttonRunScenario; }
+    /**
+     * Gets the stop scenario button.
+     * @return Button the stop scenario button
+     */
+    public static Button getButtonStopScenario() { return buttonStopScenario; }
     /**
      * Gets the results button.
      * @return Button the results button

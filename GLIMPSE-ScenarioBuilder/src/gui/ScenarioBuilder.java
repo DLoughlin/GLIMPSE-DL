@@ -165,9 +165,8 @@ public class ScenarioBuilder {
 	 * Sets up all tables, buttons, panes, and resizes labels for consistent UI.
 	 */
 	public void build() {
-		vars.init(utils, vars, styles, files);
-		files.init(utils, vars, styles, files);
-		utils.init(utils, vars, styles, files);
+		// Initialization of vars/files/utils is done during Client.init().
+		// Avoid repeating it here to reduce startup cost and prevent reinitialization side effects.
 
 		createTables();
 		createArrowButtons();
@@ -271,6 +270,7 @@ public class ScenarioBuilder {
 			utils.getSeparator(Orientation.VERTICAL, 6, false), Client.buttonViewConfig,
 			utils.getSeparator(Orientation.VERTICAL, 6, false), Client.buttonBrowseScenarioFolder,
 			utils.getSeparator(Orientation.VERTICAL, 6, false), Client.buttonRunScenario,
+			Client.buttonStopScenario,
 			Client.buttonDeleteScenario, utils.getSeparator(Orientation.VERTICAL, 6, false),
 			Client.buttonResults, Client.buttonResultsForSelected,
 			utils.getSeparator(Orientation.VERTICAL, 6, false), Client.buttonDiffFiles,

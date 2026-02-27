@@ -63,7 +63,13 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 /**
@@ -120,6 +126,115 @@ import javafx.stage.Stage;
  */
 public class PaneScenarioLibrary extends ScenarioBuilder {
 
+    // --- Added: Stop GCAM run method ---
+    /**
+     * Stops the currently running GCAM process (if any). This is best-effort and may leave partial outputs.
+     */
+    private void stopCurrentGcamRun() {
+        // If nothing is running, do nothing.
+        if (currentGcamRun == null && currentGcamFuture == null) {
+            return;
+        }
+
+        // Confirm stop.
+        Alert alert = new Alert(AlertType.CONFIRMATION);
+        alert.setTitle("Stop GCAM run");
+        alert.setHeaderText("Stop GCAM?");
+
+        Label msg = new Label(
+                "Stopping GCAM may leave partial output files in the scenario folder.\n"
+              + "\n"
+              + "Choose:\n"
+              + " - Stop: stop the currently running scenario only\n"
+              + " - Stop All: stop the running scenario and cancel queued scenarios\n"
+              + " - Continue: keep running\n");
+        msg.setWrapText(true);
+
+        VBox content = new VBox(10);
+        content.getChildren().addAll(msg);
+        alert.getDialogPane().setContent(content);
+
+        ButtonType stopBtn = new ButtonType("Stop", ButtonBar.ButtonData.OK_DONE);
+        ButtonType stopAllBtn = new ButtonType("Stop All", ButtonBar.ButtonData.OTHER);
+        ButtonType continueBtn = new ButtonType("Continue", ButtonBar.ButtonData.CANCEL_CLOSE);
+        alert.getButtonTypes().setAll(stopBtn, stopAllBtn, continueBtn);
+
+        // Make Continue the default button (safer than defaulting to Stop).
+        try {
+            javafx.scene.control.Button continueButton = (javafx.scene.control.Button) alert.getDialogPane().lookupButton(continueBtn);
+            if (continueButton != null) {
+                continueButton.setDefaultButton(true);
+            }
+        } catch (Exception ignored) {}
+
+        java.util.Optional<ButtonType> result = alert.showAndWait();
+        if (!result.isPresent() || result.get() == continueBtn) {
+            return;
+        }
+
+        boolean stopAll = result.get() == stopAllBtn;
+
+        // Only Stop All should cancel queued futures.
+        if (stopAll) {
+            try {
+                int nCancelled = 0;
+                if (Client.gCAMExecutionThread != null) {
+                    nCancelled = Client.gCAMExecutionThread.cancelQueuedJobsKeepRunningCurrent();
+                }
+
+                runsQueuedList.clear();
+                for (ScenarioRow sr : ScenarioTable.listOfScenarioRuns) {
+                    if (sr != null && "In queue".equals(sr.getStatus())) {
+                        sr.setStatus("");
+                    }
+                }
+                ScenarioTable.tableScenariosLibrary.refresh();
+
+                try {
+                    ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
+                            ConsoleManager.MessageKind.GLIMPSE_INFO,
+                            "Cancelled queued GCAM jobs: " + nCancelled);
+                } catch (Exception ignored) {}
+            } catch (Exception ignored) {}
+        }
+
+        try {
+            ConsoleManager.appendHeader(ConsoleManager.StreamSource.GCAM_STDOUT, "Stop requested");
+            ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
+                    ConsoleManager.MessageKind.GLIMPSE_INFO,
+                    stopAll ? "Attempting to stop GCAM (and cancel queued runs)..." : "Attempting to stop the running GCAM process...");
+        } catch (Exception ignored) {}
+
+        // IMPORTANT: Don't cancel the Future for the normal Stop case.
+        // The Future represents the whole GCAM run chain (and cancelling can interrupt the executor worker
+        // and/or cause queued tasks to be skipped). We only cancel queued jobs on Stop All.
+
+        try {
+            ProcessRunner.RunningProcess rp = currentGcamRun;
+            if (rp != null) {
+                lastGcamStopResult = rp.stop();
+                try {
+                    ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
+                            ConsoleManager.MessageKind.GLIMPSE_INFO,
+                            "Stop signal sent (" + lastGcamStopResult.getSummary() + ")");
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
+
+        // Best-effort: copy exe/logs/main_log.txt to the current scenario folder on termination.
+        try {
+            copyExecutableMainLogToScenarioFolder(currentGcamScenarioName);
+        } catch (Exception ignored) {}
+
+        Platform.runLater(() -> {
+            try {
+                if (Client.buttonStopScenario != null) {
+                    Client.buttonStopScenario.setDisable(true);
+                }
+            } catch (Exception ignored) {}
+        });
+    }
+
     // Constants for UI labels and tooltips
     private static final String DIFF_LABEL = "Diff";
     private static final String DIFF_TOOLTIP = "Diff: Compare first two selected configurations";
@@ -166,6 +281,20 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
     private final ArrayList<String> runsQueuedList = new ArrayList<>();
     private final ArrayList<String> runsCompletedList = new ArrayList<>();
+
+    /** Tracks the currently running GCAM process so the UI can stop it. */
+    private volatile ProcessRunner.RunningProcess currentGcamRun;
+    private volatile Future<ProcessResult> currentGcamFuture;
+
+    /**
+     * Captures the last stop() attempt result so we can report a summary when the run actually ends.
+     * (Stop is asynchronous from the point of view of the Future/get flow.)
+     */
+    private volatile ProcessRunner.StopResult lastGcamStopResult;
+
+    /** Tracks the scenario name currently being executed by GCAM (best-effort). */
+    private volatile String currentGcamScenarioName;
+
     private long startupTime = 0;
     private final HBox scenarioLibraryHBox = new HBox(1);
 
@@ -181,6 +310,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         scenarioLibraryHBox.setSpacing(10); // Set spacing between elements
         ScenarioTable.tableScenariosLibrary.setOnMouseClicked(e -> setArrowAndButtonStatus()); // Update button status on table click
         createScenarioLibraryButtons(); // Create and configure all scenario library buttons
+
         ScenarioTable.tableScenariosLibrary.prefWidthProperty().bind(stage.widthProperty().multiply(1.0)); // Bind table width to stage
         ScenarioTable.tableScenariosLibrary.prefHeightProperty().bind(stage.heightProperty().multiply(0.7)); // Bind table height to stage
         scenarioLibraryHBox.getChildren().addAll(ScenarioTable.tableScenariosLibrary); // Add table to HBox
@@ -208,6 +338,8 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         Client.buttonResults = utils.createButton(RESULTS_LABEL, styles.getBigButtonWidth(), RESULTS_TOOLTIP, "results");
         Client.buttonResultsForSelected = utils.createButton(RESULTS_SELECTED_LABEL, styles.getBigButtonWidth(), RESULTS_SELECTED_TOOLTIP, "results-selected");
         Client.buttonRunScenario = utils.createButton(PLAY_LABEL, styles.getBigButtonWidth(), PLAY_TOOLTIP, "play");
+        Client.buttonStopScenario = utils.createButton("Stop", styles.getBigButtonWidth(), "Stop the currently running GCAM scenario", "stop");
+
         Client.buttonDeleteScenario = utils.createButton(DELETE_LABEL, styles.getBigButtonWidth(), DELETE_TOOLTIP, "delete1");
         Client.buttonViewConfig = utils.createButton(CONFIG_LABEL, styles.getBigButtonWidth(), CONFIG_TOOLTIP, "edit1");
         Client.buttonViewLog = utils.createButton(LOG_LABEL, styles.getBigButtonWidth(), LOG_TOOLTIP, "log-selected");
@@ -222,6 +354,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
         // Set initial button status
         Client.buttonRunScenario.setDisable(true); // Disabled until a scenario is selected
+        Client.buttonStopScenario.setDisable(true); // Enabled only while a run is active
         Client.buttonBrowseScenarioFolder.setDisable(true);
         Client.buttonImportScenario.setDisable(false);
         Client.buttonArchiveScenario.setDisable(true);
@@ -253,6 +386,8 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             }
             updateRunStatus();
         });
+        Client.buttonStopScenario.setOnAction(e -> stopCurrentGcamRun());
+
         Client.buttonArchiveScenario.setOnAction(e -> handleArchiveScenario());
         Client.buttonDeleteScenario.setOnAction(e -> handleDeleteScenario());
         Client.buttonResults.setOnAction(e -> handleResults());
@@ -343,7 +478,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
      * Launches ModelInterface in a background thread.
      */
     private void handleResults() {
-        if (vars.getModelInterfaceDir().isEmpty()) {
+        if (vars.getModelInterfaceDir() == null || vars.getModelInterfaceDir().trim().isEmpty()) {
             utils.warningMessage("Please specify modelInterfaceDir in options file.");
         } else {
             try {
@@ -360,7 +495,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
      * Launches ModelInterface for the selected scenario's output database.
      */
     private void handleResultsForSelected() {
-        if (vars.getModelInterfaceDir().isEmpty()) {
+        if (vars.getModelInterfaceDir() == null || vars.getModelInterfaceDir().trim().isEmpty()) {
             utils.warningMessage("Please specify modelInterfaceDir in options file.");
         } else {
             ObservableList<ScenarioRow> selectedFiles = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems();
@@ -649,7 +784,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                     }
                     for (int i = 0; i < runsQueuedList.size(); i++) {
                         String line = runsQueuedList.get(i);
-                        if ((line.equals(configName)) || (line.equals(scenarioName))) {
+                        if (line.equals(scenarioName)) {
                             status = "In queue";
                             if (mainLogExists) {
                                 runsCompletedList.add(line);
@@ -689,7 +824,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                     if (scenarioName.equals(runningScenario)) {
                         status = "Running";
                         long lastDate = currentMainLogFile.lastModified();
-                        if (lastDate < startupTime) {
+                        // Only consider "Lost handle" for a truly running scenario, and avoid transient
+                        // misclassification immediately after startup / when runs are merely queued.
+                        boolean isQueued = runsQueuedList.contains(scenarioName);
+                        long graceMs = 30_000L; // allow some time for main_log.txt to begin updating
+                        if (!isQueued && (startupTime > 0) && (System.currentTimeMillis() - startupTime > graceMs)
+                                && lastDate < startupTime) {
                             status = "Lost handle";
                         } else {
                             String runningStatus = utils.getScenarioStatusFromMainLog(currentMainLogFile);
@@ -707,7 +847,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                         }
                     } else {
                         for (String line : runsQueuedList) {
-                            if ((line.equals(configName)) || (line.equals(scenarioName))) {
+                            if (line.equals(scenarioName)) {
                                 status = "In queue";
                                 break;
                             }
@@ -745,6 +885,34 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         } catch (Exception ex) {
             System.out.println("Problem updating scenario table: " + ex);
         }
+    }
+
+    /**
+     * Removes scenarios from the in-memory queue and clears their "In queue" status in the UI.
+     * This affects only the queue for this session.
+     */
+    private void dequeueScenariosAndClearStatus(ObservableList<ScenarioRow> scenariosToDequeue) {
+        if (scenariosToDequeue == null || scenariosToDequeue.isEmpty()) {
+            return;
+        }
+        for (ScenarioRow row : scenariosToDequeue) {
+            if (row == null) {
+                continue;
+            }
+            String scenName = row.getScenarioName();
+            if (scenName == null) {
+                continue;
+            }
+            // Remove any matching queue entries.
+            while (runsQueuedList.remove(scenName)) {
+                // keep removing duplicates
+            }
+            // Clear UI status if it was showing queued.
+            if ("In queue".equals(row.getStatus())) {
+                row.setStatus("");
+            }
+        }
+        ScenarioTable.tableScenariosLibrary.refresh();
     }
 
     /**
@@ -808,7 +976,13 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 b = utils.selectYesOrNoDialog(s);
             }
             if (b) {
+                // Remove logs from a previous run so the Scenario Library won't show stale status while queued/running.
                 files.deleteFile(mainLogFile);
+                try {
+                    files.deleteFile(vars.getScenarioDir() + File.separator + scenName + File.separator + "gcam_stdout.txt");
+                    files.deleteFile(vars.getScenarioDir() + File.separator + scenName + File.separator + "main_error.txt");
+                } catch (Exception ignored) {}
+
                 configFiles[idx] = vars.getScenarioDir() + File.separator + scenName + File.separator + "configuration" + "_" + scenName + ".xml";
                 mfr.setStatus("In queue");
             } else {
@@ -850,7 +1024,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
             final String dir = scenarioConfigFile.substring(0, scenarioConfigFile.lastIndexOf(File.separator)).replaceAll("/", File.separator);
             System.out.println("config: " + scenarioConfigFile);
-            this.runsQueuedList.add(scenarioConfigFile);
+
+            // Track queue entries by scenario name (not config path) so dequeue/status logic stays consistent.
+            final String queuedScenarioName = new File(dir).getName();
+            this.runsQueuedList.add(queuedScenarioName);
 
             // 1) Clean out prior outputs from the scenario folder (async).
             Client.gCAMExecutionThread.executeCallableCmd(new Callable<String>() {
@@ -876,10 +1053,13 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 }
             });
 
-            // 2) Run GCAM directly (no cmd.exe start / xterm) so we can capture exit code and output.
+            // 2) Run GCAM (capture a handle so we can stop it).
             Future<ProcessResult> gcamFuture = Client.gCAMExecutionThread.submitCallable(new Callable<ProcessResult>() {
                 @Override
                 public ProcessResult call() throws Exception {
+                    // Reset stop-result for this run.
+                    lastGcamStopResult = null;
+
                     boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
                     System.out.println("OS detected as Windows: " + isWindows);
 
@@ -887,12 +1067,15 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                     String exeDir = vars.getgCamExecutableDir();
                     String exeName = vars.getgCamExecutable();
 
+                    // NOTE: On Windows we previously launched GCAM via `cmd.exe /c .\\<exe>`.
+                    // That makes the Java Process handle refer to cmd.exe, not GCAM itself, so stop()
+                    // may not terminate the actual model immediately. Launch GCAM directly instead.
+                    String exePath = exeDir + File.separator + exeName;
+
                     if (isWindows) {
-                        cmd.add("cmd.exe");
-                        cmd.add("/c");
-                        cmd.add(".\\" + exeName);
+                        cmd.add(exePath);
                     } else {
-                        cmd.add(exeDir + File.separator + exeName);
+                        cmd.add(exePath);
                     }
 
                     String args = vars.getgCamExecutableArgs();
@@ -906,59 +1089,125 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                     cmd.add(scenarioConfigFile);
 
                     System.out.println("Command to run (direct): " + cmd);
+
+                    // Auto-clear the GCAM console output at the start of each new run (best-effort).
+                    ConsoleManager.clear(ConsoleManager.StreamSource.GCAM_STDOUT);
+
                     ConsoleManager.appendHeader(ConsoleManager.StreamSource.GCAM_STDOUT, "Starting GCAM");
                     ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT, "cmd: " + cmd);
+                    ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT, "exe: " + new File(exePath).getAbsolutePath());
                     ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT, "working dir: " + new File(exeDir).getAbsolutePath());
 
-                    return ProcessRunner.run(
+                    ProcessRunner.RunningProcess rp = ProcessRunner.start(
                             cmd,
                             new File(exeDir),
                             null,
-                            null,
-                            line -> ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT, line),
-                            line -> ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDERR, line)
+                            line -> ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
+                                    ConsoleManager.MessageKind.MODEL_STDOUT, line),
+                            line -> ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
+                                    ConsoleManager.MessageKind.STDERR, line)
                     );
+
+                    currentGcamRun = rp;
+                    currentGcamScenarioName = queuedScenarioName;
+                    Platform.runLater(() -> {
+                        try {
+                            if (Client.buttonStopScenario != null) {
+                                Client.buttonStopScenario.setDisable(false);
+                            }
+                        } catch (Exception ignored) {}
+                    });
+
+                    try {
+                        return rp.waitForResult(null);
+                    } finally {
+                        // Clear handle when finished.
+                        currentGcamRun = null;
+                        currentGcamScenarioName = null;
+                        Platform.runLater(() -> {
+                            try {
+                                if (Client.buttonStopScenario != null) {
+                                    Client.buttonStopScenario.setDisable(true);
+                                }
+                            } catch (Exception ignored) {}
+                        });
+                    }
                 }
             });
+
+            // Remember the future so stop can cancel the wait.
+            currentGcamFuture = gcamFuture;
 
             // 3) After GCAM completes, write logs and move requested outputs based on exit code.
             Client.gCAMExecutionThread.executeCallableCmd(new Callable<String>() {
                 @Override
                 public String call() throws Exception {
                     ProcessResult result;
+                    boolean wasCancelled = false;
                     try {
                         result = gcamFuture.get();
+                    } catch (java.util.concurrent.CancellationException ce) {
+                        wasCancelled = true;
+                        result = new ProcessResult(-1, "", "GCAM run was canceled by user.", false, 0);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        wasCancelled = true;
+                        result = new ProcessResult(-1, "", "GCAM run was interrupted.", false, 0);
                     } catch (Exception e) {
-                        // If GCAM crashed before returning a result, record as failure.
                         result = new ProcessResult(-1, "", "Exception waiting for GCAM: " + e, false, 0);
+                    } finally {
+                        // Clear the future if it’s the current one.
+                        if (currentGcamFuture == gcamFuture) {
+                            currentGcamFuture = null;
+                        }
                     }
 
+                    // Report termination status (if a stop was requested).
+                    try {
+                        ProcessRunner.StopResult sr = lastGcamStopResult;
+                        if (sr != null) {
+                            ConsoleManager.appendHeader(ConsoleManager.StreamSource.GCAM_STDOUT, "Stop result");
+                            ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
+                                    ConsoleManager.MessageKind.GLIMPSE_INFO,
+                                    sr.getSummary());
+                        }
+                        // Always report final exit code so user can tell if it stopped or failed naturally.
+                        ConsoleManager.appendHeader(ConsoleManager.StreamSource.GCAM_STDOUT, "GCAM finished");
+                        ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
+                                ConsoleManager.MessageKind.GLIMPSE_INFO,
+                                "exitCode=" + result.getExitCode() + ", cancelled=" + wasCancelled + ", success=" + result.isSuccess());
+                    } catch (Exception ignored) {}
+
                     String scenName = new File(dir).getName();
-                    String mainLogFile = vars.getScenarioDir() + File.separator + scenName + File.separator + "main_log.txt";
+
+                    // Always capture the executable's main_log.txt (exeDir/logs/main_log.txt) into the scenario folder.
+                    // This is the authoritative GCAM log and is what the Scenario Library expects as main_log.txt.
+                    copyExecutableMainLogToScenarioFolder(scenName);
+
+                    // Save captured process stdout/stderr to separate files for debugging.
+                    String gcamStdoutFile = vars.getScenarioDir() + File.separator + scenName + File.separator + "gcam_stdout.txt";
                     String mainErrFile = vars.getScenarioDir() + File.separator + scenName + File.separator + "main_error.txt";
 
                     try {
+                        // Do NOT overwrite scenario/main_log.txt here; it should contain the copied exe/logs/main_log.txt.
                         files.saveFile(
                                 "GCAM exitCode=" + result.getExitCode() + System.lineSeparator() + result.getStdout(),
-                                mainLogFile);
+                                gcamStdoutFile);
                         if (result.getStderr() != null && result.getStderr().trim().length() > 0) {
                             files.saveFile(
                                     "GCAM exitCode=" + result.getExitCode() + System.lineSeparator() + result.getStderr(),
                                     mainErrFile);
                         }
                     } catch (Exception e) {
-                        System.out.println("Problem writing GCAM logs: " + e);
+                        System.out.println("Problem writing GCAM stdout/stderr logs: " + e);
                     }
 
                     System.out.println("GCAM finished with exitCode=" + result.getExitCode());
 
-                    ConsoleManager.appendHeader(ConsoleManager.StreamSource.GCAM_STDOUT, "GCAM finished (exitCode=" + result.getExitCode() + ")");
-                    if (result.getStdout() != null && !result.getStdout().isEmpty()) {
-                        ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT, result.getStdout());
-                    }
-                    if (result.getStderr() != null && !result.getStderr().isEmpty()) {
-                        ConsoleManager.appendHeader(ConsoleManager.StreamSource.GCAM_STDERR, "GCAM stderr:");
-                        ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDERR, result.getStderr());
+                    if (wasCancelled) {
+                        System.out.println("GCAM run canceled by user; skipping move of output files.");
+                        updateRunStatus();
+                        return "GCAM run canceled";
                     }
 
                     if (!result.isSuccess()) {
@@ -1350,4 +1599,27 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         updateRunStatus();
     }
 
+    /**
+     * Copies the current GCAM executable main_log.txt (exeDir/logs/main_log.txt) into the scenario folder.
+     * This is best-effort and should never throw.
+     */
+    private void copyExecutableMainLogToScenarioFolder(String scenarioName) {
+        if (scenarioName == null || scenarioName.trim().isEmpty()) {
+            return;
+        }
+        try {
+            Path src = Paths.get(vars.getgCamExecutableDir(), "logs", "main_log.txt");
+            if (!Files.exists(src)) {
+                return;
+            }
+            Path destDir = Paths.get(vars.getScenarioDir(), scenarioName);
+            if (!Files.exists(destDir)) {
+                return;
+            }
+            Path dest = destDir.resolve("main_log.txt");
+            Files.copy(src, dest, StandardCopyOption.REPLACE_EXISTING);
+        } catch (Exception e) {
+            System.out.println("Problem copying exe main_log.txt to scenario folder for '" + scenarioName + "': " + e);
+        }
+    }
 }

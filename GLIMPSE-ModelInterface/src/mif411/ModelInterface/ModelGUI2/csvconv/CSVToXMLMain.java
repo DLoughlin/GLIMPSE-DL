@@ -42,6 +42,11 @@ import java.util.StringTokenizer;
 
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 //import ModelInterface.ModelGUI2.csvconv.DOMTreeBuilder;
 
@@ -52,9 +57,6 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-
-import com.sun.org.apache.xml.internal.serialize.OutputFormat;
-import com.sun.org.apache.xml.internal.serialize.XMLSerializer;
 
 /**
  * A stand alone driver to run the CSV to XML conversion tool. This class serves
@@ -330,25 +332,20 @@ public class CSVToXMLMain {
 	 * @return whether the file was actually written or not
 	 */
 	public static boolean writeFile(File file, Document theDoc) {
-		// specify output formating properties
-		OutputFormat format = new OutputFormat(theDoc);
-		format.setEncoding("UTF-8");
-		format.setLineSeparator("\r\n");
-		format.setIndenting(true);
-		format.setIndent(3);
-		format.setLineWidth(0);
-		format.setPreserveSpace(false);
-		format.setOmitDocumentType(true);
-
-		// create the searlizer and have it print the document
-
 		try {
-			FileWriter fw = new FileWriter(file);
-			XMLSerializer serializer = new XMLSerializer(fw, format);
-			serializer.asDOMSerializer();
-			serializer.serialize(theDoc);
-			fw.close();
-		} catch (java.io.IOException e) {
+			TransformerFactory tf = TransformerFactory.newInstance();
+			Transformer transformer = tf.newTransformer();
+			transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+			// keep output compact but readable; many JAXP impls honor this key
+			transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "3");
+			transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "no");
+			transformer.setOutputProperty(OutputKeys.METHOD, "xml");
+
+			DOMSource source = new DOMSource(theDoc);
+			StreamResult result = new StreamResult(file);
+			transformer.transform(source, result);
+		} catch (Exception e) {
 			System.err.println("Error outputing tree: " + e);
 			return false;
 		}

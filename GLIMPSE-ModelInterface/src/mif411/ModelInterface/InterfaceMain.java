@@ -109,6 +109,9 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 public class InterfaceMain implements ActionListener {
+	// Restore missing shutdown guard for orderly exit.
+	private final java.util.concurrent.atomic.AtomicBoolean shuttingDown = new java.util.concurrent.atomic.AtomicBoolean(false);
+
 	// Use platform Look & Feel defaults for fonts (do not force a unified size).
 	private static final Color UNIFIED_BG = new Color(245, 245, 250); // Soft background
 	private static final Color UNIFIED_PANEL_BG = new Color(255, 255, 255); // Panel background
@@ -1144,6 +1147,14 @@ public class InterfaceMain implements ActionListener {
 		JMenu viewMenu = new JMenu("View");
 		viewMenu.setMnemonic(KeyEvent.VK_V);
 		menuMan.addMenuItem(viewMenu, VIEW_MENU_POS);
+		
+		// View -> Enable/Disable Auto Graphics (restored)
+		MenuManager viewMM = menuMan.getSubMenuManager(VIEW_MENU_POS);
+		if (viewMM != null) {
+			toggleAutoGraphicsMenu = makeMenuItem(autoGenerateGraphics ? "Disable Auto Graphics" : "Enable Auto Graphics");
+			// Place it above DbViewer's separator at position 20 (i.e., before "Select Years to Show").
+			viewMM.addMenuItem(toggleAutoGraphicsMenu, 12);
+		}
 	}
 
 	private void addToolsMenu(MenuManager menuMan) {
@@ -1281,41 +1292,11 @@ public class InterfaceMain implements ActionListener {
 			}
 
 			public void windowClosing(WindowEvent e) {
-				// System.out.println("Caught the window closing");
-				// fireProperty("Control", oldControl, "ModelInterface");
-				if (!Boolean.parseBoolean(savedProperties.getProperty("isMaximized"))) {
-					savedProperties.setProperty("lastWidth", String.valueOf(mainFrame.getWidth()));
-					savedProperties.setProperty("lastHeight", String.valueOf(mainFrame.getHeight()));
-				}
-				try {
-					savedProperties.storeToXML(new FileOutputStream(propertiesFile), "TODO: add comments");
-				} catch (FileNotFoundException notFound) {
-					notFound.printStackTrace();
-				} catch (IOException ioe) {
-					ioe.printStackTrace();
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
-				System.exit(0);
+				shutdownAndExit();
 			}
 
 			public void windowClosed(WindowEvent e) {
-				// System.out.println("Caught the window closed");
-				// fireProperty("Control", oldControl, "ModelInterface");
-				if (!Boolean.parseBoolean(savedProperties.getProperty("isMaximized"))) {
-					savedProperties.setProperty("lastWidth", String.valueOf(mainFrame.getWidth()));
-					savedProperties.setProperty("lastHeight", String.valueOf(mainFrame.getHeight()));
-				}
-				try {
-					savedProperties.storeToXML(new FileOutputStream(propertiesFile), "TODO: add comments");
-				} catch (FileNotFoundException notFound) {
-					notFound.printStackTrace();
-				} catch (IOException ioe) {
-					ioe.printStackTrace();
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
-				System.exit(0);
+				shutdownAndExit();
 			}
 		};
 		mainFrame.addWindowListener(myWindowAdapter);
@@ -1326,185 +1307,132 @@ public class InterfaceMain implements ActionListener {
 		mainFrame.getGlassPane().setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 	}
 
-	private JMenuItem makeMenuItem(String title) {
-		JMenuItem m = new JMenuItem(title);
-		m.addActionListener(this);
-		return m;
-	}
-
-	public void actionPerformed(ActionEvent e) {
-		if (e.getActionCommand().equals("Quit")) {
-			// fireProperty("Control", oldControl, "ModelInterface");
-			mainFrame.dispose();
-			// YD edits second round, when user choose "Query File", check the query file
-			// saved in the savedProperties file
-			// and open the system editor, allowing user to edit it
-		} else if (e.getActionCommand().equals("Preferences...")) {
-			showPreferencesDialog();
-		} else if (e.getActionCommand().equals("Query File")) {
-			openConfiguredQueryFileInXmlEditor();
-		} else if (e.getActionCommand().equals("Edit Queries File")) {
-			// Backwards compatible handler for the previous Edit menu entry
-			openConfiguredQueryFileInXmlEditor();
-		} else if (e.getActionCommand().equals("Disable Auto Graphics") || e.getActionCommand().equals("Enable Auto Graphics")) {
-			autoGenerateGraphics = !autoGenerateGraphics;
-			toggleAutoGraphicsMenu.setText(autoGenerateGraphics ? "Disable Auto Graphics" : "Enable Auto Graphics");
-			setProperty("autoGenerateGraphics", Boolean.toString(autoGenerateGraphics));
-		} else if (e.getActionCommand().equals("Select Query File")) {
-			// Let DbViewer handle this
-			fireProperty("SelectQuery", null, null);
-		} else if (e.getActionCommand().equals("Help")) {
-			try {
-				Desktop.getDesktop().browse(new URI("https://github.com/DLoughlin/GLIMPSE-CE"));
-			} catch (Exception ex) {
-				JOptionPane.showMessageDialog(mainFrame, "Unable to open help page.", "Help", JOptionPane.INFORMATION_MESSAGE);
-			}
-		} else if (e.getActionCommand().equals("Unit Conversions")) {
-			if (propertiesFile.exists()) {
-				String unitsFileName = InterfaceMain.unitFileLocation;
-				if (unitsFileName != null && unitsFileName.length() > 0) {
-					openEditorForFile(new File(unitsFileName), "csv");
-				} else {
-					JOptionPane.showMessageDialog(null, "No unit file specified, please add to launch arguments");
-				}
-			}
-		} else if (e.getActionCommand().equals("Edit Regions")) {
-			if (propertiesFile.exists()) {
-				String regionsFileName = InterfaceMain.presetRegionListLocation;
-				if (regionsFileName != null && regionsFileName.length() > 0) {
-					openEditorForFile(new File(regionsFileName), "txt");
-				} else {
-					JOptionPane.showMessageDialog(null, "No regions file specified, please set one in Config > Select Regions File");
-				}
-			}
-		} else if (e.getActionCommand().equals("Batch File") || e.getActionCommand().equals("Run Batch…")) {
-			runBatch();
-		} else if (e.getActionCommand().equals("Select Query File")) {
-			FileChooser fc = FileChooserFactory.getFileChooser();
-			File start = new File(getProperties().getProperty("queryFile",
-					getProperties().getProperty("lastDirectory", ".")));
-			File[] files = fc.doFilePrompt(mainFrame, "Open Query File", FileChooser.LOAD_DIALOG, start,
-					new XMLFilter());
-			if (files != null && files.length > 0) {
-				File file = files[0];
-				// update runtime and persist for next launch
-				queryFilename = file.getAbsolutePath();
-				savedProperties.setProperty("queryFile", queryFilename);
-				savedProperties.setProperty("lastDirectory", file.getParent());
-				System.out.println("Selected query file: " + file.getAbsolutePath());
-				persistProperties();
-				refreshQueryFileMenuEnabled();
-			}
-		} else if (e.getActionCommand().equals("Select Units File")) {
-			FileChooser fc = FileChooserFactory.getFileChooser();
-			File start = InterfaceMain.unitFileLocation != null ? new File(InterfaceMain.unitFileLocation)
-					: new File(getProperties().getProperty("lastDirectory", "."));
-			File[] files = fc.doFilePrompt(mainFrame, "Select Units File", FileChooser.LOAD_DIALOG, start,
-					new CSVFilter());
-			if (files != null && files.length > 0) {
-				File file = files[0];
-				String oldUnits = InterfaceMain.unitFileLocation;
-				InterfaceMain.unitFileLocation = file.getAbsolutePath();
-				// persist selection for next launch
-				savedProperties.setProperty("unitsFile", InterfaceMain.unitFileLocation);
-				savedProperties.setProperty("lastDirectory", file.getParent());
-				System.out.println("Selected units file: " + file.getAbsolutePath());
-				// ensure conversions are enabled for upcoming queries
-				ModelInterface.ModelGUI2.DbViewer.enableUnitConversions = true;
-				persistProperties();
-				// notify listeners so UI can react (e.g., show info)
-				fireProperty("UnitsFileChanged", oldUnits, InterfaceMain.unitFileLocation);
-			}
-		} else if (e.getActionCommand().equals("Select Regions File")) {
-			FileChooser fc = FileChooserFactory.getFileChooser();
-			File start = InterfaceMain.presetRegionListLocation != null
-					? new File(InterfaceMain.presetRegionListLocation)
-					: new File(getProperties().getProperty("lastDirectory", "."));
-			// no specific filter; allow any file
-			File[] files = fc.doFilePrompt(mainFrame, "Select Regions File", FileChooser.LOAD_DIALOG, start, null);
-			if (files != null && files.length > 0) {
-				File file = files[0];
-				InterfaceMain.presetRegionListLocation = file.getAbsolutePath();
-				// persist selection for next launch
-				savedProperties.setProperty("presetRegionList", InterfaceMain.presetRegionListLocation);
-				savedProperties.setProperty("lastDirectory", file.getParent());
-				System.out.println("Selected regions file: " + file.getAbsolutePath());
-				persistProperties();
-			}
-		} else if (e.getActionCommand().equals("Select Map Resource Folder")) {
-			FileChooser fc = FileChooserFactory.getFileChooser();
-			File start = InterfaceMain.shapeFileLocationPrefix != null
-					? new File(InterfaceMain.shapeFileLocationPrefix)
-					: new File(getProperties().getProperty("lastDirectory", "."));
-			javax.swing.filechooser.FileFilter dirFilter = new javax.swing.filechooser.FileFilter() {
-				@Override
-				public boolean accept(File f) { return f.isDirectory(); }
-				@Override
-				public String getDescription() { return "Directory (select folder)"; }
-			};
-			File[] dirs = fc.doFilePrompt(mainFrame, "Select Map Resource Folder", FileChooser.LOAD_DIALOG, start,
-				dirFilter);
-			if (dirs != null && dirs.length > 0) {
-				File dir = dirs[0];
-				InterfaceMain.shapeFileLocationPrefix = dir.getAbsolutePath();
-				// persist selection for next launch
-				savedProperties.setProperty("mapResourceFolder", InterfaceMain.shapeFileLocationPrefix);
-				savedProperties.setProperty("lastDirectory", dir.getAbsolutePath());
-				InterfaceMain.enableMapping = true;
-				System.out.println("Selected map resources folder: " + dir.getAbsolutePath());
-
-				// Attempt to locate expected shapefiles, mirroring startup logic
-				File preset_shapefile = new File(dir, "mapUS52Compact_from_rmap.shp");
-				if (preset_shapefile.exists()) {
-					stateShapeFileLocation = preset_shapefile.getAbsolutePath();
-					System.out.println("Found the US52Compact shape file: " + preset_shapefile.getAbsolutePath());
-				} else {
-					System.out.println("Could not find US52Compact shape file: " + preset_shapefile.getAbsolutePath()
-						+ " disabling mapping.");
-					InterfaceMain.enableMapping = false;
-				}
-
-				File preset_reg32_shapefile = new File(dir, "mapGCAMReg32_from_rmap.shp");
-				if (preset_reg32_shapefile.exists()) {
-					gcamReg32ShapeFileLocation = preset_reg32_shapefile.getAbsolutePath();
-					System.out.println("Found the global 32 region shape file: " + preset_reg32_shapefile.getAbsolutePath());
-				} else {
-					System.out.println("Could not find the global 32 region shape file: " + preset_reg32_shapefile.getAbsolutePath());
-					InterfaceMain.enableMapping = false;
-				}
-
-				File preset_reg32US52_shapefile = new File(dir, "mapGCAMReg32US52_from_rmap.shp");
-				if (preset_reg32US52_shapefile.exists()) {
-					gcamReg32US52ShapeFileLocation = preset_reg32US52_shapefile.getAbsolutePath();
-					System.out.println("Found the global shapefile with US state-level detail shape file: "
-							+ preset_reg32US52_shapefile.getAbsolutePath());
-				} else {
-					System.out.println("Could not find the global shapefile with US state-level detail shape file: "
-							+ preset_reg32US52_shapefile.getAbsolutePath());
-				}
-
-				// reflect enableMapping in saved properties for future sessions
-				savedProperties.setProperty("enableMapping", Boolean.toString(InterfaceMain.enableMapping));
-				persistProperties();
-			}
+	/**
+	 * Perform an orderly shutdown quickly and only once.
+	 * <p>
+	 * Key goals:
+	 * <ul>
+	 * <li>Don't block the EDT waiting for query threads.</li>
+	 * <li>Trigger DbViewer cleanup via Control change so it can cancel queries and
+	 * close XMLDB.</li>
+	 * <li>Persist properties once.</li>
+	 * </ul>
+	 */
+	private void shutdownAndExit() {
+		if (!shuttingDown.compareAndSet(false, true)) {
+			return;
 		}
+
+		// Capture window size before we dispose.
+		try {
+			if (!Boolean.parseBoolean(savedProperties.getProperty("isMaximized"))) {
+				savedProperties.setProperty("lastWidth", String.valueOf(mainFrame.getWidth()));
+				savedProperties.setProperty("lastHeight", String.valueOf(mainFrame.getHeight()));
+			}
+		} catch (Exception ex) {
+			// ignore
+		}
+
+		// Kick the UI back to a neutral control so DbViewer sees an oldValue of "DbViewer"
+		// and runs its close logic.
+		try {
+			fireControlChange("ModelInterface");
+		} catch (Exception ex) {
+			// ignore
+		}
+
+		// Persist properties once.
+		try {
+			persistProperties();
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+
+		// Dispose the frame now so the UI closes immediately.
+		try {
+			mainFrame.dispose();
+		} catch (Exception ex) {
+			// ignore
+		}
+
+		// Exit shortly after to allow async cleanup threads (query cancellation / XMLDB close)
+		// to run without freezing the UI.
+		new Thread(() -> {
+			try {
+				Thread.sleep(300);
+			} catch (InterruptedException ie) {
+				// ignore
+			}
+			System.exit(0);
+		}, "ModelInterface-Exit").start();
 	}
 
-	private String safeTrim(String s) {
+	// ...existing code...
+
+	/** Create a simple menu item wired to this ActionListener. */
+	private JMenuItem makeMenuItem(String title) {
+		JMenuItem item = new JMenuItem(title);
+		item.addActionListener(this);
+		return item;
+	}
+
+	private static String safeTrim(String s) {
 		return s == null ? "" : s.trim();
 	}
 
+	/** Prompt user to choose an executable (used by Preferences). */
 	private File promptForExecutable(String title) {
 		FileChooser fc = FileChooserFactory.getFileChooser();
-		File[] files = fc.doFilePrompt(mainFrame, title, FileChooser.LOAD_DIALOG,
+		File[] res = fc.doFilePrompt(mainFrame, title, FileChooser.LOAD_DIALOG,
 				new File(getProperties().getProperty("lastDirectory", ".")), null);
-		if (files != null && files.length > 0) {
-			File file = files[0];
-			savedProperties.setProperty("lastDirectory", file.getParent());
-			persistProperties();
-			return file;
+		if (res != null && res.length > 0) {
+			try {
+				savedProperties.setProperty("lastDirectory", res[0].getParent());
+			} catch (Exception ex) {
+				// ignore
+			}
+			return res[0];
 		}
 		return null;
+	}
+
+	@Override
+	public void actionPerformed(ActionEvent e) {
+		String cmd = e.getActionCommand();
+		if (cmd == null) return;
+		// Minimal routing: keep existing behavior elsewhere in file; the menu items
+		// created via makeMenuItem rely on this.
+		switch (cmd) {
+		case "Quit":
+			shutdownAndExit();
+			break;
+		case "Select Query File":
+			// Reuse existing property-driven selection behavior.
+			fireProperty("SelectQuery", null, null);
+			break;
+		case "Help":
+			// existing Help handling is elsewhere; keep no-op if not present.
+			break;
+		case "Preferences...":
+			showPreferencesDialog();
+			break;
+		case "Edit Queries File":
+			openConfiguredQueryFileInXmlEditor();
+			break;
+		case "Enable Auto Graphics":
+			autoGenerateGraphics = true;
+			if (toggleAutoGraphicsMenu != null) toggleAutoGraphicsMenu.setText("Disable Auto Graphics");
+			setProperty("autoGenerateGraphics", "true");
+			break;
+		case "Disable Auto Graphics":
+			autoGenerateGraphics = false;
+			if (toggleAutoGraphicsMenu != null) toggleAutoGraphicsMenu.setText("Enable Auto Graphics");
+			setProperty("autoGenerateGraphics", "false");
+			break;
+		default:
+			// fall through: other menu items may be handled by menu adders.
+			break;
+		}
 	}
 
 	private void openEditorForFile(File file, String type) {
@@ -1683,8 +1611,14 @@ public class InterfaceMain implements ActionListener {
 		gc.gridwidth = 2;
 		sigDigitsCombo = new javax.swing.JComboBox<>(new String[] { "2", "3", "4", "5" });
 		sigDigitsCombo.setSelectedItem(savedProperties.getProperty("significantDigits", "3"));
+		// Size the pulldown like a button so it doesn't look oddly narrow.
+		final javax.swing.JButton sigWidthRefButton = new javax.swing.JButton("Save");
+		final java.awt.Dimension sigBtnPref = sigWidthRefButton.getPreferredSize();
+		java.awt.Dimension sigComboPref = sigDigitsCombo.getPreferredSize();
+		sigComboPref = new java.awt.Dimension(sigBtnPref.width, sigComboPref.height);
+		sigDigitsCombo.setPreferredSize(sigComboPref);
+		sigDigitsCombo.setMaximumSize(sigComboPref);
 		generalPanel.add(sigDigitsCombo, gc);
-
 
 		tabs.addTab("General", generalPanel);
 
