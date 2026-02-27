@@ -276,7 +276,8 @@ public class ScenarioBuilder {
 			utils.getSeparator(Orientation.VERTICAL, 6, false), Client.buttonDiffFiles,
 			Client.buttonShowRunQueue, utils.getSeparator(Orientation.VERTICAL, 6, false),
 			Client.buttonViewExeLog, Client.buttonViewExeErrors, Client.buttonViewLog, Client.buttonViewErrors,
-			utils.getSeparator(Orientation.VERTICAL, 6, false), /*Client.buttonReport,*/ Client.buttonRefreshScenarioStatus
+			utils.getSeparator(Orientation.VERTICAL, 6, false), /*Client.buttonReport,*/ Client.buttonRefreshScenarioStatus,
+			utils.getSeparator(Orientation.VERTICAL, 6, false), Client.buttonConsole
 		);
 
 		HBox bottomPane = new HBox(15, labelScenarioLibrary, buttonHBox);

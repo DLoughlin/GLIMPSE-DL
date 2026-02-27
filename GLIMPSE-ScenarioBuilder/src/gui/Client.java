@@ -151,6 +151,7 @@ public class Client extends Application {
     static Button buttonDiffFiles;
     static Button buttonShowRunQueue;
     public static Button buttonRefreshScenarioStatus;
+    static Button buttonConsole;
     static Button buttonDeleteScenario;
     static Button buttonRunScenario;
     static Button buttonResults;
@@ -196,6 +197,9 @@ public class Client extends Application {
      */
     @Override
     public void init() throws Exception {
+        // Install console redirection as early as possible so startup prints are captured.
+        ConsoleOutputRedirect.install();
+
         System.out.println("Loading settings and initializing.");
         // Initialize utility/variable objects with references to each other
         vars.init(utils, vars, styles, files);

@@ -38,7 +38,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -129,49 +132,61 @@ class RunnableCmd implements Runnable {
      */
     @Override
     public void run() {
-        // System.out.println("is dir?" + dir.isDirectory());
-        java.lang.Runtime rt = java.lang.Runtime.getRuntime();
-
         try {
-            java.lang.Process p = null;
-            // Merge system environment with custom envVars
-            Map<String, String> mergedEnv = new HashMap<>(System.getenv());
-            mergedEnv.putAll(envVars);
-            String[] envArray = mergedEnv.entrySet().stream()
-                .map(e -> e.getKey() + "=" + e.getValue())
-                .toArray(String[]::new);
-            // Determine which command and directory configuration to use
-            if (dir == null) {
-                // No working directory specified, execute single string command
-                if (cmdArray != null) {
-                    p = rt.exec(cmdArray, envArray); 
-                } else {
-                    p = rt.exec(cmd, envArray);
+            // Build a ProcessBuilder command list. Prefer cmdArray to avoid platform-specific tokenization.
+            final List<String> command = new ArrayList<>();
+            if (cmdArray != null) {
+                for (String s : cmdArray) {
+                    if (s != null) {
+                        command.add(s);
+                    }
                 }
-            } else if (cmd == null) {
-                // Command array with working directory
-                p = rt.exec(cmdArray, envArray, dir);
+            } else if (cmd != null) {
+                // NOTE: Using a single-string command relies on OS tokenization rules. Prefer cmdArray when possible.
+                command.add(cmd);
             } else {
-                // Single string command with working directory
-                p = rt.exec(cmd, envArray, dir);
+                System.out.println("No command specified.");
+                return;
             }
 
-            // Read and print the standard output of the process
-            String line;
-            InputStream stdout = p.getInputStream();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(stdout));
-            while ((line = reader.readLine()) != null) {
-                System.out.println("Stdout: " + line);
+            ProcessBuilder pb = new ProcessBuilder(command);
+            if (dir != null) {
+                if (dir.isDirectory()) {
+                    pb.directory(dir);
+                } else {
+                    System.out.println("specified directory " + dir + " does not exist.");
+                }
             }
-            // Wait for the process to finish
-            p.waitFor();
-            // Clean up resources
-            p.destroy();
-            stdout.close();
-            reader.close();
+
+            // Merge environment.
+            Map<String, String> pbEnv = pb.environment();
+            if (envVars != null && !envVars.isEmpty()) {
+                pbEnv.putAll(envVars);
+            }
+
+            // Merge stderr into stdout so we don't lose critical errors.
+            pb.redirectErrorStream(true);
+
+            Process p = pb.start();
+
+            // Read and print the combined stdout/stderr.
+            String line;
+            try (InputStream stdout = p.getInputStream();
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(stdout, StandardCharsets.UTF_8))) {
+                while ((line = reader.readLine()) != null) {
+                    System.out.println("Process: " + line);
+                    ConsoleManager.appendLine(ConsoleManager.StreamSource.MODEL_INTERFACE, line);
+                }
+            }
+
+            int exitCode = p.waitFor();
+            if (exitCode != 0) {
+                System.out.println("Process exited with code " + exitCode + ": " + command);
+            }
+
         } catch (Exception e) {
             System.out.println("problem starting \"" + cmd + "\".");
-            System.out.println("Error: " + e);
+            ConsoleManager.appendLine(ConsoleManager.StreamSource.MODEL_INTERFACE, "ERROR: " + e);
         }
     }
 

@@ -268,25 +268,101 @@ public class ExecutionThread implements AutoCloseable {
     }
 
     /**
-     * Submits a Callable task to the executor.
+     * Submits a single command as an argument array (command + args) with a working directory.
      * <p>
-     * The Callable is submitted as a background job and tracked in the jobs list. Useful for tasks that return a result.
+     * Prefer this overload over the String-based command to avoid quoting/tokenization problems
+     * (especially on Windows paths with spaces).
      * </p>
-     * <b>Thread safety:</b> This method is thread-safe. It synchronizes on the jobs list.
+     *
+     * @param commandArray The command and its arguments.
+     * @param directory The working directory for the command.
+     * @return Future representing the submitted task.
+     */
+    public Future<?> submitCommandWithDirectory(String[] commandArray, String directory) {
+        if (executorService == null) {
+            throw new IllegalStateException("ExecutorService not started.");
+        }
+        RunnableCmd gr = new RunnableCmd();
+        gr.setCmd(commandArray, directory);
+
+        System.out.println("Submitting to queue: " + java.util.Arrays.toString(commandArray) + " with dir " + directory);
+        Future<?> f = executorService.submit(gr);
+        synchronized (jobs) {
+            jobs.add(f);
+        }
+        return f;
+    }
+
+    /**
+     * Submits a single command as an argument list (command + args) with a working directory.
+     *
+     * @param commandArgs The command and its arguments.
+     * @param directory The working directory for the command.
+     * @return Future representing the submitted task.
+     */
+    public Future<?> submitCommandWithDirectory(List<String> commandArgs, String directory) {
+        if (commandArgs == null) {
+            throw new IllegalArgumentException("commandArgs cannot be null");
+        }
+        return submitCommandWithDirectory(commandArgs.toArray(new String[0]), directory);
+    }
+
+    /**
+     * Submits a single command as an argument array (command + args) without specifying a working directory.
+     *
+     * @param commandArray The command and its arguments.
+     * @return Future representing the submitted task.
+     */
+    public Future<?> submitCommand(String[] commandArray) {
+        if (executorService == null) {
+            throw new IllegalStateException("ExecutorService not started.");
+        }
+        startStatusCheckerIfNeeded();
+        RunnableCmd gr = new RunnableCmd();
+        gr.setCmd(commandArray);
+        System.out.println("Submitting to queue: " + java.util.Arrays.toString(commandArray));
+        Future<?> f = executorService.submit(gr);
+        synchronized (jobs) {
+            jobs.add(f);
+        }
+        return f;
+    }
+
+    /**
+     * Submits a Callable task to the executor and returns the Future for the result.
+     * <p>
+     * Prefer this method when the caller needs to wait for completion and/or access
+     * the Callable's return value.
+     * </p>
      *
      * @param <V> The result type returned by the Callable.
      * @param callable The Callable task to execute.
+     * @return Future representing the submitted task.
      */
-    public <V> void executeCallableCmd(Callable<V> callable) {
+    public <V> Future<V> submitCallable(Callable<V> callable) {
         if (executorService == null) {
             throw new IllegalStateException("ExecutorService not started.");
         }
         startStatusCheckerIfNeeded();
         System.out.println("Submitting callable to queue: " + callable);
-        Future<?> f = executorService.submit(callable);
+        Future<V> f = executorService.submit(callable);
         synchronized (jobs) {
             jobs.add(f);
         }
+        return f;
+    }
+
+    /**
+     * Submits a Callable task to the executor.
+     * <p>
+     * Backward-compatible wrapper around {@link #submitCallable(Callable)}.
+     * </p>
+     *
+     * @param <V> The result type returned by the Callable.
+     * @param callable The Callable task to execute.
+     */
+    public <V> void executeCallableCmd(Callable<V> callable) {
+        submitCallable(callable);
     }
 
     /**
@@ -457,6 +533,30 @@ public class ExecutionThread implements AutoCloseable {
         }
     }
 
+    /**
+     * Submits a command array without starting the StatusChecker.
+     * <p>
+     * This is intended for small headless utilities/tests where JavaFX isn't on the classpath.
+     * The main application should prefer {@link #submitCommand(String[])} which starts job status monitoring.
+     * </p>
+     *
+     * @param commandArray The command and its arguments.
+     * @return Future representing the submitted task.
+     */
+    public Future<?> submitCommandNoStatusChecker(String[] commandArray) {
+        if (executorService == null) {
+            throw new IllegalStateException("ExecutorService not started.");
+        }
+        RunnableCmd gr = new RunnableCmd();
+        gr.setCmd(commandArray);
+        System.out.println("Submitting to queue (no status checker): " + java.util.Arrays.toString(commandArray));
+        Future<?> f = executorService.submit(gr);
+        synchronized (jobs) {
+            jobs.add(f);
+        }
+        return f;
+    }
+
     // Deprecated methods for backward compatibility
     /**
      * @deprecated Use submitCommands instead.
@@ -480,4 +580,3 @@ public class ExecutionThread implements AutoCloseable {
         return submitCommand(arg);
     }
 }
-    

@@ -49,7 +49,9 @@ import java.util.Scanner;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
-//import ModelInterface.InterfaceMain;
+import glimpseUtil.CommandLineTokenizer;
+import glimpseUtil.ProcessResult;
+import glimpseUtil.ProcessRunner;
 import glimpseElement.ScenarioRow;
 import glimpseElement.ScenarioTable;
 import glimpseUtil.FileChooserPlus;
@@ -122,7 +124,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private static final String DIFF_LABEL = "Diff";
     private static final String DIFF_TOOLTIP = "Diff: Compare first two selected configurations";
     private static final String REFRESH_LABEL = "Refresh";
-    private static final String REFRESH_TOOLTIP = "Refresh: Update scenario completion status";
+    private static final String REFRESH_TOOLTIP = "Refresh: Update scenario run status";
+    private static final String CONSOLE_LABEL = "Console";
+    private static final String CONSOLE_TOOLTIP = "Console: View GCAM and ModelInterface output";
     private static final String RESULTS_LABEL = "Results";
     private static final String RESULTS_TOOLTIP = "Results: Open the ModelInterface to view results";
     private static final String RESULTS_SELECTED_LABEL = "Results (selected)";
@@ -200,6 +204,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         // Creating buttons on the bottom pane
         Client.buttonDiffFiles = utils.createButton(DIFF_LABEL, styles.getBigButtonWidth(), DIFF_TOOLTIP, "compare");
         Client.buttonRefreshScenarioStatus = utils.createButton(REFRESH_LABEL, styles.getBigButtonWidth(), REFRESH_TOOLTIP, "refresh1");
+        Client.buttonConsole = utils.createButton(null, styles.getBigButtonWidth(), CONSOLE_TOOLTIP, "console");
         Client.buttonResults = utils.createButton(RESULTS_LABEL, styles.getBigButtonWidth(), RESULTS_TOOLTIP, "results");
         Client.buttonResultsForSelected = utils.createButton(RESULTS_SELECTED_LABEL, styles.getBigButtonWidth(), RESULTS_SELECTED_TOOLTIP, "results-selected");
         Client.buttonRunScenario = utils.createButton(PLAY_LABEL, styles.getBigButtonWidth(), PLAY_TOOLTIP, "play");
@@ -235,6 +240,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             updateRunStatus();
             ScenarioTable.tableScenariosLibrary.refresh();
         });
+        Client.buttonConsole.setOnAction(e -> ConsoleManager.show());
         Client.buttonReport.setOnAction(e -> generateRunReport());
         Client.buttonRunScenario.setOnAction(e -> {
             try {
@@ -837,83 +843,162 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
      */
     private void runGcamModel(String[] scenarioConfigFiles) throws IOException {
         System.out.println("Running scenarios in GCAM...");
-        ArrayList<String> cmdList = new ArrayList<String>();
         for (String scenarioConfigFile : scenarioConfigFiles) {
-            if (scenarioConfigFile != null) {
-                final String dir = scenarioConfigFile.substring(0, scenarioConfigFile.lastIndexOf(File.separator)).replaceAll("/", File.separator);
-                System.out.println("config: " + scenarioConfigFile);
-                this.runsQueuedList.add(scenarioConfigFile);
-                Client.gCAMExecutionThread.executeCallableCmd(new Callable<String>() {
-                    @Override
-                    public String call() throws Exception {
-                        System.out.println("Cleaning out folder.");
-                        String[] filesToDelete = vars.getFilesToSave().replaceAll("/", File.separator).split(";");
-                        for (String fileToDelete : filesToDelete) {
-                            String file = dir + File.separator + fileToDelete.substring(fileToDelete.lastIndexOf(File.separator) + 1);
-                            System.out.println(" Deleting " + file);
-                            File f = new File(file);
-                            if (f.exists()) {
-                                try {
-                                    Path pathOfFileToDelete = Paths.get(file);
-                                    Files.delete(pathOfFileToDelete);
-                                } catch (Exception e1) {
-                                    utils.warningMessage("Error deleting " + file);
-                                    System.out.println("Error deleting " + file + ":" + e1);
-                                }
-                            }
-                        }
-                        return "txt and log files deleted from scenario folder";
-                    }
-                });
-                boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
-                System.out.println("OS detected as Windows: " + isWindows);
-                String cmdStr = isWindows
-                    ? "cmd.exe /C start \"\" ./" + vars.getgCamExecutable() + " " + vars.getgCamExecutableArgs() + " " + scenarioConfigFile
-                    : "xterm -e " + vars.getgCamExecutableDir() + File.separator + vars.getgCamExecutable() + " " + vars.getgCamExecutableArgs() + " " + scenarioConfigFile ;
-                System.out.println("Command to run: " + cmdStr);
-                Future f = Client.gCAMExecutionThread.submitCommandWithDirectory(cmdStr, vars.getgCamExecutableDir());
-                 
-                Client.gCAMExecutionThread.executeCallableCmd(new Callable<String>() {
-                    @Override
-                    public String call() throws Exception {
-                        System.out.println("Moving results to scenario folder.");
-                        if ((vars.getFilesToSave() != null) && (vars.getFilesToSave().length() > 0)) {
-                            String[] filesToSave = vars.getFilesToSave().replaceAll("/", File.separator).split(";");
-                            for (String fileToSave : filesToSave) {
-                                File file = new File(fileToSave);
-                                if (file.exists()) {
-                                    Path source = Paths.get(fileToSave);
-                                    String destinationStr = dir + File.separator + fileToSave.substring(fileToSave.lastIndexOf(File.separator) + 1);
-                                    Path destination = Paths.get(destinationStr);
-                                    System.out.println(" Moving " + fileToSave + " to " + destination);
-                                    int count = 0;
-                                    try {
-                                        while ((!f.isDone()) && (count < 10000)) {
-                                            Thread.sleep(10000);
-                                            count++;
-                                        }
-                                        f.cancel(true);
-                                        files.moveFile(source, destination);
-                                    } catch (Exception e1) {
-                                        System.out.println("Problem moving file " + fileToSave);
-                                        System.out.println("Exception " + e1);
-                                    }
-                                    File destf = new File(destinationStr);
-                                    if (!destf.exists()) {
-                                        System.out.println("Problem moving file " + fileToSave);
-                                    }
-                                    if (file.exists())
-                                        files.deleteFile(file);
-                                    updateRunStatus();
-                                } else {
-                                    System.out.println("Unable to save " + fileToSave);
-                                }
-                            }
-                        }
-                        return "moving specified files to scenario folder";
-                    }
-                });
+            if (scenarioConfigFile == null) {
+                continue;
             }
+
+            final String dir = scenarioConfigFile.substring(0, scenarioConfigFile.lastIndexOf(File.separator)).replaceAll("/", File.separator);
+            System.out.println("config: " + scenarioConfigFile);
+            this.runsQueuedList.add(scenarioConfigFile);
+
+            // 1) Clean out prior outputs from the scenario folder (async).
+            Client.gCAMExecutionThread.executeCallableCmd(new Callable<String>() {
+                @Override
+                public String call() throws Exception {
+                    System.out.println("Cleaning out folder.");
+                    String[] filesToDelete = vars.getFilesToSave().replaceAll("/", File.separator).split(";");
+                    for (String fileToDelete : filesToDelete) {
+                        String file = dir + File.separator + fileToDelete.substring(fileToDelete.lastIndexOf(File.separator) + 1);
+                        System.out.println(" Deleting " + file);
+                        File f = new File(file);
+                        if (f.exists()) {
+                            try {
+                                Path pathOfFileToDelete = Paths.get(file);
+                                Files.delete(pathOfFileToDelete);
+                            } catch (Exception e1) {
+                                utils.warningMessage("Error deleting " + file);
+                                System.out.println("Error deleting " + file + ":" + e1);
+                            }
+                        }
+                    }
+                    return "txt and log files deleted from scenario folder";
+                }
+            });
+
+            // 2) Run GCAM directly (no cmd.exe start / xterm) so we can capture exit code and output.
+            Future<ProcessResult> gcamFuture = Client.gCAMExecutionThread.submitCallable(new Callable<ProcessResult>() {
+                @Override
+                public ProcessResult call() throws Exception {
+                    boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
+                    System.out.println("OS detected as Windows: " + isWindows);
+
+                    ArrayList<String> cmd = new ArrayList<>();
+                    String exeDir = vars.getgCamExecutableDir();
+                    String exeName = vars.getgCamExecutable();
+
+                    if (isWindows) {
+                        cmd.add("cmd.exe");
+                        cmd.add("/c");
+                        cmd.add(".\\" + exeName);
+                    } else {
+                        cmd.add(exeDir + File.separator + exeName);
+                    }
+
+                    String args = vars.getgCamExecutableArgs();
+                    if (args != null && args.trim().length() > 0) {
+                        for (String a : CommandLineTokenizer.tokenize(args)) {
+                            if (a != null && a.length() > 0) {
+                                cmd.add(a);
+                            }
+                        }
+                    }
+                    cmd.add(scenarioConfigFile);
+
+                    System.out.println("Command to run (direct): " + cmd);
+                    ConsoleManager.appendHeader(ConsoleManager.StreamSource.GCAM_STDOUT, "Starting GCAM");
+                    ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT, "cmd: " + cmd);
+                    ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT, "working dir: " + new File(exeDir).getAbsolutePath());
+
+                    return ProcessRunner.run(
+                            cmd,
+                            new File(exeDir),
+                            null,
+                            null,
+                            line -> ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT, line),
+                            line -> ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDERR, line)
+                    );
+                }
+            });
+
+            // 3) After GCAM completes, write logs and move requested outputs based on exit code.
+            Client.gCAMExecutionThread.executeCallableCmd(new Callable<String>() {
+                @Override
+                public String call() throws Exception {
+                    ProcessResult result;
+                    try {
+                        result = gcamFuture.get();
+                    } catch (Exception e) {
+                        // If GCAM crashed before returning a result, record as failure.
+                        result = new ProcessResult(-1, "", "Exception waiting for GCAM: " + e, false, 0);
+                    }
+
+                    String scenName = new File(dir).getName();
+                    String mainLogFile = vars.getScenarioDir() + File.separator + scenName + File.separator + "main_log.txt";
+                    String mainErrFile = vars.getScenarioDir() + File.separator + scenName + File.separator + "main_error.txt";
+
+                    try {
+                        files.saveFile(
+                                "GCAM exitCode=" + result.getExitCode() + System.lineSeparator() + result.getStdout(),
+                                mainLogFile);
+                        if (result.getStderr() != null && result.getStderr().trim().length() > 0) {
+                            files.saveFile(
+                                    "GCAM exitCode=" + result.getExitCode() + System.lineSeparator() + result.getStderr(),
+                                    mainErrFile);
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Problem writing GCAM logs: " + e);
+                    }
+
+                    System.out.println("GCAM finished with exitCode=" + result.getExitCode());
+
+                    ConsoleManager.appendHeader(ConsoleManager.StreamSource.GCAM_STDOUT, "GCAM finished (exitCode=" + result.getExitCode() + ")");
+                    if (result.getStdout() != null && !result.getStdout().isEmpty()) {
+                        ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT, result.getStdout());
+                    }
+                    if (result.getStderr() != null && !result.getStderr().isEmpty()) {
+                        ConsoleManager.appendHeader(ConsoleManager.StreamSource.GCAM_STDERR, "GCAM stderr:");
+                        ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDERR, result.getStderr());
+                    }
+
+                    if (!result.isSuccess()) {
+                        System.out.println("GCAM run failed (or timed out); skipping move of output files.");
+                        updateRunStatus();
+                        return "GCAM run failed";
+                    }
+
+                    System.out.println("Moving results to scenario folder.");
+                    if ((vars.getFilesToSave() != null) && (vars.getFilesToSave().length() > 0)) {
+                        String[] filesToSave = vars.getFilesToSave().replaceAll("/", File.separator).split(";");
+                        for (String fileToSave : filesToSave) {
+                            File file = new File(fileToSave);
+                            if (file.exists()) {
+                                Path source = Paths.get(fileToSave);
+                                String destinationStr = dir + File.separator + fileToSave.substring(fileToSave.lastIndexOf(File.separator) + 1);
+                                Path destination = Paths.get(destinationStr);
+                                System.out.println(" Moving " + fileToSave + " to " + destination);
+                                try {
+                                    files.moveFile(source, destination);
+                                } catch (Exception e1) {
+                                    System.out.println("Problem moving file " + fileToSave);
+                                    System.out.println("Exception " + e1);
+                                }
+                                File destf = new File(destinationStr);
+                                if (!destf.exists()) {
+                                    System.out.println("Problem moving file " + fileToSave);
+                                }
+                                if (file.exists()) {
+                                    files.deleteFile(file);
+                                }
+                            } else {
+                                System.out.println("Unable to save " + fileToSave);
+                            }
+                        }
+                    }
+                    updateRunStatus();
+                    return "moving specified files to scenario folder";
+                }
+            });
         }
     }
 
@@ -936,45 +1021,120 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
      * @throws IOException if process execution fails
      */
     private void runModelInterfaceWhich(String database_name) throws IOException {
-        boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
-        String shell = isWindows ? "cmd.exe /C start" : "xterm -e";//"/bin/sh -c";
-        String[] cmd = new String[1];
-        String command = shell +" java -jar ./"
-                + vars.getModelInterfaceJar() + " -o "
-                + database_name;
-        //specifying query file
-        String temp = vars.getQueryFilename();
-        if ((temp != null) && (temp != ""))
-            command += " -q " + temp;
-        //specifying unit conversions file
-        temp = vars.getUnitConversionsFilename();
-        if ((temp != null) && (temp != ""))
-            command += " -u " + temp;
-        //specifying preset region list file
-        temp = vars.getPresetRegionListFilename();
-        if ((temp != null) && (temp != ""))
-            command += " -p " + temp;
-        //specifying favorite query file
-        temp = vars.getFavoriteQueryFilename();
-        if ((temp != null) && (temp != ""))
-            command += " -f " + temp;
-        //
-        temp = vars.getModelInterfaceDir() + File.separator + "map_resources";
-        if ((temp != null) && (temp != ""))
-            command += " -m " + temp;
+        final String modelInterfaceDirStr = vars.getModelInterfaceDir();
+        final File modelInterfaceDir = (modelInterfaceDirStr == null) ? null : new File(modelInterfaceDirStr);
+        final String jarName = vars.getModelInterfaceJar();
 
-        System.out
-                .println("Starting " + vars.getModelInterfaceJar() + " using database " + vars.getgCamOutputDatabase());
-        System.out.println(">>   cmd:" + command);
+        // Preflight checks (fail fast with actionable messages)
+        ArrayList<String> problems = new ArrayList<>();
+        if (modelInterfaceDir == null || modelInterfaceDirStr == null || modelInterfaceDirStr.trim().isEmpty()) {
+            problems.add("ModelInterface directory is not set.");
+        } else if (!modelInterfaceDir.isDirectory()) {
+            problems.add("ModelInterface directory does not exist: " + modelInterfaceDir.getAbsolutePath());
+        }
+
+        File jarFile = null;
+        if (jarName == null || jarName.trim().isEmpty()) {
+            problems.add("ModelInterface jar file name is not set.");
+        } else if (modelInterfaceDir != null) {
+            jarFile = new File(modelInterfaceDir, jarName);
+            if (!jarFile.isFile()) {
+                problems.add("ModelInterface jar not found: " + jarFile.getAbsolutePath());
+            }
+        }
+
+        if (database_name == null || database_name.trim().isEmpty()) {
+            problems.add("Output database path is not set.");
+        } else {
+            File db = new File(database_name);
+            if (!db.exists()) {
+                problems.add("Database not found: " + db.getAbsolutePath());
+            }
+        }
+
+        // Optional files (only validate if provided)
+        validateOptionalFile(problems, "Query file", vars.getQueryFilename());
+        validateOptionalFile(problems, "Units conversion file", vars.getUnitConversionsFilename());
+        validateOptionalFile(problems, "Preset region list file", vars.getPresetRegionListFilename());
+        validateOptionalFile(problems, "Favorite queries file", vars.getFavoriteQueryFilename());
+
+        File mapsDir = null;
+        if (modelInterfaceDir != null) {
+            mapsDir = new File(modelInterfaceDir, "map_resources");
+            if (!mapsDir.isDirectory()) {
+                problems.add("Map resources directory not found: " + mapsDir.getAbsolutePath());
+            }
+        }
+
+        if (!problems.isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Unable to start ModelInterface. Please fix:\n\n");
+            for (String p : problems) {
+                sb.append(" - ").append(p).append("\n");
+            }
+            utils.warningMessage(sb.toString());
+            System.out.println(sb.toString());
+            return;
+        }
+
+        // Build args list to avoid OS-specific quoting issues.
+        final ArrayList<String> args = new ArrayList<>();
+        args.add("java");
+        args.add("-jar");
+        args.add(jarFile.getAbsolutePath());
+        args.add("-o");
+        args.add(database_name);
+
+        appendArgIfPresent(args, "-q", vars.getQueryFilename());
+        appendArgIfPresent(args, "-u", vars.getUnitConversionsFilename());
+        appendArgIfPresent(args, "-p", vars.getPresetRegionListFilename());
+        appendArgIfPresent(args, "-f", vars.getFavoriteQueryFilename());
+        // Always pass maps folder if present and valid.
+        if (mapsDir != null) {
+            args.add("-m");
+            args.add(mapsDir.getAbsolutePath());
+        }
+
+        System.out.println("Starting " + jarName + " using database " + database_name);
+        System.out.println(">>   cmd args: " + args);
+        System.out.println(">>   working dir: " + modelInterfaceDir.getAbsolutePath());
+
+        ConsoleManager.appendHeader(ConsoleManager.StreamSource.MODEL_INTERFACE, "Starting ModelInterface");
+        ConsoleManager.appendLine(ConsoleManager.StreamSource.MODEL_INTERFACE, "cmd args: " + args);
+        ConsoleManager.appendLine(ConsoleManager.StreamSource.MODEL_INTERFACE, "working dir: " + modelInterfaceDir.getAbsolutePath());
+
         try {
-            Client.modelInterfaceExecutionThread.submitCommandWithDirectory(command,vars.getModelInterfaceDir());
+            Client.modelInterfaceExecutionThread.submitCommandWithDirectory(args, modelInterfaceDir.getAbsolutePath());
         } catch (Exception e) {
-            utils.warningMessage("Problem starting up ModelInterface.");
+            utils.warningMessage("Problem starting up ModelInterface. See console for details.");
             System.out.println("Error in trying to start up ModelInterface:");
-            System.out.println(e);
+            e.printStackTrace();
+            ConsoleManager.appendLine(ConsoleManager.StreamSource.MODEL_INTERFACE, "ERROR: " + e);
         }
     }
-    
+
+    private void validateOptionalFile(ArrayList<String> problems, String label, String filename) {
+        if (filename == null || filename.trim().isEmpty()) {
+            return;
+        }
+        File f = new File(filename);
+        if (!f.exists()) {
+            problems.add(label + " not found: " + f.getAbsolutePath());
+        }
+    }
+
+    private void appendArgIfPresent(ArrayList<String> args, String flag, String value) {
+        if (value == null) {
+            return;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return;
+        }
+        args.add(flag);
+        args.add(trimmed);
+    }
+
     /**
      * Archives scenario files by copying them to an archive folder and zipping the result.
      * Prompts user if archive already exists. Updates configuration file paths to point to archived files.
