@@ -1030,7 +1030,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             this.runsQueuedList.add(queuedScenarioName);
 
             // 1) Clean out prior outputs from the scenario folder (async).
-            Client.gCAMExecutionThread.executeCallableCmd(new Callable<String>() {
+            Client.gCAMExecutionThread.executeCallableCmd(ExecutionThread.namedCallable(
+                    "GCAM pre-clean: scenario=" + queuedScenarioName,
+                    new Callable<String>() {
                 @Override
                 public String call() throws Exception {
                     System.out.println("Cleaning out folder.");
@@ -1051,10 +1053,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                     }
                     return "txt and log files deleted from scenario folder";
                 }
-            });
+            }));
 
             // 2) Run GCAM (capture a handle so we can stop it).
-            Future<ProcessResult> gcamFuture = Client.gCAMExecutionThread.submitCallable(new Callable<ProcessResult>() {
+            Future<ProcessResult> gcamFuture = Client.gCAMExecutionThread.submitCallable(ExecutionThread.namedCallable(
+                    "GCAM run: scenario=" + queuedScenarioName,
+                    new Callable<ProcessResult>() {
                 @Override
                 public ProcessResult call() throws Exception {
                     // Reset stop-result for this run.
@@ -1102,9 +1106,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                             cmd,
                             new File(exeDir),
                             null,
-                            line -> ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
+                            line -> ConsoleManager.appendLineBuffered(ConsoleManager.StreamSource.GCAM_STDOUT,
                                     ConsoleManager.MessageKind.MODEL_STDOUT, line),
-                            line -> ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
+                            line -> ConsoleManager.appendLineBuffered(ConsoleManager.StreamSource.GCAM_STDOUT,
                                     ConsoleManager.MessageKind.STDERR, line)
                     );
 
@@ -1121,25 +1125,31 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                     try {
                         return rp.waitForResult(null);
                     } finally {
-                        // Clear handle when finished.
-                        currentGcamRun = null;
-                        currentGcamScenarioName = null;
-                        Platform.runLater(() -> {
-                            try {
-                                if (Client.buttonStopScenario != null) {
-                                    Client.buttonStopScenario.setDisable(true);
-                                }
-                            } catch (Exception ignored) {}
-                        });
-                    }
+                        // Force a final flush so the last burst is visible immediately at completion.
+                        try {
+                            ConsoleManager.flushBuffered();
+                        } catch (Exception ignored) {}
+                         // Clear handle when finished.
+                         currentGcamRun = null;
+                         currentGcamScenarioName = null;
+                         Platform.runLater(() -> {
+                             try {
+                                 if (Client.buttonStopScenario != null) {
+                                     Client.buttonStopScenario.setDisable(true);
+                                 }
+                             } catch (Exception ignored) {}
+                         });
+                     }
                 }
-            });
+            }));
 
             // Remember the future so stop can cancel the wait.
             currentGcamFuture = gcamFuture;
 
             // 3) After GCAM completes, write logs and move requested outputs based on exit code.
-            Client.gCAMExecutionThread.executeCallableCmd(new Callable<String>() {
+            Client.gCAMExecutionThread.executeCallableCmd(ExecutionThread.namedCallable(
+                    "GCAM post-process: scenario=" + queuedScenarioName,
+                    new Callable<String>() {
                 @Override
                 public String call() throws Exception {
                     ProcessResult result;
@@ -1247,7 +1257,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                     updateRunStatus();
                     return "moving specified files to scenario folder";
                 }
-            });
+            }));
         }
     }
 

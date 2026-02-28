@@ -13,11 +13,18 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -516,8 +523,212 @@ final class ConsoleManager {
         }
     }
 
+    /**
+     * Buffered console flushing for high-volume output (notably GCAM stdout).
+     *
+     * Why this exists:
+     * - Scheduling Platform.runLater per line can backlog the FX queue and make output appear to "update late".
+     * - We batch lines off-thread and flush them onto the FX thread periodically.
+     */
+    private static final class BufferedAppender {
+        private final StreamSource source;
+        private final ConcurrentLinkedQueue<BufferedItem> queue = new ConcurrentLinkedQueue<>();
+        private volatile int approxCharsQueued = 0;
+
+        private BufferedAppender(StreamSource source) {
+            this.source = source;
+        }
+
+        void enqueue(MessageKind kind, String line) {
+            if (line == null) {
+                return;
+            }
+            // Queue the raw line; newline is added on flush to keep consistent behaviour.
+            queue.add(new BufferedItem(kind, line));
+            approxCharsQueued += Math.min(4096, line.length() + 1);
+        }
+
+        void drainToUi(int maxItems) {
+            // Must be called on FX thread.
+            if (maxItems <= 0) {
+                maxItems = Integer.MAX_VALUE;
+            }
+
+            ensureModelCreated();
+            if (stage == null) {
+                createStage();
+            }
+
+            TextFlow flow;
+            ScrollPane scroll;
+            switch (source) {
+            case GLIMPSE_STDERR:
+            case GLIMPSE_STDOUT:
+                flow = glimpseStdoutFlow;
+                scroll = glimpseStdoutScroll;
+                break;
+            case MODEL_INTERFACE:
+                flow = modelInterfaceFlow;
+                scroll = modelInterfaceScroll;
+                break;
+            case GCAM_STDERR:
+            case GCAM_STDOUT:
+            default:
+                flow = gcamStdoutFlow;
+                scroll = gcamStdoutScroll;
+                break;
+            }
+
+            if (flow == null) {
+                // Drain anyway to keep memory bounded.
+                int drained = 0;
+                BufferedItem it;
+                while (drained < maxItems && (it = queue.poll()) != null) {
+                    drained++;
+                }
+                approxCharsQueued = 0;
+                return;
+            }
+
+            int drained = 0;
+            BufferedItem it;
+            while (drained < maxItems && (it = queue.poll()) != null) {
+                drained++;
+
+                String out = it.line;
+                if (!out.endsWith("\n")) {
+                    out = out + System.lineSeparator();
+                }
+
+                Text t = new Text(out);
+                t.setFill(colorFor(it.kind));
+                flow.getChildren().add(t);
+            }
+
+            // Reset the approximate size occasionally. This is not exact but good enough for throttling.
+            if (queue.isEmpty()) {
+                approxCharsQueued = 0;
+            }
+
+            autoScrollToBottom(scroll);
+        }
+
+        void clearPending() {
+            while (queue.poll() != null) {
+                // drain
+            }
+            approxCharsQueued = 0;
+        }
+
+        int getApproxCharsQueued() {
+            return approxCharsQueued;
+        }
+    }
+
+    private static final class BufferedItem {
+        private final MessageKind kind;
+        private final String line;
+
+        private BufferedItem(MessageKind kind, String line) {
+            this.kind = (kind == null) ? MessageKind.GLIMPSE_INFO : kind;
+            this.line = (line == null) ? "" : line;
+        }
+    }
+
+    // Config: keep these conservative so UI remains snappy.
+    private static final long BUFFER_FLUSH_MILLIS = 50; // more regular updates
+    private static final int BUFFER_FLUSH_MAX_ITEMS_PER_PULSE = 600;
+    private static final int BUFFER_FORCE_FLUSH_CHAR_THRESHOLD = 64 * 1024;
+
+    private static final ScheduledExecutorService BUFFER_SCHEDULER = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "ConsoleManager-BufferedFlush");
+        t.setDaemon(true);
+        return t;
+    });
+
+    private static final ConcurrentHashMap<StreamSource, BufferedAppender> BUFFERED = new ConcurrentHashMap<>();
+    private static volatile ScheduledFuture<?> flushTask;
+
+    private static BufferedAppender buffered(StreamSource source) {
+        StreamSource effective = source;
+        if (effective == null) {
+            effective = StreamSource.GLIMPSE_STDOUT;
+        }
+        // Route deprecated stderr sources to their stdout tab, consistent with appendLine().
+        if (effective == StreamSource.GLIMPSE_STDERR) {
+            effective = StreamSource.GLIMPSE_STDOUT;
+        } else if (effective == StreamSource.GCAM_STDERR) {
+            effective = StreamSource.GCAM_STDOUT;
+        }
+        return BUFFERED.computeIfAbsent(effective, BufferedAppender::new);
+    }
+
+    private static synchronized void ensureFlushTaskScheduled() {
+        if (flushTask != null && !flushTask.isDone()) {
+            return;
+        }
+        flushTask = BUFFER_SCHEDULER.scheduleAtFixedRate(() -> {
+            // Only schedule a UI flush if there is something queued.
+            boolean anyQueued = false;
+            for (BufferedAppender a : BUFFERED.values()) {
+                if (a != null && !a.queue.isEmpty()) {
+                    anyQueued = true;
+                    break;
+                }
+            }
+            if (!anyQueued) {
+                return;
+            }
+            Platform.runLater(() -> flushBufferedToUi(false));
+        }, BUFFER_FLUSH_MILLIS, BUFFER_FLUSH_MILLIS, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Buffered append intended for very chatty streams.
+     *
+     * This does not call Platform.runLater per line. Instead it batches and flushes to the UI periodically.
+     */
+    static void appendLineBuffered(StreamSource source, MessageKind kind, String line) {
+        if (line == null) {
+            return;
+        }
+        BufferedAppender app = buffered(source);
+        app.enqueue(kind, line);
+        ensureFlushTaskScheduled();
+
+        // Safety valve: if we get a huge burst, trigger a sooner UI flush.
+        if (app.getApproxCharsQueued() >= BUFFER_FORCE_FLUSH_CHAR_THRESHOLD) {
+            // Best-effort: schedule a one-off flush soon. If FX is busy, periodic flush will still catch up.
+            Platform.runLater(() -> flushBufferedToUi(false));
+        }
+    }
+
+    /** Forces any buffered text to be appended to the UI now (best-effort). */
+    static void flushBuffered() {
+        Platform.runLater(() -> flushBufferedToUi(true));
+    }
+
+    /** Must be called on FX thread. */
+    private static void flushBufferedToUi(boolean drainAll) {
+        ensureModelCreated();
+        int maxItems = drainAll ? Integer.MAX_VALUE : BUFFER_FLUSH_MAX_ITEMS_PER_PULSE;
+        for (BufferedAppender a : BUFFERED.values()) {
+            if (a == null) {
+                continue;
+            }
+            // If not draining all, split pulses across different streams fairly.
+            a.drainToUi(maxItems);
+        }
+    }
+
     /** Clears the text for the given console stream (best-effort). */
     static void clear(StreamSource source) {
+        // Flush pending buffered content first so it doesn't reappear right after clear().
+        try {
+            BufferedAppender app = buffered(source);
+            app.clearPending();
+        } catch (Exception ignored) {}
+
         Platform.runLater(() -> {
             // Create model buffers even if the window hasn't been opened yet.
             ensureModelCreated();

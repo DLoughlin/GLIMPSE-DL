@@ -39,11 +39,14 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.ConcurrentHashMap;
 
 import glimpseUtil.ProcessRunner;
 import glimpseUtil.ProcessResult;
@@ -84,6 +87,41 @@ public class ExecutionThread implements AutoCloseable {
      * (reliable for the common single-thread executor case).
      */
     private volatile Future<?> currentRunningFuture;
+
+    /** Incrementing id for jobs submitted to this ExecutionThread (for easier logging). */
+    private final AtomicLong jobIdCounter = new AtomicLong(0);
+
+    /** Best-effort metadata about submitted jobs for logging/debugging. */
+    private final Map<Future<?>, String> jobLabels = new ConcurrentHashMap<>();
+
+    /** Optional interface for tasks that can provide a readable description for logs. */
+    public interface DebugDescribable {
+        /** @return short human-friendly description (no newlines preferred). */
+        String getDebugDescription();
+    }
+
+    private static String describeCallableForLog(Callable<?> callable) {
+        if (callable == null) {
+            return "<null>";
+        }
+        try {
+            if (callable instanceof DebugDescribable) {
+                String s = ((DebugDescribable) callable).getDebugDescription();
+                if (s != null && !s.trim().isEmpty()) {
+                    return s.trim();
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        // Fall back to class name + identity hash for stable identification.
+        String name;
+        try {
+            name = callable.getClass().getName();
+        } catch (Throwable t) {
+            name = "Callable";
+        }
+        return name + "@" + Integer.toHexString(System.identityHashCode(callable));
+    }
 
     /**
      * Checks if the number of completed jobs has changed since the last check.
@@ -399,11 +437,16 @@ public class ExecutionThread implements AutoCloseable {
             throw new IllegalStateException("ExecutorService not started.");
         }
         startStatusCheckerIfNeeded();
-        System.out.println("Submitting callable to queue: " + callable);
+
+        final long jobId = jobIdCounter.incrementAndGet();
+        final String label = describeCallableForLog(callable);
+        System.out.println("Submitting callable to queue [jobId=" + jobId + "]: " + label);
 
         java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
         Future<V> f = executorService.submit(wrapCallableForTracking(callable, ref));
         ref.set(f);
+
+        jobLabels.put(f, "jobId=" + jobId + ", " + label);
 
         synchronized (jobs) {
             jobs.add(f);
@@ -727,5 +770,36 @@ public class ExecutionThread implements AutoCloseable {
                 }
             }
         };
+    }
+
+    /**
+     * Convenience wrapper to attach a human-friendly label to an arbitrary Callable.
+     * <p>
+     * This is the easiest way to opt-in to better queue logging while still using lambdas.
+     * </p>
+     */
+    public static <T> Callable<T> namedCallable(String description, Callable<T> delegate) {
+        return new LabeledCallable<>(description, delegate);
+    }
+
+    /** Simple wrapper that provides a debug label for logging. */
+    private static final class LabeledCallable<T> implements Callable<T>, DebugDescribable {
+        private final String description;
+        private final Callable<T> delegate;
+
+        private LabeledCallable(String description, Callable<T> delegate) {
+            this.description = description;
+            this.delegate = delegate;
+        }
+
+        @Override
+        public String getDebugDescription() {
+            return description;
+        }
+
+        @Override
+        public T call() throws Exception {
+            return delegate.call();
+        }
     }
 }

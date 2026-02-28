@@ -521,6 +521,17 @@ public class GLIMPSEVariables {
     }
 
     /**
+     * Returns whether debug mode is enabled.
+     * <p>
+     * This is a convenience boolean used to gate noisy debug-only logging.
+     * Historically, GLIMPSE used string debug flags; we interpret any non-zero
+     * debug flag as enabling debug.
+     */
+    public boolean getDebug() {
+        return !"0".equals(debugCreate) || !"0".equals(debugRename);
+    }
+
+    /**
      * Returns the build information string.
      *
      * @return The build information string.

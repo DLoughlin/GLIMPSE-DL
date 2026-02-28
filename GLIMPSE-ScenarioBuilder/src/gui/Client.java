@@ -644,6 +644,16 @@ public class Client extends Application {
 
     /** Prints a consistent elapsed-time marker for startup profiling. */
     private static void logStartupCheckpoint(String label, long t0Nanos) {
+        // Only emit noisy startup timing info when debug mode is enabled.
+        try {
+            if (!GLIMPSEVariables.getInstance().getDebug()) {
+                return;
+            }
+        } catch (Throwable ignored) {
+            // If vars isn't initialized yet for some reason, default to no logging.
+            return;
+        }
+
         final long now = System.nanoTime();
         final long msSinceT0 = (now - t0Nanos) / 1_000_000L;
         final long msSinceProcessStart = (now - STARTUP_T0_NANOS) / 1_000_000L;
