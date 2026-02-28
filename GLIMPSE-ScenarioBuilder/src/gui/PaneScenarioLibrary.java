@@ -44,6 +44,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.Scanner;
 import java.util.concurrent.Callable;
@@ -597,15 +598,24 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
      * Only works if exactly two scenarios are selected.
      */
     private void handleDiffFiles() {
-        ObservableList<ScenarioRow> selectedFiles = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems();
-        if (selectedFiles.size() == 2) {
-            String sName1 = selectedFiles.get(0).getScenarioName();
-            String sName2 = selectedFiles.get(1).getScenarioName();
-            String file1 = vars.getScenarioDir() + File.separator + sName1 + File.separator + "configuration_" + sName1 + ".xml";
-            String file2 = vars.getScenarioDir() + File.separator + sName2 + File.separator + "configuration_" + sName2 + ".xml";
-            utils.diffTwoFiles(file1, file2);
-        }
-    }
+		ObservableList<ScenarioRow> selectedFiles = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems();
+		if (selectedFiles.size() != 2) {
+			utils.warningMessage("Diff requires exactly two selected scenarios.");
+			return;
+		}
+
+		String sName1 = selectedFiles.get(0).getScenarioName();
+		String sName2 = selectedFiles.get(1).getScenarioName();
+		String file1 = vars.getScenarioDir() + File.separator + sName1 + File.separator + "configuration_" + sName1 + ".xml";
+		String file2 = vars.getScenarioDir() + File.separator + sName2 + File.separator + "configuration_" + sName2 + ".xml";
+
+		try {
+			List<DiffLineRow> rows = utils.generateSideBySideDiffRows(file1, file2);
+			DiffWindow.show(file1, file2, rows);
+		} catch (Exception e) {
+			utils.warningMessage("Problem generating diff: " + e.getMessage());
+		}
+	}
 
     /**
      * Displays the current run queue in a popup window.

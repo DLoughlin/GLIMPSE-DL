@@ -599,7 +599,9 @@ public class TabTechTax extends PolicyTab implements Runnable {
 	private void saveScenarioComponent(TreeView<String> tree) {
 		// Validate all user inputs before proceeding
 		if (!qaInputs()) {
-			Thread.currentThread().destroy();
+			try {
+				Thread.currentThread().interrupt();
+			} catch (Exception ignored) {}
 			return;
 		} else {
 			String[] listOfSelectedLeaves = utils.getAllSelectedRegions(tree);

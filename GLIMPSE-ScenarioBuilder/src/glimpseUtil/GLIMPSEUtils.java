@@ -70,6 +70,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.CheckBoxTreeItem;
@@ -104,6 +105,7 @@ import com.sun.javafx.tk.FontLoader;
 import com.sun.javafx.tk.Toolkit;
 
 import gui.Client;
+import gui.DiffLineRow;
 
 /**
  * Utility class for common operations in GLIMPSE ScenarioBuilder.
@@ -1351,6 +1353,69 @@ public class GLIMPSEUtils {
 		return continueAction;
 	}
 
+	public boolean showInformationDialog(String title, String header, String content) {
+		if (title == null || header == null || content == null)
+			return false;
+		Alert alert = new Alert(AlertType.INFORMATION);
+		applyModernThemeToDialog(alert);
+		alert.setTitle(title);
+		alert.setHeaderText(header);
+		alert.setContentText(content);
+		alert.showAndWait();
+		return true;
+	}
+
+	public boolean confirmArchiveScenario() {
+		if (vars == null)
+			return false;
+		Alert alert = new Alert(AlertType.CONFIRMATION);
+		applyModernThemeToDialog(alert);
+		alert.setTitle(LABEL_CONFIRMATION_DIALOG);
+		alert.setHeaderText(LABEL_ARCHIVE_SCENARIO);
+		alert.setContentText(LABEL_PLEASE_CONFIRM_ARCHIVE);
+
+		ButtonType yes = new ButtonType("Yes");
+		ButtonType no = new ButtonType("No", ButtonBar.ButtonData.CANCEL_CLOSE);
+		alert.getButtonTypes().setAll(yes, no);
+		// Make the safer choice the default.
+		try {
+			Button noBtn = (Button) alert.getDialogPane().lookupButton(no);
+			if (noBtn != null) {
+				noBtn.setDefaultButton(true);
+				noBtn.setCancelButton(true);
+			}
+		} catch (Exception e) {
+			// ignore; default behavior will still treat close as NO
+		}
+
+		Optional<ButtonType> result = alert.showAndWait();
+		return result.isPresent() && result.get() == yes;
+	}
+ 
+	public boolean showStatusDialog(String title, String header, String content) {
+		if (title == null || header == null || content == null)
+			return false;
+		Alert alert = new Alert(AlertType.INFORMATION);
+		applyModernThemeToDialog(alert);
+		alert.setTitle(title);
+		alert.setHeaderText(header);
+		alert.setContentText(content);
+		Optional<ButtonType> result = alert.showAndWait();
+		return !(result.isPresent() && result.get() == ButtonType.CANCEL);
+	}
+
+	public boolean selectYesOrNoDialog(String s) {
+		boolean b = false;
+
+		JFrame jf = new JFrame();
+		jf.setAlwaysOnTop(true);
+
+		int dialogButton = JOptionPane.YES_NO_OPTION;
+		int dialogResult = JOptionPane.showConfirmDialog(jf, s, "Confirmation required", dialogButton);
+		b = (dialogResult == 0);
+		return b;
+	}
+ 
 	public boolean diffTwoFiles(String file1, String file2) {
 		if (files == null)
 			return false;
@@ -1363,16 +1428,59 @@ public class GLIMPSEUtils {
 
 		try {
 			patch = DiffUtils.diff(file1Content, file2Content);
+			b = true;
 		} catch (DiffException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
 		ArrayList<String> diff = new ArrayList<String>();
+		if (patch == null) {
+			diff.add("Diff failed: could not compute differences.");
+			displayArrayList(diff, "Differences");
+			return false;
+		}
+
+		// Unified diff style report for readability.
+		diff.add("--- " + safeFileLabel(file1));
+		diff.add("+++ " + safeFileLabel(file2));
+
+		int inserts = 0;
+		int deletes = 0;
+		int changes = 0;
 
 		for (AbstractDelta<String> delta : patch.getDeltas()) {
-			String s = "" + delta;
-			diff.add(s);
+			if (delta == null)
+				continue;
+			switch (delta.getType()) {
+			case INSERT:
+				inserts++;
+				break;
+			case DELETE:
+				deletes++;
+				break;
+			case CHANGE:
+				changes++;
+				break;
+			default:
+				break;
+			}
+		}
+
+		diff.add("Hunks: " + patch.getDeltas().size() + "  (" + "insert=" + inserts + ", delete=" + deletes + ", change="
+				+ changes + ")");
+		diff.add("---");
+
+		// Show a little context around changes.
+		final int context = 2;
+
+		for (AbstractDelta<String> delta : patch.getDeltas()) {
+			if (delta == null)
+				continue;
+			appendUnifiedHunk(diff, delta, file1Content, file2Content, context, true);
+		}
+
+		if (patch.getDeltas().isEmpty()) {
+			diff.add("(No differences)");
 		}
 
 		displayArrayList(diff, "Differences");
@@ -1380,96 +1488,117 @@ public class GLIMPSEUtils {
 		return b;
 	}
 
-	public boolean diffTwoFiles2(String file1, String file2) {
-		if (files == null)
-			return false;
-		boolean b = false;
-
-		DiffRowGenerator generator = DiffRowGenerator.create().showInlineDiffs(true).inlineDiffByWord(true)
-				.oldTag(f -> "~").newTag(f -> "**").build();
-
-		ArrayList<String> file1Content = files.getStringArrayFromFile(file1, "#");
-		ArrayList<String> file2Content = files.getStringArrayFromFile(file2, "#");
-
-		List<DiffRow> rows = null;
-
+	/** Returns a readable short label for a file path (basename when available). */
+	private String safeFileLabel(String filePath) {
 		try {
-			rows = generator.generateDiffRows(file1Content, file2Content);
-			b = true;
-		} catch (DiffException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			if (filePath == null)
+				return "";
+			File f = new File(filePath);
+			String name = f.getName();
+			return (name != null && !name.isEmpty()) ? name : filePath;
+		} catch (Throwable t) {
+			return filePath == null ? "" : filePath;
 		}
-
-		System.out.println("|original|new|");
-		System.out.println("|========|===|");
-		for (DiffRow row : rows) {
-			System.out.println("|" + row.getOldLine() + "|" + row.getNewLine() + "|");
-		}
-
-		return b;
 	}
 
-	public boolean confirmArchiveScenario() {
-		if (vars == null)
-			return false;
-		// asks the user to confirm that they want to delete the trash
-		Alert alert = new Alert(AlertType.CONFIRMATION);
-		applyModernThemeToDialog(alert);
-		alert.setTitle(LABEL_CONFIRMATION_DIALOG);
-		alert.setHeaderText(LABEL_ARCHIVE_SCENARIO);
-		alert.setContentText(LABEL_PLEASE_CONFIRM_ARCHIVE);
-		Optional<ButtonType> result = alert.showAndWait();
-		if (result.isPresent() && result.get() == ButtonType.CANCEL) {
-			return false;
-		}
-		return true;
+	/**
+	 * Safe read of a line from a list; returns empty string when out of bounds.
+	 */
+	private String safeGetLine(List<String> lines, int index0) {
+		if (lines == null)
+			return "";
+		if (index0 < 0 || index0 >= lines.size())
+			return "";
+		String s = lines.get(index0);
+		return s == null ? "" : s;
 	}
 
-	public boolean showInformationDialog(String title, String header, String content) {
-		if (title == null || header == null || content == null)
-			return false;
-		// asks the user to confirm that they want to delete the trash
-		Alert alert = new Alert(AlertType.INFORMATION);
-		applyModernThemeToDialog(alert);
-		alert.setTitle(title);
-		alert.setHeaderText(header);
-		alert.setContentText(content);
-		return true;
+	/**
+	 * Removes trailing whitespace for readability and to reduce noise.
+	 * (We still show the original content aside from trailing whitespace.)
+	 */
+	private String rstrip(String s) {
+		if (s == null)
+			return "";
+		int end = s.length();
+		while (end > 0) {
+			char c = s.charAt(end - 1);
+			if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+				end--;
+			} else {
+				break;
+			}
+		}
+		return s.substring(0, end);
 	}
 
-	public boolean showStatusDialog(String title, String header, String content) {
-		if (title == null || header == null || content == null)
-			return false;
-		// asks the user to confirm that they want to delete the trash
-		Alert alert = new Alert(AlertType.INFORMATION);
-		applyModernThemeToDialog(alert);
-		alert.setTitle(title);
-		alert.setHeaderText(header);
-		alert.setContentText(content);
-		Optional<ButtonType> result = alert.showAndWait();
-		if (result.isPresent() && result.get() == ButtonType.CANCEL) {
-			return false;
-		}
-		return true;
-	}
+	private void appendUnifiedHunk(ArrayList<String> out, AbstractDelta<String> delta, List<String> oldLines,
+			List<String> newLines, int context, boolean normalizeTrailingWhitespace) {
+		if (out == null || delta == null)
+			return;
 
-	public boolean selectYesOrNoDialog(String s) {
-		boolean b = false;
-
-		JFrame jf = new JFrame();
-		jf.setAlwaysOnTop(true);
-
-		int dialogButton = JOptionPane.YES_NO_OPTION;
-		int dialogResult = JOptionPane.showConfirmDialog(jf, s, "Confirmation required", dialogButton);
-
-		if (dialogResult == 0) {
-			b = true;
-		} else {
-			b = false;
+		int oldPos = 0;
+		int oldSize = 0;
+		int newPos = 0;
+		int newSize = 0;
+		List<String> srcLines = null;
+		List<String> tgtLines = null;
+		try {
+			if (delta.getSource() != null) {
+				oldPos = delta.getSource().getPosition();
+				srcLines = delta.getSource().getLines();
+				oldSize = (srcLines == null) ? 0 : srcLines.size();
+			}
+			if (delta.getTarget() != null) {
+				newPos = delta.getTarget().getPosition();
+				tgtLines = delta.getTarget().getLines();
+				newSize = (tgtLines == null) ? 0 : tgtLines.size();
+			}
+		} catch (Throwable t) {
+			// If anything goes wrong, fall back to the raw delta representation.
+			out.add(String.valueOf(delta));
+			out.add("---");
+			return;
 		}
 
-		return b;
+		int oldStart = Math.max(0, oldPos - context);
+		int oldEnd = Math.min(oldLines == null ? 0 : oldLines.size(), oldPos + Math.max(oldSize, 1) + context);
+
+		int newStart = Math.max(0, newPos - context);
+		int newEnd = Math.min(newLines == null ? 0 : newLines.size(), newPos + Math.max(newSize, 1) + context);
+
+		// Hunk header (1-based line numbers)
+		out.add("@@ -" + (oldStart + 1) + "," + (oldEnd - oldStart) + " +" + (newStart + 1) + "," + (newEnd - newStart)
+				+ " @@  (" + delta.getType() + ")");
+
+		// Old context up to change
+		for (int i = oldStart; i < oldPos; i++) {
+			String s = safeGetLine(oldLines, i);
+			out.add(" " + (normalizeTrailingWhitespace ? rstrip(s) : s));
+		}
+
+		// Removed/changed old lines
+		if (srcLines != null) {
+			for (String s : srcLines) {
+				out.add("-" + (normalizeTrailingWhitespace ? rstrip(s) : (s == null ? "" : s)));
+			}
+		}
+
+		// Added/changed new lines
+		if (tgtLines != null) {
+			for (String s : tgtLines) {
+				out.add("+" + (normalizeTrailingWhitespace ? rstrip(s) : (s == null ? "" : s)));
+			}
+		}
+
+		// New context after change
+		int oldResume = oldPos + oldSize;
+		for (int i = oldResume; i < oldEnd; i++) {
+			String s = safeGetLine(oldLines, i);
+			out.add(" " + (normalizeTrailingWhitespace ? rstrip(s) : s));
+		}
+
+		out.add("---");
 	}
 
 	public void displayString(String str, String title) {
@@ -1950,7 +2079,7 @@ public class GLIMPSEUtils {
 		String val = null;
 		double num = 0.0;
 
-		val = numf + ",1";
+	 val = numf + ",1";
 
 		String load = "1";
 		if (sector.startsWith("trn"))
@@ -1965,7 +2094,7 @@ public class GLIMPSEUtils {
 
 					val = "," + num + ",1.0e6";
 				}
-			} catch (Exception e) {
+						} catch (Exception e) {
 				;
 			}
 
@@ -2915,6 +3044,77 @@ public class GLIMPSEUtils {
 			}
 		}
 		return policyType;
+	}
+
+	/**
+	 * Generates a side-by-side diff (line aligned) using java-diff-utils {@link DiffRowGenerator}.
+	 *
+	 * <p>Intended for UI display (TableView) rather than unified diff text output.</p>
+	 *
+	 * @param file1 original file
+	 * @param file2 new file
+	 * @return list of DiffLineRow objects suitable for rendering
+	 */
+	public java.util.List<DiffLineRow> generateSideBySideDiffRows(String file1, String file2) {
+		java.util.List<DiffLineRow> out = new java.util.ArrayList<>();
+		if (files == null) {
+			return out;
+		}
+
+		java.util.ArrayList<String> file1Content = files.getStringArrayFromFile(file1, "#");
+		java.util.ArrayList<String> file2Content = files.getStringArrayFromFile(file2, "#");
+		if (file1Content == null) file1Content = new java.util.ArrayList<>();
+		if (file2Content == null) file2Content = new java.util.ArrayList<>();
+
+		try {
+			DiffRowGenerator generator = DiffRowGenerator.create()
+					.showInlineDiffs(true)
+					.inlineDiffByWord(true)
+					.oldTag(f -> "")
+					.newTag(f -> "")
+					.build();
+
+			java.util.List<DiffRow> rows = generator.generateDiffRows(file1Content, file2Content);
+
+			int oldLine = 0;
+			int newLine = 0;
+			for (DiffRow r : rows) {
+				if (r == null) continue;
+				DiffRow.Tag tag = r.getTag();
+
+				String oldText = r.getOldLine();
+				String newText = r.getNewLine();
+
+				int oldNum = 0;
+				int newNum = 0;
+				switch (tag) {
+				case INSERT:
+					newNum = ++newLine;
+					break;
+				case DELETE:
+					oldNum = ++oldLine;
+					break;
+				case CHANGE:
+					oldNum = ++oldLine;
+					newNum = ++newLine;
+					break;
+				case EQUAL:
+				default:
+					oldNum = ++oldLine;
+					newNum = ++newLine;
+					break;
+				}
+
+				out.add(new DiffLineRow(oldNum, newNum, oldText, newText, tag));
+			}
+
+		} catch (Exception e) {
+			// Best-effort: return a minimal message row.
+			out.clear();
+			out.add(new DiffLineRow(0, 0, "Diff failed:", String.valueOf(e), com.github.difflib.text.DiffRow.Tag.CHANGE));
+		}
+
+		return out;
 	}
 
 }

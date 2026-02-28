@@ -774,7 +774,9 @@ public class TabTechParam extends PolicyTab implements Runnable {
      */
     private void saveScenarioComponent(TreeView<String> tree) {
         if (!qaInputs()) {
-            Thread.currentThread().destroy();
+            try {
+                Thread.currentThread().interrupt();
+            } catch (Exception ignored) {}
             return;
         } else {
             CsvFileWriter cfw = CsvFileWriter.getInstance();

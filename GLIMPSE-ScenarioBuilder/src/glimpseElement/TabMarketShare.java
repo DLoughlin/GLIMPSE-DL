@@ -852,7 +852,9 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 	private void saveScenarioComponent(TreeView<String> tree) {
 		// 1. Early exit on failed QA
 		if (!qaInputs()) {
-			Thread.currentThread().destroy();
+			try {
+				Thread.currentThread().interrupt();
+			} catch (Exception ignored) {}
 			return;
 		}
 
