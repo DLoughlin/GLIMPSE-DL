@@ -105,7 +105,7 @@ import javafx.stage.Stage;
  */
 class PaneCreateScenario extends ScenarioBuilder {
     // UI Constants
-    private static final String LABEL_NAME = "Name: ";
+    private static final String LABEL_NAME = "Name:";
     private static final String LABEL_COMPONENTS = "Components: ";
     private static final String LABEL_CREATE_SCENARIO = "Create Scenario";
     private static final String TOOLTIP_SCENARIO_NAME = "Enter name of scenario being constructed";
@@ -140,6 +140,7 @@ class PaneCreateScenario extends ScenarioBuilder {
     private VBox vBox;
     private TextField textFieldScenarioName;
     private Label labelScenarioName;
+    private Label labelName;
 
     /**
      * Constructs the scenario creation pane and initializes all UI components.
@@ -155,8 +156,10 @@ class PaneCreateScenario extends ScenarioBuilder {
         // vBox.setStyle(styles.getFontStyle());
 
         labelScenarioName = utils.createLabel(LABEL_CREATE_SCENARIO, 1.5 * styles.getBigButtonWidth());
+		labelName = utils.createLabel(LABEL_NAME);
+		labelName.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
         HBox hBox = new HBox(30);
-        hBox.getChildren().addAll(labelScenarioName, textFieldScenarioName);
+		hBox.getChildren().addAll(labelScenarioName, labelName, textFieldScenarioName);
         // Use centralized small bottom padding
         hBox.setPadding(styles.getSmallBottomPadding());
 

@@ -1075,9 +1075,23 @@ public class GLIMPSEUtils {
 		if (styles == null)
 			return label;
 		FontLoader fontLoader = Toolkit.getToolkit().getFontLoader();
-		label.setFont(Font.font(size));
+		// Preserve existing font family/weight and preserve any existing inline style rules.
+		Font existingFont = label.getFont();
+		String family = existingFont != null ? existingFont.getFamily() : null;
+		// Keep whatever weight/posture the label already has; just change the size.
+		label.setFont(Font.font(family, size));
 		double font = label.getFont().getSize();
-		label.setStyle("-fx-font-size:" + (font) + "px;");
+		String existingStyle = label.getStyle();
+		if (existingStyle == null)
+			existingStyle = "";
+		if (existingStyle.contains("-fx-font-size")) {
+			existingStyle = existingStyle.replaceAll("-fx-font-size:[^;]+;", "-fx-font-size:" + (font) + "px;");
+		} else {
+			if (!existingStyle.isEmpty() && !existingStyle.endsWith(";"))
+				existingStyle += ";";
+			existingStyle += "-fx-font-size:" + (font) + "px;";
+		}
+		label.setStyle(existingStyle);
 		label.applyCss();
 		label.layout();
 		label.setText(text);
