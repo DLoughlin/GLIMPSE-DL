@@ -55,7 +55,12 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.RowConstraints;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.geometry.Insets;
 import javafx.scene.paint.Color;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -118,7 +123,7 @@ public class Client extends Application {
     // region GUI Panels
     static PaneCreateScenario paneCreateScenario;
     static PaneScenarioLibrary paneScenarioLibrary;
-    static PaneNewScenarioComponent paneComponentLibrary;
+    static PaneComponentLibrary paneComponentLibrary;
     // endregion
 
     // region GUI Buttons
@@ -353,13 +358,50 @@ public class Client extends Application {
      */
     private GridPane combineAllElementsIntoOnePane() {
         final GridPane mainGridPane = new GridPane();
+		// No horizontal whitespace between the left pane, arrow buttons, and create-scenario pane.
+		mainGridPane.setHgap(0);
+
+		// Layout columns so the arrow buttons stay centered between the left and right panes.
+		ColumnConstraints leftCol = new ColumnConstraints();
+		leftCol.setHgrow(Priority.ALWAYS);
+
+		ColumnConstraints arrowCol = new ColumnConstraints();
+		arrowCol.setHgrow(Priority.NEVER);
+		arrowCol.setFillWidth(true);
+		arrowCol.setHalignment(javafx.geometry.HPos.CENTER);
+
+		// Column 2 is intentionally empty (a spacer) so the right pane can be pushed further right.
+		ColumnConstraints spacerCol = new ColumnConstraints();
+		spacerCol.setHgrow(Priority.ALWAYS);
+		spacerCol.setMinWidth(0);
+
+		ColumnConstraints rightCol = new ColumnConstraints();
+		rightCol.setHgrow(Priority.ALWAYS);
+
+		mainGridPane.getColumnConstraints().setAll(leftCol, arrowCol, spacerCol, rightCol);
+
+        // Give the bottom (scenario library) row more vertical space so the divider sits lower.
+        RowConstraints topRow = new RowConstraints();
+        topRow.setVgrow(Priority.ALWAYS);
+        topRow.setPercentHeight(45);
+
+        RowConstraints bottomRow = new RowConstraints();
+        bottomRow.setVgrow(Priority.ALWAYS);
+        bottomRow.setPercentHeight(55);
+
+        mainGridPane.getRowConstraints().setAll(topRow, bottomRow);
+
         // Add component library, button panel, and create scenario panel
         mainGridPane.add(getScenarioBuilder().getvBoxComponentLibrary(), 0, 0);
-        mainGridPane.add(getScenarioBuilder().getvBoxButton(), 1, 0);
+        VBox arrowBox = getScenarioBuilder().getvBoxButton();
+        mainGridPane.add(arrowBox, 1, 0);
+		// Add an empty spacer at column 2 so the grid recognizes the 4-column layout.
+		Region spacer = new Region();
+		mainGridPane.add(spacer, 2, 0);
         mainGridPane.add(getScenarioBuilder().getvBoxCreateScenario(), 3, 0);
 
         // Add run panel at the bottom, spanning all columns
-        final HBox stack = new HBox(20);
+        final HBox stack = new HBox(10);
         stack.getChildren().addAll(getScenarioBuilder().getvBoxRun());
         stack.prefWidthProperty().bind(primaryStage.widthProperty());
         stack.setStyle(styles.getStyle1());
@@ -631,9 +673,9 @@ public class Client extends Application {
     public static PaneScenarioLibrary getPaneScenarioLibrary() { return paneScenarioLibrary; }
     /**
      * Gets the pane for candidate scenario components.
-     * @return PaneNewScenarioComponent the candidate components pane
+     * @return PaneComponentLibrary the candidate components pane
      */
-    public static PaneNewScenarioComponent getPaneComponentLibrary() { return paneComponentLibrary; }
+    public static PaneComponentLibrary getPaneComponentLibrary() { return paneComponentLibrary; }
     /**
      * Gets the right arrow button.
      * @return Button the right arrow button

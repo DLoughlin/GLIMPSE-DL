@@ -51,17 +51,13 @@ import javafx.collections.transformation.SortedList;
 import javafx.event.ActionEvent;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
-import javafx.geometry.Insets;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
-import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
 
 import java.io.File;
 import java.io.IOException;
@@ -190,6 +186,12 @@ public class ScenarioBuilder {
 	 * Sets up tooltips and filtering for the component library table.
 	 */
 	private void createTables() {
+		// The component-library filter TextField must exist before the table is set up,
+		// because SetupTableComponentLibrary wires filtering listeners against it.
+		if (ComponentLibraryTable.getFilterComponentsTextField() == null) {
+			ComponentLibraryTable.setFilterComponentsTextField(utils.createTextField());
+		}
+
 		new SetupTableComponentLibrary().setup();
 		ComponentLibraryTable.getFilterComponentsTextField().setTooltip(new Tooltip(TOOLTIP_FILTER));
 
@@ -205,20 +207,6 @@ public class ScenarioBuilder {
 	private void createComponentLibraryPane() {
 		labelComponentLibrary = utils.createLabel(LABEL_COMPONENT_LIBRARY/*, 1.7 * styles.getBigButtonWidth()*/);
 		labelComponentLibrary.getStyleClass().add(STYLE_SECTION_TITLE);
-		// Match the Scenario Library "titled border" behavior: give the title a background
-		// so it can sit on top of the bordered panel without the border line bleeding through.
-		// Use setters for padding/font so it applies regardless of CSS precedence.
-		labelComponentLibrary.setStyle(labelComponentLibrary.getStyle() + "; -fx-background-color: -fx-control-inner-background;");
-		labelComponentLibrary.setPadding(new Insets(0, 6, 6, 6));
-		try {
-			Font f = labelComponentLibrary.getFont();
-			double size = (f != null) ? f.getSize() : 12.0;
-			String family = (f != null) ? f.getFamily() : null;
-			labelComponentLibrary.setFont(Font.font(family, FontWeight.BOLD, size));
-		} catch (Exception ignored) {
-			// If font can't be derived, fall back to CSS (still OK).
-			labelComponentLibrary.setStyle(labelComponentLibrary.getStyle() + "; -fx-font-weight: bold;");
-		}
 
 		labelSearchComponentLibrary = utils.createLabel(LABEL_SEARCH);
 		labelSearchComponentLibrary.setMinWidth(Region.USE_PREF_SIZE);
@@ -228,32 +216,27 @@ public class ScenarioBuilder {
 		paneObjects.setAlignment(Pos.CENTER_LEFT);
 		paneObjects.setSpacing(4);
 
-		Client.paneComponentLibrary = new PaneNewScenarioComponent();
+		// create component library pane
+		//Client.paneComponentLibrary = new PaneNewScenarioComponent();
+		Client.paneComponentLibrary = new PaneComponentLibrary();
 
 		// Add all relevant controls to the component library pane
 		paneObjects.getChildren().addAll(
-			labelSearchComponentLibrary, 
+			labelSearchComponentLibrary,
 			ComponentLibraryTable.getFilterComponentsTextField(),
-			utils.getSeparator(Orientation.VERTICAL, 3, false), 
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
 			Client.buttonNewComponent,
 			Client.buttonEditComponent,
-			utils.getSeparator(Orientation.VERTICAL, 3, false), 
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
 			Client.buttonBrowseComponentLibrary,
-			utils.getSeparator(Orientation.VERTICAL, 3, false), 
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
 			Client.buttonDeleteComponent,
-			utils.getSeparator(Orientation.VERTICAL, 3, false), 
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
 			Client.buttonRefreshComponents
 		);
 
-		// Build a bordered "card" and overlay the section title on its top border.
-		VBox content = new VBox(4, paneObjects, Client.paneComponentLibrary.getvBox());
-		StackPane titledPanel = new StackPane(content, labelComponentLibrary);
-		StackPane.setAlignment(labelComponentLibrary, Pos.TOP_LEFT);
-		labelComponentLibrary.setTranslateY(-8);
-		StackPane.setMargin(labelComponentLibrary, new Insets(0, 0, 0, 10));
-		labelComponentLibrary.toFront();
-
-		vBoxComponentLibrary = new VBox(0, titledPanel);
+		// Simple "title row + content rows" panel.
+		vBoxComponentLibrary = new VBox(6, labelComponentLibrary, paneObjects, Client.paneComponentLibrary.getvBox());
 		vBoxComponentLibrary.getStyleClass().add(STYLE_PANEL_CARD);
 		vBoxComponentLibrary.setStyle(styles.getStyle1());
 	}
@@ -265,9 +248,11 @@ public class ScenarioBuilder {
 	private void createCreateScenarioPane() {
 		labelScenarioName = utils.createLabel(LABEL_CREATE_SCENARIO, 2 * styles.getBigButtonWidth());
 		labelScenarioName.getStyleClass().add(STYLE_SECTION_TITLE);
+
 		Client.paneCreateScenario = new PaneCreateScenario(Client.primaryStage);
 
-		vBoxCreateScenario = new VBox(4, Client.paneCreateScenario.getvBox());
+		// Simple "title row + content rows" panel.
+		vBoxCreateScenario = new VBox(6, labelScenarioName, Client.paneCreateScenario.getvBox());
 		vBoxCreateScenario.getStyleClass().add(STYLE_PANEL_CARD);
 		vBoxCreateScenario.setStyle(styles.getStyle1());
 	}
@@ -279,9 +264,6 @@ public class ScenarioBuilder {
 	private void createScenarioLibraryPane() {
 		labelScenarioLibrary = utils.createLabel(LABEL_SCENARIO_LIBRARY/*, styles.getBigButtonWidth() * 1.75*/);
 		labelScenarioLibrary.getStyleClass().add(STYLE_SECTION_TITLE);
-		// Give the title a matching background so it visually "breaks" the border line behind it.
-		// (If modern.css provides a background already, this is harmless.)
-		labelScenarioLibrary.setStyle(labelScenarioLibrary.getStyle() + "; -fx-background-color: -fx-control-inner-background; -fx-padding: 0 6 0 6;");
 
 		TextField filterScenarioTextField = utils.createTextField();
 		filterScenarioTextField.setMinWidth(styles.getBigButtonWidth());
@@ -323,46 +305,35 @@ public class ScenarioBuilder {
 
 		// Add all relevant controls to the scenario library pane
 		buttonHBox.getChildren().addAll(
-			labelSearchScenarios, 
+			labelSearchScenarios,
 			filterScenarioTextField,
-			utils.getSeparator(Orientation.VERTICAL, 3, false), 
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
 			Client.buttonEditScenario,
 			Client.buttonViewConfig,
 			Client.buttonBrowseScenarioFolder,
-			utils.getSeparator(Orientation.VERTICAL, 3, false), 
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
 			Client.buttonRunScenario,
 			Client.buttonStopScenario,
-			Client.buttonDeleteScenario, 
+			Client.buttonDeleteScenario,
 			utils.getSeparator(Orientation.VERTICAL, 3, false),
-			Client.buttonResults, 
+			Client.buttonResults,
 			Client.buttonResultsForSelected,
-			utils.getSeparator(Orientation.VERTICAL, 3, false), 
-			Client.buttonDiffFiles,
-			Client.buttonShowRunQueue, 
 			utils.getSeparator(Orientation.VERTICAL, 3, false),
-			Client.buttonViewExeLog, Client.buttonViewExeErrors, 
-			Client.buttonViewLog, 
+			Client.buttonDiffFiles,
+			Client.buttonShowRunQueue,
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
+			Client.buttonViewExeLog, Client.buttonViewExeErrors,
+			Client.buttonViewLog,
 			Client.buttonViewErrors,
-			utils.getSeparator(Orientation.VERTICAL, 3, false), 
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
 			Client.buttonRefreshScenarioStatus,
-			utils.getSeparator(Orientation.VERTICAL, 3, false), 
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
 			Client.buttonConsole
 		);
 
-		// Build a bordered "card" and overlay the section title on its top border.
-		// This avoids clipping/truncation that can happen when the title is inside the toolbar HBox.
-		HBox toolbarRow = new HBox(6, buttonHBox);
-		toolbarRow.setAlignment(Pos.CENTER_LEFT);
-		toolbarRow.getStyleClass().add(STYLE_TOOLBAR);
+		VBox content = new VBox(4, buttonHBox, Client.paneScenarioLibrary.gethBox());
 
-		VBox content = new VBox(4, toolbarRow, Client.paneScenarioLibrary.gethBox());
-		StackPane titledPanel = new StackPane(content, labelScenarioLibrary);
-		StackPane.setAlignment(labelScenarioLibrary, Pos.TOP_LEFT);
-		// Nudge the title upward so it sits on the border line.
-		labelScenarioLibrary.setTranslateY(-8);
-		StackPane.setMargin(labelScenarioLibrary, new Insets(0, 0, 0, 10));
-
-		vBoxRun = new VBox(0, titledPanel);
+		vBoxRun = new VBox(6, labelScenarioLibrary, content);
 		vBoxRun.getStyleClass().add(STYLE_PANEL_CARD);
 		// Don't use legacy style1 here: it adds the blue border around the whole Scenario Library pane.
 		vBoxRun.setStyle("");
@@ -391,7 +362,8 @@ public class ScenarioBuilder {
 
 		vBoxButton = new VBox(5, Client.buttonRightArrow, Client.buttonLeftArrow, Client.buttonLeftDoubleArrow);
 		vBoxButton.setAlignment(Pos.CENTER);
-		vBoxButton.prefWidthProperty().bind(Client.primaryStage.widthProperty().multiply(0.5 / 7.0));
+		// Let the main GridPane determine the arrow-column width and centering.
+		vBoxButton.setFillWidth(false);
 	}
 
 	// --- Event Handlers for Buttons ---
@@ -505,72 +477,7 @@ public class ScenarioBuilder {
 		labelSearchScenarios = utils.resizeLabelText(labelSearchScenarios);
 		labelScenarioLibrary = utils.resizeLabelText(labelScenarioLibrary);
 		labelScenarioName = utils.resizeLabelText(labelScenarioName);
-		// resizeLabelText() can overwrite font/style, so re-apply any custom tweaks.
-		applyComponentLibraryTitleTweaks();
-		applyScenarioLibraryTitleTweaks();
-		applyCreateScenarioTitleTweaks();
-	}
-
-	/**
-	 * Re-applies custom styling that must survive calls to utils.resizeLabelText(),
-	 * which resets label font and style.
-	 */
-	private void applyComponentLibraryTitleTweaks() {
-		if (labelComponentLibrary == null) {
-			return;
-		}
-		// Ensure the title still has the border-break background patch.
-		labelComponentLibrary.setStyle(labelComponentLibrary.getStyle()
-				+ "; -fx-background-color: -fx-control-inner-background;"
-		);
-		// Add breathing room below the title.
-		labelComponentLibrary.setPadding(new Insets(0, 6, 6, 6));
-		// Force bold without changing the computed size.
-		try {
-			Font f = labelComponentLibrary.getFont();
-			double size = (f != null) ? f.getSize() : 12.0;
-			String family = (f != null) ? f.getFamily() : null;
-			labelComponentLibrary.setFont(Font.font(family, FontWeight.BOLD, size));
-		} catch (Exception ignored) {
-			labelComponentLibrary.setStyle(labelComponentLibrary.getStyle() + "; -fx-font-weight: bold;");
-		}
-	}
-
-	private void applyScenarioLibraryTitleTweaks() {
-		if (labelScenarioLibrary == null) {
-			return;
-		}
-		labelScenarioLibrary.setStyle(labelScenarioLibrary.getStyle()
-				+ "; -fx-background-color: -fx-control-inner-background;"
-		);
-		labelScenarioLibrary.setPadding(new Insets(0, 6, 6, 6));
-		try {
-			Font f = labelScenarioLibrary.getFont();
-			double size = (f != null) ? f.getSize() : 12.0;
-			String family = (f != null) ? f.getFamily() : null;
-			labelScenarioLibrary.setFont(Font.font(family, FontWeight.BOLD, size));
-		} catch (Exception ignored) {
-			labelScenarioLibrary.setStyle(labelScenarioLibrary.getStyle() + "; -fx-font-weight: bold;");
-		}
-		labelScenarioLibrary.toFront();
-	}
-
-	private void applyCreateScenarioTitleTweaks() {
-		if (labelScenarioName == null) {
-			return;
-		}
-		labelScenarioName.setStyle(labelScenarioName.getStyle()
-				+ "; -fx-background-color: -fx-control-inner-background;"
-		);
-		labelScenarioName.setPadding(new Insets(0, 6, 6, 6));
-		try {
-			Font f = labelScenarioName.getFont();
-			double size = (f != null) ? f.getSize() : 12.0;
-			String family = (f != null) ? f.getFamily() : null;
-			labelScenarioName.setFont(Font.font(family, FontWeight.BOLD, size));
-		} catch (Exception ignored) {
-			labelScenarioName.setStyle(labelScenarioName.getStyle() + "; -fx-font-weight: bold;");
-		}
+		// Title overlay tweaks no longer needed (titles are their own rows).
 	}
 
 	/**
