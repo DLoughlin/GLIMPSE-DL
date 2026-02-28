@@ -622,8 +622,22 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
      * Shows scenarios added to the queue and completed runs for the session.
      */
     private void handleShowRunQueue() {
-        ArrayList<String> txtArray = createSimpleQueueRpt();
-        utils.displayArrayList(txtArray, "Run Queue");
+        // Big-win UI: show a dedicated, searchable table window.
+        if ((runsQueuedList == null || runsQueuedList.isEmpty()) && (runsCompletedList == null || runsCompletedList.isEmpty())) {
+            utils.warningMessage("No queued runs this session.");
+            return;
+        }
+
+        try {
+            // Provide a live supplier so the Refresh button and auto-refresh can re-pull the latest lists.
+            QueueWindow.show(Client.primaryStage, () -> new QueueWindow.QueueData(
+                    new ArrayList<>(runsQueuedList),
+                    new ArrayList<>(runsCompletedList)));
+        } catch (Exception e) {
+            // Fallback: old text window
+            ArrayList<String> txtArray = createSimpleQueueRpt();
+            utils.displayArrayList(txtArray, "Run Queue");
+        }
     }
 
     /**

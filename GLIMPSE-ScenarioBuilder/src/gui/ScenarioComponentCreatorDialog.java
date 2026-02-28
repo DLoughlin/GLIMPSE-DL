@@ -134,6 +134,10 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 	// Callbacks
 	private final Runnable afterSaveOrClose;
 
+	/** Last size used for this dialog in the current session. */
+	private static double lastDialogWidth = 1150;
+	private static double lastDialogHeight = 720;
+
 	public ScenarioComponentCreatorDialog(Runnable afterSaveOrClose) {
 		this.afterSaveOrClose = (afterSaveOrClose != null) ? afterSaveOrClose : () -> {};
 	}
@@ -151,8 +155,8 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 	 */
 	public void show(Stage mainStage, String whichTab, ArrayList<String> contentToLoad) {
 		stageWithTabs = new Stage();
-		double dialogWidth = 1150;
-		double dialogHeight = 720;
+		double dialogWidth = lastDialogWidth;
+		double dialogHeight = lastDialogHeight;
 
 		hBoxButtons = createButtonHBox();
 		buttonSaveComponent = createDialogButton(BUTTON_LABEL_SAVE);
@@ -216,6 +220,30 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 		}
 		stageWithTabs.setScene(scene);
 		stageWithTabs.setTitle(DIALOG_TITLE_NEW_COMPONENT);
+
+		// Remember last size within this session.
+		stageWithTabs.widthProperty().addListener((obs, oldV, newV) -> {
+			try {
+				double w = newV == null ? -1 : newV.doubleValue();
+				if (w > 500) {
+					lastDialogWidth = w;
+				}
+			} catch (Exception ignored) {}
+		});
+		stageWithTabs.heightProperty().addListener((obs, oldV, newV) -> {
+			try {
+				double h = newV == null ? -1 : newV.doubleValue();
+				if (h > 400) {
+					lastDialogHeight = h;
+				}
+			} catch (Exception ignored) {}
+		});
+
+		// Restore last size (best-effort) when showing.
+		try {
+			stageWithTabs.setWidth(dialogWidth);
+			stageWithTabs.setHeight(dialogHeight);
+		} catch (Exception ignored) {}
 
 		stageWithTabs.setOnCloseRequest(new EventHandler<WindowEvent>() {
 			@Override

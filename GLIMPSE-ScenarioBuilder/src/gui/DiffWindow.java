@@ -45,6 +45,10 @@ import javafx.scene.control.ChoiceBox;
  */
 public class DiffWindow {
 
+    /** Last size used for this window in the current session. */
+    private static double lastWidth = 1200;
+    private static double lastHeight = 720;
+
     /** Shows a modal diff window. */
     public static void show(String file1, String file2, List<DiffLineRow> rows) {
         if (!Platform.isFxApplicationThread()) {
@@ -54,7 +58,7 @@ public class DiffWindow {
 
         Stage stage = new Stage();
         stage.initModality(Modality.NONE);
-        stage.setTitle("Diff: " + shortName(file1) + "  " + shortName(file2));
+        stage.setTitle("Diff: " + shortName(file1) + " \u001f " + shortName(file2));
 
         ObservableList<DiffLineRow> data = FXCollections.observableArrayList(rows);
 
@@ -130,7 +134,7 @@ public class DiffWindow {
         root.setTop(new VBox2(header, controls));
         root.setCenter(table);
 
-        Scene scene = new Scene(root, 1200, 720);
+        Scene scene = new Scene(root, lastWidth, lastHeight);
         // Prefer the app's shared modern.css for consistent styling.
         try {
             java.net.URL cssUrl = DiffWindow.class.getResource("/resources/modern.css");
@@ -141,6 +145,31 @@ public class DiffWindow {
         }
 
         stage.setScene(scene);
+
+        // Remember last size within this session.
+        stage.widthProperty().addListener((obs, oldV, newV) -> {
+            try {
+                double w = newV == null ? -1 : newV.doubleValue();
+                if (w > 300) {
+                    lastWidth = w;
+                }
+            } catch (Exception ignored) {}
+        });
+        stage.heightProperty().addListener((obs, oldV, newV) -> {
+            try {
+                double h = newV == null ? -1 : newV.doubleValue();
+                if (h > 300) {
+                    lastHeight = h;
+                }
+            } catch (Exception ignored) {}
+        });
+
+        // Restore last size (best-effort) when shown.
+        try {
+            stage.setWidth(lastWidth);
+            stage.setHeight(lastHeight);
+        } catch (Exception ignored) {}
+
         stage.show();
     }
 
