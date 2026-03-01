@@ -10,7 +10,6 @@ package gui;
 import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.function.Supplier;
@@ -23,24 +22,16 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonBar.ButtonData;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
-import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
-import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -56,8 +47,6 @@ public class QueueWindow {
     private static TableView<QueueRow> table;
     private static ObservableList<QueueRow> masterData = FXCollections.observableArrayList();
     private static Label statusLabel;
-    private static TextField filterField;
-    private static ChoiceBox<String> scopeChoice;
 
     /** Provider for reloading queue data on demand/interval. */
     private static Supplier<QueueData> dataSupplier;
@@ -71,8 +60,9 @@ public class QueueWindow {
     private static CheckBox autoRefreshCheckBox;
 
     /** Last size used for this window in the current session. */
-    private static double lastWidth = 730;
-    private static double lastHeight = 650;
+    // Reduce default width/height by ~1/3.
+    private static double lastWidth = 490;
+    private static double lastHeight = 435;
 
     /**
      * Show (or re-focus) the Run Queue window.
@@ -110,31 +100,21 @@ public class QueueWindow {
             stage.setTitle("Run Queue");
 
             table = new TableView<>();
-            table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
             table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
             table.getStyleClass().add("queue-table");
 
             TableColumn<QueueRow, String> colScenario = new TableColumn<>("Scenario");
             colScenario.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().scenario));
 
-            TableColumn<QueueRow, String> colStatus = new TableColumn<>("Status");
+            TableColumn<QueueRow, String> colStatus = new TableColumn<>("State");
             colStatus.setPrefWidth(140);
             colStatus.setMinWidth(140);
             colStatus.setMaxWidth(180);
             colStatus.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().status));
 
-            TableColumn<QueueRow, String> colSessionBucket = new TableColumn<>("Bucket");
-            colSessionBucket.setPrefWidth(110);
-            colSessionBucket.setMinWidth(110);
-            colSessionBucket.setMaxWidth(140);
-            colSessionBucket.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().bucket));
-
-            TableColumn<QueueRow, String> colLine = new TableColumn<>("Details");
-            colLine.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().rawLine));
-
             installStatusCellFactory(colStatus);
 
-            table.getColumns().addAll(colScenario, colStatus, colSessionBucket, colLine);
+            table.getColumns().addAll(colScenario, colStatus);
 
             table.setRowFactory(tv -> new TableRow<QueueRow>() {
                 @Override
@@ -167,37 +147,9 @@ public class QueueWindow {
             statusLabel = new Label();
             statusLabel.setPadding(new Insets(6, 10, 6, 10));
 
-            filterField = new TextField();
-            filterField.setPromptText("Filter (scenario or details)...");
-            filterField.setPrefColumnCount(20);
-            filterField.textProperty().addListener((obs, oldV, newV) -> applyFilter());
-
-            scopeChoice = new ChoiceBox<>(FXCollections.observableArrayList(
-                    "All",
-                    "Queued",
-                    "Completed",
-                    "Issues",
-                    "Running"
-            ));
-            scopeChoice.getSelectionModel().select(0);
-            scopeChoice.setTooltip(new Tooltip("Quick filter by status/bucket"));
-            scopeChoice.getSelectionModel().selectedIndexProperty().addListener((obs, o, n) -> applyFilter());
-
             Button refreshBtn = new Button("Refresh");
             refreshBtn.setTooltip(new Tooltip("Refresh from this session's queue/history"));
             refreshBtn.setOnAction(e -> refreshFromSupplier());
-
-            Button copyBtn = new Button("Copy");
-            copyBtn.setTooltip(new Tooltip("Copy selected rows (or all if none selected) to clipboard"));
-            copyBtn.setOnAction(e -> copyToClipboard());
-
-            Button saveAsBtn = new Button("Save As...");
-            saveAsBtn.setTooltip(new Tooltip("Save the queue table as a CSV file"));
-            saveAsBtn.setOnAction(e -> saveTableAsCsv(stage));
-
-            Button cancelQueuedBtn = new Button("Cancel queued");
-            cancelQueuedBtn.setTooltip(new Tooltip("Cancel queued GCAM jobs (keeps current run)"));
-            cancelQueuedBtn.setOnAction(e -> cancelQueuedJobs());
 
             autoRefreshCheckBox = new CheckBox("Auto-refresh (20s)");
             autoRefreshCheckBox.setTooltip(new Tooltip("When enabled, this window refreshes automatically every 20 seconds"));
@@ -208,9 +160,7 @@ public class QueueWindow {
             });
 
             HBox controls = new HBox(10,
-                    new Label("Show:"), scopeChoice,
-                    new Label("Filter:"), filterField,
-                    refreshBtn, copyBtn, saveAsBtn, cancelQueuedBtn,
+                    refreshBtn,
                     autoRefreshCheckBox);
             controls.setPadding(new Insets(6, 10, 6, 10));
 
@@ -387,7 +337,7 @@ public class QueueWindow {
         if (queuedLines != null) {
             for (String line : queuedLines) {
                 if (line == null || line.trim().isEmpty()) continue;
-                QueueRow row = QueueRow.from("Queued", line);
+                QueueRow row = QueueRow.from(false, line);
                 if (!runningScenarioNameLower.isEmpty() && safeLower(row.scenario).equals(runningScenarioNameLower)) {
                     row = row.withStatus("Running");
                 }
@@ -397,7 +347,7 @@ public class QueueWindow {
         if (completedLines != null) {
             for (String line : completedLines) {
                 if (line == null || line.trim().isEmpty()) continue;
-                masterData.add(QueueRow.from("Completed", line));
+                masterData.add(QueueRow.from(true, line));
             }
         }
 
@@ -405,17 +355,15 @@ public class QueueWindow {
 
         int queuedCount = 0;
         int completedCount = 0;
-        int issuesCount = 0;
         int runningCount = 0;
         for (QueueRow r : masterData) {
-            if ("Queued".equals(r.bucket)) queuedCount++;
-            if ("Completed".equals(r.bucket)) completedCount++;
-            if ("Issues".equals(r.status)) issuesCount++;
+            if ("Queued".equals(r.status)) queuedCount++;
+            if ("Completed".equals(r.status)) completedCount++;
             if ("Running".equals(r.status)) runningCount++;
         }
 
         String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-        statusLabel.setText("Queued: " + queuedCount + "   Completed: " + completedCount + "   Issues: " + issuesCount + "   Running: " + runningCount + "   (Last updated: " + ts + ")");
+        statusLabel.setText("Queued: " + queuedCount + "   Completed: " + completedCount + "   Running: " + runningCount + "   (Last updated: " + ts + ")");
         updateStatusLabelAutoRefreshDecoration();
     }
 
@@ -463,128 +411,8 @@ public class QueueWindow {
     private static void applyFilter() {
         if (table == null) return;
 
-        String txt = filterField == null ? "" : safeLower(filterField.getText());
-        String scope = scopeChoice == null ? "All" : scopeChoice.getSelectionModel().getSelectedItem();
-
-        ObservableList<QueueRow> filtered = FXCollections.observableArrayList();
-        for (QueueRow r : masterData) {
-            if (r == null) continue;
-
-            if (scope != null && !"All".equals(scope)) {
-                if ("Queued".equals(scope) && !"Queued".equals(r.bucket)) continue;
-                if ("Completed".equals(scope) && !"Completed".equals(r.bucket)) continue;
-                if ("Issues".equals(scope) && !"Issues".equals(r.status)) continue;
-                if ("Running".equals(scope) && !"Running".equals(r.status)) continue;
-            }
-
-            if (txt != null && !txt.isEmpty()) {
-                String hay = safeLower(r.scenario) + "\n" + safeLower(r.rawLine);
-                if (!hay.contains(txt)) {
-                    continue;
-                }
-            }
-            filtered.add(r);
-        }
-
-        table.setItems(filtered);
-    }
-
-    private static void copyToClipboard() {
-        try {
-            List<QueueRow> rows;
-            if (table.getSelectionModel().getSelectedItems() != null && !table.getSelectionModel().getSelectedItems().isEmpty()) {
-                rows = new ArrayList<>(table.getSelectionModel().getSelectedItems());
-            } else {
-                rows = new ArrayList<>(table.getItems());
-            }
-
-            StringBuilder sb = new StringBuilder();
-            sb.append("Scenario\tStatus\tBucket\tDetails\n");
-            for (QueueRow r : rows) {
-                if (r == null) continue;
-                sb.append(nullToEmpty(r.scenario)).append('\t')
-                  .append(nullToEmpty(r.status)).append('\t')
-                  .append(nullToEmpty(r.bucket)).append('\t')
-                  .append(nullToEmpty(r.rawLine))
-                  .append('\n');
-            }
-
-            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
-            content.putString(sb.toString());
-            javafx.scene.input.Clipboard.getSystemClipboard().setContent(content);
-        } catch (Exception ignored) {}
-    }
-
-    private static void saveTableAsCsv(Stage owner) {
-        try {
-            FileChooser chooser = new FileChooser();
-            chooser.setTitle("Save Run Queue as CSV");
-            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV files (*.csv)", "*.csv"));
-            chooser.setInitialFileName("run_queue_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".csv");
-
-            File outFile = chooser.showSaveDialog(owner);
-            if (outFile == null) {
-                return;
-            }
-
-            try (java.io.PrintWriter pw = new java.io.PrintWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(outFile), java.nio.charset.StandardCharsets.UTF_8))) {
-                pw.println("Scenario,Status,Bucket,Details");
-                for (QueueRow r : table.getItems()) {
-                    if (r == null) continue;
-                    pw.print(csv(r.scenario));
-                    pw.print(',');
-                    pw.print(csv(r.status));
-                    pw.print(',');
-                    pw.print(csv(r.bucket));
-                    pw.print(',');
-                    pw.print(csv(r.rawLine));
-                    pw.println();
-                }
-            }
-        } catch (Exception ignored) {}
-    }
-
-    private static void cancelQueuedJobs() {
-        try {
-            if (Client.gCAMExecutionThread == null) {
-                Alert a = new Alert(AlertType.INFORMATION);
-                a.setTitle("Cancel queued");
-                a.setHeaderText(null);
-                a.setContentText("No execution thread is active.");
-                a.showAndWait();
-                return;
-            }
-
-            Alert alert = new Alert(AlertType.CONFIRMATION);
-            alert.setTitle("Cancel queued runs");
-            alert.setHeaderText("Cancel queued GCAM runs?");
-            alert.setContentText("This cancels queued runs but keeps the current run (if any) going. This can't be undone.");
-
-            ButtonType cancelQueuedBtn = new ButtonType("Cancel queued", ButtonData.OK_DONE);
-            ButtonType keepBtn = new ButtonType("Keep", ButtonData.CANCEL_CLOSE);
-            alert.getButtonTypes().setAll(cancelQueuedBtn, keepBtn);
-
-            java.util.Optional<ButtonType> result = alert.showAndWait();
-            if (!result.isPresent() || result.get() != cancelQueuedBtn) {
-                return;
-            }
-
-            int nCancelled = Client.gCAMExecutionThread.cancelQueuedJobsKeepRunningCurrent();
-
-            try {
-                ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
-                        ConsoleManager.MessageKind.GLIMPSE_INFO,
-                        "Cancelled queued GCAM jobs: " + nCancelled);
-            } catch (Exception ignored) {}
-
-            // We can't directly clear PaneScenarioLibrary lists here safely. They will refresh next time they open.
-            // But we can show a small acknowledgement.
-            Alert done = new Alert(AlertType.INFORMATION);
-            done.setTitle("Cancel queued");
-            done.setHeaderText(null);
-            done.setContentText("Cancelled queued jobs: " + nCancelled + "\n\nTip: press Refresh status to update scenario table statuses.");
-            done.showAndWait();
-        } catch (Exception ignored) {}
+        // Filter UI removed: always show everything.
+        table.setItems(masterData);
     }
 
     private static void installStatusCellFactory(TableColumn<QueueRow, String> colStatus) {
@@ -603,33 +431,10 @@ public class QueueWindow {
                 String st = item == null ? "" : item;
                 if ("Queued".equals(st)) getStyleClass().add("queue-status-queued");
                 else if ("Running".equals(st)) getStyleClass().add("queue-status-running");
-                else if ("Success".equals(st)) getStyleClass().add("queue-status-success");
-                else if ("Issues".equals(st)) getStyleClass().add("queue-status-issues");
+                else if ("Completed".equals(st)) getStyleClass().add("queue-status-success");
                 else getStyleClass().add("queue-status-unknown");
             }
         });
-    }
-
-    private static String csv(String s) {
-        if (s == null) {
-            return "";
-        }
-        boolean needsQuotes = false;
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == ',' || c == '"' || c == '\n' || c == '\r' || c == '\t') {
-                needsQuotes = true;
-                break;
-            }
-        }
-        if (!needsQuotes) {
-            return s;
-        }
-        return '"' + s.replace("\"", "\"\"") + '"';
-    }
-
-    private static String nullToEmpty(String s) {
-        return s == null ? "" : s;
     }
 
     private static String safeLower(String s) {
@@ -639,24 +444,20 @@ public class QueueWindow {
     private static class QueueRow {
         final String scenario;
         final String status;
-        final String bucket;
-        final String rawLine;
 
-        private QueueRow(String scenario, String status, String bucket, String rawLine) {
+        private QueueRow(String scenario, String status) {
             this.scenario = scenario;
             this.status = status;
-            this.bucket = bucket;
-            this.rawLine = rawLine;
         }
 
         QueueRow withStatus(String newStatus) {
-            return new QueueRow(this.scenario, newStatus, this.bucket, this.rawLine);
+            return new QueueRow(this.scenario, newStatus);
         }
 
-        static QueueRow from(String bucket, String line) {
+        static QueueRow from(boolean completed, String line) {
             String scenario = guessScenarioName(line);
-            String status = guessStatus(bucket, line);
-            return new QueueRow(scenario, status, bucket, line);
+            String status = completed ? "Completed" : "Queued";
+            return new QueueRow(scenario, status);
         }
 
         private static String guessScenarioName(String line) {
@@ -670,7 +471,7 @@ public class QueueWindow {
                 return trimmed.replace("(Running)", "").replace("(running)", "").trim();
             }
 
-            // Most lines contain ...\<scenario>\... or .../<scenario>/...
+            // Most lines contain ...\\<scenario>\\... or .../<scenario>/...
             try {
                 String s = line.replace('/', '\\');
                 int idx = s.lastIndexOf("configuration_");
@@ -687,14 +488,7 @@ public class QueueWindow {
                 }
 
                 // fallback: pick folder name between separators if present
-                String sep = "\\";
                 String[] parts = s.split("\\\\");
-                for (int i = 0; i < parts.length; i++) {
-                    if ("configuration".equalsIgnoreCase(parts[i])) {
-                        // unlikely
-                        continue;
-                    }
-                }
                 // last non-empty token
                 for (int i = parts.length - 1; i >= 0; i--) {
                     if (parts[i] != null && !parts[i].trim().isEmpty()) {
@@ -707,28 +501,6 @@ public class QueueWindow {
                 }
             } catch (Exception ignored) {}
             return line;
-        }
-
-        private static String guessStatus(String bucket, String line) {
-            if (bucket == null) bucket = "";
-            String ll = line == null ? "" : line.toLowerCase();
-
-            if ("Queued".equals(bucket)) {
-                // Broader detection; some code paths append " (Running)" and some may not.
-                if (ll.contains("(running)") || ll.contains(" running") || ll.contains("running)") || ll.contains("status=running")) {
-                    return "Running";
-                }
-                return "Queued";
-            }
-
-            // Completed bucket: attempt to infer success/issues from line text.
-            if (ll.contains("dnf") || ll.contains("error") || ll.contains("failed") || ll.contains("issue")) {
-                return "Issues";
-            }
-            if (ll.contains("unsolved")) {
-                return "Issues";
-            }
-            return "Success";
         }
     }
 

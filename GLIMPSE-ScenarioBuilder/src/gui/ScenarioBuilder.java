@@ -227,7 +227,6 @@ public class ScenarioBuilder {
 			utils.getSeparator(Orientation.VERTICAL, 3, false),
 			Client.buttonNewComponent,
 			Client.buttonEditComponent,
-			utils.getSeparator(Orientation.VERTICAL, 3, false),
 			Client.buttonBrowseComponentLibrary,
 			utils.getSeparator(Orientation.VERTICAL, 3, false),
 			Client.buttonDeleteComponent,

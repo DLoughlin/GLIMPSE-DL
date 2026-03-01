@@ -16,6 +16,7 @@ import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -62,7 +63,10 @@ public class DiffWindow {
 
         ObservableList<DiffLineRow> data = FXCollections.observableArrayList(rows);
 
-        TableView<DiffLineRow> table = new TableView<>(data);
+        // Backing filtered view so the scope pulldown can update the table immediately.
+        FilteredList<DiffLineRow> filtered = new FilteredList<>(data, r -> true);
+
+        TableView<DiffLineRow> table = new TableView<>(filtered);
         table.getStyleClass().add("diff-table");
         table.getSelectionModel().setCellSelectionEnabled(true);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -118,16 +122,30 @@ public class DiffWindow {
                 "Changed rows only"
         ));
         exportScope.getSelectionModel().select(0);
-        exportScope.setTooltip(new Tooltip("Choose whether to export the full table or only changed rows"));
+        exportScope.setTooltip(new Tooltip("Choose whether to show all rows or only changed rows"));
+
+        // Re-filter the table whenever view scope changes.
+        exportScope.getSelectionModel().selectedIndexProperty().addListener((obs, oldV, newV) -> {
+            boolean changedOnly = newV != null && newV.intValue() == 1;
+            filtered.setPredicate(r -> {
+                if (r == null) return false;
+                return !changedOnly || r.isDifferent();
+            });
+            // Keep UI feeling responsive (selection and scroll position can become invalid after filtering).
+            table.getSelectionModel().clearSelection();
+            if (!table.getItems().isEmpty()) {
+                table.scrollTo(0);
+            }
+        });
 
         Button saveAsBtn = new Button("Save As...");
-        saveAsBtn.setTooltip(new Tooltip("Save this diff table as a CSV file"));
+        saveAsBtn.setTooltip(new Tooltip("Save the currently visible diff table as a CSV file"));
         saveAsBtn.setOnAction(e -> saveTableAsCsv(stage, table, file1, file2, exportScope.getSelectionModel().getSelectedIndex() == 1));
 
         Button nextDiffBtn = new Button("Next diff");
         nextDiffBtn.setOnAction(e -> jumpToNextDiff(table));
 
-        HBox controls = new HBox(10, new Label("Export:"), exportScope, saveAsBtn, nextDiffBtn);
+        HBox controls = new HBox(10, new Label("View:"), exportScope, saveAsBtn, nextDiffBtn);
         controls.setPadding(new Insets(6, 10, 6, 10));
 
         BorderPane root = new BorderPane();
@@ -340,6 +358,8 @@ public class DiffWindow {
                 }
             } catch (Exception ignored) {
             }
+            // Note: Save As exports whatever is currently visible (table.getItems()). We still use
+            // the scope to provide a sensible default filename.
             if (changedRowsOnly) {
                 base = base + "_changed";
             }
@@ -350,16 +370,12 @@ public class DiffWindow {
                 return;
             }
 
-            // Write UTF-8 CSV with headers
             try (java.io.PrintWriter pw = new java.io.PrintWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(outFile), java.nio.charset.StandardCharsets.UTF_8))) {
-                // Header
                 pw.println("OriginalLine,Original,NewLine,New,Tag");
 
+                // Export exactly what the user is currently viewing.
                 for (DiffLineRow r : table.getItems()) {
                     if (r == null) {
-                        continue;
-                    }
-                    if (changedRowsOnly && !r.isDifferent()) {
                         continue;
                     }
 

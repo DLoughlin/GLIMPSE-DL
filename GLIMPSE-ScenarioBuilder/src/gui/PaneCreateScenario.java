@@ -178,7 +178,7 @@ class PaneCreateScenario extends ScenarioBuilder {
         buttonRow.setAlignment(Pos.CENTER);
 
         setupButtons();
-        buttonRow.getChildren().addAll(Client.buttonCreateScenarioConfigFile, utils.getSeparator(Orientation.VERTICAL, 3, false), Client.buttonMoveComponentUp, Client.buttonMoveComponentDown);
+        buttonRow.getChildren().addAll(Client.buttonCreateScenarioConfigFile, utils.getSeparator(Orientation.VERTICAL, 2, false), Client.buttonMoveComponentUp, utils.getSeparator(Orientation.VERTICAL, 2, false), Client.buttonMoveComponentDown);
 
         // Set up main layout and bind width to stage
         vBox.getChildren().addAll(nameRow, ComponentLibraryTable.getTableCreateScenario(), buttonRow);
