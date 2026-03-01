@@ -47,7 +47,10 @@ package glimpseUtil;
 import java.io.File;
 import java.text.NumberFormat;
 import java.text.ParseException;
+import java.util.List;
 import java.util.StringTokenizer;
+
+import glimpseElement.DataPoint;
 
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
@@ -56,6 +59,7 @@ import javafx.beans.value.ObservableValue;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TablePosition;
 import javafx.scene.control.TableView;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
@@ -67,6 +71,7 @@ import javafx.scene.input.KeyEvent;
 public class TableUtils {
 
 	public static NumberFormat numberFormatter = NumberFormat.getNumberInstance();
+	private static final int MAX_ROWS_AFTER_PASTE = 50;
 
 	/**
 	 * Install the keyboard handler: + CTRL + C = copy to clipboard + CTRL + V =
@@ -171,7 +176,7 @@ public class TableUtils {
 					text = ((StringProperty) observableValue).get();
 
 				} else {
-					System.out.println("Unsupported observable value: " + observableValue);
+					Debug.log("Unsupported observable value: " + observableValue);
 				}
 
 				// add new item to clipboard
@@ -191,105 +196,140 @@ public class TableUtils {
 	public static void pasteFromClipboard(TableView<?> table) {
 
 		int table_size = table.getItems().size();
-		System.out.println("Table size: " + table_size);
+		Debug.log("Table size: " + table_size);
 
 		// abort if there's not cell selected to start with
 		if (table.getSelectionModel().getSelectedCells().size() == 0) {
 			return;
 		}
 
-		int row = table.getSelectionModel().getSelectedIndices().get(0);
+		// Start where the user is currently selected.
+		TablePosition<?, ?> pos = table.getSelectionModel().getSelectedCells().get(0);
+		int startRow = pos.getRow();
+		int startCol = pos.getColumn();
 
-		System.out.println("Pasting starting at row " + row);
+		Debug.log("Pasting starting at row " + startRow + " col " + startCol);
 
 		String pasteString = Clipboard.getSystemClipboard().getString();
+		if (pasteString == null || pasteString.trim().isEmpty()) {
+			return;
+		}
 
-		System.out.println(pasteString);
+		List<List<String>> grid = ClipboardTableParser.parseGrid(pasteString);
+		int maxCols = ClipboardTableParser.maxColumns(grid);
+		if (grid.isEmpty()) {
+			return;
+		}
 
-		int rowClipboard = -1;
+		// --- Row-oriented paste support (Excel row selection) ---
+		// If a user selects one or two rows in Excel/CSV and copies them, the clipboard becomes a
+		// wide (many columns) but short (1-2 rows) grid. For common 2-column year/value tables,
+		// we reshape it into the expected column-oriented format.
+		//
+		// Rule:
+		//  - if maxCols > 3 and rowCount < 3:
+		//      * 1 row  => transpose into a single column vector (paste down selected column)
+		//      * 2 rows => treat as [yearsRow, valuesRow] and convert to 2-column rows
+		if (maxCols > 3 && grid.size() < 3) {
+			if (grid.size() == 1) {
+				grid = ClipboardTableParser.transposeSingleRowToColumn(grid.get(0));
+			} else if (grid.size() == 2) {
+				grid = ClipboardTableParser.pairRowsToTwoColumns(grid.get(0), grid.get(1));
+				maxCols = 2;
+			}
+			maxCols = ClipboardTableParser.maxColumns(grid);
+		}
 
-		StringTokenizer rowTokenizer = new StringTokenizer(pasteString, "\n");
-		while (rowTokenizer.hasMoreTokens()) {
+		// --- Auto-expand rows when possible ---
+		// Many GLIMPSE tables use DataPoint (year/value). For those tables, we can safely append
+		// blank rows so pasting can extend the table.
+		int desiredRowCount = startRow + grid.size();
+		ensureRowCapacityForPaste(table, desiredRowCount);
 
-			rowClipboard++;
+		// We support:
+		//  - 1-column pastes: paste down the currently selected column
+		//  - 2+-column pastes: paste into consecutive columns starting from the selected column
+		// For 2-column year/value tables, users can either select col 0 (years) or col 1 (values)
+		// and paste a single column, or select col 0 and paste 2 columns.
 
-			String rowString = rowTokenizer.nextToken();
+		for (int r = 0; r < grid.size(); r++) {
+			int rowTable = startRow + r;
+			if (rowTable >= table.getItems().size()) {
+				int extra = rowTable - table.getItems().size();
+				Debug.log("More rows being pasted than in table: " + extra + ".");
+				continue;
+			}
 
-			StringTokenizer columnTokenizer = new StringTokenizer(rowString, "\t");
+			List<String> rowCells = grid.get(r);
+			int colsToPaste = Math.min(rowCells.size(), table.getColumns().size() - startCol);
+			if (maxCols == 1) {
+				// Always paste 1-column grid down the selected column.
+				colsToPaste = Math.min(1, table.getColumns().size() - startCol);
+			}
 
-			int colClipboard = -1;
-
-			while (columnTokenizer.hasMoreTokens()) {
-
-				colClipboard++;
-
-				// get next cell data from clipboard
-				String clipboardCellContent = columnTokenizer.nextToken();
-				clipboardCellContent = clipboardCellContent.replace('\t', ' ').replace('\n', ' ').trim();
-
-				// calculate the position in the table cell
-				int rowTable = row + rowClipboard;
-				int colTable = 0 + colClipboard;
-
-				// skip if we reached the end of the table
-				if (rowTable >= table.getItems().size()) {
-					int extra=rowTable - table.getItems().size();
-					System.out.println("More rows being pasted than in table: " + extra + ".");
-					continue;
-				}
+			for (int c = 0; c < colsToPaste; c++) {
+				int colTable = startCol + c;
 				if (colTable >= table.getColumns().size()) {
-					System.out.println("More columns being pasted than in table: " + (colTable - table.getItems().size()) + ".");
+					Debug.log("More columns being pasted than in table.");
 					continue;
 				}
 
-				// System.out.println( rowClipboard + File.separator + colClipboard + ": "
-				// + cell);
+				String clipboardCellContent = rowCells.size() > c ? rowCells.get(c) : "";
+				clipboardCellContent = clipboardCellContent == null ? "" : clipboardCellContent.trim();
 
-				// get cell
 				TableColumn tableColumn = table.getColumns().get(colTable);
 				ObservableValue observableValue = tableColumn.getCellObservableValue(rowTable);
 
-				System.out.println(rowTable + File.separator + colTable + ": " + observableValue);
-
 				// TODO: handle boolean, etc
 				if (observableValue instanceof DoubleProperty) {
-
 					try {
-
 						double value = numberFormatter.parse(clipboardCellContent).doubleValue();
 						((DoubleProperty) observableValue).set(value);
-
 					} catch (ParseException e) {
 						e.printStackTrace();
 					}
-
 				} else if (observableValue instanceof IntegerProperty) {
-
 					try {
-
 						int value = NumberFormat.getInstance().parse(clipboardCellContent).intValue();
 						((IntegerProperty) observableValue).set(value);
-
 					} catch (ParseException e) {
 						e.printStackTrace();
 					}
-
 				} else if (observableValue instanceof StringProperty) {
-
 					((StringProperty) observableValue).set(clipboardCellContent);
-
 				} else {
-
-					System.out.println("Unsupported observable value: " + observableValue);
-
+					Debug.log("Unsupported observable value: " + observableValue);
 				}
 
-				System.out.println(rowTable + File.separator + colTable);
-				
+				Debug.log(rowTable + File.separator + colTable);
 			}
-
 		}
 
+	}
+
+	private static void ensureRowCapacityForPaste(TableView<?> table, int desiredRowCount) {
+		// Safety cap: never auto-expand beyond a reasonable size.
+		desiredRowCount = Math.min(desiredRowCount, MAX_ROWS_AFTER_PASTE);
+
+		if (desiredRowCount <= table.getItems().size()) {
+			return;
+		}
+
+		ObservableList<?> items = table.getItems();
+		if (items == null || items.isEmpty()) {
+			// If there's no item, we can't infer an item type safely.
+			return;
+		}
+
+		Object firstItem = items.get(0);
+		if (firstItem instanceof DataPoint) {
+			@SuppressWarnings("unchecked")
+			ObservableList<DataPoint> dpItems = (ObservableList<DataPoint>) items;
+			while (dpItems.size() < desiredRowCount) {
+				dpItems.add(new DataPoint("", ""));
+			}
+		}
+		// else: unknown item type; do not auto-expand.
 	}
 
 }

@@ -1055,8 +1055,8 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
             // 1) Clean out prior outputs from the scenario folder (async).
             Client.gCAMExecutionThread.executeCallableCmd(ExecutionThread.namedCallable(
-                    "GCAM pre-clean: scenario=" + queuedScenarioName,
-                    new Callable<String>() {
+                    "GCAM pre-clean: scenario=" + queuedScenarioName + ", config=" + new File(scenarioConfigFile).getName(),
+                     new Callable<String>() {
                 @Override
                 public String call() throws Exception {
                     System.out.println("Cleaning out folder.");
@@ -1081,8 +1081,8 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
             // 2) Run GCAM (capture a handle so we can stop it).
             Future<ProcessResult> gcamFuture = Client.gCAMExecutionThread.submitCallable(ExecutionThread.namedCallable(
-                    "GCAM run: scenario=" + queuedScenarioName,
-                    new Callable<ProcessResult>() {
+                    "GCAM run: scenario=" + queuedScenarioName + ", config=" + new File(scenarioConfigFile).getName(),
+                     new Callable<ProcessResult>() {
                 @Override
                 public ProcessResult call() throws Exception {
                     // Reset stop-result for this run.
@@ -1172,10 +1172,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
             // 3) After GCAM completes, write logs and move requested outputs based on exit code.
             Client.gCAMExecutionThread.executeCallableCmd(ExecutionThread.namedCallable(
-                    "GCAM post-process: scenario=" + queuedScenarioName,
-                    new Callable<String>() {
-                @Override
-                public String call() throws Exception {
+                    "GCAM post-process: scenario=" + queuedScenarioName + ", config=" + new File(scenarioConfigFile).getName(),
+                     new Callable<String>() {
+                 @Override
+                 public String call() throws Exception {
                     ProcessResult result;
                     boolean wasCancelled = false;
                     try {

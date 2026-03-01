@@ -40,6 +40,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import glimpseUtil.Debug;
 import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEStyles;
 import glimpseUtil.GLIMPSEUtils;
@@ -509,13 +510,13 @@ public abstract class PolicyTab extends Tab {
      * @return File content string, or null if not set
      */
     public String getFileContent() {
-        if (fileContent == null) {
-            System.out.println("File content is null.");
-            return null;
-        }
-        //System.out.println("Getting file content... length:" + fileContent.length());
-        return fileContent;
-    }
+ 		if (fileContent == null) {
+ 			Debug.log("File content is null.");
+ 			return null;
+ 		}
+ 		//System.out.println("Getting file content... length:" + fileContent.length());
+ 		return fileContent;
+ 	}
 
     /**
      * Reset the file content to null after saving or cancelling.

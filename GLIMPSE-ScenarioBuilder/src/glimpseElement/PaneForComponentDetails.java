@@ -87,6 +87,18 @@ public class PaneForComponentDetails extends VBox {
     private GLIMPSEUtils utils = GLIMPSEUtils.getInstance();
 
     /**
+     * Ensures the table has at least one blank row so users can click/paste into an empty table.
+     */
+    private void ensureAtLeastOneBlankRow() {
+        if (data == null) {
+            return;
+        }
+        if (data.isEmpty()) {
+            data.add(new DataPoint("", ""));
+        }
+    }
+
+    /**
      * The main TableView for displaying DataPoint objects.
      */
     public TableView<DataPoint> table = new TableView<DataPoint>();
@@ -119,19 +131,19 @@ public class PaneForComponentDetails extends VBox {
         // Initialize columns
         colYear = new TableColumn<DataPoint, String>("Year");
         colValue = new TableColumn<DataPoint, String>("Value");
-        
+
         table.getColumns().addAll(colYear, colValue);
         table.setEditable(true);
-        
+
         // Set up cell value factories and cell factories for editing
         colYear.setCellValueFactory(new PropertyValueFactory<DataPoint, String>("year"));
-        colYear.setCellFactory(TextFieldTableCell.forTableColumn());
+        colYear.setCellFactory(col -> new glimpseElement.DragSelectionCell());
         colYear.prefWidthProperty().bind(table.widthProperty().divide(8. / 3.)); 
         colYear.setStyle(styles.getStyle5());
         colYear.setEditable(true);
 
         colValue.setCellValueFactory(new PropertyValueFactory<DataPoint, String>("value"));
-        colValue.setCellFactory(TextFieldTableCell.forTableColumn());
+        colValue.setCellFactory(col -> new glimpseElement.DragSelectionCell());
         colValue.prefWidthProperty().bind(table.widthProperty().divide(8. / 5.));
         colValue.setStyle(styles.getStyle5());
         colValue.setEditable(true);
@@ -231,6 +243,9 @@ public class PaneForComponentDetails extends VBox {
 
         // Bind the table's prefHeight to this VBox height minus the inputHBox height so it expands to fill
         table.prefHeightProperty().bind(this.heightProperty().subtract(inputHBox.heightProperty()).subtract(4));
+
+        // Seed with one blank row so pasting works even when the table starts empty.
+        ensureAtLeastOneBlankRow();
 
         // Runtime layout listener to help debugging actual heights while resizing
         // this.heightProperty().addListener((obs, oldH, newH) -> {
@@ -428,11 +443,22 @@ public class PaneForComponentDetails extends VBox {
         String str_data = "";
 
         ArrayList<String> data = new ArrayList<String>();
-        
+
         ObservableList<DataPoint> tableData = table.getItems();
 
         for (int i = 0; i < tableData.size(); i++) {
-            str_data = tableData.get(i).getYear() + " , " + tableData.get(i).getValue();
+            String year = tableData.get(i).getYear();
+            String value = tableData.get(i).getValue();
+
+            year = (year == null) ? "" : year.trim();
+            value = (value == null) ? "" : value.trim();
+
+            // Skip completely blank rows (e.g., the seeded starter row, or trailing blanks from paste).
+            if (year.isEmpty() && value.isEmpty()) {
+                continue;
+            }
+
+            str_data = year + " , " + value;
             data.add(str_data);
         }
 
@@ -463,6 +489,8 @@ public class PaneForComponentDetails extends VBox {
      */
     public void clearTable() {
         data.clear();
+        // Keep one blank row for paste/click usability.
+        ensureAtLeastOneBlankRow();
     }
 
     /**

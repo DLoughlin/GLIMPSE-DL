@@ -135,7 +135,7 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 	private final Runnable afterSaveOrClose;
 
 	/** Last size used for this dialog in the current session. */
-	private static double lastDialogWidth = 1150;
+	private static double lastDialogWidth = 1180;
 	private static double lastDialogHeight = 720;
 
 	public ScenarioComponentCreatorDialog(Runnable afterSaveOrClose) {
@@ -301,11 +301,11 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 					super.failed();
 					Platform.runLater(() -> {
 						System.out.println("Failed!");
-						utils.warningMessage(WARNING_PROCESS_FAILED);
-						enableButtons();
-						currentTab.resetFileContent();
-						currentTab.resetFilenameSuggestion();
-						currentTab.resetProgressBar();
+					 utils.warningMessage(WARNING_PROCESS_FAILED);
+					 enableButtons();
+					 currentTab.resetFileContent();
+					 currentTab.resetFilenameSuggestion();
+					 currentTab.resetProgressBar();
 					});
 				}
 			};

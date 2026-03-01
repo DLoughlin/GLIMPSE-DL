@@ -38,13 +38,6 @@ package glimpseElement;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.TextFieldTableCell;
 
-/**
- * A custom TableCell implementation for JavaFX that supports drag-to-select functionality.
- * It extends {@link TextFieldTableCell} to provide editable cells.
- *
- * This version has been updated to reflect Java 8 best practices, including
- * the use of lambda expressions for event handling.
- */
 public class DragSelectionCell extends TextFieldTableCell<DataPoint, String> {
 
 	private TextField textField;
@@ -77,6 +70,14 @@ public class DragSelectionCell extends TextFieldTableCell<DataPoint, String> {
 		// Create and configure the TextField for editing.
 		if (textField == null) {
 			textField = new TextField(getString());
+			// Commit the edit when focus leaves the editor (clicking elsewhere, switching tabs, etc.).
+			textField.focusedProperty().addListener((obs, wasFocused, isFocused) -> {
+				if (!isFocused && isEditing()) {
+					commitEdit(textField.getText());
+				}
+			});
+		} else {
+			textField.setText(getString());
 		}
 		setText(null);
 		setGraphic(textField);

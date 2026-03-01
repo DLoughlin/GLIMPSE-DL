@@ -368,15 +368,27 @@ public class QueueWindow {
 
         masterData.clear();
 
-        // Best-effort: infer the currently running scenario from the active GCAM main_log.txt.
-        // This fixes cases where runsQueuedList only contains scenario names (no "(Running)" marker).
-        final String runningScenarioName = safeLower(getRunningScenarioNameBestEffort());
+        // Best-effort: infer the currently running scenario.
+        //  1) Prefer the live execution thread if it can infer a scenario name from the current job label.
+        //  2) Fallback to the active GCAM main_log.txt (Configuration file: ...).
+        String runningScenarioName = "";
+        try {
+            if (Client.gCAMExecutionThread != null) {
+                runningScenarioName = Client.gCAMExecutionThread.getCurrentRunningScenarioNameBestEffort();
+            }
+        } catch (Throwable ignored) {
+            runningScenarioName = "";
+        }
+        if (runningScenarioName == null || runningScenarioName.trim().isEmpty()) {
+            runningScenarioName = getRunningScenarioNameBestEffort();
+        }
+        final String runningScenarioNameLower = safeLower(runningScenarioName);
 
         if (queuedLines != null) {
             for (String line : queuedLines) {
                 if (line == null || line.trim().isEmpty()) continue;
                 QueueRow row = QueueRow.from("Queued", line);
-                if (!runningScenarioName.isEmpty() && safeLower(row.scenario).equals(runningScenarioName)) {
+                if (!runningScenarioNameLower.isEmpty() && safeLower(row.scenario).equals(runningScenarioNameLower)) {
                     row = row.withStatus("Running");
                 }
                 masterData.add(row);

@@ -802,4 +802,77 @@ public class ExecutionThread implements AutoCloseable {
             return delegate.call();
         }
     }
+
+    /**
+     * Best-effort label for the currently running job.
+     * <p>
+     * This is only as good as the descriptions provided to {@link #submitCallable(Callable)}
+     * (ideally via {@link #namedCallable(String, Callable)}).
+     * </p>
+     */
+    public String getCurrentRunningJobLabel() {
+        try {
+            Future<?> f = currentRunningFuture;
+            if (f == null) {
+                return "";
+            }
+            String label = jobLabels.get(f);
+            return label == null ? "" : label;
+        } catch (Throwable t) {
+            return "";
+        }
+    }
+
+    /**
+     * Attempts to infer the scenario name from the currently running job label.
+     * <p>
+     * Returns "" if it can't infer anything.
+     * </p>
+     */
+    public String getCurrentRunningScenarioNameBestEffort() {
+        String label = getCurrentRunningJobLabel();
+        if (label == null || label.trim().isEmpty()) {
+            return "";
+        }
+        return inferScenarioNameFromLabel(label);
+    }
+
+    private static String inferScenarioNameFromLabel(String label) {
+        try {
+            String s = label;
+            // Normalize separators and trim.
+            s = s.replace('/', '\\');
+
+            // If a configuration file path was included, infer from it.
+            int idxCfg = s.toLowerCase().indexOf("configuration_");
+            if (idxCfg >= 0) {
+                int start = idxCfg + "configuration_".length();
+                int end = s.toLowerCase().indexOf(".xml", start);
+                if (end > start) {
+                    return s.substring(start, end).replace("_archive", "").trim();
+                }
+            }
+
+            // If the label contains "scenario" wording, try to capture what's after it.
+            String low = s.toLowerCase();
+            int idx = low.indexOf("scenario");
+            if (idx >= 0) {
+                String tail = s.substring(idx + "scenario".length());
+                // common patterns: "scenario=NAME", "scenario: NAME", "scenario NAME"
+                tail = tail.replace("=", " ").replace(":", " ").trim();
+                if (!tail.isEmpty()) {
+                    String[] toks = tail.split("\\s+");
+                    if (toks.length > 0) {
+                        String candidate = toks[0].trim();
+                        // strip punctuation
+                        candidate = candidate.replaceAll("^[\\(\\[]+", "").replaceAll("[\\)\\],;]+$", "");
+                        if (!candidate.isEmpty()) {
+                            return candidate;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+        return "";
+    }
 }
