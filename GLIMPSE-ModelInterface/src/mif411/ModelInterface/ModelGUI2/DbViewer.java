@@ -204,7 +204,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 
 	private String filteringText;
 	// Allow buttons to use a standard Swing height; avoid hard-coding a tiny row height.
-	private static final int BOTTOM_PANE_HEIGHT = ModelInterface.common.SwingButtonSizer.STANDARD_BUTTON_HEIGHT + 5;
+
 	ArrayList<String> region_list = new ArrayList<String>();
 	ArrayList<String> subregion_list = new ArrayList<String>();
 	ArrayList<String> preset_region_list = new ArrayList<String>();
@@ -219,6 +219,8 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	public static final String SCENARIO_LIST_NAME = "scenario list";
 	public static final String REGION_LIST_NAME = "region list";
 
+	final int bottomStripHeight = ModelInterface.common.SwingButtonSizer.STANDARD_BUTTON_HEIGHT + 5;  
+	
 	private static Map<String, String> selectedYears = null;
 
 	public static ArrayList openWindows = new ArrayList();
@@ -1319,10 +1321,15 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		JPanel presetRegionsPanel = new JPanel();
 		presetRegionsPanel.setLayout(new BoxLayout(presetRegionsPanel, BoxLayout.X_AXIS));
 		presetRegionsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+		
+		presetRegionsPanel.setPreferredSize(new Dimension(0, bottomStripHeight));
+		presetRegionsPanel.setMinimumSize(new Dimension(0, bottomStripHeight));
+		presetRegionsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, bottomStripHeight));		
+		
 		// Move doTotalCheckBox here from setupButtonPanel
 		doTotalCheckBox = new JCheckBox("Total  ");
 		doTotalCheckBox.setOpaque(true);
-		doTotalCheckBox.setBackground(Color.WHITE);
+		//doTotalCheckBox.setBackground(Color.WHITE);
 		presetRegionsPanel.add(doTotalCheckBox);
 
 		if (preset_choices != null && preset_choices.length > 0) {
@@ -1348,6 +1355,11 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	private void setupButtonPanel() {
 		JPanel queryPanel = (JPanel) queriesSplit.getRightComponent();
 		JPanel buttonPanel = new JPanel();
+		
+		buttonPanel.setPreferredSize(new Dimension(0, bottomStripHeight));
+		buttonPanel.setMinimumSize(new Dimension(0, bottomStripHeight));
+		buttonPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, bottomStripHeight));
+		
 		buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.X_AXIS));
 		buttonPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		runQueryButton = new JButton("Run Query");
@@ -1389,6 +1401,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		JPanel queryPanel = new JPanel();
 		queryPanel.setLayout(new BoxLayout(queryPanel, BoxLayout.Y_AXIS));
 		JLabel listLabel = new JLabel("Queries");
+		listLabel.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
 		queryPanel.add(listLabel);
 		listScrollQueries = new JScrollPane(queryList);
 		listScrollQueries.setPreferredSize(new Dimension(150, 100));
@@ -1428,7 +1441,8 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	private void setupSplitPanes() {
 		JPanel listPane = new JPanel();
 		listPane.setLayout(new BoxLayout(listPane, BoxLayout.Y_AXIS));
-		JLabel listLabel = new JLabel("Scenario");
+		JLabel listLabel = new JLabel("Scenarios");
+		listLabel.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
 		listPane.add(listLabel);
 		JScrollPane listScroll = new JScrollPane(scnList);
 		listPane.add(listScroll);
@@ -1436,8 +1450,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		// Create the bottom pane separately so it appears below the listPane
 		JPanel bottomPane = new JPanel();
 		bottomPane.setLayout(new BoxLayout(bottomPane, BoxLayout.X_AXIS));
-		bottomPane.setAlignmentX(Component.LEFT_ALIGNMENT);
-		bottomPane.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
+		bottomPane.setAlignmentX(Component.CENTER_ALIGNMENT);
 		// Keep the bottom strip height consistent across the app.
 		final int bottomStripHeight = ModelInterface.common.SwingButtonSizer.STANDARD_BUTTON_HEIGHT + 5;
 		bottomPane.setPreferredSize(new Dimension(0, bottomStripHeight));
@@ -1476,6 +1489,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		listPane = new JPanel();
 		listPane.setLayout(new BoxLayout(listPane, BoxLayout.Y_AXIS));
 		listLabel = new JLabel("Regions");
+		listLabel.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
 		listPane.add(listLabel);
 		listScrollRegions = new JScrollPane(regionList);
 		listPane.add(listScrollRegions);

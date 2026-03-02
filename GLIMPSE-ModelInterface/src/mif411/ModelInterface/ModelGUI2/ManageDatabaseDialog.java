@@ -106,13 +106,23 @@ public class ManageDatabaseDialog extends JDialog {
         exportButton.setMargin(btnPadding);
         rebuildButton.setMargin(btnPadding);
         doneButton.setMargin(btnPadding);
-
-        int preferredBtnWidth = 90;
-        Dimension manageBtnDim = new Dimension(preferredBtnWidth, BOTTOM_PANE_HEIGHT - 8);
+ 
+        // Size buttons to their text so labels don't get clipped.
+        // Keep a consistent minimum width for aesthetics.
+        final int minBtnWidth = 110;
+        final int btnHeight = BOTTOM_PANE_HEIGHT - 8;
         JButton[] manageButtons = { addButton, removeButton, renameButton, exportButton, rebuildButton, doneButton };
+        int maxPreferredWidth = 0;
+        for (JButton b : manageButtons) {
+            maxPreferredWidth = Math.max(maxPreferredWidth, b.getPreferredSize().width);
+        }
+        final int targetWidth = Math.max(minBtnWidth, maxPreferredWidth);
+        Dimension manageBtnDim = new Dimension(targetWidth, btnHeight);
         for (JButton b : manageButtons) {
             b.setPreferredSize(manageBtnDim);
-            b.setMaximumSize(new Dimension(preferredBtnWidth, BOTTOM_PANE_HEIGHT));
+            b.setMinimumSize(manageBtnDim);
+            // Prevent extra-wide expansion in BoxLayout but allow enough room for text.
+            b.setMaximumSize(new Dimension(targetWidth, BOTTOM_PANE_HEIGHT));
             b.setAlignmentY(Component.CENTER_ALIGNMENT);
         }
 
@@ -173,20 +183,23 @@ public class ManageDatabaseDialog extends JDialog {
         rebuildButton.addActionListener(e -> handleRebuildDB(disableAllButtons, restoreAllButtons));
 
         buttonPane.setLayout(new BoxLayout(buttonPane, BoxLayout.X_AXIS));
-        buttonPane.add(Box.createHorizontalStrut(3));
-        buttonPane.add(addButton);
-        buttonPane.add(Box.createHorizontalStrut(3));
-        buttonPane.add(removeButton);
-        buttonPane.add(Box.createHorizontalStrut(3));
-        buttonPane.add(renameButton);
-        buttonPane.add(Box.createHorizontalStrut(3));
-        buttonPane.add(exportButton);
-        buttonPane.add(Box.createHorizontalStrut(3));
-        buttonPane.add(rebuildButton);
-        buttonPane.add(Box.createHorizontalStrut(3));
-        buttonPane.add(doneButton);
-        buttonPane.add(Box.createHorizontalGlue());
-        buttonPane.add(Box.createHorizontalStrut(3));
+        // Ensure the bottom strip doesn't shrink and clip buttons.
+        buttonPane.setPreferredSize(new Dimension(0, BOTTOM_PANE_HEIGHT));
+        buttonPane.setMinimumSize(new Dimension(0, BOTTOM_PANE_HEIGHT));
+         buttonPane.add(Box.createHorizontalStrut(3));
+         buttonPane.add(addButton);
+         buttonPane.add(Box.createHorizontalStrut(3));
+         buttonPane.add(removeButton);
+         buttonPane.add(Box.createHorizontalStrut(3));
+         buttonPane.add(renameButton);
+         buttonPane.add(Box.createHorizontalStrut(3));
+         buttonPane.add(exportButton);
+         buttonPane.add(Box.createHorizontalStrut(3));
+         buttonPane.add(rebuildButton);
+         buttonPane.add(Box.createHorizontalStrut(3));
+         buttonPane.add(doneButton);
+         buttonPane.add(Box.createHorizontalGlue());
+         buttonPane.add(Box.createHorizontalStrut(3));
 
         listPane.add(new JScrollPane(list));
         listPane.add(Box.createVerticalStrut(6));
