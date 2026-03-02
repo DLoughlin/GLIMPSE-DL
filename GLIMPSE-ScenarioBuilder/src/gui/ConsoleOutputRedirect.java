@@ -130,9 +130,7 @@ final class ConsoleOutputRedirect {
             return ConsoleManager.MessageKind.GLIMPSE_INFO;
         }
 
-        @Override
-        public synchronized void write(int b) {
-            char c = (char) (b & 0xFF);
+        private void writeChar(char c) {
             if (c == '\r') {
                 return;
             }
@@ -145,6 +143,11 @@ final class ConsoleOutputRedirect {
             if (sb.length() >= 4096) {
                 flushLine();
             }
+        }
+
+        @Override
+        public synchronized void write(int b) {
+            writeChar((char) (b & 0xFF));
         }
 
         @Override
@@ -163,7 +166,7 @@ final class ConsoleOutputRedirect {
                 s = new String(buf, off, len);
             }
             for (int i = 0; i < s.length(); i++) {
-                write(s.charAt(i));
+                writeChar(s.charAt(i));
             }
         }
 
