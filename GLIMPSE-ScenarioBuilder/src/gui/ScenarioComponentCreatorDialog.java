@@ -393,9 +393,6 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 		}
 		if ((filenameSuggestion != null) && (!filenameSuggestion.isEmpty())) {
 			enableButtons();
-			tab.resetFileContent();
-			tab.resetFilenameSuggestion();
-			tab.resetProgressBar();
 			String filter1 = "";
 			String filter2 = "";
 			if (fileContent.contains(XML_LIST_KEYWORD)) {
@@ -414,6 +411,7 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 					FileChooserPlus.createExtensionFilter(filter1, filter2));
 			if (file == null)
 				return;
+			boolean saved = true;
 			if (!useTempFile) {
 				files.saveFile(fileContent, file);
 			} else {
@@ -423,11 +421,17 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 					Files.move(Paths.get(tempPolicyFilename), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
 				} catch (Exception e) {
 					System.out.println(ERROR_CREATING_POLICY_FILE + e);
+					saved = false;
 				}
 			}
-			ComponentRow p1 = new ComponentRow(file.getName(), file.getPath(), new Date());
-			ComponentRow[] fileArr = { p1 };
-			ComponentLibraryTable.addOrUpdateFiles(fileArr);
+			if (saved) {
+				tab.resetFileContent();
+				tab.resetFilenameSuggestion();
+				tab.resetProgressBar();
+				ComponentRow p1 = new ComponentRow(file.getName(), file.getPath(), new Date());
+				ComponentRow[] fileArr = { p1 };
+				ComponentLibraryTable.addOrUpdateFiles(fileArr);
+			}
 		}
 		afterSaveOrClose.run();
 	}
