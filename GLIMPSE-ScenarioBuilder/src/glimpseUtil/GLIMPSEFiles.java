@@ -804,7 +804,7 @@ public class GLIMPSEFiles {
                 cmdArgs.add(f.getAbsolutePath());
 
                 // Fire-and-forget: we only care if it starts successfully.
-                ProcessRunner.start(cmdArgs, null, null, null, null);
+                new ProcessBuilder(cmdArgs).start();
                 return;
             }
         } catch (Exception e) {
