@@ -23,14 +23,15 @@ public class LauncherSmokeTest {
             t.submitCommandNoStatusChecker(new String[] { "java", "-version" }).get();
 
             // 2) Validate working directory + args containing spaces.
-            // Use a built-in command so it works on a vanilla Windows machine.
-            // /c echo ... prints and exits.
+            // Use a built-in shell command appropriate for the current OS.
             String msgWithSpaces = "hello from smoke test";
             File workingDir = new File(System.getProperty("java.io.tmpdir"));
+            boolean isWindows = System.getProperty("os.name", "").toLowerCase().startsWith("windows");
+            String[] echoCmd = isWindows
+                    ? new String[] { "cmd.exe", "/c", "echo", msgWithSpaces }
+                    : new String[] { "sh", "-c", "echo \"$1\"", "--", msgWithSpaces };
 
-            t.submitCommandWithDirectory(
-                    new String[] { "cmd.exe", "/c", "echo", msgWithSpaces },
-                    workingDir.getAbsolutePath()).get();
+            t.submitCommandWithDirectory(echoCmd, workingDir.getAbsolutePath()).get();
 
             System.out.println("LauncherSmokeTest: completed");
         } finally {
