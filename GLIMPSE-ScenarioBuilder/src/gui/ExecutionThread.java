@@ -269,12 +269,13 @@ public class ExecutionThread implements AutoCloseable {
         System.out.println("Submitting runnable to queue [jobId=" + jobId + "]: " + label);
 
         java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
-        Future<?> f = executorService.submit(wrapRunnableForTracking(runnable, ref));
-        ref.set(f);
+        java.util.concurrent.FutureTask<Void> ft = new java.util.concurrent.FutureTask<>(wrapRunnableForTracking(runnable, ref), null);
+        ref.set(ft);
+        executorService.execute(ft);
 
-        labelAndTrackFuture(f, jobId, label);
+        labelAndTrackFuture(ft, jobId, label);
 
-        jobs.add(f);
+        jobs.add(ft);
     }
 
     /**
@@ -332,15 +333,16 @@ public class ExecutionThread implements AutoCloseable {
         System.out.println("Submitting to queue [jobId=" + jobId + "]: " + label);
 
         java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
-        Future<?> f = executorService.submit(wrapCallableForTracking(task, ref));
-        ref.set(f);
+        java.util.concurrent.FutureTask<ProcessResult> ft = new java.util.concurrent.FutureTask<>(wrapCallableForTracking(task, ref));
+        ref.set(ft);
+        executorService.execute(ft);
 
-        labelAndTrackFuture(f, jobId, label);
+        labelAndTrackFuture(ft, jobId, label);
 
         synchronized (jobs) {
-            jobs.add(f);
+            jobs.add(ft);
         }
-        return f;
+        return ft;
     }
 
     /**
@@ -376,15 +378,16 @@ public class ExecutionThread implements AutoCloseable {
         System.out.println("Submitting to queue [jobId=" + jobId + "]: " + label);
 
         java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
-        Future<?> f = executorService.submit(wrapCallableForTracking(task, ref));
-        ref.set(f);
+        java.util.concurrent.FutureTask<ProcessResult> ft = new java.util.concurrent.FutureTask<>(wrapCallableForTracking(task, ref));
+        ref.set(ft);
+        executorService.execute(ft);
 
-        labelAndTrackFuture(f, jobId, label);
+        labelAndTrackFuture(ft, jobId, label);
 
         synchronized (jobs) {
-            jobs.add(f);
+            jobs.add(ft);
         }
-        return f;
+        return ft;
     }
 
     /**
@@ -429,15 +432,16 @@ public class ExecutionThread implements AutoCloseable {
         System.out.println("Submitting to queue [jobId=" + jobId + "]: " + label);
 
         java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
-        Future<?> f = executorService.submit(wrapCallableForTracking(task, ref));
-        ref.set(f);
+        java.util.concurrent.FutureTask<ProcessResult> ft = new java.util.concurrent.FutureTask<>(wrapCallableForTracking(task, ref));
+        ref.set(ft);
+        executorService.execute(ft);
 
-        labelAndTrackFuture(f, jobId, label);
+        labelAndTrackFuture(ft, jobId, label);
 
         synchronized (jobs) {
-            jobs.add(f);
+            jobs.add(ft);
         }
-        return f;
+        return ft;
     }
 
     /**
@@ -477,15 +481,16 @@ public class ExecutionThread implements AutoCloseable {
         System.out.println("Submitting to queue [jobId=" + jobId + "]: " + label);
 
         java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
-        Future<?> f = executorService.submit(wrapCallableForTracking(task, ref));
-        ref.set(f);
+        java.util.concurrent.FutureTask<ProcessResult> ft = new java.util.concurrent.FutureTask<>(wrapCallableForTracking(task, ref));
+        ref.set(ft);
+        executorService.execute(ft);
 
-        labelAndTrackFuture(f, jobId, label);
+        labelAndTrackFuture(ft, jobId, label);
 
         synchronized (jobs) {
-            jobs.add(f);
+            jobs.add(ft);
         }
-        return f;
+        return ft;
     }
 
     /**
@@ -510,15 +515,16 @@ public class ExecutionThread implements AutoCloseable {
         System.out.println("Submitting callable to queue [jobId=" + jobId + "]: " + label);
 
         java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
-        Future<V> f = executorService.submit(wrapCallableForTracking(callable, ref));
-        ref.set(f);
+        java.util.concurrent.FutureTask<V> ft = new java.util.concurrent.FutureTask<>(wrapCallableForTracking(callable, ref));
+        ref.set(ft);
+        executorService.execute(ft);
 
-        jobLabels.put(f, "jobId=" + jobId + ", " + label);
+        jobLabels.put(ft, "jobId=" + jobId + ", " + label);
 
         synchronized (jobs) {
-            jobs.add(f);
+            jobs.add(ft);
         }
-        return f;
+        return ft;
     }
 
     /**
@@ -809,15 +815,16 @@ public class ExecutionThread implements AutoCloseable {
         System.out.println("Submitting to queue [jobId=" + jobId + "]: " + label);
 
         java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
-        Future<?> f = executorService.submit(wrapCallableForTracking(task, ref));
-        ref.set(f);
+        java.util.concurrent.FutureTask<ProcessResult> ft = new java.util.concurrent.FutureTask<>(wrapCallableForTracking(task, ref));
+        ref.set(ft);
+        executorService.execute(ft);
 
-        labelAndTrackFuture(f, jobId, label);
+        labelAndTrackFuture(ft, jobId, label);
 
         synchronized (jobs) {
-            jobs.add(f);
+            jobs.add(ft);
         }
-        return f;
+        return ft;
     }
 
     // Deprecated methods for backward compatibility
