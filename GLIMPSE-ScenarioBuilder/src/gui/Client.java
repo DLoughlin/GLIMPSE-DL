@@ -108,7 +108,8 @@ public class Client extends Application {
 	
     // region Constants
     private static final double MIN_WINDOW_HEIGHT = 850;
-    private static final double MIN_WINDOW_WIDTH = 1100;
+    // Reduced by ~1/3 from 1100 so the app opens less wide by default.
+    private static final double MIN_WINDOW_WIDTH = 740;
     private static final double SPLASH_WIDTH = 383.0;
     private static final double SPLASH_HEIGHT = 384.0;
     private static final String OPTIONS_ARG_FLAG = "-options";

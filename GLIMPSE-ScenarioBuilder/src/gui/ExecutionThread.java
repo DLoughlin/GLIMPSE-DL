@@ -123,6 +123,43 @@ public class ExecutionThread implements AutoCloseable {
         return name + "@" + Integer.toHexString(System.identityHashCode(callable));
     }
 
+    private static String describeRunnableForLog(Runnable runnable) {
+        if (runnable == null) {
+            return "<null>";
+        }
+        try {
+            if (runnable instanceof DebugDescribable) {
+                String s = ((DebugDescribable) runnable).getDebugDescription();
+                if (s != null && !s.trim().isEmpty()) {
+                    return s.trim();
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        String name;
+        try {
+            name = runnable.getClass().getName();
+        } catch (Throwable t) {
+            name = "Runnable";
+        }
+        return name + "@" + Integer.toHexString(System.identityHashCode(runnable));
+    }
+
+    private static String safeOneLine(String s) {
+        if (s == null) return "";
+        return s.replace('\r', ' ').replace('\n', ' ').trim();
+    }
+
+    private String labelAndTrackFuture(Future<?> f, long jobId, String label) {
+        String combined = "jobId=" + jobId + ", " + safeOneLine(label);
+        try {
+            if (f != null) {
+                jobLabels.put(f, combined);
+            }
+        } catch (Throwable ignored) {}
+        return combined;
+    }
+
     /**
      * Checks if the number of completed jobs has changed since the last check.
      * <p>
@@ -226,11 +263,16 @@ public class ExecutionThread implements AutoCloseable {
             throw new IllegalStateException("ExecutorService not started.");
         }
         startStatusCheckerIfNeeded();
-        System.out.println("Submitting to queue: " + runnable);
+
+        final long jobId = jobIdCounter.incrementAndGet();
+        final String label = describeRunnableForLog(runnable);
+        System.out.println("Submitting runnable to queue [jobId=" + jobId + "]: " + label);
 
         java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
         Future<?> f = executorService.submit(wrapRunnableForTracking(runnable, ref));
         ref.set(f);
+
+        labelAndTrackFuture(f, jobId, label);
 
         jobs.add(f);
     }
@@ -285,10 +327,16 @@ public class ExecutionThread implements AutoCloseable {
             return ProcessRunner.run(cmd, null, null, null);
         };
 
-        System.out.println("Submitting to queue (shell): " + command);
+        final long jobId = jobIdCounter.incrementAndGet();
+        final String label = "shell: " + safeOneLine(command);
+        System.out.println("Submitting to queue [jobId=" + jobId + "]: " + label);
+
         java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
         Future<?> f = executorService.submit(wrapCallableForTracking(task, ref));
         ref.set(f);
+
+        labelAndTrackFuture(f, jobId, label);
+
         synchronized (jobs) {
             jobs.add(f);
         }
@@ -323,10 +371,16 @@ public class ExecutionThread implements AutoCloseable {
             return ProcessRunner.run(cmd, directory == null ? null : new File(directory), null, null);
         };
 
-        System.out.println("Submitting to queue (shell): " + command + " with dir " + directory);
+        final long jobId = jobIdCounter.incrementAndGet();
+        final String label = "shell: " + safeOneLine(command) + (directory == null || directory.trim().isEmpty() ? "" : " (dir=" + safeOneLine(directory) + ")");
+        System.out.println("Submitting to queue [jobId=" + jobId + "]: " + label);
+
         java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
         Future<?> f = executorService.submit(wrapCallableForTracking(task, ref));
         ref.set(f);
+
+        labelAndTrackFuture(f, jobId, label);
+
         synchronized (jobs) {
             jobs.add(f);
         }
@@ -369,10 +423,17 @@ public class ExecutionThread implements AutoCloseable {
                 null,
                 null);
 
-        System.out.println("Submitting to queue: " + java.util.Arrays.toString(commandArray) + " with dir " + directory);
+        final long jobId = jobIdCounter.incrementAndGet();
+        final String label = "cmd: " + safeOneLine(java.util.Arrays.toString(commandArray))
+                + (directory == null || directory.trim().isEmpty() ? "" : " (dir=" + safeOneLine(directory) + ")");
+        System.out.println("Submitting to queue [jobId=" + jobId + "]: " + label);
+
         java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
         Future<?> f = executorService.submit(wrapCallableForTracking(task, ref));
         ref.set(f);
+
+        labelAndTrackFuture(f, jobId, label);
+
         synchronized (jobs) {
             jobs.add(f);
         }
@@ -411,10 +472,16 @@ public class ExecutionThread implements AutoCloseable {
                 null,
                 null);
 
-        System.out.println("Submitting to queue: " + java.util.Arrays.toString(commandArray));
+        final long jobId = jobIdCounter.incrementAndGet();
+        final String label = "cmd: " + safeOneLine(java.util.Arrays.toString(commandArray));
+        System.out.println("Submitting to queue [jobId=" + jobId + "]: " + label);
+
         java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
         Future<?> f = executorService.submit(wrapCallableForTracking(task, ref));
         ref.set(f);
+
+        labelAndTrackFuture(f, jobId, label);
+
         synchronized (jobs) {
             jobs.add(f);
         }
@@ -570,7 +637,18 @@ public class ExecutionThread implements AutoCloseable {
                         if (!droppedTasks.isEmpty()) {
                             System.err.println("ExecutorService was abruptly shut down. The following tasks will not be executed:");
                             for (Runnable task : droppedTasks) {
-                                System.err.println(task);
+                                String label = null;
+                                try {
+                                    if (task instanceof Future<?>) {
+                                        label = jobLabels.get((Future<?>) task);
+                                    }
+                                } catch (Throwable ignored) {}
+
+                                if (label != null && !label.trim().isEmpty()) {
+                                    System.err.println("  " + label);
+                                } else {
+                                    System.err.println("  " + task);
+                                }
                             }
                         }
                     }
@@ -605,7 +683,21 @@ public class ExecutionThread implements AutoCloseable {
                     if (!notStarted.isEmpty()) {
                         System.err.println("The following tasks were not started and will not be executed:");
                         for (Runnable task : notStarted) {
-                            System.err.println(task);
+                            // ExecutorService.shutdownNow() returns the queued Runnables. In our case,
+                            // those are typically FutureTask instances created by ExecutorService.submit(...)
+                            // (i.e., also implement Future). Use our stored labels when possible.
+                            String label = null;
+                            try {
+                                if (task instanceof Future<?>) {
+                                    label = jobLabels.get((Future<?>) task);
+                                }
+                            } catch (Throwable ignored) {}
+
+                            if (label != null && !label.trim().isEmpty()) {
+                                System.err.println("  " + label);
+                            } else {
+                                System.err.println("  " + task);
+                            }
                         }
                     }
                 } catch (Exception e) {
@@ -712,10 +804,16 @@ public class ExecutionThread implements AutoCloseable {
                 null,
                 null);
 
-        System.out.println("Submitting to queue (no status checker): " + java.util.Arrays.toString(commandArray));
+        final long jobId = jobIdCounter.incrementAndGet();
+        final String label = "cmd (no status checker): " + safeOneLine(java.util.Arrays.toString(commandArray));
+        System.out.println("Submitting to queue [jobId=" + jobId + "]: " + label);
+
         java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
         Future<?> f = executorService.submit(wrapCallableForTracking(task, ref));
         ref.set(f);
+
+        labelAndTrackFuture(f, jobId, label);
+
         synchronized (jobs) {
             jobs.add(f);
         }

@@ -53,6 +53,7 @@ import java.util.concurrent.Future;
 import glimpseUtil.CommandLineTokenizer;
 import glimpseUtil.ProcessResult;
 import glimpseUtil.ProcessRunner;
+import glimpseUtil.FileTailer;
 import glimpseElement.ScenarioRow;
 import glimpseElement.ScenarioTable;
 import glimpseUtil.FileChooserPlus;
@@ -126,6 +127,16 @@ import javafx.stage.Stage;
  * </ul>
  */
 public class PaneScenarioLibrary extends ScenarioBuilder {
+
+    // --- Live tail of exe/logs/main_log.txt (optional) ---
+    // If true, the GCAM stdout console will also show lines tailed from exeDir/logs/main_log.txt while GCAM runs.
+    // This helps on Windows when native stdout is block-buffered.
+    private static final boolean TAIL_GCAM_MAIN_LOG_TO_CONSOLE = false;
+    private static final String TAILED_LOG_PREFIX = "[main_log] ";
+
+    private static boolean isTailedLogLine(String line) {
+        return line != null && line.startsWith(TAILED_LOG_PREFIX);
+    }
 
     // --- Added: Stop GCAM run method ---
     /**
@@ -1126,29 +1137,84 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                     ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT, "exe: " + new File(exePath).getAbsolutePath());
                     ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT, "working dir: " + new File(exeDir).getAbsolutePath());
 
-                    ProcessRunner.RunningProcess rp = ProcessRunner.start(
-                            cmd,
-                            new File(exeDir),
-                            null,
-                            line -> ConsoleManager.appendLineBuffered(ConsoleManager.StreamSource.GCAM_STDOUT,
-                                    ConsoleManager.MessageKind.MODEL_STDOUT, line),
-                            line -> ConsoleManager.appendLineBuffered(ConsoleManager.StreamSource.GCAM_STDOUT,
-                                    ConsoleManager.MessageKind.STDERR, line)
-                    );
-
-                    currentGcamRun = rp;
-                    currentGcamScenarioName = queuedScenarioName;
-                    Platform.runLater(() -> {
+                    // Optional: tail GCAM's exeDir/logs/main_log.txt into the console.
+                    // This helps when GCAM stdout is pipe-buffered (common on Windows).
+                    FileTailer.TailHandle tailHandle = null;
+                    if (TAIL_GCAM_MAIN_LOG_TO_CONSOLE) {
                         try {
-                            if (Client.buttonStopScenario != null) {
-                                Client.buttonStopScenario.setDisable(false);
-                            }
-                        } catch (Exception ignored) {}
-                    });
+                            final Path mainLog = Paths.get(exeDir, "logs", "main_log.txt");
+                            try {
+                                ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
+                                        ConsoleManager.MessageKind.GLIMPSE_INFO,
+                                        "Tailing: " + mainLog.toAbsolutePath());
+                            } catch (Exception ignored) {}
+
+                            tailHandle = FileTailer.start(
+                                    mainLog,
+                                    java.nio.charset.StandardCharsets.UTF_8,
+                                    java.time.Duration.ofMillis(200),
+                                    java.time.Duration.ofSeconds(30),
+                                    line -> {
+                                        // Avoid duplicating what GCAM already emits on stdout if it's logging the same content.
+                                        if (line == null || line.trim().isEmpty()) {
+                                            return;
+                                        }
+                                        if (isTailedLogLine(line)) {
+                                            return;
+                                        }
+                                        ConsoleManager.appendLineBuffered(ConsoleManager.StreamSource.GCAM_STDOUT,
+                                                ConsoleManager.MessageKind.MODEL_STDOUT,
+                                                TAILED_LOG_PREFIX + line);
+                                    }
+                            );
+                        } catch (Exception e) {
+                            // Best-effort.
+                            try {
+                                ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
+                                        ConsoleManager.MessageKind.GLIMPSE_INFO,
+                                        "Tailer disabled (error starting tail): " + e);
+                            } catch (Exception ignored) {}
+                            tailHandle = null;
+                        }
+                    }
 
                     try {
+                        ProcessRunner.RunningProcess rp = ProcessRunner.start(
+                                cmd,
+                                new File(exeDir),
+                                null,
+                                line -> {
+                                    // If for some reason the tailed prefix shows up on stdout, drop it to avoid duplicated-looking output.
+                                    if (isTailedLogLine(line)) {
+                                        return;
+                                    }
+                                    ConsoleManager.appendLineBuffered(ConsoleManager.StreamSource.GCAM_STDOUT,
+                                            ConsoleManager.MessageKind.MODEL_STDOUT, line);
+                                },
+                                line -> ConsoleManager.appendLineBuffered(ConsoleManager.StreamSource.GCAM_STDOUT,
+                                        ConsoleManager.MessageKind.STDERR, line)
+                        );
+
+                        currentGcamRun = rp;
+                        currentGcamScenarioName = queuedScenarioName;
+                        Platform.runLater(() -> {
+                            try {
+                                if (Client.buttonStopScenario != null) {
+                                    Client.buttonStopScenario.setDisable(false);
+                                }
+                            } catch (Exception ignored) {}
+                        });
+
                         return rp.waitForResult(null);
                     } finally {
+                        // Stop tailer first so we don't keep emitting after the process ends.
+                        try {
+                            if (tailHandle != null && !tailHandle.isStopRequested()) {
+                                tailHandle.stop();
+                                tailHandle.join(java.time.Duration.ofSeconds(2));
+                            }
+                        } catch (Exception ignored) {}
+
                         // Force a final flush so the last burst is visible immediately at completion.
                         try {
                             ConsoleManager.flushBuffered();

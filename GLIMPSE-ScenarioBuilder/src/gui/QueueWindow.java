@@ -170,12 +170,8 @@ public class QueueWindow {
 
             // Slightly narrower default size (about 2/3 of the original width).
             Scene scene = new Scene(root, lastWidth, lastHeight);
-            try {
-                java.net.URL cssUrl = QueueWindow.class.getResource("/resources/modern.css");
-                if (cssUrl != null) {
-                    scene.getStylesheets().add(cssUrl.toExternalForm());
-                }
-            } catch (Exception ignored) {}
+            // Apply the shared app theme for consistent styling with the main window.
+            ScenarioBuilder.applyModernTheme(scene);
 
             stage.setScene(scene);
 

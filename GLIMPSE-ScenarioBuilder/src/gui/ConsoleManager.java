@@ -280,6 +280,8 @@ final class ConsoleManager {
         root.setCenter(tabPane);
 
         Scene scene = new Scene(root, 900, 520);
+        // Apply the shared app theme for consistent styling with the main window.
+        ScenarioBuilder.applyModernTheme(scene);
         stage.setScene(scene);
     }
 
@@ -590,8 +592,13 @@ final class ConsoleManager {
                 return;
             }
 
+            // Batch queued lines by MessageKind so we create far fewer JavaFX Text nodes.
             int drained = 0;
             BufferedItem it;
+            StringBuilder sbStdout = null;
+            StringBuilder sbInfo = null;
+            StringBuilder sbErr = null;
+
             while (drained < maxItems && (it = queue.poll()) != null) {
                 drained++;
 
@@ -600,8 +607,37 @@ final class ConsoleManager {
                     out = out + System.lineSeparator();
                 }
 
-                Text t = new Text(out);
-                t.setFill(colorFor(it.kind));
+                switch (it.kind) {
+                case STDERR:
+                    if (sbErr == null) sbErr = new StringBuilder(Math.min(4096, out.length() * 4));
+                    sbErr.append(out);
+                    break;
+                case GLIMPSE_INFO:
+                    if (sbInfo == null) sbInfo = new StringBuilder(Math.min(4096, out.length() * 4));
+                    sbInfo.append(out);
+                    break;
+                case MODEL_STDOUT:
+                default:
+                    if (sbStdout == null) sbStdout = new StringBuilder(Math.min(4096, out.length() * 4));
+                    sbStdout.append(out);
+                    break;
+                }
+            }
+
+            // Append in a stable order so output looks consistent.
+            if (sbStdout != null && sbStdout.length() > 0) {
+                Text t = new Text(sbStdout.toString());
+                t.setFill(colorFor(MessageKind.MODEL_STDOUT));
+                flow.getChildren().add(t);
+            }
+            if (sbInfo != null && sbInfo.length() > 0) {
+                Text t = new Text(sbInfo.toString());
+                t.setFill(colorFor(MessageKind.GLIMPSE_INFO));
+                flow.getChildren().add(t);
+            }
+            if (sbErr != null && sbErr.length() > 0) {
+                Text t = new Text(sbErr.toString());
+                t.setFill(colorFor(MessageKind.STDERR));
                 flow.getChildren().add(t);
             }
 
@@ -636,8 +672,10 @@ final class ConsoleManager {
     }
 
     // Config: keep these conservative so UI remains snappy.
-    private static final long BUFFER_FLUSH_MILLIS = 50; // more regular updates
-    private static final int BUFFER_FLUSH_MAX_ITEMS_PER_PULSE = 600;
+    // Lower flush interval so GCAM output feels closer to real time.
+    private static final long BUFFER_FLUSH_MILLIS = 20;
+    // Keep per-pulse work bounded.
+    private static final int BUFFER_FLUSH_MAX_ITEMS_PER_PULSE = 800;
     private static final int BUFFER_FORCE_FLUSH_CHAR_THRESHOLD = 64 * 1024;
 
     private static final ScheduledExecutorService BUFFER_SCHEDULER = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -695,6 +733,14 @@ final class ConsoleManager {
         BufferedAppender app = buffered(source);
         app.enqueue(kind, line);
         ensureFlushTaskScheduled();
+
+        // GCAM emits steady progress lines every few seconds; make them appear promptly.
+        // This is best-effort: the periodic flush still exists, but this reduces "big batch" updates
+        // when the FX thread is otherwise idle.
+        if (source == StreamSource.GCAM_STDOUT) {
+            Platform.runLater(() -> flushBufferedToUi(false));
+            return;
+        }
 
         // Safety valve: if we get a huge burst, trigger a sooner UI flush.
         if (app.getApproxCharsQueued() >= BUFFER_FORCE_FLUSH_CHAR_THRESHOLD) {

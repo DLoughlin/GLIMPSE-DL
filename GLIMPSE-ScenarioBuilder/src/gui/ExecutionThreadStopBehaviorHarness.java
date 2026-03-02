@@ -24,7 +24,7 @@ public class ExecutionThreadStopBehaviorHarness {
         final CountDownLatch allowJob1ToFinish = new CountDownLatch(1);
         final CountDownLatch job2Ran = new CountDownLatch(1);
 
-        Future<String> job1 = et.submitCallable(new Callable<String>() {
+        Future<String> job1 = et.submitCallable(ExecutionThread.namedCallable("Harness job1 (blocks)", new Callable<String>() {
             @Override
             public String call() throws Exception {
                 job1Started.countDown();
@@ -32,15 +32,15 @@ public class ExecutionThreadStopBehaviorHarness {
                 allowJob1ToFinish.await(5, TimeUnit.SECONDS);
                 return "job1";
             }
-        });
+        }));
 
-        Future<String> job2 = et.submitCallable(new Callable<String>() {
+        Future<String> job2 = et.submitCallable(ExecutionThread.namedCallable("Harness job2", new Callable<String>() {
             @Override
             public String call() throws Exception {
                 job2Ran.countDown();
                 return "job2";
             }
-        });
+        }));
 
         // Wait until job1 is running.
         job1Started.await(2, TimeUnit.SECONDS);
