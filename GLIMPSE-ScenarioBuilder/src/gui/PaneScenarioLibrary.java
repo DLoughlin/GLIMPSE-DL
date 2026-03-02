@@ -1012,6 +1012,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 b = utils.selectYesOrNoDialog(s);
             }
             if (b) {
+                // Clear UI status immediately upon queueing so stale results from previous runs disappear right away.
+                clearScenarioRunStatusFields(scenName);
+
                 // Remove logs from a previous run so the Scenario Library won't show stale status while queued/running.
                 files.deleteFile(mainLogFile);
                 try {
@@ -1193,6 +1196,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
                         currentGcamRun = rp;
                         currentGcamScenarioName = queuedScenarioName;
+
+                        // When the process handle has been acquired, the run has truly started.
+                        // Clear any stale status fields from a previous run *now* (not at queue time).
+                        clearScenarioRunStatusFields(queuedScenarioName);
+
                         Platform.runLater(() -> {
                             try {
                                 if (Client.buttonStopScenario != null) {
@@ -1717,5 +1725,33 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         } catch (Exception e) {
             System.out.println("Problem copying exe main_log.txt to scenario folder for '" + scenarioName + "': " + e);
         }
+    }
+
+    /**
+     * Clears UI status fields for a scenario run row.
+     *
+     * This is used when a scenario actually starts running so stale results from a
+     * previous run (Success/DNF/Unsolved, runtime, etc.) don't linger while the new
+     * run is starting up.
+     */
+    private void clearScenarioRunStatusFields(String scenarioName) {
+        if (scenarioName == null || scenarioName.trim().isEmpty()) {
+            return;
+        }
+        Platform.runLater(() -> {
+            try {
+                for (ScenarioRow s : ScenarioTable.listOfScenarioRuns) {
+                    if (s != null && scenarioName.equals(s.getScenarioName())) {
+                        s.setStatus("");
+                        s.setRuntime("");
+                        s.setUnsolvedMarkets("");
+                        s.setCompletedDate("");
+                        break;
+                    }
+                }
+                ScenarioTable.tableScenariosLibrary.refresh();
+            } catch (Exception ignored) {
+            }
+        });
     }
 }

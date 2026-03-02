@@ -9,8 +9,11 @@ package gui;
 
 import java.io.File;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.function.Supplier;
 
@@ -65,6 +68,24 @@ public class QueueWindow {
     private static double lastHeight = 435;
 
     /**
+     * Tracks the last known status and the time it last changed for each scenario name.
+     * Key is the displayed scenario name (case-insensitive matching is applied when updating).
+     */
+    private static final Map<String, StateStamp> scenarioStateStamp = new HashMap<>();
+
+    private static final DateTimeFormatter STATE_CHANGE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private static class StateStamp {
+        String lastStatus;
+        LocalDateTime lastChange;
+
+        StateStamp(String lastStatus, LocalDateTime lastChange) {
+            this.lastStatus = lastStatus;
+            this.lastChange = lastChange;
+        }
+    }
+
+    /**
      * Show (or re-focus) the Run Queue window.
      *
      * @param owner optional owner stage
@@ -114,7 +135,13 @@ public class QueueWindow {
 
             installStatusCellFactory(colStatus);
 
-            table.getColumns().addAll(colScenario, colStatus);
+            TableColumn<QueueRow, String> colStateChanged = new TableColumn<>("Changed");
+            colStateChanged.setPrefWidth(170);
+            colStateChanged.setMinWidth(170);
+            colStateChanged.setMaxWidth(220);
+            colStateChanged.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().lastStateChange));
+
+            table.getColumns().addAll(colScenario, colStatus, colStateChanged);
 
             table.setRowFactory(tv -> new TableRow<QueueRow>() {
                 @Override
@@ -334,13 +361,16 @@ public class QueueWindow {
                 if (!runningScenarioNameLower.isEmpty() && safeLower(row.scenario).equals(runningScenarioNameLower)) {
                     row = row.withStatus("Running");
                 }
+                row = row.withLastStateChange(getAndUpdateLastStateChange(row.scenario, row.status));
                 masterData.add(row);
             }
         }
         if (completedLines != null) {
             for (String line : completedLines) {
                 if (line == null || line.trim().isEmpty()) continue;
-                masterData.add(QueueRow.from(true, line));
+                QueueRow row = QueueRow.from(true, line);
+                row = row.withLastStateChange(getAndUpdateLastStateChange(row.scenario, row.status));
+                masterData.add(row);
             }
         }
 
@@ -358,6 +388,47 @@ public class QueueWindow {
         String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         statusLabel.setText("Queued: " + queuedCount + "   Completed: " + completedCount + "   Running: " + runningCount + "   (Last updated: " + ts + ")");
         updateStatusLabelAutoRefreshDecoration();
+    }
+
+    /**
+     * Returns a formatted timestamp string for when this scenario last changed state.
+     * Updates the internal cache if the currentStatus differs from the last cached status.
+     */
+    private static String getAndUpdateLastStateChange(String scenario, String currentStatus) {
+        String key = scenario == null ? "" : scenario.trim();
+        if (key.isEmpty()) {
+            // No stable key; don't try to retain history.
+            return "";
+        }
+
+        final String nowStatus = currentStatus == null ? "" : currentStatus;
+        final String keyLower = safeLower(key);
+
+        // Attempt case-insensitive match against existing keys.
+        String existingKey = null;
+        for (String k : scenarioStateStamp.keySet()) {
+            if (safeLower(k).equals(keyLower)) {
+                existingKey = k;
+                break;
+            }
+        }
+        if (existingKey == null) {
+            existingKey = key;
+        }
+
+        StateStamp stamp = scenarioStateStamp.get(existingKey);
+        if (stamp == null) {
+            stamp = new StateStamp(nowStatus, LocalDateTime.now(ZoneId.systemDefault()));
+            scenarioStateStamp.put(existingKey, stamp);
+        } else {
+            String last = stamp.lastStatus == null ? "" : stamp.lastStatus;
+            if (!last.equals(nowStatus)) {
+                stamp.lastStatus = nowStatus;
+                stamp.lastChange = LocalDateTime.now(ZoneId.systemDefault());
+            }
+        }
+
+        return stamp.lastChange == null ? "" : stamp.lastChange.format(STATE_CHANGE_FORMATTER);
     }
 
     /**
@@ -437,20 +508,26 @@ public class QueueWindow {
     private static class QueueRow {
         final String scenario;
         final String status;
+        final String lastStateChange;
 
-        private QueueRow(String scenario, String status) {
+        private QueueRow(String scenario, String status, String lastStateChange) {
             this.scenario = scenario;
             this.status = status;
+            this.lastStateChange = lastStateChange;
         }
 
         QueueRow withStatus(String newStatus) {
-            return new QueueRow(this.scenario, newStatus);
+            return new QueueRow(this.scenario, newStatus, this.lastStateChange);
+        }
+
+        QueueRow withLastStateChange(String newLastStateChange) {
+            return new QueueRow(this.scenario, this.status, newLastStateChange);
         }
 
         static QueueRow from(boolean completed, String line) {
             String scenario = guessScenarioName(line);
             String status = completed ? "Completed" : "Queued";
-            return new QueueRow(scenario, status);
+            return new QueueRow(scenario, status, "");
         }
 
         private static String guessScenarioName(String line) {

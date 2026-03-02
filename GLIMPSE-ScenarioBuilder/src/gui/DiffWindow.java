@@ -136,8 +136,27 @@ public class DiffWindow {
             protected void updateItem(DiffLineRow item, boolean empty) {
                 super.updateItem(item, empty);
                 getStyleClass().remove("diff-row-different");
-                if (!empty && item != null && item.isDifferent()) {
-                    getStyleClass().add("diff-row-different");
+                getStyleClass().removeAll("diff-row-equal", "diff-row-insert", "diff-row-delete", "diff-row-change");
+                if (!empty && item != null) {
+                    if (item.isDifferent()) {
+                        getStyleClass().add("diff-row-different");
+                    }
+                    DiffRow.Tag tag = item.getTag();
+                    switch (tag) {
+                    case INSERT:
+                        getStyleClass().add("diff-row-insert");
+                        break;
+                    case DELETE:
+                        getStyleClass().add("diff-row-delete");
+                        break;
+                    case CHANGE:
+                        getStyleClass().add("diff-row-change");
+                        break;
+                    case EQUAL:
+                    default:
+                        getStyleClass().add("diff-row-equal");
+                        break;
+                    }
                 }
             }
         });

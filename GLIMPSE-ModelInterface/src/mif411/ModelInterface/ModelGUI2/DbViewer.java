@@ -203,7 +203,8 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	private JMenuItem menuExpPrn;
 
 	private String filteringText;
-	private static final int BOTTOM_PANE_HEIGHT = 25;
+	// Allow buttons to use a standard Swing height; avoid hard-coding a tiny row height.
+	private static final int BOTTOM_PANE_HEIGHT = ModelInterface.common.SwingButtonSizer.STANDARD_BUTTON_HEIGHT + 5;
 	ArrayList<String> region_list = new ArrayList<String>();
 	ArrayList<String> subregion_list = new ArrayList<String>();
 	ArrayList<String> preset_region_list = new ArrayList<String>();
@@ -1320,6 +1321,8 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		presetRegionsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		// Move doTotalCheckBox here from setupButtonPanel
 		doTotalCheckBox = new JCheckBox("Total  ");
+		doTotalCheckBox.setOpaque(true);
+		doTotalCheckBox.setBackground(Color.WHITE);
 		presetRegionsPanel.add(doTotalCheckBox);
 
 		if (preset_choices != null && preset_choices.length > 0) {
@@ -1357,26 +1360,10 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		runQueryButton.setEnabled(false);
 		diffQueryButton.setEnabled(false);
 
-		// Ensure the button panel matches the standard bottom pane height used in Manage DB
-		buttonPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, BOTTOM_PANE_HEIGHT));
-		buttonPanel.setPreferredSize(new Dimension(100, BOTTOM_PANE_HEIGHT));
-
-		// Determine a good button width based on the Run Query button's preferred size
-		int btnPadding = 15;
-		int runQueryWidth = runQueryButton.getPreferredSize().width + btnPadding;
-		int diffQueryWidth = diffQueryButton.getPreferredSize().width + btnPadding;
-		int preferredBtnWidth = Math.max(runQueryWidth, diffQueryWidth);
-
-		Font referenceFont = runQueryButton.getFont();
-		final Dimension btnDim = new Dimension(preferredBtnWidth, BOTTOM_PANE_HEIGHT - 8);
-
-		// Apply consistent sizing to each primary button so the row height remains fixed
+		// Let SwingButtonSizer + the Look & Feel determine button size; don't squash.
 		JButton[] buttons = new JButton[] { runQueryButton, diffQueryButton, listCollapseButton, queryFilterButton, favoriteQueryButton };
 		for (JButton b : buttons) {
-			b.setPreferredSize(btnDim);
-			b.setMaximumSize(new Dimension(preferredBtnWidth, BOTTOM_PANE_HEIGHT));
 			b.setAlignmentY(Component.CENTER_ALIGNMENT);
-			if (referenceFont != null) b.setFont(referenceFont);
 			buttonPanel.add(b);
 		}
 
@@ -1450,8 +1437,12 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		JPanel bottomPane = new JPanel();
 		bottomPane.setLayout(new BoxLayout(bottomPane, BoxLayout.X_AXIS));
 		bottomPane.setAlignmentX(Component.LEFT_ALIGNMENT);
-		bottomPane.setMaximumSize(new Dimension(Integer.MAX_VALUE, BOTTOM_PANE_HEIGHT));
-		bottomPane.setPreferredSize(new Dimension(100, BOTTOM_PANE_HEIGHT));
+		bottomPane.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
+		// Keep the bottom strip height consistent across the app.
+		final int bottomStripHeight = ModelInterface.common.SwingButtonSizer.STANDARD_BUTTON_HEIGHT + 5;
+		bottomPane.setPreferredSize(new Dimension(0, bottomStripHeight));
+		bottomPane.setMinimumSize(new Dimension(0, bottomStripHeight));
+		bottomPane.setMaximumSize(new Dimension(Integer.MAX_VALUE, bottomStripHeight));
 
 		final JButton manageDbButton = new JButton("Manage DB");
 		// left-justify the button
@@ -1459,9 +1450,6 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		bottomPane.add(manageDbButton);
 		bottomPane.add(Box.createHorizontalGlue());
 		manageDbButton.addActionListener(e -> manageDB());
-		// make bottom pane size consistent with other bottom panes
-		bottomPane.setMaximumSize(new Dimension(Integer.MAX_VALUE, BOTTOM_PANE_HEIGHT));
-		bottomPane.setPreferredSize(new Dimension(100, BOTTOM_PANE_HEIGHT));
 		// Disable button unless DB is open; update on control changes like the menu
 		// entry
 		manageDbButton.setEnabled(XMLDB.getInstance() != null);
