@@ -436,10 +436,8 @@ final class ConsoleManager {
                     String entryName = entryBase + ".txt";
                     entryName = ensureUniqueEntryName(entryName, usedEntryNames);
 
-                    String text = "";
-                    if (t.getContent() instanceof TextFlow) {
-                        text = getFlowText((TextFlow) t.getContent());
-                    }
+                    TextFlow flow = extractFlow(t.getContent());
+                    String text = (flow != null) ? getFlowText(flow) : "";
 
                     ZipEntry entry = new ZipEntry(entryName);
                     zos.putNextEntry(entry);
