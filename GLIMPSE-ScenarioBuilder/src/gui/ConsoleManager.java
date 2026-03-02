@@ -279,7 +279,7 @@ final class ConsoleManager {
         root.setTop(new ToolBar(clearActive, saveAs, zipAll));
         root.setCenter(tabPane);
 
-        Scene scene = new Scene(root, 900, 520);
+        Scene scene = new Scene(root, 700, 520);
         // Apply the shared app theme for consistent styling with the main window.
         ScenarioBuilder.applyModernTheme(scene);
         stage.setScene(scene);
