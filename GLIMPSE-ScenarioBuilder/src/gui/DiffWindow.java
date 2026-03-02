@@ -39,6 +39,18 @@ import javafx.stage.FileChooser;
 // Export scope UI
 import javafx.scene.control.ChoiceBox;
 
+// --- Added for per-column horizontal scrollbars ---
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.geometry.Pos;
+import javafx.scene.control.ScrollBar;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Text;
+
 /**
  * Side-by-side diff window for comparing two text files (typically XML configs).
  *
@@ -50,7 +62,9 @@ public class DiffWindow {
     private static double lastWidth = 1200;
     private static double lastHeight = 720;
 
-    /** Shows a modal diff window. */
+    /**
+     * Shows a modal diff window.
+     */
     public static void show(String file1, String file2, List<DiffLineRow> rows) {
         if (!Platform.isFxApplicationThread()) {
             Platform.runLater(() -> show(file1, file2, rows));
@@ -65,6 +79,17 @@ public class DiffWindow {
 
         // Backing filtered view so the scope pulldown can update the table immediately.
         FilteredList<DiffLineRow> filtered = new FilteredList<>(data, r -> true);
+
+        // Shared horizontal scroll position (in pixels) for both text columns.
+        // This is driven by the bottom scrollbars and applied by translating text in cells.
+        DoubleProperty sharedHOffsetPx = new SimpleDoubleProperty(0.0);
+
+        // Track widest rendered line in each text column so we can decide if scrollbars are needed.
+        // (We use a best-effort text measurement; if measurement fails we simply keep scrollbars hidden.)
+        DoubleProperty maxOrigContentPx = new SimpleDoubleProperty(0.0);
+        DoubleProperty maxNewContentPx = new SimpleDoubleProperty(0.0);
+
+        BooleanProperty anyOverflow = new SimpleBooleanProperty(false);
 
         TableView<DiffLineRow> table = new TableView<>(filtered);
         table.getStyleClass().add("diff-table");
@@ -95,12 +120,16 @@ public class DiffWindow {
         colNew.setCellValueFactory(new PropertyValueFactory<>("newText"));
         colNew.setSortable(false);
 
-        installCellFactory(colOrigLine, true, true);
-        installCellFactory(colOrig, true, false);
-        installCellFactory(colNewLine, false, true);
-        installCellFactory(colNew, false, false);
+        installCellFactory(colOrigLine, true, true, null, null, null);
+        installCellFactory(colOrig, true, false, sharedHOffsetPx, maxOrigContentPx, anyOverflow);
+        installCellFactory(colNewLine, false, true, null, null, null);
+        installCellFactory(colNew, false, false, sharedHOffsetPx, maxNewContentPx, anyOverflow);
 
         table.getColumns().addAll(colOrigLine, colOrig, colNewLine, colNew);
+
+        // Note: We rely on this fixed 4-column layout (line#, original, line#, new).
+        // Some JavaFX variants don't expose a public API to disable column reordering.
+        // If reordering is enabled elsewhere, scrollbar alignment may be off.
 
         table.setRowFactory(tv -> new TableRow<DiffLineRow>() {
             @Override
@@ -112,6 +141,139 @@ public class DiffWindow {
                 }
             }
         });
+
+        // Bottom linked horizontal scrollbars, one under each text column.
+        ScrollBar sbOrig = new ScrollBar();
+        sbOrig.setOrientation(javafx.geometry.Orientation.HORIZONTAL);
+        sbOrig.setMin(0.0);
+        sbOrig.setMax(0.0);
+        sbOrig.setVisible(false);
+        sbOrig.setManaged(false);
+
+        ScrollBar sbNew = new ScrollBar();
+        sbNew.setOrientation(javafx.geometry.Orientation.HORIZONTAL);
+        sbNew.setMin(0.0);
+        sbNew.setMax(0.0);
+        sbNew.setVisible(false);
+        sbNew.setManaged(false);
+
+        // Link scrollbars together through the shared offset property.
+        // Guard against small floating point jitter by clamping to [0,max] at the source.
+        sbOrig.valueProperty().addListener((obs, ov, nv) -> {
+            if (nv == null) return;
+            double v = nv.doubleValue();
+            if (Math.abs(sharedHOffsetPx.get() - v) > 0.5) {
+                sharedHOffsetPx.set(v);
+            }
+        });
+        sbNew.valueProperty().addListener((obs, ov, nv) -> {
+            if (nv == null) return;
+            double v = nv.doubleValue();
+            if (Math.abs(sharedHOffsetPx.get() - v) > 0.5) {
+                sharedHOffsetPx.set(v);
+            }
+        });
+        sharedHOffsetPx.addListener((obs, ov, nv) -> {
+            double v = nv == null ? 0.0 : nv.doubleValue();
+            if (!Double.isFinite(v)) v = 0.0;
+            if (Math.abs(sbOrig.getValue() - v) > 0.5) sbOrig.setValue(v);
+            if (Math.abs(sbNew.getValue() - v) > 0.5) sbNew.setValue(v);
+        });
+
+        // Container that lets us overlay the scrollbars under the table.
+        StackPane tableWithScrollbars = new StackPane();
+        tableWithScrollbars.getChildren().add(table);
+
+        // A lightweight overlay pane to position per-column scrollbars at the bottom.
+        Region sbOverlay = new Region();
+        sbOverlay.setManaged(false);
+        sbOverlay.setPickOnBounds(false);
+        tableWithScrollbars.getChildren().add(sbOverlay);
+        StackPane.setAlignment(sbOverlay, Pos.BOTTOM_LEFT);
+
+        // Actually add scrollbars as children of the StackPane (so they can receive input).
+        tableWithScrollbars.getChildren().addAll(sbOrig, sbNew);
+        StackPane.setAlignment(sbOrig, Pos.BOTTOM_LEFT);
+        StackPane.setAlignment(sbNew, Pos.BOTTOM_LEFT);
+
+        // Reposition/resize scrollbars when layout or column widths change.
+        Runnable layoutScrollbars = () -> {
+            try {
+                double wTable = table.getWidth();
+                double hTable = table.getHeight();
+                if (wTable <= 0 || hTable <= 0) {
+                    return;
+                }
+
+                // Compute current visible widths for the two text columns.
+                // Note: TableColumn#getWidth is only valid after CSS/layout.
+                double leftFixed = safeWidth(colOrigLine);
+                double origW = safeWidth(colOrig);
+                double midFixed = safeWidth(colNewLine);
+                double newW = safeWidth(colNew);
+
+                // Position scrollbars directly under each column.
+                double sbH = 16; // small and familiar
+
+                sbOrig.resizeRelocate(leftFixed, hTable - sbH, Math.max(0, origW), sbH);
+                sbNew.resizeRelocate(leftFixed + origW + midFixed, hTable - sbH, Math.max(0, newW), sbH);
+
+                // Update scroll range: max overflow across either side (we want both linked).
+                // overflow = contentWidth - columnWidth (>=0)
+                double overflowOrig = Math.max(0, maxOrigContentPx.get() - origW);
+                double overflowNew = Math.max(0, maxNewContentPx.get() - newW);
+                double overflow = Math.max(overflowOrig, overflowNew);
+
+                boolean show = overflow >= 2.0; // small tolerance
+                anyOverflow.set(show);
+
+                if (!show) {
+                    sbOrig.setMin(0.0);
+                    sbOrig.setMax(0.0);
+                    sbNew.setMin(0.0);
+                    sbNew.setMax(0.0);
+                    // Reset to 0 so content recenters.
+                    sharedHOffsetPx.set(0.0);
+                } else {
+                    sbOrig.setMin(0.0);
+                    sbOrig.setMax(overflow);
+                    sbNew.setMin(0.0);
+                    sbNew.setMax(overflow);
+
+                    // Keep the current offset valid after resize/filter.
+                    double v = sharedHOffsetPx.get();
+                    if (v < 0) v = 0;
+                    if (v > overflow) v = overflow;
+                    sharedHOffsetPx.set(v);
+                }
+
+                // Only visible/managed when needed.
+                sbOrig.setVisible(show);
+                sbOrig.setManaged(show);
+                sbNew.setVisible(show);
+                sbNew.setManaged(show);
+
+            } catch (Exception ignored) {
+            }
+        };
+
+        // Trigger layout updates as widths change.
+        table.widthProperty().addListener((o, a, b) -> Platform.runLater(layoutScrollbars));
+        table.heightProperty().addListener((o, a, b) -> Platform.runLater(layoutScrollbars));
+        colOrig.widthProperty().addListener((o, a, b) -> Platform.runLater(layoutScrollbars));
+        colNew.widthProperty().addListener((o, a, b) -> Platform.runLater(layoutScrollbars));
+        maxOrigContentPx.addListener((o, a, b) -> Platform.runLater(layoutScrollbars));
+        maxNewContentPx.addListener((o, a, b) -> Platform.runLater(layoutScrollbars));
+
+        // Recompute measurements after filtering changes or first show.
+        filtered.predicateProperty().addListener((o, a, b) -> Platform.runLater(() -> {
+            // Reset measurements so they can re-grow to correct value.
+            maxOrigContentPx.set(0.0);
+            maxNewContentPx.set(0.0);
+            Platform.runLater(layoutScrollbars);
+        }));
+
+        Platform.runLater(layoutScrollbars);
 
         Label header = new Label(shortName(file1) + "  vs  " + shortName(file2));
         header.setPadding(new Insets(6, 10, 6, 10));
@@ -150,7 +312,7 @@ public class DiffWindow {
 
         BorderPane root = new BorderPane();
         root.setTop(new VBox2(header, controls));
-        root.setCenter(table);
+        root.setCenter(tableWithScrollbars);
 
         Scene scene = new Scene(root, lastWidth, lastHeight);
         // Prefer the app's shared modern.css for consistent styling.
@@ -191,24 +353,72 @@ public class DiffWindow {
         stage.show();
     }
 
-    private static void installCellFactory(TableColumn<DiffLineRow, String> col, boolean isOriginalColumn, boolean isLineNumberColumn) {
+    private static void installCellFactory(TableColumn<DiffLineRow, String> col, boolean isOriginalColumn, boolean isLineNumberColumn,
+            DoubleProperty sharedHOffsetPx, DoubleProperty maxContentPx, BooleanProperty anyOverflow) {
         col.setCellFactory(tc -> new TableCell<DiffLineRow, String>() {
+
+            // For text columns we render a clipped container so we can translate content horizontally.
+            private final StackPane clipContainer;
+            private final Label textLabel;
+            private final Rectangle clipRect;
+
+            {
+                if (!isLineNumberColumn && sharedHOffsetPx != null) {
+                    textLabel = new Label();
+                    // Keep single-line like the old renderer (don’t wrap).
+                    textLabel.setWrapText(false);
+                    textLabel.setMaxHeight(Double.MAX_VALUE);
+                    textLabel.setMaxWidth(Double.MAX_VALUE);
+
+                    clipRect = new Rectangle();
+                    clipContainer = new StackPane(textLabel);
+                    clipContainer.setAlignment(Pos.CENTER_LEFT);
+                    clipContainer.setClip(clipRect);
+
+                    // Ensure clip follows the cell size.
+                    widthProperty().addListener((o, a, b) -> {
+                        double w = b == null ? 0 : b.doubleValue();
+                        if (w < 0) w = 0;
+                        clipRect.setWidth(w);
+                    });
+                    heightProperty().addListener((o, a, b) -> {
+                        double h = b == null ? 0 : b.doubleValue();
+                        if (h < 0) h = 0;
+                        clipRect.setHeight(h);
+                    });
+
+                    // Apply shared horizontal offset
+                    sharedHOffsetPx.addListener((o, a, b) -> {
+                        double v = b == null ? 0.0 : b.doubleValue();
+                        if (!Double.isFinite(v)) v = 0.0;
+                        textLabel.setTranslateX(-v);
+                    });
+                } else {
+                    textLabel = null;
+                    clipRect = null;
+                    clipContainer = null;
+                }
+            }
+
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
 
                 String display = empty ? null : maybeUnescapeEntities(item);
-                setText(display);
 
                 getStyleClass().removeAll("diff-cell", "diff-equal", "diff-insert", "diff-delete", "diff-change", "diff-empty-side");
                 getStyleClass().add("diff-cell");
 
                 if (empty) {
+                    setText(null);
+                    setGraphic(null);
                     return;
                 }
 
                 DiffLineRow row = getTableRow() == null ? null : (DiffLineRow) getTableRow().getItem();
                 if (row == null) {
+                    setText(null);
+                    setGraphic(null);
                     return;
                 }
 
@@ -242,8 +452,64 @@ public class DiffWindow {
                 if (isLineNumberColumn) {
                     getStyleClass().add("diff-line-no");
                 }
+
+                if (isLineNumberColumn || sharedHOffsetPx == null) {
+                    // Preserve legacy behavior for line numbers and non-scrolling columns.
+                    setGraphic(null);
+                    setText(display);
+                    return;
+                }
+
+                // Scrolling text column: use clipped label and translate with shared offset.
+                setText(null);
+                if (clipContainer != null && textLabel != null) {
+                    textLabel.setText(display);
+                    textLabel.setTranslateX(-sharedHOffsetPx.get());
+                    setGraphic(clipContainer);
+
+                    // Best-effort content width measurement to determine whether scrollbars are needed.
+                    // Only grow maxContentPx (monotonic) so we don't thrash on scrolling.
+                    if (maxContentPx != null && display != null && !display.isEmpty()) {
+                        try {
+                            double w = measureTextWidth(display, textLabel.getFont());
+                            if (w > maxContentPx.get()) {
+                                maxContentPx.set(w);
+                            }
+                        } catch (Exception ignored) {
+                        }
+                    }
+                } else {
+                    // Fallback
+                    setText(display);
+                    setGraphic(null);
+                }
             }
         });
+    }
+
+    private static double measureTextWidth(String s, javafx.scene.text.Font font) {
+        if (s == null || s.isEmpty()) {
+            return 0.0;
+        }
+        Text t = new Text(s);
+        if (font != null) {
+            t.setFont(font);
+        }
+        // layoutBounds includes glyph widths and is stable without scene attachment.
+        double w = t.getLayoutBounds().getWidth();
+        // Add a small pad to account for cell padding/margins.
+        return w + 12.0;
+    }
+
+    private static double safeWidth(TableColumn<?, ?> col) {
+        try {
+            if (col == null) return 0.0;
+            double w = col.getWidth();
+            if (!Double.isFinite(w) || w < 0) return 0.0;
+            return w;
+        } catch (Exception e) {
+            return 0.0;
+        }
     }
 
     /**
