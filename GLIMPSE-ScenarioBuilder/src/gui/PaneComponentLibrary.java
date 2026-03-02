@@ -153,8 +153,7 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 		String componentFilePath = selectedComponentRows.get(0).getAddress();
 		System.out.println("Editing component " + componentFilePath);
 		if (componentFilePath.toLowerCase().endsWith(".xml")) {
-			String xmlFilePath = vars.getScenarioComponentsDir() + File.separator + componentFilePath;
-			files.showFileInXmlEditor(xmlFilePath);
+			files.showFileInXmlEditor(componentFilePath);
 		} else {
 			String tabType = null;
 			ArrayList<String> fileContents = files.getStringArrayFromFile(componentFilePath, null);
