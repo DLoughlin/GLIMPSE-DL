@@ -84,34 +84,49 @@ public class SetupTableScenariosLibrary {
 		//TableView<ScenarioRow> 
 		ScenarioTable.tableScenariosLibrary = new TableView<>(ScenarioTable.listOfScenarioRuns);
 
+		// Let the table columns always consume the full available width.
+		// This removes the odd right-side gap caused by fixed prefWidth bindings
+		// (especially when scrollbars appear/disappear).
+		ScenarioTable.tableScenariosLibrary.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+		ScenarioTable.tableScenariosLibrary.setTableMenuButtonVisible(true);
+
 		TableColumn<ScenarioRow, String> scenNameCol = ScenarioTable.getScenNameColumn();
-		scenNameCol.prefWidthProperty().bind(ScenarioTable.tableScenariosLibrary.widthProperty().divide(4.));
+		scenNameCol.setMinWidth(140);
 
 		TableColumn<ScenarioRow, String> runComponentsCol = ScenarioTable.getComponentsColumn();
-		runComponentsCol.prefWidthProperty().bind(ScenarioTable.tableScenariosLibrary.widthProperty().divide(2.));
+		runComponentsCol.setMinWidth(220);
 
 		TableColumn<ScenarioRow, Date> createdCol = ScenarioTable.getCreatedDateColumn();
-		createdCol.prefWidthProperty().bind(ScenarioTable.tableScenariosLibrary.widthProperty().divide(5.));
+		createdCol.setMinWidth(110);
 
 		TableColumn<ScenarioRow, Date> startedCol = ScenarioTable.getStartedDateColumn();
-		startedCol.prefWidthProperty().bind(ScenarioTable.tableScenariosLibrary.widthProperty().divide(5.));
+		startedCol.setMinWidth(110);
 		
 		TableColumn<ScenarioRow, Date> completedCol = ScenarioTable.getCompletedDateColumn();
-		completedCol.prefWidthProperty().bind(ScenarioTable.tableScenariosLibrary.widthProperty().divide(5.));
+		completedCol.setMinWidth(110);
 		
 		TableColumn<ScenarioRow, String> statusCol = ScenarioTable.getStatusColumn();
-		statusCol.prefWidthProperty().bind(ScenarioTable.tableScenariosLibrary.widthProperty().divide(10.));
+		statusCol.setMinWidth(90);
 
 		TableColumn<ScenarioRow, String> noErrCol = ScenarioTable.getNoErrColumn();
-		noErrCol.prefWidthProperty().bind(ScenarioTable.tableScenariosLibrary.widthProperty().divide(10.));
+		noErrCol.setMinWidth(60);
 		
 		TableColumn<ScenarioRow, String> unsolvedMarketsCol = ScenarioTable.getUnsolvedMarketsColumn();
-		unsolvedMarketsCol.prefWidthProperty().bind(ScenarioTable.tableScenariosLibrary.widthProperty().divide(8.));
+		unsolvedMarketsCol.setMinWidth(90);
 		
+		// Runtime should be the last column and can stretch to the right edge.
 		TableColumn<ScenarioRow, String> runtimeCol = ScenarioTable.getRuntimeColumn();
-		runtimeCol.prefWidthProperty().bind(ScenarioTable.tableScenariosLibrary.widthProperty().divide(9.));
-		
-		ScenarioTable.tableScenariosLibrary.getColumns().addAll(scenNameCol, createdCol, /*startedCol,*/ completedCol, statusCol,unsolvedMarketsCol,runtimeCol);
+		runtimeCol.setMinWidth(90);
+
+		ScenarioTable.tableScenariosLibrary.getColumns().addAll(
+				scenNameCol,
+				createdCol,
+				/*startedCol,*/
+				completedCol,
+				statusCol,
+				unsolvedMarketsCol,
+				runtimeCol
+		);
 		ScenarioTable.tableScenariosLibrary.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
 		// Show tooltip for the row currently being hovered (no selection required).

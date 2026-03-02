@@ -90,6 +90,10 @@ public class CSVToXMLMain {
     private static final String ERROR_MSG_INVALID_COMMAND = "Invalid command: %s, only 'CSV file' can be run in this mode.";
     private static final String INPUT_TABLE_KEYWORD = "INPUT_TABLE";
     private static final String VARIABLE_ID_KEYWORD = "Variable ID";
+
+    // New: optional flag to use preset region list expansion.
+    private static final String ARG_USE_PRESET_REGION_LIST = "--usePresetRegionList=";
+
     private static final List<String> US_STATES = Collections.unmodifiableList(Arrays.asList(
             "AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID",
             "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC",
@@ -107,16 +111,33 @@ public class CSVToXMLMain {
                 System.out.println("Running batch file: " + args[0]);
                 runFromBatch(new File(args[0]));
             } else if (args.length >= 3) {
+                // Support optional trailing args, e.g. --usePresetRegionList=true.
+                boolean usePresetRegionList = parseUsePresetRegionListArg(args);
+
                 File xmlOutputFile = new File(args[args.length - 1]);
                 File headerFile = new File(args[args.length - 2]);
-                File[] csvFiles = Arrays.stream(args, 0, args.length - 2)
+
+                // CSV files are everything before header/out/optional flags.
+                int endOfCsvArgsExclusive = args.length - 2;
+                // If a flag is placed at the end (as the UI does), adjust indices.
+                if (args.length >= 4 && args[args.length - 1].startsWith(ARG_USE_PRESET_REGION_LIST)) {
+                    // last arg is flag; then output xml is args[len-2], header is args[len-3]
+                    usePresetRegionList = parseUsePresetRegionListArg(new String[] { args[args.length - 1] });
+                    xmlOutputFile = new File(args[args.length - 2]);
+                    headerFile = new File(args[args.length - 3]);
+                    endOfCsvArgsExclusive = args.length - 3;
+                }
+
+                File[] csvFiles = Arrays.stream(args, 0, endOfCsvArgsExclusive)
+                        .filter(a -> !a.startsWith(ARG_USE_PRESET_REGION_LIST))
                         .map(File::new)
                         .toArray(File[]::new);
 
-                Optional<Document> docOpt = runCSVConversion(csvFiles, headerFile, null);
+                Optional<Document> docOpt = runCSVConversion(csvFiles, headerFile, null, usePresetRegionList);
+                File finalXmlOutputFile = xmlOutputFile;
                 docOpt.ifPresent(doc -> {
-                    writeFile(xmlOutputFile, doc);
-                    replaceTextInFile(xmlOutputFile.toPath(), "DELETE", "");
+                    writeFile(finalXmlOutputFile, doc);
+                    replaceTextInFile(finalXmlOutputFile.toPath(), "DELETE", "");
                 });
             } else {
                 System.err.println(USAGE_MSG);
@@ -126,6 +147,19 @@ public class CSVToXMLMain {
             System.err.println("!!!!!!!!!!!! Exception in GLIMPSE CSVtoXML utility !!!!!!!!!!!!!!!!!");
             e.printStackTrace();
         }
+    }
+
+    private static boolean parseUsePresetRegionListArg(String[] args) {
+        boolean usePresetRegionList = false;
+        if (args == null) return false;
+        for (String arg : args) {
+            if (arg == null) continue;
+            if (arg.startsWith(ARG_USE_PRESET_REGION_LIST)) {
+                String val = arg.substring(ARG_USE_PRESET_REGION_LIST.length()).trim();
+                usePresetRegionList = "true".equalsIgnoreCase(val) || "yes".equalsIgnoreCase(val) || "1".equals(val);
+            }
+        }
+        return usePresetRegionList;
     }
 
     // ===================== File Utilities =====================
@@ -184,12 +218,31 @@ public class CSVToXMLMain {
      * @return Optional containing the resulting Document, or empty if error.
      */
     public static Optional<Document> runCSVConversion(File[] csvFiles, File headerFile, JFrame parentFrame) {
+        // Backward-compatible default.
+        return runCSVConversion(csvFiles, headerFile, parentFrame, false);
+    }
+
+    /**
+     * Run the CSV to XML conversion process.
+     * @param csvFiles Array of CSV files.
+     * @param headerFile Header definition file.
+     * @param parentFrame Optional parent JFrame for error dialogs.
+     * @param usePresetRegionList If true, attempt to expand group regions from the preset region list.
+     * @return Optional containing the resulting Document, or empty if error.
+     */
+    public static Optional<Document> runCSVConversion(File[] csvFiles, File headerFile, JFrame parentFrame, boolean usePresetRegionList) {
         DOMTreeBuilder tree = new DOMTreeBuilder();
         try {
             Map<String, String> nickNameMap = new HashMap<>();
             Map<String, String> tableIdMap = parseHeaderFile(headerFile.toPath(), nickNameMap, parentFrame);
+
+            Map<String, List<String>> presetRegionExpansionMap = Collections.emptyMap();
+            if (usePresetRegionList) {
+                presetRegionExpansionMap = tryLoadPresetRegionExpansionMap(parentFrame);
+            }
+
             for (File csvFile : csvFiles) {
-                processCsvFile(csvFile.toPath(), tableIdMap, tree, parentFrame);
+                processCsvFile(csvFile.toPath(), tableIdMap, tree, parentFrame, usePresetRegionList, presetRegionExpansionMap);
             }
             return Optional.of(tree.getDoc());
         } catch (Exception e) {
@@ -204,6 +257,63 @@ public class CSVToXMLMain {
             }
             GLIMPSEUtils.getInstance().warningMessage(ERROR_MSG_PROCESSING);
             return Optional.empty();
+        }
+    }
+
+    private static Map<String, List<String>> tryLoadPresetRegionExpansionMap(JFrame parentFrame) {
+        try {
+            GLIMPSEVariables vars = GLIMPSEVariables.getInstance();
+            String filename = vars.getPresetRegionListFilename();
+            if (filename == null || filename.trim().isEmpty()) {
+                return Collections.emptyMap();
+            }
+            Path path = new File(filename).toPath();
+            if (!Files.exists(path)) {
+                return Collections.emptyMap();
+            }
+
+            // Expected format: first token is the group name, then a ':' delimiter, then a comma-separated list of subregions.
+            // Example:
+            // United States: AK, AL, AZ, ...
+            // RGGI: CT, DE, MA, MD, ME, NH, NJ, NY, PA, RI, VT
+            Map<String, List<String>> map = new HashMap<>();
+            List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
+            for (String raw : lines) {
+                String line = trimString(raw);
+                if (line.isEmpty() || line.startsWith("#")) continue;
+
+                int colonIdx = line.indexOf(':');
+                if (colonIdx <= 0) {
+                    // Not a preset expansion entry.
+                    continue;
+                }
+
+                String key = line.substring(0, colonIdx).trim();
+                if (key.isEmpty()) continue;
+                String keyLower = key.toLowerCase();
+
+                String remainder = line.substring(colonIdx + 1).trim();
+                if (remainder.isEmpty()) continue;
+
+                String[] parts = remainder.split(CSV_DELIMITER, -1);
+                List<String> subs = new ArrayList<>();
+                for (String part : parts) {
+                    String sub = part.trim();
+                    if (!sub.isEmpty()) subs.add(sub);
+                }
+
+                if (!subs.isEmpty()) {
+                    map.put(keyLower, Collections.unmodifiableList(subs));
+                }
+            }
+            return map;
+        } catch (Exception e) {
+            if (parentFrame != null) {
+                javax.swing.SwingUtilities.invokeLater(() ->
+                        JOptionPane.showMessageDialog(parentFrame, "Could not read preset region list; falling back to default expansion.\n" + e.getMessage(),
+                                "Preset region list warning", JOptionPane.WARNING_MESSAGE));
+            }
+            return Collections.emptyMap();
         }
     }
 
@@ -267,7 +377,8 @@ public class CSVToXMLMain {
      * @param parentFrame Optional parent JFrame for error dialogs.
      * @throws IOException if file read fails.
      */
-    private static void processCsvFile(Path csvPath, Map<String, String> tableIdMap, DOMTreeBuilder tree, JFrame parentFrame) throws IOException {
+    private static void processCsvFile(Path csvPath, Map<String, String> tableIdMap, DOMTreeBuilder tree, JFrame parentFrame,
+                                      boolean usePresetRegionList, Map<String, List<String>> presetRegionExpansionMap) throws IOException {
         List<String> lines = Files.readAllLines(csvPath);
         Iterator<String> iterator = lines.iterator();
         while (iterator.hasNext()) {
@@ -293,7 +404,7 @@ public class CSVToXMLMain {
                     while (iterator.hasNext()) {
                         line = trimString(iterator.next());
                         if (line.isEmpty() || line.startsWith(",")) break;
-                        processCsvDataRow(line, tree);
+                        processCsvDataRow(line, tree, usePresetRegionList, presetRegionExpansionMap);
                     }
                 } else {
                     System.err.println(String.format(ERROR_MSG_HEADER_NOT_FOUND, headerId));
@@ -308,22 +419,61 @@ public class CSVToXMLMain {
      * @param tree DOMTreeBuilder instance.
      */
     private static void processCsvDataRow(String line, DOMTreeBuilder tree) {
+        // Backward-compatible default.
+        processCsvDataRow(line, tree, false, Collections.emptyMap());
+    }
+
+    private static void processCsvDataRow(String line, DOMTreeBuilder tree,
+                                         boolean usePresetRegionList, Map<String, List<String>> presetRegionExpansionMap) {
         List<String> dataArr = Arrays.stream(line.split(CSV_DELIMITER, -1))
                 .map(String::trim)
                 .collect(Collectors.toList());
         if (dataArr.isEmpty()) return;
-        String regionIdentifier = dataArr.get(0).toLowerCase();
-        if (ALL_STATES_KEYWORD_1.equals(regionIdentifier) || ALL_STATES_KEYWORD_2.equals(regionIdentifier) || ALL_STATES_KEYWORD_3.equals(regionIdentifier)) {
-            for (String state : US_STATES) {
-                dataArr.set(0, state);
+
+        String originalRegionToken = dataArr.get(0);
+        String regionIdentifierLower = originalRegionToken.toLowerCase();
+
+        // 1) Expand the legacy 'all states' keyword.
+        if (ALL_STATES_KEYWORD_1.equals(regionIdentifierLower) || ALL_STATES_KEYWORD_2.equals(regionIdentifierLower) || ALL_STATES_KEYWORD_3.equals(regionIdentifierLower)) {
+            List<String> expansions = null;
+            if (usePresetRegionList && presetRegionExpansionMap != null) {
+                // Prefer an explicit mapping for "all states" if present.
+                expansions = presetRegionExpansionMap.get(ALL_STATES_KEYWORD_1);
+            }
+            if (expansions == null || expansions.isEmpty()) {
+                expansions = US_STATES;
+            }
+            for (String region : expansions) {
+                dataArr.set(0, region);
                 try {
                     tree.addToTree(dataArr);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
-        } else if (regionIdentifier.contains(":")) {
-            String[] regions = dataArr.get(0).split(":");
+            return;
+        }
+
+        // 2) If enabled, expand any region token that matches a key in the preset list.
+        //    Note: we do this BEFORE colon splitting. If users want colon-splitting, they can keep using ':' explicitly.
+        if (usePresetRegionList && presetRegionExpansionMap != null) {
+            List<String> expansions = presetRegionExpansionMap.get(regionIdentifierLower);
+            if (expansions != null && !expansions.isEmpty()) {
+                for (String region : expansions) {
+                    dataArr.set(0, region);
+                    try {
+                        tree.addToTree(dataArr);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+                return;
+            }
+        }
+
+        // 3) Existing colon splitting behavior.
+        if (regionIdentifierLower.contains(":")) {
+            String[] regions = originalRegionToken.split(":");
             for (String region : regions) {
                 dataArr.set(0, region);
                 try {
@@ -332,25 +482,15 @@ public class CSVToXMLMain {
                     e.printStackTrace();
                 }
             }
-        } else {
-            try {
-                tree.addToTree(dataArr);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            return;
         }
-    }
 
-    /**
-     * Trim a string, removing trailing commas and whitespace. Returns empty string if null.
-     * @param s Input string.
-     * @return Trimmed string.
-     */
-    public static String trimString(String s) {
-        if (s == null) {
-            return "";
+        // 4) Default: no expansion.
+        try {
+            tree.addToTree(dataArr);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        return s.replaceAll(",+$", "").trim();
     }
 
     // ===================== Batch File Processing =====================
@@ -402,5 +542,17 @@ public class CSVToXMLMain {
     private static Stream<Node> streamNodeList(NodeList nodeList) {
         return IntStream.range(0, nodeList.getLength())
                 .mapToObj(nodeList::item);
+    }
+
+    /**
+     * Trim a string, removing trailing commas and whitespace. Returns empty string if null.
+     * @param s Input string.
+     * @return Trimmed string.
+     */
+    public static String trimString(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replaceAll(",+$", "").trim();
     }
 }

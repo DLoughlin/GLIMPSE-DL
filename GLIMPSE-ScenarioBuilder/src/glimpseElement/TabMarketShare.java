@@ -42,7 +42,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.controlsfx.control.CheckComboBox;
-import gui.PaneNewScenarioComponent;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -128,9 +127,8 @@ public class TabMarketShare extends PolicyTab implements Runnable {
      * Constructs a TabMarketShare instance for the given scenario builder tab.
      * @param title  the tab title
      * @param stageX the JavaFX Stage used by the dialog
-     * @param pane   the parent PaneNewScenarioComponent containing shared resources
      */
-    public TabMarketShare(String title, Stage stageX, PaneNewScenarioComponent pane) {
+    public TabMarketShare(String title, Stage stageX) {
         this.setText(title);
         this.setStyle(styles.getFontStyle());
         super.setupEventHandlers();
@@ -854,7 +852,9 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 	private void saveScenarioComponent(TreeView<String> tree) {
 		// 1. Early exit on failed QA
 		if (!qaInputs()) {
-			Thread.currentThread().destroy();
+			try {
+				Thread.currentThread().interrupt();
+			} catch (Exception ignored) {}
 			return;
 		}
 

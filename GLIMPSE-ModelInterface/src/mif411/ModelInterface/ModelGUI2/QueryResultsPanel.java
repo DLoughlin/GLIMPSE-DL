@@ -256,6 +256,36 @@ public class QueryResultsPanel extends JPanel {
 	}
 
 	/**
+	 * Kills the running query and waits (up to {@code timeoutMs}) for it to stop.
+	 * <p>
+	 * This is a safer alternative to {@link #killThreadAndWait()} during shutdown
+	 * because it bounds how long the caller can block.
+	 * 
+	 * @param timeoutMs Maximum time to wait for the query thread to terminate.
+	 */
+	public void killThreadAndWait(final long timeoutMs) {
+		// First request cancellation (should be quick).
+		killThread();
+
+		// If the thread reference isn't available for some reason, we're done.
+		final Thread t = runThread;
+		if (t == null) {
+			return;
+		}
+
+		// Wait at most timeoutMs.
+		try {
+			if (timeoutMs <= 0) {
+				return;
+			}
+			t.join(timeoutMs);
+		} catch (InterruptedException ie) {
+			// Preserve interrupt status and return.
+			Thread.currentThread().interrupt();
+		}
+	}
+
+	/**
 	 * Kills the running query and waits for it to stop running before returning.
 	 * This would be useful to call for instance before we are about to close the
 	 * database since it would not be acceptable for the query to take it's time

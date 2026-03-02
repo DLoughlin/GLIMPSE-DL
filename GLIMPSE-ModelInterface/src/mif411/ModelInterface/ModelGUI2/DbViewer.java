@@ -324,11 +324,9 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			public void propertyChange(PropertyChangeEvent evt) {
 				if (evt.getPropertyName().equals("Control")) {
 					if (evt.getOldValue().equals(controlStr) || evt.getOldValue().equals(controlStr + "Same")) {
-						// make sure all queries get killed before we close the database
-						for (int tab = 0; tab < tablesTabs.getTabCount(); ++tab) {
-							((QueryResultsPanel) tablesTabs.getComponentAt(tab)).killThreadAndWait();
-						}
-
+						// Don't block the EDT during shutdown; cancel queries quickly and close DB asynchronously.
+						shutdownQueriesAndCloseDatabaseAsync();
+						
 						if (queries.hasChanges() && InterfaceMain.getInstance().showConfirmDialog(
 								"The Queries have been modified.  Do you want to save them?", "Confirm Save Queries",
 								JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
@@ -360,7 +358,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 							cp.repaint();
 						}
 
-						XMLDB.closeDatabase();
+						// XMLDB.closeDatabase() is handled by shutdownQueriesAndCloseDatabaseAsync
 					}
 					if (evt.getNewValue().equals(controlStr)) {
 						Properties prop = main.getProperties();
@@ -2887,5 +2885,55 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		scanDialog.setResizable(false);
 		scanDialog.setContentPane(all);
 		scanDialog.setVisible(true);
+	}
+	
+	/**
+	 * Best-effort shutdown of running query tabs and the XML database.
+	 * <p>
+	 * Cancels running queries immediately, then waits up to a bounded timeout off
+	 * the EDT before closing the XMLDB.
+	 */
+	private void shutdownQueriesAndCloseDatabaseAsync() {
+		final int tabCount = tablesTabs == null ? 0 : tablesTabs.getTabCount();
+
+		// 1) Request cancellation quickly (non-blocking).
+		for (int tab = 0; tab < tabCount; ++tab) {
+			Component comp = tablesTabs.getComponentAt(tab);
+			if (comp instanceof QueryResultsPanel) {
+				((QueryResultsPanel) comp).killThread();
+			} else if (comp instanceof DiffResultsPanel) {
+				// DiffResultsPanel extends QueryResultsPanel, but be defensive.
+				try {
+					((QueryResultsPanel) comp).killThread();
+				} catch (ClassCastException cce) {
+					// ignore
+				}
+			}
+		}
+
+		// 2) Wait a bounded amount off the EDT, then close DB.
+		final long perTabTimeoutMs = 1500L;
+		final long maxTotalTimeoutMs = Math.max(perTabTimeoutMs, perTabTimeoutMs * Math.max(1, tabCount));
+
+		Thread shutdownThread = new Thread(() -> {
+			final long deadline = System.currentTimeMillis() + maxTotalTimeoutMs;
+			for (int tab = 0; tab < tabCount; ++tab) {
+				long remaining = deadline - System.currentTimeMillis();
+				if (remaining <= 0) {
+					break;
+				}
+				Component comp = tablesTabs.getComponentAt(tab);
+				if (comp instanceof QueryResultsPanel) {
+					((QueryResultsPanel) comp).killThreadAndWait(remaining);
+				}
+			}
+			try {
+				XMLDB.closeDatabase();
+			} catch (Exception ex) {
+				ex.printStackTrace();
+			}
+		}, "DbViewer-Shutdown");
+		shutdownThread.setDaemon(true);
+		shutdownThread.start();
 	}
 }

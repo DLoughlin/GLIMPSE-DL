@@ -56,6 +56,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.geometry.Insets;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -105,7 +106,7 @@ import javafx.stage.Stage;
  */
 class PaneCreateScenario extends ScenarioBuilder {
     // UI Constants
-    private static final String LABEL_NAME = "Name: ";
+    private static final String LABEL_NAME = "Name:";
     private static final String LABEL_COMPONENTS = "Components: ";
     private static final String LABEL_CREATE_SCENARIO = "Create Scenario";
     private static final String TOOLTIP_SCENARIO_NAME = "Enter name of scenario being constructed";
@@ -139,7 +140,13 @@ class PaneCreateScenario extends ScenarioBuilder {
 
     private VBox vBox;
     private TextField textFieldScenarioName;
-    private Label labelScenarioName;
+
+    // Local header label is no longer needed; ScenarioBuilder owns the title row.
+    // private Label labelScenarioName;
+
+    private Label labelName;
+    private HBox nameRow;
+    private HBox buttonRow;
 
     /**
      * Constructs the scenario creation pane and initializes all UI components.
@@ -150,27 +157,32 @@ class PaneCreateScenario extends ScenarioBuilder {
     PaneCreateScenario(Stage stage) {
         vBox = new VBox(1);
         textFieldScenarioName = utils.createTextField(2.5 * styles.getBigButtonWidth());
+        textFieldScenarioName.setPromptText("Enter new scenario name...");
         textFieldScenarioName.setTooltip(new Tooltip(TOOLTIP_SCENARIO_NAME));
-        // Removed manual font style setting is handled by CSS
-        // vBox.setStyle(styles.getFontStyle());
 
-        labelScenarioName = utils.createLabel(LABEL_CREATE_SCENARIO, 1.5 * styles.getBigButtonWidth());
-        HBox hBox = new HBox(30);
-        hBox.getChildren().addAll(labelScenarioName, textFieldScenarioName);
-        // Use centralized small bottom padding
-        hBox.setPadding(styles.getSmallBottomPadding());
+        labelName = utils.createLabel(LABEL_NAME);
+        labelName.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
 
-        HBox hBoxRun = new HBox();
+        nameRow = new HBox(4);
+        nameRow.setAlignment(Pos.CENTER_LEFT);
+        nameRow.getChildren().addAll(labelName, textFieldScenarioName);
+        textFieldScenarioName.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(textFieldScenarioName, javafx.scene.layout.Priority.ALWAYS);
+
+    	// Add a small visual buffer before the table.
+    	VBox.setMargin(nameRow, new Insets(0, 0, 4, 0));
+
+        buttonRow = new HBox();
         // Use centralized top padding 5px
-        hBoxRun.setPadding(styles.getTopPadding5());
-        hBoxRun.setAlignment(Pos.CENTER);
+        buttonRow.setPadding(styles.getTopPadding5());
+        buttonRow.setAlignment(Pos.CENTER);
 
         setupButtons();
-        hBoxRun.getChildren().addAll(Client.buttonCreateScenarioConfigFile, utils.getSeparator(Orientation.VERTICAL, 3, false), Client.buttonMoveComponentUp, Client.buttonMoveComponentDown);
+        buttonRow.getChildren().addAll(Client.buttonCreateScenarioConfigFile, utils.getSeparator(Orientation.VERTICAL, 2, false), Client.buttonMoveComponentUp, utils.getSeparator(Orientation.VERTICAL, 2, false), Client.buttonMoveComponentDown);
 
         // Set up main layout and bind width to stage
-        vBox.getChildren().addAll(hBox, ComponentLibraryTable.getTableCreateScenario(), hBoxRun);
-        vBox.prefWidthProperty().bind(stage.widthProperty().multiply(2.0 / 7.0));
+        vBox.getChildren().addAll(nameRow, ComponentLibraryTable.getTableCreateScenario(), buttonRow);
+        vBox.prefWidthProperty().bind(stage.widthProperty().multiply(2.5 / 7.0));
     }
 
     /**

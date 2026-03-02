@@ -47,6 +47,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TextField;
@@ -63,6 +64,7 @@ public class CsvToXmlWidget {
 
 	TextField csvFileTextField=utils.createTextField();
 	TextField headerFileTextField=utils.createTextField();
+	CheckBox usePresetRegionListCheckBox = new CheckBox("Use preset region list");
 	String csvFilename="";
 	String headersFilename=vars.getXmlHeaderFilename();
 	String xmlFilename="";
@@ -90,8 +92,10 @@ public class CsvToXmlWidget {
 		Label headerFileLabel=utils.createLabel("Header file");
 		//TextField headerFileTextField=utils.createTextField();
 		Button browseForHeaderFile=utils.createButton("Browse", styles.getBigButtonWidth(),"Locate header file",null);
+		Button editPresetRegionListButton = utils.createButton("Edit", styles.getBigButtonWidth(),"Edit the preset region list",null);
 
 		headerFileTextField.setText(headersFilename);
+		usePresetRegionListCheckBox.setSelected(false);
 
 		browseForCsvFile.setOnAction(e -> {
 			csvFilename=browseForFile("CSV file (*.csv)","*.csv",vars.getGlimpseDir(),"Open");	
@@ -107,7 +111,16 @@ public class CsvToXmlWidget {
 			headersFilename=temp;
 			headerFileTextField.setText(temp);
 		});	
-				
+		
+		editPresetRegionListButton.setOnAction(e -> {
+			String presetFilename = vars.getPresetRegionListFilename();
+			if (presetFilename == null || presetFilename.trim().isEmpty()) {
+				utils.warningMessage("Preset region list filename is not set.");
+				return;
+			}
+			// Prefer configured text editor; fall back to system default if needed.
+			files.showFileInTextEditor(presetFilename);
+		});
 		
 		GridPane grid = new GridPane();
 
@@ -120,17 +133,17 @@ public class CsvToXmlWidget {
 		grid.add(topLabel, 0, 0);
 		grid.add(csvFileLabel, 0, 1);
 		grid.add(headerFileLabel, 0, 2);
-		//grid.add(xmlFileLabel, 0, 3);
-		
+
 		grid.add(csvFileTextField, 1, 1);
 		grid.add(headerFileTextField, 1, 2);
-		//grid.add(xmlFileTextField, 1, 3);
-		
+
 		grid.add(browseForCsvFile, 2, 1);
 		grid.add(browseForHeaderFile, 2, 2);
-		//grid.add(browseForXmlFile, 2, 3);		
-				
-		grid.add(new Separator(Orientation.HORIZONTAL), 0, 3, 3,1);
+
+		// place checkbox after 'Header file' row
+		grid.add(usePresetRegionListCheckBox, 1, 3, 1, 1);
+		grid.add(editPresetRegionListButton, 2, 3);
+		grid.add(new Separator(Orientation.HORIZONTAL), 0, 4, 3,1);
 		
 		Button convertButton = utils.createButton("Convert", styles.getBigButtonWidth(),"Converts CSV to XML using header",null);
 		Button closeButton = utils.createButton("Close", styles.getBigButtonWidth(),null);
@@ -203,14 +216,16 @@ public class CsvToXmlWidget {
 		try {
 			csvFilename=csvFileTextField.getText();
 			headersFilename=headerFileTextField.getText();
+			boolean usePresetRegionList = usePresetRegionListCheckBox.isSelected();
 			
 			File csvFile=new File(csvFilename);
 			xmlFilename=browseForFile("XML file (*.xml)","*.xml",csvFile.getParent(),"Save");
-			String[] s = { csvFilename, headersFilename, xmlFilename };
+			String[] s = { csvFilename, headersFilename, xmlFilename, "--usePresetRegionList=" + usePresetRegionList };
 			System.out.println("csv to xml conversion commencing:");
 			System.out.println("    csv file: " + csvFilename);
 			System.out.println("    header file: " + headersFilename);
 			System.out.println("    xml file: " + xmlFilename);
+			System.out.println("    use preset region list: " + usePresetRegionList);
 			glimpseUtil.CSVToXMLMain.main(s);
 
 			files.showFileInTextEditor(xmlFilename);

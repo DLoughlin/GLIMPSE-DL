@@ -65,21 +65,19 @@ public class SetupTableComponentLibrary {
 	
 	public void setup() { //TableView<ComponentRow>
 
-		//TableView<ComponentRow> 
 		ComponentLibraryTable.tableComponents = new TableView<>(ComponentLibraryTable.getListOfFiles());
+		// Make columns fit the available table width (prevents a horizontal scrollbar at normal sizes).
+		ComponentLibraryTable.getTableComponents().setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		// Creates the _ column and sets its width to be 1/4 of the full table
 		TableColumn<ComponentRow, String> nameCol = ComponentLibraryTable.getFileNameColumn();
-		nameCol.prefWidthProperty().bind(ComponentLibraryTable.getTableComponents().widthProperty().divide(1./(2./3.)));
+		nameCol.prefWidthProperty().bind(ComponentLibraryTable.getTableComponents().widthProperty().multiply(0.65));
 
-		// Creates the _ column and sets its width to be 1/2 of the full table
 		// Not currently shown in table!!!!
 		TableColumn<ComponentRow, String> addressCol = ComponentLibraryTable.getAddressColumn();
 		addressCol.prefWidthProperty().bind(ComponentLibraryTable.getTableComponents().widthProperty().divide(2.));
 
-		// Creates the _ column and sets its width to be 1/4 of the full table
 		TableColumn<ComponentRow, Date> dateCol = ComponentLibraryTable.getBirthDateColumn();
-		dateCol.prefWidthProperty().bind(ComponentLibraryTable.getTableComponents().widthProperty().divide(3.));
+		dateCol.prefWidthProperty().bind(ComponentLibraryTable.getTableComponents().widthProperty().multiply(0.35));
 		ComponentLibraryTable.getTableComponents().getColumns().addAll(nameCol, /*addressCol,*/ dateCol);
 
 		ComponentLibraryTable.getTableComponents().getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
@@ -87,9 +85,6 @@ public class SetupTableComponentLibrary {
 		showComponentDetailsOnDoubleClick();//ComponentTable.tableComponents);
 
 		addFiltering();//ComponentTable.tableComponents);
-		//System.out.println("   filterComponentsTextField: " + ComponentLibraryTable.filterComponentsTextField.getLength());
-		//return tableComponents;
-
 	}
 
 	private void showComponentDetailsOnDoubleClick() {//TableView<ComponentRow> tableComponents) {
@@ -122,7 +117,12 @@ public class SetupTableComponentLibrary {
 
 	private void addFiltering() {//TableView<ComponentRow> table) {
 
-		ComponentLibraryTable.setFilterComponentsTextField(utils.createTextField());
+		// Filter TextField is now created by the UI pane (PaneComponentLibrary) so it can be
+		// placed where we want in the layout.
+		if (ComponentLibraryTable.getFilterComponentsTextField() == null) {
+			throw new IllegalStateException("Filter TextField not initialized. Create it in PaneComponentLibrary and call ComponentLibraryTable.setFilterComponentsTextField(...) before SetupTableComponentLibrary.setup().");
+		}
+
 		ComponentLibraryTable.getFilterComponentsTextField().setMinWidth(styles.getBigButtonWidth());
 
 		FilteredList<ComponentRow> filteredComponents = new FilteredList<>(ComponentLibraryTable.getTableComponents().getItems(), p -> true);
@@ -130,28 +130,22 @@ public class SetupTableComponentLibrary {
 		ComponentLibraryTable.getFilterComponentsTextField().textProperty().addListener((observable, oldValue, newValue) -> {
 			filteredComponents.setPredicate(myfile1 -> {
 				// If user hasn't typed anything into the search bar
-					if (newValue == null || newValue.isEmpty()) {
-						// Display all items
-						return true;
-					}
+				if (newValue == null || newValue.isEmpty()) {
+					// Display all items
+					return true;
+				}
 
-					// Compare items with filter text
-					// Comparison is not case sensitive
-					String lowerCaseFilter = newValue.toLowerCase();
+				// Compare items with filter text (case-insensitive)
+				String lowerCaseFilter = newValue.toLowerCase();
 
-					if (myfile1.getFileName().toLowerCase().contains(lowerCaseFilter)) {
-						// Displays results that match
-						return true;
-					}
-					return false; // Does not match.
-				});
+				return myfile1.getFileName() != null && myfile1.getFileName().toLowerCase().contains(lowerCaseFilter);
+			});
 		});
 
 		// Adds the ability to sort the list after being filtered
 		SortedList<ComponentRow> sortedComponents = new SortedList<>(filteredComponents);
 		sortedComponents.comparatorProperty().bind(ComponentLibraryTable.getTableComponents().comparatorProperty());
 		ComponentLibraryTable.tableComponents.setItems(sortedComponents);
-
 	}
 
 }

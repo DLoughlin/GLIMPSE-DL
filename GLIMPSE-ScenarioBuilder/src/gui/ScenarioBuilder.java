@@ -102,9 +102,9 @@ import javafx.stage.Stage;
 public class ScenarioBuilder {
 
 	// Constants for UI Labels and Tooltips
-	private static final String LABEL_COMPONENT_LIBRARY = "Component\nLibrary";
+	private static final String LABEL_COMPONENT_LIBRARY = "Component Library";
 	private static final String LABEL_CREATE_SCENARIO = "Create Scenario";
-	private static final String LABEL_SCENARIO_LIBRARY = "Scenario\nLibrary";
+	private static final String LABEL_SCENARIO_LIBRARY = "Scenario Library";
 	private static final String LABEL_SEARCH = "Search:";
 	private static final String TOOLTIP_FILTER = "Enter text to begin filtering";
 	private static final String TOOLTIP_REMOVE_SELECTED_COMPONENTS = "Remove selected component(s) from scenario";
@@ -143,6 +143,11 @@ public class ScenarioBuilder {
 	/** Default CSS resource used for the modern look and feel. */
 	private static final String MODERN_CSS_RESOURCE = "/resources/modern.css";
 
+	// --- CSS style class names (for modern.css) ---
+	private static final String STYLE_PANEL_CARD = "panel-card";
+	private static final String STYLE_TOOLBAR = "toolbar";
+	private static final String STYLE_SECTION_TITLE = "section-title";
+
 	/**
 	 * Returns the singleton instance of ScenarioBuilder.
 	 *
@@ -165,9 +170,8 @@ public class ScenarioBuilder {
 	 * Sets up all tables, buttons, panes, and resizes labels for consistent UI.
 	 */
 	public void build() {
-		vars.init(utils, vars, styles, files);
-		files.init(utils, vars, styles, files);
-		utils.init(utils, vars, styles, files);
+		// Initialization of vars/files/utils is done during Client.init().
+		// Avoid repeating it here to reduce startup cost and prevent reinitialization side effects.
 
 		createTables();
 		createArrowButtons();
@@ -182,6 +186,12 @@ public class ScenarioBuilder {
 	 * Sets up tooltips and filtering for the component library table.
 	 */
 	private void createTables() {
+		// The component-library filter TextField must exist before the table is set up,
+		// because SetupTableComponentLibrary wires filtering listeners against it.
+		if (ComponentLibraryTable.getFilterComponentsTextField() == null) {
+			ComponentLibraryTable.setFilterComponentsTextField(utils.createTextField());
+		}
+
 		new SetupTableComponentLibrary().setup();
 		ComponentLibraryTable.getFilterComponentsTextField().setTooltip(new Tooltip(TOOLTIP_FILTER));
 
@@ -196,24 +206,37 @@ public class ScenarioBuilder {
 	 */
 	private void createComponentLibraryPane() {
 		labelComponentLibrary = utils.createLabel(LABEL_COMPONENT_LIBRARY/*, 1.7 * styles.getBigButtonWidth()*/);
+		labelComponentLibrary.getStyleClass().add(STYLE_SECTION_TITLE);
+
 		labelSearchComponentLibrary = utils.createLabel(LABEL_SEARCH);
 		labelSearchComponentLibrary.setMinWidth(Region.USE_PREF_SIZE);
 
 		HBox paneObjects = new HBox();
-		Client.paneComponentLibrary = new PaneNewScenarioComponent();
+		paneObjects.getStyleClass().add(STYLE_TOOLBAR);
+		paneObjects.setAlignment(Pos.CENTER_LEFT);
+		paneObjects.setSpacing(4);
+
+		// create component library pane
+		//Client.paneComponentLibrary = new PaneNewScenarioComponent();
+		Client.paneComponentLibrary = new PaneComponentLibrary();
 
 		// Add all relevant controls to the component library pane
 		paneObjects.getChildren().addAll(
-			labelComponentLibrary, utils.getSeparator(Orientation.VERTICAL, 15, false),
-			labelSearchComponentLibrary, ComponentLibraryTable.getFilterComponentsTextField(),
-			utils.getSeparator(Orientation.VERTICAL, 10, false), Client.buttonNewComponent,
-			utils.getSeparator(Orientation.VERTICAL, 5, false), Client.buttonEditComponent,
-			utils.getSeparator(Orientation.VERTICAL, 5, false), Client.buttonBrowseComponentLibrary,
-			utils.getSeparator(Orientation.VERTICAL, 10, false), Client.buttonDeleteComponent,
-			utils.getSeparator(Orientation.VERTICAL, 10, false), Client.buttonRefreshComponents
+			labelSearchComponentLibrary,
+			ComponentLibraryTable.getFilterComponentsTextField(),
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
+			Client.buttonNewComponent,
+			Client.buttonEditComponent,
+			Client.buttonBrowseComponentLibrary,
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
+			Client.buttonDeleteComponent,
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
+			Client.buttonRefreshComponents
 		);
 
-		vBoxComponentLibrary = new VBox(5, paneObjects, Client.paneComponentLibrary.getvBox());
+		// Simple "title row + content rows" panel.
+		vBoxComponentLibrary = new VBox(6, labelComponentLibrary, paneObjects, Client.paneComponentLibrary.getvBox());
+		vBoxComponentLibrary.getStyleClass().add(STYLE_PANEL_CARD);
 		vBoxComponentLibrary.setStyle(styles.getStyle1());
 	}
 
@@ -223,9 +246,13 @@ public class ScenarioBuilder {
 	 */
 	private void createCreateScenarioPane() {
 		labelScenarioName = utils.createLabel(LABEL_CREATE_SCENARIO, 2 * styles.getBigButtonWidth());
+		labelScenarioName.getStyleClass().add(STYLE_SECTION_TITLE);
+
 		Client.paneCreateScenario = new PaneCreateScenario(Client.primaryStage);
 
-		vBoxCreateScenario = new VBox(5, Client.paneCreateScenario.getvBox());
+		// Simple "title row + content rows" panel.
+		vBoxCreateScenario = new VBox(6, labelScenarioName, Client.paneCreateScenario.getvBox());
+		vBoxCreateScenario.getStyleClass().add(STYLE_PANEL_CARD);
 		vBoxCreateScenario.setStyle(styles.getStyle1());
 	}
 
@@ -235,11 +262,13 @@ public class ScenarioBuilder {
 	 */
 	private void createScenarioLibraryPane() {
 		labelScenarioLibrary = utils.createLabel(LABEL_SCENARIO_LIBRARY/*, styles.getBigButtonWidth() * 1.75*/);
+		labelScenarioLibrary.getStyleClass().add(STYLE_SECTION_TITLE);
 
 		TextField filterScenarioTextField = utils.createTextField();
 		filterScenarioTextField.setMinWidth(styles.getBigButtonWidth());
 		filterScenarioTextField.setPrefWidth(styles.getBigButtonWidth() * 1.75);
 		filterScenarioTextField.setTooltip(new Tooltip(TOOLTIP_FILTER));
+		filterScenarioTextField.setPromptText("Filter scenarios...");
 
 		// Set up filtered and sorted lists for scenario table
 		ScenarioTable.filteredScenarios = new FilteredList<>(ScenarioTable.tableScenariosLibrary.getItems(), p -> true);
@@ -260,27 +289,53 @@ public class ScenarioBuilder {
 
 		Client.paneScenarioLibrary = new PaneScenarioLibrary(Client.primaryStage);
 
+		// Ensure the inner scenario table doesn't draw its own border when inside a panel.
+		try {
+			ScenarioTable.tableScenariosLibrary.getStyleClass().add("no-inner-border");
+		} catch (Exception ignored) {}
+
 		HBox buttonHBox = new HBox();
+		buttonHBox.setAlignment(Pos.CENTER_LEFT);
+		buttonHBox.setSpacing(4);
+		buttonHBox.getStyleClass().add(STYLE_TOOLBAR);
+
 		labelSearchScenarios = utils.createLabel(LABEL_SEARCH/*, styles.getBigButtonWidth()*/);
 		labelSearchScenarios.setTextAlignment(TextAlignment.LEFT);
 
 		// Add all relevant controls to the scenario library pane
 		buttonHBox.getChildren().addAll(
-			labelSearchScenarios, filterScenarioTextField,
-			utils.getSeparator(Orientation.VERTICAL, 6, false), Client.buttonEditScenario,
-			utils.getSeparator(Orientation.VERTICAL, 6, false), Client.buttonViewConfig,
-			utils.getSeparator(Orientation.VERTICAL, 6, false), Client.buttonBrowseScenarioFolder,
-			utils.getSeparator(Orientation.VERTICAL, 6, false), Client.buttonRunScenario,
-			Client.buttonDeleteScenario, utils.getSeparator(Orientation.VERTICAL, 6, false),
-			Client.buttonResults, Client.buttonResultsForSelected,
-			utils.getSeparator(Orientation.VERTICAL, 6, false), Client.buttonDiffFiles,
-			Client.buttonShowRunQueue, utils.getSeparator(Orientation.VERTICAL, 6, false),
-			Client.buttonViewExeLog, Client.buttonViewExeErrors, Client.buttonViewLog, Client.buttonViewErrors,
-			utils.getSeparator(Orientation.VERTICAL, 6, false), /*Client.buttonReport,*/ Client.buttonRefreshScenarioStatus
+			labelSearchScenarios,
+			filterScenarioTextField,
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
+			Client.buttonEditScenario,
+			Client.buttonViewConfig,
+			Client.buttonBrowseScenarioFolder,
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
+			Client.buttonRunScenario,
+			Client.buttonStopScenario,
+			Client.buttonDeleteScenario,
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
+			Client.buttonResults,
+			Client.buttonResultsForSelected,
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
+			Client.buttonDiffFiles,
+			Client.buttonShowRunQueue,
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
+			Client.buttonViewExeLog, Client.buttonViewExeErrors,
+			Client.buttonViewLog,
+			Client.buttonViewErrors,
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
+			Client.buttonRefreshScenarioStatus,
+			utils.getSeparator(Orientation.VERTICAL, 3, false),
+			Client.buttonConsole
 		);
 
-		HBox bottomPane = new HBox(15, labelScenarioLibrary, buttonHBox);
-		vBoxRun = new VBox(5, bottomPane, Client.paneScenarioLibrary.gethBox());
+		VBox content = new VBox(4, buttonHBox, Client.paneScenarioLibrary.gethBox());
+
+		vBoxRun = new VBox(6, labelScenarioLibrary, content);
+		vBoxRun.getStyleClass().add(STYLE_PANEL_CARD);
+		// Don't use legacy style1 here: it adds the blue border around the whole Scenario Library pane.
+		vBoxRun.setStyle("");
 	}
 
 	/**
@@ -304,9 +359,10 @@ public class ScenarioBuilder {
 		Client.buttonEditScenario.setDisable(true);
 		Client.buttonEditScenario.setOnAction(this::loadSelectedScenarioForEditing);
 
-		vBoxButton = new VBox(10, Client.buttonRightArrow, Client.buttonLeftArrow, Client.buttonLeftDoubleArrow);
+		vBoxButton = new VBox(5, Client.buttonRightArrow, Client.buttonLeftArrow, Client.buttonLeftDoubleArrow);
 		vBoxButton.setAlignment(Pos.CENTER);
-		vBoxButton.prefWidthProperty().bind(Client.primaryStage.widthProperty().multiply(0.5 / 7.0));
+		// Let the main GridPane determine the arrow-column width and centering.
+		vBoxButton.setFillWidth(false);
 	}
 
 	// --- Event Handlers for Buttons ---
@@ -420,6 +476,7 @@ public class ScenarioBuilder {
 		labelSearchScenarios = utils.resizeLabelText(labelSearchScenarios);
 		labelScenarioLibrary = utils.resizeLabelText(labelScenarioLibrary);
 		labelScenarioName = utils.resizeLabelText(labelScenarioName);
+		// Title overlay tweaks no longer needed (titles are their own rows).
 	}
 
 	/**

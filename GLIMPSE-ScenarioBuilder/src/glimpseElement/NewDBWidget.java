@@ -36,6 +36,9 @@
 package glimpseElement;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.Locale;
+
 import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEStyles;
 import glimpseUtil.GLIMPSEUtils;
@@ -131,28 +134,46 @@ public class NewDBWidget {
 
 	private void creator() { 
 		try {
-			// runs the GCAM model postprocessor
-			boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
-
-			String shell = "cmd.exe /C";
-			if (isWindows) {
-				shell = "cmd.exe /C";
-			} else {
-				shell = "sh -c";
+			String newDbName = newDBNameTextField.getText();
+			newDbName = validateDbNameOrNull(newDbName);
+			if (newDbName == null) {
+				return;
 			}
 
-			String[] cmd = new String[1];
-			String command = shell + " cd " + vars.getModelInterfaceJarDir() + " & dir & java -jar "
-					+ vars.getModelInterfaceJarDir() + File.separator + vars.getModelInterfaceJar() + " -o "
-					+ vars.getgCamExecutableDir() + File.separator + ".." + File.separator + "output" + File.separator
-					+ newDBNameTextField.getText();
-			// + " -l modelinterface.log";
-			// " -dbOpen "
-			cmd[0] = command;
-			System.out.println("Starting ModelInterface...");
-			System.out.println("   cmd:" + cmd[0]);
+			File miDir = new File(vars.getModelInterfaceJarDir());
+			File miJar = new File(miDir, vars.getModelInterfaceJar());
+
+			File outputDir = new File(vars.getgCamExecutableDir(), ".." + File.separator + "output");
+			File outputDb = new File(outputDir, newDbName);
+			// Canonicalize and verify we didn't escape the intended output directory.
 			try {
-				Client.modelInterfaceExecutionThread.submitCommands(cmd);
+				File canonicalOutputDir = outputDir.getCanonicalFile();
+				File canonicalOutputDb = outputDb.getCanonicalFile();
+				String basePath = canonicalOutputDir.getPath();
+				String dbPath = canonicalOutputDb.getPath();
+				if (!dbPath.equals(basePath) && !dbPath.startsWith(basePath + File.separator)) {
+					utils.warningMessage("Invalid database name (must be a simple name under the output folder).");
+					return;
+				}
+			} catch (IOException ioe) {
+				utils.warningMessage("Problem validating output path.");
+				System.out.println("Error validating output path: " + ioe);
+				return;
+			}
+
+			String[] cmd = new String[] {
+					"java",
+					"-jar",
+					miJar.getAbsolutePath(),
+					"-o",
+					outputDb.getAbsolutePath()
+			};
+
+			System.out.println("Starting ModelInterface...");
+			System.out.println("   dir: " + miDir.getAbsolutePath());
+			System.out.println("   cmd: " + java.util.Arrays.toString(cmd));
+			try {
+				Client.modelInterfaceExecutionThread.submitCommandWithDirectory(cmd, miDir.getAbsolutePath());
 			} catch (Exception e) {
 				utils.warningMessage("Problem starting up post-processor.");
 				System.out.println("Error in trying to start up post-processor:");
@@ -163,6 +184,65 @@ public class NewDBWidget {
 			System.out.println("Error creating new database " + e);
 			System.out.println("  " + e);
 		}
+	}
+
+	/**
+	 * Validates a user-supplied DB name to ensure it is a simple directory name (no separators)
+	 * and is safe on Windows (no reserved device names / invalid characters).
+	 *
+	 * @param rawName User input
+	 * @return Trimmed valid name, or null if invalid (and shows a warning)
+	 */
+	private String validateDbNameOrNull(String rawName) {
+		if (rawName == null) {
+			utils.warningMessage("Please enter a database name.");
+			return null;
+		}
+		String name = rawName.trim();
+		if (name.isEmpty()) {
+			utils.warningMessage("Please enter a database name.");
+			return null;
+		}
+
+		// Disallow any path separators or traversal attempts.
+		if (name.contains("/") || name.contains("\\") || name.contains(":")) {
+			utils.warningMessage("Database name can't contain path separators.");
+			return null;
+		}
+		if (name.equals(".") || name.equals("..") || name.contains("..")) {
+			utils.warningMessage("Database name can't contain '..'.");
+			return null;
+		}
+
+		// Windows filename constraints (safe to enforce cross-platform;
+		// reduces portability surprises when projects are shared).
+		// Invalid: < > : " / \\ | ? * and control chars.
+		for (int i = 0; i < name.length(); i++) {
+			char c = name.charAt(i);
+			if (c < 32 || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*') {
+				utils.warningMessage("Database name contains invalid characters.");
+				return null;
+			}
+		}
+		if (name.endsWith(".") || name.endsWith(" ")) {
+			utils.warningMessage("Database name can't end with a space or period.");
+			return null;
+		}
+
+		// Reserved device names on Windows, with or without extensions.
+		String base = name;
+		int dot = base.indexOf('.');
+		if (dot >= 0) {
+			base = base.substring(0, dot);
+		}
+		base = base.toUpperCase(Locale.ROOT);
+		if (base.equals("CON") || base.equals("PRN") || base.equals("AUX") || base.equals("NUL")
+				|| base.matches("COM[1-9]") || base.matches("LPT[1-9]")) {
+			utils.warningMessage("Database name is a reserved Windows device name.");
+			return null;
+		}
+
+		return name;
 	}
 
 }

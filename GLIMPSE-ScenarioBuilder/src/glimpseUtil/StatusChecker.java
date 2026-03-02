@@ -50,16 +50,31 @@ public class StatusChecker extends Thread {
 	boolean terminate = false;
 
 	public void run() {
-		int count=0;
+		int count = 0;
 		while (!terminate) {
 			count++;
 			try {
-				if ((Client.gCAMExecutionThread.didNumDoneChange()||(count==5))) {
-					
-					Client.buttonRefreshScenarioStatus.fire();
-					count=0;
-					
+				ExecutionThreadLike et = null;
+				try {
+					// Avoid hard failure if Client isn't initialized in a headless harness.
+					et = (Client.gCAMExecutionThread != null) ? new ExecutionThreadLike(Client.gCAMExecutionThread) : null;
+				} catch (Throwable ignored) {
+					et = null;
 				}
+
+				boolean shouldRefresh = false;
+				try {
+					if (et != null) {
+						shouldRefresh = et.didNumDoneChange() || (count == 5);
+					}
+				} catch (Throwable ignored) {
+				}
+
+				if (shouldRefresh) {
+					fireRefreshButtonSafe();
+					count = 0;
+				}
+
 				Thread.sleep(5000L);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
@@ -68,8 +83,62 @@ public class StatusChecker extends Thread {
 		}
 	}
 
+	private void fireRefreshButtonSafe() {
+		try {
+			Object button = null;
+			try {
+				java.lang.reflect.Field f = gui.Client.class.getDeclaredField("buttonRefreshScenarioStatus");
+				f.setAccessible(true);
+				button = f.get(null);
+			} catch (Throwable ignored) {
+				button = null;
+			}
+
+			if (button == null) {
+				return;
+			}
+
+			final Object btn = button;
+			Runnable fire = () -> {
+				try {
+					java.lang.reflect.Method fireMethod = btn.getClass().getMethod("fire");
+					fireMethod.invoke(btn);
+				} catch (Throwable ignored) {}
+			};
+
+			// If JavaFX is present, marshal to the FX thread.
+			try {
+				Class<?> platformClass = Class.forName("javafx.application.Platform");
+				java.lang.reflect.Method runLater = platformClass.getMethod("runLater", Runnable.class);
+				runLater.invoke(null, fire);
+				return;
+			} catch (Throwable noFx) {
+				// No JavaFX available; fall back to direct call.
+			}
+
+			fire.run();
+		} catch (Throwable ignored) {
+			// Never let StatusChecker crash the app.
+		}
+	}
+
 	public void terminate() {
 		terminate = true;
+	}
+
+	/**
+	 * Tiny adapter to avoid linking additional packages/classes from this utility thread.
+	 */
+	private static final class ExecutionThreadLike {
+		private final gui.ExecutionThread delegate;
+
+		ExecutionThreadLike(gui.ExecutionThread delegate) {
+			this.delegate = delegate;
+		}
+
+		boolean didNumDoneChange() {
+			return delegate.didNumDoneChange();
+		}
 	}
 
 }
