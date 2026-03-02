@@ -1033,53 +1033,10 @@ public class GLIMPSEFiles {
      * @param filename Path to the file to open.
      */
     public void openInTextEditorWithFallback(String filename) {
-        if (filename == null || filename.trim().isEmpty()) {
-            utils.warningMessage("No file specified to open.");
-            return;
-        }
-
-        File file = new File(filename);
-        if (!file.exists()) {
-            utils.warningMessage(ERROR_MSG_FILE_NOT_EXIST + " " + filename);
-            return;
-        }
-
-        // 1) Try the user-configured text editor.
-        String editor = null;
-        try {
-            editor = vars.getTextEditor();
-        } catch (Exception ignored) {
-            // We'll fall back below.
-        }
-
-        if (editor != null) {
-            editor = editor.trim();
-        }
-
-        if (editor != null && !editor.isEmpty()) {
-            try {
-                // Use ProcessBuilder to avoid cmd quoting issues. If editor includes args, keep it simple: treat as a command.
-                // Typical configured values are full paths like C:\\Windows\\System32\\notepad.exe
-                new ProcessBuilder(editor, file.getAbsolutePath()).start();
-                return;
-            } catch (Exception e) {
-                System.out.println("Warning: configured text editor failed (" + editor + ") for file: " + filename);
-                System.out.println("  ---> " + e);
-                // Fall through to system default.
-            }
-        }
-
-        // 2) Fall back to system default editor.
-        try {
-            if (!Desktop.isDesktopSupported()) {
-                utils.warningMessage("Desktop integration not supported; can't open file: " + filename);
-                return;
-            }
-            Desktop.getDesktop().open(file);
-        } catch (Exception e) {
-            utils.warningMessage("Could not open file in system default editor: " + filename + "\n" + e.getMessage());
-            System.out.println("Error opening file " + filename + ": " + e);
-        }
+        // Delegate to the central implementation so editor parsing/launch logic
+        // is consistent with showFileInTextEditor and correctly handles
+        // configured editors that include arguments.
+        showFileInTextEditor(filename);
     }
 
 }
