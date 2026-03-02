@@ -1411,7 +1411,11 @@ public class InterfaceMain implements ActionListener {
 			fireProperty("SelectQuery", null, null);
 			break;
 		case "Help":
-			// existing Help handling is elsewhere; keep no-op if not present.
+			try {
+				Desktop.getDesktop().browse(new URI("https://github.com/DLoughlin/GLIMPSE-CE"));
+			} catch (Exception ex) {
+				JOptionPane.showMessageDialog(mainFrame, "Unable to open help page. Please visit: https://github.com/DLoughlin/GLIMPSE-CE", "Help", JOptionPane.INFORMATION_MESSAGE);
+			}
 			break;
 		case "Preferences...":
 			showPreferencesDialog();
@@ -1429,6 +1433,80 @@ public class InterfaceMain implements ActionListener {
 			if (toggleAutoGraphicsMenu != null) toggleAutoGraphicsMenu.setText("Enable Auto Graphics");
 			setProperty("autoGenerateGraphics", "false");
 			break;
+		case "Select Units File": {
+			FileChooser fc = FileChooserFactory.getFileChooser();
+			File start = InterfaceMain.unitFileLocation != null ? new File(InterfaceMain.unitFileLocation)
+					: new File(getProperties().getProperty("lastDirectory", "."));
+			File[] files = fc.doFilePrompt(mainFrame, "Select Units File", FileChooser.LOAD_DIALOG, start,
+					new CSVFilter());
+			if (files != null && files.length > 0) {
+				File file = files[0];
+				String oldUnits = InterfaceMain.unitFileLocation;
+				InterfaceMain.unitFileLocation = file.getAbsolutePath();
+				savedProperties.setProperty("unitsFile", InterfaceMain.unitFileLocation);
+				savedProperties.setProperty("lastDirectory", file.getParent());
+				System.out.println("Selected units file: " + file.getAbsolutePath());
+				ModelInterface.ModelGUI2.DbViewer.enableUnitConversions = true;
+				persistProperties();
+				fireProperty("UnitsFileChanged", oldUnits, InterfaceMain.unitFileLocation);
+			}
+			break;
+		}
+		case "Select Regions File": {
+			FileChooser fc = FileChooserFactory.getFileChooser();
+			File start = InterfaceMain.presetRegionListLocation != null
+					? new File(InterfaceMain.presetRegionListLocation)
+					: new File(getProperties().getProperty("lastDirectory", "."));
+			File[] files = fc.doFilePrompt(mainFrame, "Select Regions File", FileChooser.LOAD_DIALOG, start, null);
+			if (files != null && files.length > 0) {
+				File file = files[0];
+				InterfaceMain.presetRegionListLocation = file.getAbsolutePath();
+				savedProperties.setProperty("presetRegionList", InterfaceMain.presetRegionListLocation);
+				savedProperties.setProperty("lastDirectory", file.getParent());
+				System.out.println("Selected regions file: " + file.getAbsolutePath());
+				persistProperties();
+			}
+			break;
+		}
+		case "Select Map Resource Folder": {
+			FileChooser fc = FileChooserFactory.getFileChooser();
+			File start = InterfaceMain.shapeFileLocationPrefix != null
+					? new File(InterfaceMain.shapeFileLocationPrefix)
+					: new File(getProperties().getProperty("lastDirectory", "."));
+			javax.swing.filechooser.FileFilter dirFilter = new javax.swing.filechooser.FileFilter() {
+				@Override public boolean accept(File f) { return f.isDirectory(); }
+				@Override public String getDescription() { return "Directory (select folder)"; }
+			};
+			File[] dirs = fc.doFilePrompt(mainFrame, "Select Map Resource Folder", FileChooser.LOAD_DIALOG, start,
+					dirFilter);
+			if (dirs != null && dirs.length > 0) {
+				File dir = dirs[0];
+				InterfaceMain.shapeFileLocationPrefix = dir.getAbsolutePath();
+				savedProperties.setProperty("mapResourceFolder", InterfaceMain.shapeFileLocationPrefix);
+				savedProperties.setProperty("lastDirectory", dir.getAbsolutePath());
+				InterfaceMain.enableMapping = true;
+				System.out.println("Selected map resources folder: " + dir.getAbsolutePath());
+				File preset_shapefile = new File(dir, "mapUS52Compact_from_rmap.shp");
+				if (preset_shapefile.exists()) {
+					stateShapeFileLocation = preset_shapefile.getAbsolutePath();
+				} else {
+					InterfaceMain.enableMapping = false;
+				}
+				File preset_reg32_shapefile = new File(dir, "mapGCAMReg32_from_rmap.shp");
+				if (preset_reg32_shapefile.exists()) {
+					gcamReg32ShapeFileLocation = preset_reg32_shapefile.getAbsolutePath();
+				} else {
+					InterfaceMain.enableMapping = false;
+				}
+				File preset_reg32US52_shapefile = new File(dir, "mapGCAMReg32US52_from_rmap.shp");
+				if (preset_reg32US52_shapefile.exists()) {
+					gcamReg32US52ShapeFileLocation = preset_reg32US52_shapefile.getAbsolutePath();
+				}
+				savedProperties.setProperty("enableMapping", Boolean.toString(InterfaceMain.enableMapping));
+				persistProperties();
+			}
+			break;
+		}
 		default:
 			// fall through: other menu items may be handled by menu adders.
 			break;
