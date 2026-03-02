@@ -252,14 +252,7 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 			}
 		});
 
-		buttonClose.setOnAction(e -> {
-			if (stageWithTabs != null) {
-				stageWithTabs.close();
-				stageWithTabs.setOnCloseRequest(null);
-				stageWithTabs = null;
-				afterSaveOrClose.run();
-			}
-		});
+		buttonClose.setOnAction(e -> cleanupOnClose());
 
 		buttonSaveComponent.setOnAction(e -> {
 			String which = addComponentTabPane.getSelectionModel().getSelectedItem().getText();
