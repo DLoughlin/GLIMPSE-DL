@@ -252,7 +252,6 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private static final String DIFF_TOOLTIP = "Diff: Compare first two selected configurations";
     private static final String REFRESH_LABEL = "Refresh";
     private static final String REFRESH_TOOLTIP = "Refresh: Update scenario run status";
-    private static final String CONSOLE_LABEL = "Console";
     private static final String CONSOLE_TOOLTIP = "Console: View GCAM and ModelInterface output";
     private static final String RESULTS_LABEL = "Results";
     private static final String RESULTS_TOOLTIP = "Results: Open the ModelInterface to view results";
@@ -461,6 +460,8 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private void handleDeleteScenario() {
         if (!utils.confirmDelete()) return;
         ObservableList<ScenarioRow> selectedFiles = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems();
+        // Clear queue state for any selected scenarios that were queued.
+        dequeueScenariosAndClearStatus(selectedFiles);
         for (ScenarioRow row : selectedFiles) {
             String scenName = row.getScenarioName();
             String xmlDir = vars.getScenarioDir() + File.separator + scenName;
@@ -609,24 +610,24 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
      * Only works if exactly two scenarios are selected.
      */
     private void handleDiffFiles() {
-		ObservableList<ScenarioRow> selectedFiles = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems();
-		if (selectedFiles.size() != 2) {
-			utils.warningMessage("Diff requires exactly two selected scenarios.");
-			return;
-		}
+        ObservableList<ScenarioRow> selectedFiles = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems();
+        if (selectedFiles.size() != 2) {
+            utils.warningMessage("Diff requires exactly two selected scenarios.");
+            return;
+        }
 
-		String sName1 = selectedFiles.get(0).getScenarioName();
-		String sName2 = selectedFiles.get(1).getScenarioName();
-		String file1 = vars.getScenarioDir() + File.separator + sName1 + File.separator + "configuration_" + sName1 + ".xml";
-		String file2 = vars.getScenarioDir() + File.separator + sName2 + File.separator + "configuration_" + sName2 + ".xml";
+        String sName1 = selectedFiles.get(0).getScenarioName();
+        String sName2 = selectedFiles.get(1).getScenarioName();
+        String file1 = vars.getScenarioDir() + File.separator + sName1 + File.separator + "configuration_" + sName1 + ".xml";
+        String file2 = vars.getScenarioDir() + File.separator + sName2 + File.separator + "configuration_" + sName2 + ".xml";
 
-		try {
-			List<DiffLineRow> rows = utils.generateSideBySideDiffRows(file1, file2);
-			DiffWindow.show(file1, file2, rows);
-		} catch (Exception e) {
-			utils.warningMessage("Problem generating diff: " + e.getMessage());
-		}
-	}
+        try {
+            List<DiffLineRow> rows = utils.generateSideBySideDiffRows(file1, file2);
+            DiffWindow.show(file1, file2, rows);
+        } catch (Exception e) {
+            utils.warningMessage("Problem generating diff: " + e.getMessage());
+        }
+    }
 
     /**
      * Displays the current run queue in a popup window.
@@ -1110,12 +1111,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                     // That makes the Java Process handle refer to cmd.exe, not GCAM itself, so stop()
                     // may not terminate the actual model immediately. Launch GCAM directly instead.
                     String exePath = exeDir + File.separator + exeName;
-
-                    if (isWindows) {
-                        cmd.add(exePath);
-                    } else {
-                        cmd.add(exePath);
-                    }
+                    cmd.add(exePath);
 
                     String args = vars.getgCamExecutableArgs();
                     if (args != null && args.trim().length() > 0) {
