@@ -87,10 +87,7 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 		initializeFilterField();
 		initializeComponentLibraryTable();
 		setupEventHandlers();
-		mainVBox.getChildren().addAll(
-			ComponentLibraryTable.getFilterComponentsTextField(),
-			ComponentLibraryTable.getTableComponents()
-		);
+		mainVBox.getChildren().add(ComponentLibraryTable.getTableComponents());
 		mainVBox.prefWidthProperty().bind(Client.primaryStage.widthProperty().multiply(4.0 / 7.0));
 	}
 
