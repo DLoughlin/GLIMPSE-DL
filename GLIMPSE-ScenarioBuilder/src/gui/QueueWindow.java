@@ -120,7 +120,7 @@ public class QueueWindow {
                 @Override
                 protected void updateItem(QueueRow item, boolean empty) {
                     super.updateItem(item, empty);
-                    getStyleClass().removeAll("queue-row-queued", "queue-row-running", "queue-row-success", "queue-row-issues", "queue-row-unknown");
+                    getStyleClass().removeAll("queue-row-queued", "queue-row-running", "queue-row-success", "queue-row-unknown");
                     if (empty || item == null) {
                         return;
                     }
@@ -131,11 +131,8 @@ public class QueueWindow {
                     case "Running":
                         getStyleClass().add("queue-row-running");
                         break;
-                    case "Success":
+                    case "Completed":
                         getStyleClass().add("queue-row-success");
-                        break;
-                    case "Issues":
-                        getStyleClass().add("queue-row-issues");
                         break;
                     default:
                         getStyleClass().add("queue-row-unknown");
@@ -418,7 +415,7 @@ public class QueueWindow {
                 super.updateItem(item, empty);
                 setText(empty ? null : item);
 
-                getStyleClass().removeAll("queue-cell-status", "queue-status-queued", "queue-status-running", "queue-status-success", "queue-status-issues", "queue-status-unknown");
+                getStyleClass().removeAll("queue-cell-status", "queue-status-queued", "queue-status-running", "queue-status-success", "queue-status-unknown");
                 if (empty) {
                     return;
                 }
