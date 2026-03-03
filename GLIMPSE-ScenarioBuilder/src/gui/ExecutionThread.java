@@ -72,6 +72,22 @@ import glimpseUtil.StatusChecker;
  */
 public class ExecutionThread implements AutoCloseable {
     private ExecutorService executorService = null;
+
+    /**
+     * Optional routing for streaming external process output into the in-app console.
+     * If null, output is still captured in {@link glimpseUtil.ProcessResult} but not streamed live.
+     */
+    private volatile ConsoleManager.StreamSource consoleStreamTarget = null;
+
+    /**
+     * Enables live streaming of process output to the given ConsoleManager tab.
+     *
+     * @param target the console stream target (e.g., MODEL_INTERFACE). If null, streaming is disabled.
+     */
+    public void setConsoleStreamTarget(ConsoleManager.StreamSource target) {
+        this.consoleStreamTarget = target;
+    }
+
     /**
      * List of submitted jobs. All iteration over this list must be synchronized on the list.
      * Each Future represents a submitted background task (Runnable, Callable, or command).
@@ -369,6 +385,18 @@ public class ExecutionThread implements AutoCloseable {
                 cmd.add("-c");
                 cmd.add(command);
             }
+
+            final ConsoleManager.StreamSource target = consoleStreamTarget;
+            if (target != null) {
+                return ProcessRunner.run(
+                        cmd,
+                        directory == null ? null : new File(directory),
+                        null,
+                        null,
+                        line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.MODEL_STDOUT, line),
+                        line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.STDERR, line));
+            }
+
             return ProcessRunner.run(cmd, directory == null ? null : new File(directory), null, null);
         };
 
@@ -419,11 +447,24 @@ public class ExecutionThread implements AutoCloseable {
         }
         startStatusCheckerIfNeeded();
 
-        Callable<ProcessResult> task = () -> ProcessRunner.run(
-                java.util.Arrays.asList(commandArray),
-                directory == null ? null : new File(directory),
-                null,
-                null);
+        Callable<ProcessResult> task = () -> {
+            final ConsoleManager.StreamSource target = consoleStreamTarget;
+            if (target != null) {
+                return ProcessRunner.run(
+                        java.util.Arrays.asList(commandArray),
+                        directory == null ? null : new File(directory),
+                        null,
+                        null,
+                        line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.MODEL_STDOUT, line),
+                        line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.STDERR, line));
+            }
+
+            return ProcessRunner.run(
+                    java.util.Arrays.asList(commandArray),
+                    directory == null ? null : new File(directory),
+                    null,
+                    null);
+        };
 
         final long jobId = jobIdCounter.incrementAndGet();
         final String label = "cmd: " + safeOneLine(java.util.Arrays.toString(commandArray))
@@ -469,11 +510,24 @@ public class ExecutionThread implements AutoCloseable {
         }
         startStatusCheckerIfNeeded();
 
-        Callable<ProcessResult> task = () -> ProcessRunner.run(
-                java.util.Arrays.asList(commandArray),
-                null,
-                null,
-                null);
+        Callable<ProcessResult> task = () -> {
+            final ConsoleManager.StreamSource target = consoleStreamTarget;
+            if (target != null) {
+                return ProcessRunner.run(
+                        java.util.Arrays.asList(commandArray),
+                        null,
+                        null,
+                        null,
+                        line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.MODEL_STDOUT, line),
+                        line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.STDERR, line));
+            }
+
+            return ProcessRunner.run(
+                    java.util.Arrays.asList(commandArray),
+                    null,
+                    null,
+                    null);
+        };
 
         final long jobId = jobIdCounter.incrementAndGet();
         final String label = "cmd: " + safeOneLine(java.util.Arrays.toString(commandArray));

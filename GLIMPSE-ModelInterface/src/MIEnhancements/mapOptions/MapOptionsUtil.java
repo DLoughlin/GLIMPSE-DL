@@ -58,10 +58,13 @@ public class MapOptionsUtil {
      * @return list of year strings
      */
     public static ArrayList<String> getYearListFromTableData(JTable jtable) {
-        int nCols = jtable.getColumnCount();
+        int nCols = (jtable == null) ? 0 : jtable.getColumnCount();
         ArrayList<String> yearList = new ArrayList<>();
         for (int j = 0; j < nCols; j++) {
             String cls = jtable.getColumnName(j);
+            if (cls == null) {
+                continue;
+            }
             try {
                 Double myYear = Double.parseDouble(cls);
                 String yearStr = String.valueOf(myYear.intValue());
@@ -79,10 +82,19 @@ public class MapOptionsUtil {
      * @return list of unique scenario strings
      */
     public static List<String> getScenarioListFromTableData(JTable jtable) {
-        ArrayList<String> scenarioListInTable = new ArrayList<>();
+        if (jtable == null) {
+            return Collections.emptyList();
+        }
         int scenarioColIdx = FilteredTable.getColumnByName(jtable, "scenario");
+        if (scenarioColIdx < 0) {
+            return Collections.emptyList();
+        }
+        ArrayList<String> scenarioListInTable = new ArrayList<>();
         for (int i = 0; i < jtable.getRowCount(); i++) {
-            scenarioListInTable.add((String) jtable.getValueAt(i, scenarioColIdx));
+            Object v = jtable.getValueAt(i, scenarioColIdx);
+            if (v != null) {
+                scenarioListInTable.add(v.toString());
+            }
         }
         return scenarioListInTable.stream().distinct().collect(Collectors.toList());
     }
@@ -113,13 +125,29 @@ public class MapOptionsUtil {
      * @return comma-separated info string
      */
     public static String getSectorPlusInfo(JTable jtable) {
+        if (jtable == null) {
+            return "";
+        }
         int regionIdx = FilteredTable.getColumnByName(jtable, "region");
+        if (regionIdx < 0) {
+            return "";
+        }
         int selectedRowIdx = jtable.getSelectedRow();
+        if (selectedRowIdx < 0) {
+            return "";
+        }
         ArrayList<String> yearList = getYearListFromTableData(jtable);
+        if (yearList.isEmpty()) {
+            return "";
+        }
         int firstYearIdx = FilteredTable.getColumnByName(jtable, yearList.get(0));
+        if (firstYearIdx < 0 || firstYearIdx <= regionIdx + 1) {
+            return "";
+        }
         String[] infoAtSelectedRow = new String[firstYearIdx - regionIdx - 1];
         for (int n = 0; n < firstYearIdx - regionIdx - 1; n++) {
-            String valsAtSelectedRow = (String) jtable.getValueAt(selectedRowIdx, regionIdx + 1 + n);
+            Object v = jtable.getValueAt(selectedRowIdx, regionIdx + 1 + n);
+            String valsAtSelectedRow = (v == null) ? "" : v.toString();
             String myInfo = jtable.getColumnName(regionIdx + 1 + n) + ":" + valsAtSelectedRow;
             infoAtSelectedRow[n] = myInfo;
         }
@@ -132,10 +160,19 @@ public class MapOptionsUtil {
      * @return list of unique region strings
      */
     public static List<String> getUniqueRegionsInTable(JTable table) {
-        ArrayList<String> regionListInTable = new ArrayList<>();
+        if (table == null) {
+            return Collections.emptyList();
+        }
         int regionColIdx = FilteredTable.getColumnByName(table, "region");
+        if (regionColIdx < 0) {
+            return Collections.emptyList();
+        }
+        ArrayList<String> regionListInTable = new ArrayList<>();
         for (int i = 0; i < table.getRowCount(); i++) {
-            regionListInTable.add((String) table.getValueAt(i, regionColIdx));
+            Object v = table.getValueAt(i, regionColIdx);
+            if (v != null) {
+                regionListInTable.add(v.toString());
+            }
         }
         return regionListInTable.stream().distinct().collect(Collectors.toList());
     }
@@ -148,22 +185,45 @@ public class MapOptionsUtil {
      * @return array with min and max values
      */
     public static double[] getAbsMinMaxFromTableColumn(JTable jtable, String yearColumnName, boolean normalized) {
-        int min = Integer.MAX_VALUE;
-        int max = Integer.MIN_VALUE;
+        double min = Double.POSITIVE_INFINITY;
+        double max = Double.NEGATIVE_INFINITY;
         double[] minMax = new double[2];
+
+        if (jtable == null || yearColumnName == null) {
+            return new double[] { 0, 1 };
+        }
+
         int columnIdx = FilteredTable.getColumnByName(jtable, yearColumnName);
+        if (columnIdx < 0 || jtable.getRowCount() == 0) {
+            return new double[] { 0, 1 };
+        }
+
         for (int i = 0; i < jtable.getRowCount(); i++) {
-            double valueInCell = Double.parseDouble((String) jtable.getValueAt(i, columnIdx));
+            Object cell = jtable.getValueAt(i, columnIdx);
+            if (cell == null) {
+                continue;
+            }
+            double valueInCell;
+            try {
+                valueInCell = (cell instanceof Number) ? ((Number) cell).doubleValue() : Double.parseDouble(cell.toString());
+            } catch (Exception ex) {
+                continue;
+            }
             if (valueInCell < min) {
-                min = (int) Math.floor(valueInCell);
+                min = Math.floor(valueInCell);
             }
             if (valueInCell > max) {
-                max = (int) Math.ceil(valueInCell);
+                max = Math.ceil(valueInCell);
             }
         }
+
+        if (!Double.isFinite(min) || !Double.isFinite(max)) {
+            return new double[] { 0, 1 };
+        }
+
         if (min == max) {
             minMax[0] = min;
-            minMax[1] = max + Math.max(0.1, 0.1 * min);
+            minMax[1] = max + Math.max(0.1, 0.1 * Math.abs(min));
         } else {
             if (max > 0 && min < 0 && normalized) {
                 if (Math.abs(min) >= max) {
@@ -188,14 +248,38 @@ public class MapOptionsUtil {
      * @return array with min and max values
      */
     public static double[] getAbsMinMaxFromTable(JTable jtable, boolean normalized) {
-        double min = Double.MAX_VALUE;
-        double max = Double.MIN_VALUE;
+        if (jtable == null || jtable.getRowCount() == 0) {
+            return new double[] { 0, 1 };
+        }
+
+        double min = Double.POSITIVE_INFINITY;
+        double max = Double.NEGATIVE_INFINITY;
         double[] minMax = new double[2];
+
         ArrayList<String> yearList = getYearListFromTableData(jtable);
+        if (yearList.isEmpty()) {
+            return new double[] { 0, 1 };
+        }
+
         int firstYearIdx = FilteredTable.getColumnByName(jtable, yearList.get(0));
+        if (firstYearIdx < 0) {
+            return new double[] { 0, 1 };
+        }
+
+        int lastYearIdxExclusive = Math.min(jtable.getColumnCount(), yearList.size() + firstYearIdx);
+
         for (int i = 0; i < jtable.getRowCount(); i++) {
-            for (int j = firstYearIdx; j < yearList.size() + firstYearIdx; j++) {
-                double valueInCell = Double.parseDouble((String) jtable.getValueAt(i, j));
+            for (int j = firstYearIdx; j < lastYearIdxExclusive; j++) {
+                Object cell = jtable.getValueAt(i, j);
+                if (cell == null) {
+                    continue;
+                }
+                double valueInCell;
+                try {
+                    valueInCell = (cell instanceof Number) ? ((Number) cell).doubleValue() : Double.parseDouble(cell.toString());
+                } catch (Exception ex) {
+                    continue;
+                }
                 if (valueInCell < min) {
                     min = valueInCell;
                 }
@@ -204,9 +288,14 @@ public class MapOptionsUtil {
                 }
             }
         }
+
+        if (!Double.isFinite(min) || !Double.isFinite(max)) {
+            return new double[] { 0, 1 };
+        }
+
         if (min == max) {
             minMax[0] = min;
-            minMax[1] = max + Math.max(0.1, 0.1 * min);
+            minMax[1] = max + Math.max(0.1, 0.1 * Math.abs(min));
         } else {
             if (max > 0 && min < 0 && normalized) {
                 if (Math.abs(min) >= max) {

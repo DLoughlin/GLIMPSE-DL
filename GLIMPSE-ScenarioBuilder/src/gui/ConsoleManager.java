@@ -248,11 +248,11 @@ final class ConsoleManager {
         modelInterfaceScroll = createConsoleScrollPane(modelInterfaceFlow);
 
         TabPane tabPane = new TabPane();
-        Tab t0 = new Tab("GLIMPSE stdout", glimpseStdoutScroll);
+        Tab t0 = new Tab("GLIMPSE", glimpseStdoutScroll);
         t0.setClosable(false);
-        Tab t1 = new Tab("GCAM stdout", gcamStdoutScroll);
+        Tab t1 = new Tab("GCAM", gcamStdoutScroll);
         t1.setClosable(false);
-        Tab t2 = new Tab("ModelInterface stdout", modelInterfaceScroll);
+        Tab t2 = new Tab("ModelInterface", modelInterfaceScroll);
         t2.setClosable(false);
         tabPane.getTabs().addAll(t0, t1, t2);
 

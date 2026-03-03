@@ -127,7 +127,9 @@ final class ConsoleOutputRedirect {
             if (source == ConsoleManager.StreamSource.GLIMPSE_STDERR) {
                 return ConsoleManager.MessageKind.STDERR;
             }
-            return ConsoleManager.MessageKind.GLIMPSE_INFO;
+            // For the GLIMPSE tab, use the same stdout styling as model stdout (black).
+            // (Headers and explicit info messages can still be appended as GLIMPSE_INFO elsewhere.)
+            return ConsoleManager.MessageKind.MODEL_STDOUT;
         }
 
         private void writeChar(char c) {

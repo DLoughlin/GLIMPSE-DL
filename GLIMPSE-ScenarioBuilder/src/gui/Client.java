@@ -463,6 +463,13 @@ public class Client extends Application {
 
         gCAMExecutionThread.startUpExecutorSingle();
         modelInterfaceExecutionThread.startUpExecutorMulti();
+
+        // Stream GCAM process output live to the GCAM console tab.
+        // (The GCAM stderr tab was removed; ConsoleManager routes GCAM_STDERR to GCAM_STDOUT internally.)
+        gCAMExecutionThread.setConsoleStreamTarget(ConsoleManager.StreamSource.GCAM_STDOUT);
+
+        // Stream ModelInterface process output live to the in-app console tab.
+        modelInterfaceExecutionThread.setConsoleStreamTarget(ConsoleManager.StreamSource.MODEL_INTERFACE);
     }
 
     /**
