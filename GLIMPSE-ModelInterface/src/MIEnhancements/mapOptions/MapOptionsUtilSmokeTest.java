@@ -9,9 +9,11 @@ import javax.swing.JTable;
 public final class MapOptionsUtilSmokeTest {
 
     public static void main(String[] args) {
+        MapOptionsUtil.resetOneTimeMappingWarningForTests();
         testNoYearColumns();
         testNullCellsInYearColumn();
         testMissingScenarioColumn();
+        testNullShapefilePathDoesNotThrow();
         System.out.println("MapOptionsUtilSmokeTest: OK");
     }
 
@@ -40,5 +42,15 @@ public final class MapOptionsUtilSmokeTest {
         JTable t = new JTable(data, cols);
 
         assert MapOptionsUtil.getScenarioListFromTableData(t).isEmpty();
+    }
+
+    private static void testNullShapefilePathDoesNotThrow() {
+        MapOptionsUtil.resetOneTimeMappingWarningForTests();
+        assert MapOptionsUtil.getCollectionFromShape((String) null) != null;
+        assert MapOptionsUtil.getCollectionFromShape("   ") != null;
+
+        // Exercise one-time warning in headless-safe way.
+        MapOptionsUtil.showOneTimeMappingWarning("SmokeTest", null);
+        MapOptionsUtil.showOneTimeMappingWarning("SmokeTest", null);
     }
 }

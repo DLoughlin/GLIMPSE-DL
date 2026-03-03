@@ -479,6 +479,12 @@ public class WorldMapPanel extends JFrame implements ComponentListener {
             shpFilePath = InterfaceMain.gcamReg32ShapeFileLocation;
         }
         featureCollection = MapOptionsUtil.getCollectionFromShape(shpFilePath);
+        if (featureCollection == null || featureCollection.size() == 0) {
+            MapOptionsUtil.showOneTimeMappingWarning("World map", shpFilePath);
+            System.err.println("WorldMapPanel: No boundary features available. "
+                    + "Did you set the Map Resource Folder? (shapeFilePath=" + shpFilePath + ")");
+            return map;
+        }
         try {
             ArrayList<String> yearColInTable = MapOptionsUtil.getYearListFromTableData(jtable);
             dataForCountry = MapOptionsUtil.getTableDataForStateOrCountry(jtable, (String) yearListMenu.getSelectedItem(), (String) scenarioListMenu.getSelectedItem());

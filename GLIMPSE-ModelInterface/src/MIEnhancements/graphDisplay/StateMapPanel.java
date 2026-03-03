@@ -881,6 +881,12 @@ public class StateMapPanel extends JFrame implements ComponentListener {
         MapContent map = new MapContent();
         String shpFilePath = InterfaceMain.stateShapeFileLocation;
         featureCollection = MapOptionsUtil.getCollectionFromShape(shpFilePath);
+        if (featureCollection == null || featureCollection.size() == 0) {
+            MapOptionsUtil.showOneTimeMappingWarning("State map", shpFilePath);
+            System.err.println("StateMapPanel: No state boundary features available. "
+                    + "Did you set the Map Resource Folder? (stateShapeFileLocation=" + shpFilePath + ")");
+            return map;
+        }
         try {
             ArrayList<String> yearColInTable = MapOptionsUtil.getYearListFromTableData(jtable);
             dataForState = MapOptionsUtil.getTableDataForStateOrCountry(jtable, (String) yearListMenu.getSelectedItem(), (String) scenarioListMenu.getSelectedItem());

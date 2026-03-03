@@ -236,6 +236,59 @@ public class InterfaceMain implements ActionListener {
 	public static String legendBundlesLoc = null;
 
 	/**
+	 * Initialize shapefile locations from the configured map resource folder.
+	 *
+	 * This is needed because some map panels read the specific shapefile locations
+	 * (stateShapeFileLocation, gcamReg32ShapeFileLocation, gcamReg32US52ShapeFileLocation)
+	 * directly, and those were historically only set via the "Select Map Resource Folder"
+	 * menu action.
+	 *
+	 * @param folderPath map resources folder (may be null/blank)
+	 * @return true if initialization succeeded and mapping is enabled
+	 */
+	public static boolean initializeMappingFromFolder(String folderPath) {
+		// Clear stale values first (avoid partial success leaving old paths around)
+		stateShapeFileLocation = null;
+		gcamReg32ShapeFileLocation = null;
+		gcamReg32US52ShapeFileLocation = null;
+
+		if (folderPath == null || folderPath.trim().isEmpty()) {
+			enableMapping = false;
+			return false;
+		}
+		File dir = new File(folderPath);
+		if (!dir.exists() || !dir.isDirectory()) {
+			enableMapping = false;
+			return false;
+		}
+
+		shapeFileLocationPrefix = dir.getAbsolutePath();
+
+		File state = new File(dir, "mapUS52Compact_from_rmap.shp");
+		File reg32 = new File(dir, "mapGCAMReg32_from_rmap.shp");
+		File reg32us52 = new File(dir, "mapGCAMReg32US52_from_rmap.shp");
+
+		boolean ok = true;
+		if (state.exists() && state.isFile()) {
+			stateShapeFileLocation = state.getAbsolutePath();
+		} else {
+			ok = false;
+		}
+		if (reg32.exists() && reg32.isFile()) {
+			gcamReg32ShapeFileLocation = reg32.getAbsolutePath();
+		} else {
+			ok = false;
+		}
+		if (reg32us52.exists() && reg32us52.isFile()) {
+			gcamReg32US52ShapeFileLocation = reg32us52.getAbsolutePath();
+		}
+		// Note: reg32us52 is optional depending on use-case; don't fail mapping solely because it's absent.
+
+		enableMapping = ok;
+		return enableMapping;
+	}
+
+	/**
 	 * The main GUI the rest of the GUI components of the ModelInterface will rely
 	 * on.
 	 */
@@ -542,6 +595,9 @@ public class InterfaceMain implements ActionListener {
 								+ " exists: " + (shapeFileLocationPrefix != null && new File(shapeFileLocationPrefix).exists()));
 			}
 		}
+
+		// Derive the actual shapefile paths now (so maps don't require the menu action).
+		initializeMappingFromFolder(shapeFileLocationPrefix);
 
 		// Legend bundle precedence (legend_bundle)
 		if (opts.has("legend_bundle")) {
@@ -2196,3 +2252,4 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 }
+

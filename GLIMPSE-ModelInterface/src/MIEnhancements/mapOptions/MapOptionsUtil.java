@@ -1,12 +1,27 @@
 package mapOptions;
 
 import java.awt.Color;
+import java.awt.GraphicsEnvironment;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
-import javax.swing.*;
+
+import javax.swing.AbstractButton;
+import javax.swing.ButtonGroup;
+import javax.swing.JOptionPane;
+import javax.swing.JTable;
+import javax.swing.SwingUtilities;
+
 import org.geotools.data.FeatureSource;
+import org.geotools.data.collection.ListFeatureCollection;
 import org.geotools.data.shapefile.ShapefileDataStore;
 import org.geotools.factory.CommonFactoryFinder;
 import org.geotools.feature.FeatureCollection;
@@ -15,13 +30,18 @@ import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.filter.Filter;
 import org.opengis.filter.FilterFactory2;
 import org.opengis.filter.identity.FeatureId;
+
 import filter.FilteredTable;
+import ModelInterface.InterfaceMain;
 
 /**
  * Utility class for map options and table data operations.
  * Provides methods for extracting and manipulating table data, color mapping, and shapefile features.
  */
 public class MapOptionsUtil {
+
+    private static final AtomicBoolean mappingWarningShown = new AtomicBoolean(false);
+
     /**
      * Returns the text of the selected button in a ButtonGroup.
      * @param myButtonGroup the ButtonGroup to check
@@ -404,7 +424,19 @@ public class MapOptionsUtil {
         ShapefileDataStore store = null;
         FeatureCollection<SimpleFeatureType, SimpleFeature> featureCollection = null;
         try {
+            if (shpFilePath == null || shpFilePath.trim().isEmpty()) {
+                System.err.println("MapOptionsUtil.getCollectionFromShape: shapefile path is null/blank. "
+                        + "enableMapping=" + InterfaceMain.enableMapping + ", mapResourceFolder=" + InterfaceMain.shapeFileLocationPrefix);
+                return new ListFeatureCollection(null, Collections.emptyList());
+            }
+
             File shpFile = new File(shpFilePath);
+            if (!shpFile.exists() || !shpFile.isFile()) {
+                System.err.println("MapOptionsUtil.getCollectionFromShape: shapefile not found: " + shpFile.getAbsolutePath()
+                        + " (enableMapping=" + InterfaceMain.enableMapping + ", mapResourceFolder=" + InterfaceMain.shapeFileLocationPrefix + ")");
+                return new ListFeatureCollection(null, Collections.emptyList());
+            }
+
             shpFile.setReadOnly();
             store = new ShapefileDataStore(shpFile.toURI().toURL());
             String typeName = store.getTypeNames()[0];
@@ -465,5 +497,48 @@ public class MapOptionsUtil {
             }
         }
         return myColor;
+    }
+
+    /**
+     * Show a one-time warning dialog when mapping resources aren't configured.
+     * Safe to call from any thread.
+     *
+     * @param context short context string (e.g., "State map" / "World map")
+     * @param shpFilePath the shapefile path we attempted to use (may be null)
+     */
+    public static void showOneTimeMappingWarning(String context, String shpFilePath) {
+        if (mappingWarningShown.getAndSet(true)) {
+            return;
+        }
+
+        // Avoid UI in headless environments (tests, CI, etc.).
+        if (GraphicsEnvironment.isHeadless()) {
+            System.err.println("Mapping warning (headless): mapping resources not configured. context=" + context
+                    + ", shpFilePath=" + shpFilePath + ", enableMapping=" + InterfaceMain.enableMapping
+                    + ", mapResourceFolder=" + InterfaceMain.shapeFileLocationPrefix);
+            return;
+        }
+
+        final String msg = (context == null ? "Mapping" : context)
+                + " can’t be displayed because map resources aren’t configured.\n\n"
+                + "To enable mapping: use the menu item ‘Select Map Resource Folder’ and pick the folder containing the .shp files.\n\n"
+                + "Details:\n"
+                + "  enableMapping=" + InterfaceMain.enableMapping + "\n"
+                + "  mapResourceFolder=" + InterfaceMain.shapeFileLocationPrefix + "\n"
+                + "  shapefile=" + shpFilePath;
+
+        Runnable show = () -> JOptionPane.showMessageDialog(null, msg, "Mapping not configured",
+                JOptionPane.WARNING_MESSAGE);
+
+        if (SwingUtilities.isEventDispatchThread()) {
+            show.run();
+        } else {
+            SwingUtilities.invokeLater(show);
+        }
+    }
+
+    /** Reset the one-time mapping warning latch (useful for tests). */
+    public static void resetOneTimeMappingWarningForTests() {
+        mappingWarningShown.set(false);
     }
 }
