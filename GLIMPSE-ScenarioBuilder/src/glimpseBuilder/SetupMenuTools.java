@@ -86,7 +86,18 @@ public final class SetupMenuTools {
         // --- Advanced Submenu ---
         menuAdvanced.getItems().addAll(
             createMenuItem("CSV to XML", () -> new CsvToXmlWidget().createAndShow()),
-            createMenuItem("Cleanup Saved Files", this::cleanupSavedFilesAction)
+            createMenuItem("Cleanup Saved Files", this::cleanupSavedFilesAction),
+            new SeparatorMenuItem(),
+            createMenuItem("Stop ModelInterface Jobs", () -> {
+                try {
+                    if (Client.modelInterfaceExecutionThread != null) {
+                        String summary = Client.modelInterfaceExecutionThread.stopAllSpawnedProcessesAndClearQueue();
+                        System.out.println(summary);
+                    }
+                } catch (Throwable t) {
+                    System.err.println("Error stopping ModelInterface jobs: " + t);
+                }
+            })
         );
         
         menuTools.getItems().add(menuAdvanced);

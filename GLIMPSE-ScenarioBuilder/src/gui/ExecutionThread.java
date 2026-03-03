@@ -45,6 +45,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
 import glimpseUtil.ProcessRunner;
@@ -387,17 +388,19 @@ public class ExecutionThread implements AutoCloseable {
             }
 
             final ConsoleManager.StreamSource target = consoleStreamTarget;
-            if (target != null) {
-                return ProcessRunner.run(
+            ProcessRunner.RunningProcess rp = null;
+            try {
+                rp = ProcessRunner.start(
                         cmd,
                         directory == null ? null : new File(directory),
                         null,
-                        null,
-                        line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.MODEL_STDOUT, line),
-                        line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.STDERR, line));
+                        target == null ? null : (line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.MODEL_STDOUT, line)),
+                        target == null ? null : (line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.STDERR, line)));
+                trackProcessHandle(rp);
+                return rp.waitForResult(null);
+            } finally {
+                untrackProcessHandle(rp);
             }
-
-            return ProcessRunner.run(cmd, directory == null ? null : new File(directory), null, null);
         };
 
         final long jobId = jobIdCounter.incrementAndGet();
@@ -449,21 +452,19 @@ public class ExecutionThread implements AutoCloseable {
 
         Callable<ProcessResult> task = () -> {
             final ConsoleManager.StreamSource target = consoleStreamTarget;
-            if (target != null) {
-                return ProcessRunner.run(
+            ProcessRunner.RunningProcess rp = null;
+            try {
+                rp = ProcessRunner.start(
                         java.util.Arrays.asList(commandArray),
                         directory == null ? null : new File(directory),
                         null,
-                        null,
-                        line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.MODEL_STDOUT, line),
-                        line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.STDERR, line));
+                        target == null ? null : (line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.MODEL_STDOUT, line)),
+                        target == null ? null : (line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.STDERR, line)));
+                trackProcessHandle(rp);
+                return rp.waitForResult(null);
+            } finally {
+                untrackProcessHandle(rp);
             }
-
-            return ProcessRunner.run(
-                    java.util.Arrays.asList(commandArray),
-                    directory == null ? null : new File(directory),
-                    null,
-                    null);
         };
 
         final long jobId = jobIdCounter.incrementAndGet();
@@ -512,21 +513,19 @@ public class ExecutionThread implements AutoCloseable {
 
         Callable<ProcessResult> task = () -> {
             final ConsoleManager.StreamSource target = consoleStreamTarget;
-            if (target != null) {
-                return ProcessRunner.run(
+            ProcessRunner.RunningProcess rp = null;
+            try {
+                rp = ProcessRunner.start(
                         java.util.Arrays.asList(commandArray),
                         null,
                         null,
-                        null,
-                        line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.MODEL_STDOUT, line),
-                        line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.STDERR, line));
+                        target == null ? null : (line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.MODEL_STDOUT, line)),
+                        target == null ? null : (line -> ConsoleManager.appendLineBuffered(target, ConsoleManager.MessageKind.STDERR, line)));
+                trackProcessHandle(rp);
+                return rp.waitForResult(null);
+            } finally {
+                untrackProcessHandle(rp);
             }
-
-            return ProcessRunner.run(
-                    java.util.Arrays.asList(commandArray),
-                    null,
-                    null,
-                    null);
         };
 
         final long jobId = jobIdCounter.incrementAndGet();
@@ -1032,5 +1031,82 @@ public class ExecutionThread implements AutoCloseable {
             }
         } catch (Throwable ignored) {}
         return "";
+    }
+
+    /**
+     * Best-effort set of external processes started by this ExecutionThread.
+     * <p>
+     * This lets the UI request termination of spawned processes (e.g., ModelInterface).
+     * Tasks are expected to remove their handle when they finish.
+     * </p>
+     */
+    private final List<ProcessRunner.RunHandle> activeProcessHandles = new CopyOnWriteArrayList<>();
+
+    /** Add a process handle to the active set (best-effort). */
+    private void trackProcessHandle(ProcessRunner.RunHandle handle) {
+        if (handle == null) {
+            return;
+        }
+        try {
+            activeProcessHandles.add(handle);
+        } catch (Throwable ignored) {}
+    }
+
+    /** Remove a process handle from the active set (best-effort). */
+    private void untrackProcessHandle(ProcessRunner.RunHandle handle) {
+        if (handle == null) {
+            return;
+        }
+        try {
+            activeProcessHandles.remove(handle);
+        } catch (Throwable ignored) {}
+    }
+
+    /**
+     * Best-effort: stop all currently-running external processes spawned by this ExecutionThread
+     * and cancel any queued jobs.
+     * <p>
+     * This is intentionally aggressive and is meant for "Stop ModelInterface Jobs" style UI actions.
+     * </p>
+     *
+     * @return summary string suitable for logging.
+     */
+    public String stopAllSpawnedProcessesAndClearQueue() {
+        int nHandles = 0;
+        int nStopAttempted = 0;
+        int nStopped = 0;
+
+        // Snapshot to avoid concurrent modification while tasks finish.
+        List<ProcessRunner.RunHandle> snapshot = new ArrayList<>();
+        try {
+            snapshot.addAll(activeProcessHandles);
+        } catch (Throwable ignored) {}
+
+        nHandles = snapshot.size();
+        for (ProcessRunner.RunHandle h : snapshot) {
+            if (h == null) continue;
+            nStopAttempted++;
+            try {
+                ProcessRunner.StopResult r = h.stop();
+                // Count as stopped if we at least attempted and it isn't still alive.
+                if (r != null && !r.isAliveAfterStop()) {
+                    nStopped++;
+                }
+            } catch (Throwable ignored) {
+                // Still count the attempt.
+            } finally {
+                untrackProcessHandle(h);
+            }
+        }
+
+        int cancelled = 0;
+        try {
+            cancelled = cancelQueuedJobsKeepRunningCurrent();
+        } catch (Throwable ignored) {}
+
+        return "stopAllSpawnedProcessesAndClearQueue: handles=" + nHandles
+                + ", stopAttempts=" + nStopAttempted
+                + ", stopped=" + nStopped
+                + ", cancelledQueued=" + cancelled;
     }
 }

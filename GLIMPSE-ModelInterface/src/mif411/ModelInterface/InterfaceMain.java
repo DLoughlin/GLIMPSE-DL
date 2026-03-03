@@ -347,13 +347,18 @@ public class InterfaceMain implements ActionListener {
 
 		Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
 			public void uncaughtException(Thread t, Throwable e) {
-				// Dan commented out the error message which seemed to get negatively impacted
-				// by threads
-				if (InterfaceMain.getInstance() != null) {
-					InterfaceMain.getInstance().showMessageDialog(e, "Unexpected Error", JOptionPane.ERROR_MESSAGE);
+				// IMPORTANT: Do not show any UI popup for uncaught exceptions.
+				// These can be noisy (and sometimes misleading) during mapping and other background work.
+				// Instead, always log to stderr so ScenarioBuilder / callers can capture it.
+				try {
+					System.err.println("Uncaught exception" + (t == null ? "" : " in thread '" + t.getName() + "'") + ": " + e);
+				} catch (Throwable ignored) {}
+				try {
+					e.printStackTrace(System.err);
+				} catch (Throwable ignored) {
+					// Last resort.
+					e.printStackTrace();
 				}
-				// still print the stack trace to the console for debugging
-				e.printStackTrace();
 			}
 		});
 
@@ -1423,8 +1428,6 @@ public class InterfaceMain implements ActionListener {
 		}, "ModelInterface-Exit").start();
 	}
 
-	// ...existing code...
-
 	/** Create a simple menu item wired to this ActionListener. */
 	private JMenuItem makeMenuItem(String title) {
 		JMenuItem item = new JMenuItem(title);
@@ -2252,4 +2255,3 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 }
-
