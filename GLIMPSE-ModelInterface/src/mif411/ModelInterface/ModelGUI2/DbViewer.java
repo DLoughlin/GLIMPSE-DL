@@ -1319,12 +1319,13 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	private void setupPresetRegionDropdown() {
 		loadRegionListToDropdown();
 		JPanel presetRegionsPanel = new JPanel();
-		presetRegionsPanel.setLayout(new BoxLayout(presetRegionsPanel, BoxLayout.X_AXIS));
+		presetRegionsPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
 		presetRegionsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		
 		presetRegionsPanel.setPreferredSize(new Dimension(0, bottomStripHeight));
 		presetRegionsPanel.setMinimumSize(new Dimension(0, bottomStripHeight));
-		presetRegionsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, bottomStripHeight));		
+		presetRegionsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, bottomStripHeight));
+
 		
 		// Move doTotalCheckBox here from setupButtonPanel
 		doTotalCheckBox = new JCheckBox("Total  ");
@@ -1343,7 +1344,9 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			// Add to region panel
 			comboBoxPresetRegions.addActionListener(e -> selectPresetRegions());
 		}
-		((JPanel) scenarioRegionSplit.getRightComponent()).add(presetRegionsPanel);
+		// Add the preset panel to BorderLayout.SOUTH of the right wrapper.
+		// getRightComponent() returns the rightWrapper (BorderLayout) we set in setupSplitPanes.
+		((JPanel) scenarioRegionSplit.getRightComponent()).add(presetRegionsPanel, BorderLayout.SOUTH);
 
 	}
 
@@ -1360,7 +1363,8 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		buttonPanel.setMinimumSize(new Dimension(0, bottomStripHeight));
 		buttonPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, bottomStripHeight));
 		
-		buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.X_AXIS));
+		// Change to FlowLayout LEFT for consistent left-justified row.
+		buttonPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
 		buttonPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		runQueryButton = new JButton("Run Query");
 		diffQueryButton = new JButton("Diff Query");
@@ -1379,16 +1383,11 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			buttonPanel.add(b);
 		}
 
-		// Add a 20px buffer between the Favorites button and the progress bar
-		buttonPanel.add(Box.createHorizontalStrut(20));
-		// Ensure the progress bar keeps its preferred size and does not expand vertically
-		// queryProgressBar.setMaximumSize(queryProgressBar.getPreferredSize());
-		// buttonPanel.add(queryProgressBar);
-		// Add a 20px buffer between the progress bar and the right edge of the panel
-		buttonPanel.add(Box.createHorizontalStrut(20));
-		// Add glue so any extra space is consumed to the right of the progress bar
-		buttonPanel.add(Box.createHorizontalGlue());
-		queryPanel.add(buttonPanel);
+		// Add a 20px buffer between the Favorites button and the progress bar (if added later)
+		// buttonPanel.add(Box.createHorizontalStrut(20)); // FlowLayout handles spacing
+		
+		// Add to SOUTH so it sticks to the bottom
+		queryPanel.add(buttonPanel, BorderLayout.SOUTH);
 		this.queryFilterButton = queryFilterButton;
 		this.favoriteQueryButton = favoriteQueryButton;
 	}
@@ -1398,14 +1397,17 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 */
 	private void setupQueryPanel() {
 		scenarioRegionSplit.getRightComponent();
-		JPanel queryPanel = new JPanel();
-		queryPanel.setLayout(new BoxLayout(queryPanel, BoxLayout.Y_AXIS));
+		// Use BorderLayout to allow button panel to sit at SOUTH and list in CENTER
+		JPanel queryPanel = new JPanel(new BorderLayout());
+		
 		JLabel listLabel = new JLabel("Queries");
 		listLabel.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
-		queryPanel.add(listLabel);
+		queryPanel.add(listLabel, BorderLayout.NORTH);
+		
 		listScrollQueries = new JScrollPane(queryList);
 		listScrollQueries.setPreferredSize(new Dimension(150, 100));
-		queryPanel.add(listScrollQueries);
+		queryPanel.add(listScrollQueries, BorderLayout.CENTER);
+		
 		queriesSplit.setRightComponent(queryPanel);
 	}
 	
@@ -1493,7 +1495,12 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		listPane.add(listLabel);
 		listScrollRegions = new JScrollPane(regionList);
 		listPane.add(listScrollRegions);
-		scenarioRegionSplit.setRightComponent(listPane);
+		// Wrap listPane in a BorderLayout panel (rightWrapper) and put the listPane 
+		// in the CENTER so we can put preset panel in SOUTH later.
+		JPanel rightWrapper = new JPanel(new BorderLayout());
+		rightWrapper.add(listPane, BorderLayout.CENTER);
+		scenarioRegionSplit.setRightComponent(rightWrapper);
+		
 		queriesSplit.setLeftComponent(scenarioRegionSplit);
 		tableCreatorSplit.setLeftComponent(queriesSplit);
 		tableCreatorSplit.setRightComponent(tablesTabs);
@@ -2939,3 +2946,4 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		shutdownThread.start();
 	}
 }
+

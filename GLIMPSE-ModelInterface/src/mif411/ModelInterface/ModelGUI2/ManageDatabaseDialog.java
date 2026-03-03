@@ -184,8 +184,8 @@ public class ManageDatabaseDialog extends JDialog {
 
         buttonPane.setLayout(new BoxLayout(buttonPane, BoxLayout.X_AXIS));
         // Ensure the bottom strip doesn't shrink and clip buttons.
-        buttonPane.setPreferredSize(new Dimension(0, BOTTOM_PANE_HEIGHT));
-        buttonPane.setMinimumSize(new Dimension(0, BOTTOM_PANE_HEIGHT));
+        // Use a border to enforce height (36 - 28 = 8, so 4 top/bottom) instead of setPreferredSize which broke width.
+        buttonPane.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
          buttonPane.add(Box.createHorizontalStrut(3));
          buttonPane.add(addButton);
          buttonPane.add(Box.createHorizontalStrut(3));
@@ -219,7 +219,7 @@ public class ManageDatabaseDialog extends JDialog {
         pack();
         try {
             Dimension dlgSize = getSize();
-            int newWidth = Math.max(100, (int) (dlgSize.width * 1.2) - 30);
+            int newWidth = Math.max(100, (int) (dlgSize.width * 1.3) - 30);
             int newHeight = (int) (dlgSize.height * 1.5);
             setSize(newWidth, newHeight);
         } catch (Exception ignore) {}
