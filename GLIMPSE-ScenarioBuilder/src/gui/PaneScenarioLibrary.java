@@ -42,6 +42,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -65,12 +66,16 @@ import glimpseUtil.WindowsRuntimePreflight;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -1318,7 +1323,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                         System.out.println("Problem writing GCAM stdout/stderr logs: " + e);
                     }
 
-                    System.out.println("GCAM finished with exitCode=" + result.getExitCode());
+                    System.out.println("GCAM finished with exitCode=" + result.getExitCode()+System.lineSeparator()+"=========");
 
                     boolean shouldMoveOutputs = result.isSuccess() || stopRequested || wasCancelled;
 
@@ -1413,7 +1418,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         } else {
             File db = new File(database_name);
             if (!db.exists()) {
-                problems.add("Database not found: " + db.getAbsolutePath());
+                boolean created = promptCreateDatabaseNotice(db);
+                if (!created) {
+                    problems.add("Database not found: " + db.getAbsolutePath());
+                }
             }
         }
 
@@ -1433,12 +1441,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
         if (!problems.isEmpty()) {
             StringBuilder sb = new StringBuilder();
-            sb.append("Unable to start ModelInterface. Please fix:\n\n");
+            sb.append("Please fix:\n\n");
             for (String p : problems) {
                 sb.append(" - ").append(p).append("\n");
             }
-            utils.warningMessage(sb.toString());
-            System.out.println(sb.toString());
+            showNotice("Unable to start ModelInterface.", sb.toString());
+            System.out.println("Unable to start ModelInterface. " + sb.toString());
             return;
         }
 
@@ -1498,6 +1506,132 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
         args.add(flag);
         args.add(trimmed);
+    }
+
+    private void showNotice(String header, String message) {
+        Alert alert = new Alert(AlertType.INFORMATION);
+        alert.setTitle("Notice");
+        alert.setHeaderText(header);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private boolean promptCreateDatabaseNotice(File dbFile) {
+        if (dbFile == null) {
+            return false;
+        }
+
+        Alert alert = new Alert(AlertType.INFORMATION);
+        alert.setTitle("Notice");
+        alert.setHeaderText("Output database not found.");
+        alert.setContentText("Create and initialize a new database at:\n" + dbFile.getAbsolutePath());
+
+        ButtonType createBtn = new ButtonType("Create", ButtonBar.ButtonData.OK_DONE);
+        ButtonType okBtn = new ButtonType("OK", ButtonBar.ButtonData.CANCEL_CLOSE);
+        alert.getButtonTypes().setAll(createBtn, okBtn);
+
+        try {
+            javafx.scene.control.Button okButton = (javafx.scene.control.Button) alert.getDialogPane().lookupButton(okBtn);
+            if (okButton != null) {
+                okButton.setDefaultButton(true);
+            }
+        } catch (Exception ignored) {}
+
+        java.util.Optional<ButtonType> result = alert.showAndWait();
+        if (!result.isPresent() || result.get() != createBtn) {
+            return false;
+        }
+
+        return initializeDatabaseWithModelInterface(dbFile);
+    }
+
+    private boolean initializeDatabaseWithModelInterface(File dbFile) {
+        if (dbFile == null) {
+            return false;
+        }
+
+        String modelInterfaceDirStr = vars.getModelInterfaceDir();
+        String jarName = vars.getModelInterfaceJar();
+        if (modelInterfaceDirStr == null || modelInterfaceDirStr.trim().isEmpty()) {
+            showNotice("Unable to initialize database.", "ModelInterface directory is not set.");
+            return false;
+        }
+        if (jarName == null || jarName.trim().isEmpty()) {
+            showNotice("Unable to initialize database.", "ModelInterface jar file name is not set.");
+            return false;
+        }
+
+        File modelInterfaceDir = new File(modelInterfaceDirStr);
+        File jarFile = new File(modelInterfaceDir, jarName);
+        if (!jarFile.isFile()) {
+            showNotice("Unable to initialize database.", "ModelInterface jar not found:\n" + jarFile.getAbsolutePath());
+            return false;
+        }
+
+        try {
+            File parent = dbFile.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+
+            ArrayList<String> cmd = new ArrayList<>();
+            cmd.add("java");
+            cmd.add("-jar");
+            cmd.add(jarFile.getAbsolutePath());
+            cmd.add("-o");
+            cmd.add(dbFile.getAbsolutePath());
+            cmd.add("--init-db");
+
+            Dialog<Void> progress = new Dialog<>();
+            progress.setTitle("Notice");
+            progress.setHeaderText("Initializing database...");
+            Label msg = new Label("Creating and initializing database. Please wait...");
+            ProgressIndicator indicator = new ProgressIndicator();
+            VBox content = new VBox(10, msg, indicator);
+            content.setAlignment(Pos.CENTER_LEFT);
+            progress.getDialogPane().setContent(content);
+            progress.getDialogPane().getButtonTypes().add(ButtonType.CANCEL);
+            Button cancelBtn = (Button) progress.getDialogPane().lookupButton(ButtonType.CANCEL);
+            if (cancelBtn != null) {
+                cancelBtn.setDisable(true);
+            }
+
+            Task<ProcessResult> task = new Task<ProcessResult>() {
+                @Override
+                protected ProcessResult call() throws Exception {
+                    return ProcessRunner.run(cmd, modelInterfaceDir, null, Duration.ofMinutes(2));
+                }
+            };
+            task.setOnSucceeded(e -> progress.close());
+            task.setOnFailed(e -> progress.close());
+            task.setOnCancelled(e -> progress.close());
+
+            Thread initThread = new Thread(task, "ModelInterface-InitDB");
+            initThread.setDaemon(true);
+            initThread.start();
+
+            progress.showAndWait();
+
+            ProcessResult result = task.get();
+            if (result.isSuccess() && dbFile.exists()) {
+                return true;
+            }
+
+            String detail = "exitCode=" + result.getExitCode();
+            if (result.isTimedOut()) {
+                detail += ", timedOut=true";
+            }
+            if (result.getStderr() != null && !result.getStderr().trim().isEmpty()) {
+                detail += "\n\n" + result.getStderr().trim();
+            } else if (result.getStdout() != null && !result.getStdout().trim().isEmpty()) {
+                detail += "\n\n" + result.getStdout().trim();
+            }
+            showNotice("Database initialization failed.", detail);
+            return false;
+        } catch (Exception e) {
+            showNotice("Database initialization failed.", String.valueOf(e));
+            return false;
+        }
     }
 
     /**

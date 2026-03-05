@@ -375,6 +375,7 @@ public class InterfaceMain implements ActionListener {
 		parser.accepts("m", "Path to mapping directory").withOptionalArg();// YD added,May-2024
 		parser.accepts("legend_bundle", "Path to the LegendBundle.properties file").withOptionalArg();
 		parser.accepts("auto-generate-graphics", "Automatically generate graphics when a scenario is run.");
+		parser.accepts("init-db", "Initialize a new XML database at the path given by -o and exit.");
 
 		OptionSet opts = null;
 		try {
@@ -436,6 +437,24 @@ public class InterfaceMain implements ActionListener {
 			if (propPath != null) {
 				path = propPath;
 				System.out.println("InterfaceMain: DB Path (from properties): " + path + " exists: " + new File(path).exists());
+			}
+		}
+
+		if (opts.has("init-db")) {
+			if (path == null || path.trim().isEmpty()) {
+				System.err.println("init-db requested but no database path provided. Use -o <dbPath>.");
+				System.exit(1);
+			}
+			try {
+				System.out.println("Initializing database at: " + path);
+				XMLDB.openDatabase(path, true);
+				XMLDB.closeDatabase();
+				System.out.println("Database initialized successfully.");
+				System.exit(0);
+			} catch (Exception e) {
+				System.err.println("Failed to initialize database at " + path + ": " + e);
+				e.printStackTrace(System.err);
+				System.exit(2);
 			}
 		}
 
