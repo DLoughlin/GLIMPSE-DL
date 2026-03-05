@@ -82,8 +82,8 @@ csvColumnFilename = $scenarioBuilderDir$/config/v8.2/glimpseCSVColumnsForTechPar
 monetaryConversionsFilename = $scenarioBuilderDir$/config/v8.2/monetary_conversions.csv
 
 #allowable years for populating scenario builder
-allYearList = 1990,2005,2010,2015,2021,2025,2030,2035,2040,2045,2050,2055,2060,2065,2070,2075,2080,2085,2090,2100
-allowablePolicyYears = 2025,2030,2035,2040,2045,2050,2055,2060,2065,2070,2075,2080,2085,2090,2100
+allYearList = 1990,2005,2010,2015,2021,2025,2030,2035,2040,2045,2050,2055,2060,2065,2070,2075,2080,2085,2090,2095,2100
+allowablePolicyYears = 2025,2030,2035,2040,2045,2050,2055,2060,2065,2070,2075,2080,2085,2090,2095,2100
 calibrationYear = 2021
 
 ===========================================================================================
