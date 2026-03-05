@@ -2039,7 +2039,12 @@ public class InterfaceMain implements ActionListener {
 		JMenuBar createMenu() {
 			JMenuBar ret = new JMenuBar();
 			Object[] keys = subItems.keySet().toArray();
-			for (int i = 0; i < keys.length; ++i) { ret.add(subItems.get(keys[i]).createSubMenu()); }
+			for (int i = 0; i < keys.length; ++i) {
+				JMenuItem menu = subItems.get(keys[i]).createSubMenu();
+				// Add extra padding to main menu items
+				menu.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+				ret.add(menu);
+			}
 			return ret;
 		}
 		private JMenuItem createSubMenu() {

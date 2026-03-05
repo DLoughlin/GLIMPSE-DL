@@ -564,7 +564,7 @@ public class ExecutionThread implements AutoCloseable {
 
         final long jobId = jobIdCounter.incrementAndGet();
         final String label = describeCallableForLog(callable);
-        System.out.println("Submitting callable to queue [jobId=" + jobId + "]: " + label);
+        System.out.println("------"+System.lineSeparator()+"Submitting callable to queue [jobId=" + jobId + "]: " + label);
 
         java.util.concurrent.atomic.AtomicReference<Future<?>> ref = new java.util.concurrent.atomic.AtomicReference<>();
         java.util.concurrent.FutureTask<V> ft = new java.util.concurrent.FutureTask<>(wrapCallableForTracking(callable, ref));

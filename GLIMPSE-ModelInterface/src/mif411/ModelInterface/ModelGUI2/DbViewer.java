@@ -219,7 +219,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	public static final String SCENARIO_LIST_NAME = "scenario list";
 	public static final String REGION_LIST_NAME = "region list";
 
-	final int bottomStripHeight = ModelInterface.common.SwingButtonSizer.STANDARD_BUTTON_HEIGHT + 5;  
+	final int bottomStripHeight = ModelInterface.common.SwingButtonSizer.STANDARD_BUTTON_HEIGHT + 6;  
 	
 	private static Map<String, String> selectedYears = null;
 
@@ -1319,27 +1319,35 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	private void setupPresetRegionDropdown() {
 		loadRegionListToDropdown();
 		JPanel presetRegionsPanel = new JPanel();
-		presetRegionsPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
+		presetRegionsPanel.setLayout(new BoxLayout(presetRegionsPanel, BoxLayout.X_AXIS));
 		presetRegionsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		
+		presetRegionsPanel.setBorder(BorderFactory.createEmptyBorder(3, 0, 3, 0));
 		presetRegionsPanel.setPreferredSize(new Dimension(0, bottomStripHeight));
 		presetRegionsPanel.setMinimumSize(new Dimension(0, bottomStripHeight));
 		presetRegionsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, bottomStripHeight));
 
+		// Add initial spacing
+		presetRegionsPanel.add(Box.createHorizontalStrut(5));
 		
 		// Move doTotalCheckBox here from setupButtonPanel
 		doTotalCheckBox = new JCheckBox("Total  ");
 		doTotalCheckBox.setOpaque(true);
+		doTotalCheckBox.setAlignmentY(Component.CENTER_ALIGNMENT);
 		//doTotalCheckBox.setBackground(Color.WHITE);
 		presetRegionsPanel.add(doTotalCheckBox);
 
 		if (preset_choices != null && preset_choices.length > 0) {
+			presetRegionsPanel.add(Box.createHorizontalStrut(5));
 			JLabel listLabel = new JLabel("Group:");
+			listLabel.setAlignmentY(Component.CENTER_ALIGNMENT);
 			comboBoxPresetRegions = new JComboBox<String>(preset_choices);
 			comboBoxPresetRegions.setVisible(true);
 			comboBoxPresetRegions.setMaximumSize(comboBoxPresetRegions.getPreferredSize());
+			comboBoxPresetRegions.setAlignmentY(Component.CENTER_ALIGNMENT);
 
 			presetRegionsPanel.add(listLabel);
+			presetRegionsPanel.add(Box.createHorizontalStrut(5));
 			presetRegionsPanel.add(comboBoxPresetRegions);
 			// Add to region panel
 			comboBoxPresetRegions.addActionListener(e -> selectPresetRegions());
@@ -1359,13 +1367,18 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		JPanel queryPanel = (JPanel) queriesSplit.getRightComponent();
 		JPanel buttonPanel = new JPanel();
 		
+		buttonPanel.setBorder(BorderFactory.createEmptyBorder(3, 0, 3, 0));
 		buttonPanel.setPreferredSize(new Dimension(0, bottomStripHeight));
 		buttonPanel.setMinimumSize(new Dimension(0, bottomStripHeight));
 		buttonPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, bottomStripHeight));
 		
-		// Change to FlowLayout LEFT for consistent left-justified row.
-		buttonPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
+		// Change to BoxLayout for proper vertical centering
+		buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.X_AXIS));
 		buttonPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+		
+		// Add initial spacing
+		buttonPanel.add(Box.createHorizontalStrut(2));
+
 		runQueryButton = new JButton("Run Query");
 		diffQueryButton = new JButton("Diff Query");
 		listCollapseButton = new JButton("View +/-");
@@ -1381,6 +1394,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		for (JButton b : buttons) {
 			b.setAlignmentY(Component.CENTER_ALIGNMENT);
 			buttonPanel.add(b);
+			buttonPanel.add(Box.createHorizontalStrut(2));
 		}
 
 		// Add a 20px buffer between the Favorites button and the progress bar (if added later)
@@ -1400,9 +1414,10 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		// Use BorderLayout to allow button panel to sit at SOUTH and list in CENTER
 		JPanel queryPanel = new JPanel(new BorderLayout());
 		
-		JLabel listLabel = new JLabel("Queries");
-		listLabel.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
-		queryPanel.add(listLabel, BorderLayout.NORTH);
+		JLabel queryListLabel = new JLabel("Queries");
+		queryListLabel.setHorizontalAlignment(SwingConstants.CENTER);
+		queryListLabel.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
+		queryPanel.add(queryListLabel, BorderLayout.NORTH);
 		
 		listScrollQueries = new JScrollPane(queryList);
 		listScrollQueries.setPreferredSize(new Dimension(150, 100));
@@ -1441,25 +1456,28 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 * queries, and the results tabs.
 	 */
 	private void setupSplitPanes() {
-		JPanel listPane = new JPanel();
-		listPane.setLayout(new BoxLayout(listPane, BoxLayout.Y_AXIS));
-		JLabel listLabel = new JLabel("Scenarios");
-		listLabel.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
-		listPane.add(listLabel);
+		JPanel scenListPane = new JPanel();
+		scenListPane.setLayout(new BoxLayout(scenListPane, BoxLayout.Y_AXIS));
+		JLabel scenListLabel = new JLabel("Scenarios");
+		scenListLabel.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
+		scenListLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+		scenListPane.add(scenListLabel);
 		JScrollPane listScroll = new JScrollPane(scnList);
-		listPane.add(listScroll);
+		scenListPane.add(listScroll);
 
 		// Create the bottom pane separately so it appears below the listPane
 		JPanel bottomPane = new JPanel();
 		bottomPane.setLayout(new BoxLayout(bottomPane, BoxLayout.X_AXIS));
 		bottomPane.setAlignmentX(Component.CENTER_ALIGNMENT);
 		// Keep the bottom strip height consistent across the app.
-		final int bottomStripHeight = ModelInterface.common.SwingButtonSizer.STANDARD_BUTTON_HEIGHT + 5;
+		final int bottomStripHeight = ModelInterface.common.SwingButtonSizer.STANDARD_BUTTON_HEIGHT + 6;
+		bottomPane.setBorder(BorderFactory.createEmptyBorder(3, 0, 3, 0));
 		bottomPane.setPreferredSize(new Dimension(0, bottomStripHeight));
 		bottomPane.setMinimumSize(new Dimension(0, bottomStripHeight));
 		bottomPane.setMaximumSize(new Dimension(Integer.MAX_VALUE, bottomStripHeight));
 
 		final JButton manageDbButton = new JButton("Manage DB");
+		manageDbButton.setAlignmentY(Component.CENTER_ALIGNMENT);
 		// left-justify the button
 		bottomPane.add(Box.createHorizontalStrut(10));
 		bottomPane.add(manageDbButton);
@@ -1484,21 +1502,22 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 
 		// Wrap the listPane and bottomPane so bottomPane appears below listPane
 		JPanel leftWrapper = new JPanel(new BorderLayout());
-		leftWrapper.add(listPane, BorderLayout.CENTER);
+		leftWrapper.add(scenListPane, BorderLayout.CENTER);
 		leftWrapper.add(bottomPane, BorderLayout.SOUTH);
 
 		scenarioRegionSplit.setLeftComponent(leftWrapper);
-		listPane = new JPanel();
-		listPane.setLayout(new BoxLayout(listPane, BoxLayout.Y_AXIS));
-		listLabel = new JLabel("Regions");
-		listLabel.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
-		listPane.add(listLabel);
+		scenListPane = new JPanel();
+		scenListPane.setLayout(new BoxLayout(scenListPane, BoxLayout.Y_AXIS));
+		scenListLabel = new JLabel("Regions");
+		scenListLabel.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
+		scenListLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+		scenListPane.add(scenListLabel);
 		listScrollRegions = new JScrollPane(regionList);
-		listPane.add(listScrollRegions);
+		scenListPane.add(listScrollRegions);
 		// Wrap listPane in a BorderLayout panel (rightWrapper) and put the listPane 
 		// in the CENTER so we can put preset panel in SOUTH later.
 		JPanel rightWrapper = new JPanel(new BorderLayout());
-		rightWrapper.add(listPane, BorderLayout.CENTER);
+		rightWrapper.add(scenListPane, BorderLayout.CENTER);
 		scenarioRegionSplit.setRightComponent(rightWrapper);
 		
 		queriesSplit.setLeftComponent(scenarioRegionSplit);
@@ -2945,5 +2964,8 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		shutdownThread.setDaemon(true);
 		shutdownThread.start();
 	}
-}
+}
+
+
+
 

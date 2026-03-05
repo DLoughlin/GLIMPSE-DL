@@ -61,6 +61,7 @@ import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEStyles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
+import glimpseUtil.WindowsRuntimePreflight;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -999,6 +1000,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
      * @throws IOException if file operations fail
      */
     private void runGcamOnSelected() throws IOException {
+        if (!WindowsRuntimePreflight.ensureMsvcRuntimeAvailableOrWarn(utils, "GCAM run")) {
+            System.out.println("GCAM launch blocked: missing Microsoft Visual C++ runtime.");
+            return;
+        }
         ObservableList<ScenarioRow> selectedScenarioRows = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems();
         String[] configFiles = new String[selectedScenarioRows.size()];
         int idx = 0;
@@ -1055,6 +1060,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
      * @throws IOException if file operations fail
      */
     private void runGcamModel(String[] scenarioConfigFiles) throws IOException {
+        if (!WindowsRuntimePreflight.ensureMsvcRuntimeAvailableOrWarn(utils, "GCAM run")) {
+            System.out.println("GCAM launch blocked: missing Microsoft Visual C++ runtime.");
+            return;
+        }
         System.out.println("Running scenarios in GCAM...");
         for (String scenarioConfigFile : scenarioConfigFiles) {
             if (scenarioConfigFile == null) {
@@ -1126,7 +1135,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                     }
                     cmd.add(scenarioConfigFile);
 
-                    System.out.println("Command to run (direct): " + cmd);
+                    System.out.println("======"+System.lineSeparator()+"Command to run (direct): " + cmd);
 
                     // Auto-clear the GCAM console output at the start of each new run (best-effort).
                     ConsoleManager.clear(ConsoleManager.StreamSource.GCAM_STDOUT);
@@ -1267,9 +1276,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                     }
 
                     // Report termination status (if a stop was requested).
+                    boolean stopRequested = false;
                     try {
                         ProcessRunner.StopResult sr = lastGcamStopResult;
                         if (sr != null) {
+                            stopRequested = true;
                             ConsoleManager.appendHeader(ConsoleManager.StreamSource.GCAM_STDOUT, "Stop result");
                             ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
                                     ConsoleManager.MessageKind.GLIMPSE_INFO,
@@ -1279,7 +1290,8 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                         ConsoleManager.appendHeader(ConsoleManager.StreamSource.GCAM_STDOUT, "GCAM finished");
                         ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
                                 ConsoleManager.MessageKind.GLIMPSE_INFO,
-                                "exitCode=" + result.getExitCode() + ", cancelled=" + wasCancelled + ", success=" + result.isSuccess());
+                                "exitCode=" + result.getExitCode() + ", cancelled=" + wasCancelled + ", success=" + result.isSuccess()
+                                        + (stopRequested ? ", stopRequested=true" : ""));
                     } catch (Exception ignored) {}
 
                     String scenName = new File(dir).getName();
@@ -1308,16 +1320,16 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
                     System.out.println("GCAM finished with exitCode=" + result.getExitCode());
 
-                    if (wasCancelled) {
-                        System.out.println("GCAM run canceled by user; skipping move of output files.");
-                        updateRunStatus();
-                        return "GCAM run canceled";
-                    }
+                    boolean shouldMoveOutputs = result.isSuccess() || stopRequested || wasCancelled;
 
-                    if (!result.isSuccess()) {
+                    if (!shouldMoveOutputs) {
                         System.out.println("GCAM run failed (or timed out); skipping move of output files.");
                         updateRunStatus();
                         return "GCAM run failed";
+                    }
+
+                    if (stopRequested || wasCancelled) {
+                        System.out.println("GCAM was stopped by user; attempting to move any generated output files.");
                     }
 
                     System.out.println("Moving results to scenario folder.");
@@ -1742,7 +1754,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             try {
                 for (ScenarioRow s : ScenarioTable.listOfScenarioRuns) {
                     if (s != null && scenarioName.equals(s.getScenarioName())) {
-                        s.setStatus("");
+                        s.setStatus("Updating...");
                         s.setRuntime("");
                         s.setUnsolvedMarkets("");
                         s.setCompletedDate("");

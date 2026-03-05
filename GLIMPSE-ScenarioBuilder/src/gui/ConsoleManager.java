@@ -159,10 +159,11 @@ final class ConsoleManager {
                 return;
             }
 
-            String out = line;
-            if (!out.endsWith("\n")) {
-                out = out + System.lineSeparator();
+            String normalized = normalizeConsoleLine(line);
+            if (normalized.isEmpty() && isGlimpseSource(source)) {
+                return;
             }
+            String out = normalized + System.lineSeparator();
 
             Text t = new Text(out);
             t.setFill(colorFor(kind));
@@ -599,10 +600,11 @@ final class ConsoleManager {
             while (drained < maxItems && (it = queue.poll()) != null) {
                 drained++;
 
-                String out = it.line;
-                if (!out.endsWith("\n")) {
-                    out = out + System.lineSeparator();
+                String normalized = normalizeConsoleLine(it.line);
+                if (normalized.isEmpty() && isGlimpseSource(source)) {
+                    continue;
                 }
+                String out = normalized + System.lineSeparator();
 
                 switch (it.kind) {
                 case STDERR:
@@ -799,5 +801,25 @@ final class ConsoleManager {
                 flow.getChildren().clear();
             }
         });
+    }
+
+    private static String normalizeConsoleLine(String line) {
+        if (line == null || line.isEmpty()) {
+            return "";
+        }
+        int end = line.length();
+        while (end > 0) {
+            char c = line.charAt(end - 1);
+            if (c == '\n' || c == '\r') {
+                end--;
+            } else {
+                break;
+            }
+        }
+        return (end == line.length()) ? line : line.substring(0, end);
+    }
+
+    private static boolean isGlimpseSource(StreamSource source) {
+        return source == StreamSource.GLIMPSE_STDOUT || source == StreamSource.GLIMPSE_STDERR;
     }
 }

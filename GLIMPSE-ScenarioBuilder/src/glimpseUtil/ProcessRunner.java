@@ -164,6 +164,8 @@ public final class ProcessRunner {
             pb.environment().putAll(extraEnv);
         }
 
+        applyJavaEnvAndEcho(pb);
+
         Process process = pb.start();
         return new RunningProcess(process, stdoutLineConsumer, stderrLineConsumer);
     }
@@ -319,6 +321,8 @@ public final class ProcessRunner {
             pb.environment().putAll(extraEnv);
         }
 
+        applyJavaEnvAndEcho(pb);
+
         Process process = pb.start();
 
         Charset charset = StandardCharsets.UTF_8;
@@ -414,5 +418,55 @@ public final class ProcessRunner {
         } catch (Throwable t) {
             return null;
         }
+    }
+
+    private static void applyJavaEnvAndEcho(ProcessBuilder pb) {
+        Map<String, String> env = pb.environment();
+        String javaHome = env.get("JAVA_HOME");
+        if (javaHome == null || javaHome.trim().isEmpty()) {
+            String sysJavaHome = System.getenv("JAVA_HOME");
+            if (sysJavaHome != null && !sysJavaHome.trim().isEmpty()) {
+                javaHome = sysJavaHome;
+                env.put("JAVA_HOME", javaHome);
+            }
+        }
+
+        String pathKey = getPathKey(env);
+        if (pathKey == null) {
+            pathKey = "PATH";
+        }
+
+        String pathValue = env.get(pathKey);
+        if (pathValue == null || pathValue.trim().isEmpty()) {
+            String sysPath = System.getenv("PATH");
+            if (sysPath != null && !sysPath.trim().isEmpty()) {
+                pathValue = sysPath;
+            }
+        }
+
+        if (javaHome != null && !javaHome.trim().isEmpty()) {
+            String javaBin = javaHome + File.separator + "bin";
+            if (pathValue == null || pathValue.trim().isEmpty()) {
+                pathValue = javaBin;
+            } else if (!pathValue.startsWith(javaBin + File.pathSeparator)) {
+                pathValue = javaBin + File.pathSeparator + pathValue;
+            }
+        }
+
+        if (pathValue != null && !pathValue.trim().isEmpty()) {
+            env.put(pathKey, pathValue);
+        }
+
+        System.out.println("JAVA_HOME=" + env.get("JAVA_HOME"));
+        System.out.println("PATH=" + env.get(pathKey));
+    }
+
+    private static String getPathKey(Map<String, String> env) {
+        for (String key : env.keySet()) {
+            if ("PATH".equalsIgnoreCase(key)) {
+                return key;
+            }
+        }
+        return null;
     }
 }

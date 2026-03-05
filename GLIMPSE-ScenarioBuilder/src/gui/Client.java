@@ -42,6 +42,7 @@ import glimpseBuilder.SetupMenuView;
 import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEStyles;
 import glimpseUtil.GLIMPSEVariables;
+import glimpseUtil.WindowsRuntimePreflight;
 import java.io.File;
 import java.util.List;
 import javafx.animation.FadeTransition;
@@ -290,6 +291,7 @@ public class Client extends Application {
         // Log time-to-window and schedule post-show work.
         Platform.runLater(() -> {
             logStartupCheckpoint("Primary stage shown (first FX pulse after show)", STARTUP_T0_NANOS);
+            WindowsRuntimePreflight.ensureMsvcRuntimeAvailableOrWarn(utils, "Startup");
             startDeferredFileLoading();
         });
 
