@@ -52,7 +52,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Scanner;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.swing.JFrame;
@@ -144,9 +143,6 @@ public class GLIMPSEUtils {
     public String[][] ldv4W_table = null;
     public String[][] hdv_table = null;
     public String[][] oth_table = null;
-
-    private final ConcurrentLinkedQueue<String> deferredWarningMessages = new ConcurrentLinkedQueue<>();
-    private volatile boolean modalDialogsReady = false;
 
     // Constants for label texts, combo box options, and other hardcoded strings
     public static final String[] STATE_CODES = { "AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI",
@@ -310,24 +306,6 @@ public class GLIMPSEUtils {
     	UtilsDialogs.getInstance().setModalDialogsReadyAndFlushWarnings();
     }
 
-    private void flushQueuedWarnings() {
-        if (!modalDialogsReady) {
-            return;
-        }
-        String msg;
-        while ((msg = deferredWarningMessages.poll()) != null) {
-            if (msg.trim().isEmpty()) {
-                continue;
-            }
-            Alert alert = new Alert(AlertType.WARNING);
-            applyModernThemeToDialog(alert);
-            alert.setTitle(LABEL_WARNING);
-            alert.setHeaderText(LABEL_WARNING);
-            alert.setContentText(msg);
-            alert.showAndWait();
-        }
-    }
-	
 	/**
 	 * Displays a dialog for text input and returns the entered text.
 	 *
@@ -2055,7 +2033,7 @@ public class GLIMPSEUtils {
 				break;
 			case "Initial w/% Growth/pd":
 				val = initial_value * Math.pow(1 + growth / 100, t);
-				break;
+			break;
 			case "Initial w/Delta/yr":
 				val = (initial_value) + growth * 5 * t;
 				break;
