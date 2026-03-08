@@ -68,7 +68,7 @@ import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
 
-public class TableUtils {
+public class UtilsTable {
 
 	public static NumberFormat numberFormatter = NumberFormat.getNumberInstance();
 	private static final int MAX_ROWS_AFTER_PASTE = 50;
@@ -184,26 +184,20 @@ public class TableUtils {
 			}
 		}
 
-		// create clipboard content
 		final ClipboardContent clipboardContent = new ClipboardContent();
 		clipboardContent.putString(clipboardString.toString());
-
-		// set clipboard content
 		Clipboard.getSystemClipboard().setContent(clipboardContent);
 
 	}
 
 	public static void pasteFromClipboard(TableView<?> table) {
-
 		int table_size = table.getItems().size();
 		Debug.log("Table size: " + table_size);
 
-		// abort if there's not cell selected to start with
 		if (table.getSelectionModel().getSelectedCells().size() == 0) {
 			return;
 		}
 
-		// Start where the user is currently selected.
 		TablePosition<?, ?> pos = table.getSelectionModel().getSelectedCells().get(0);
 		int startRow = pos.getRow();
 		int startCol = pos.getColumn();
@@ -221,15 +215,6 @@ public class TableUtils {
 			return;
 		}
 
-		// --- Row-oriented paste support (Excel row selection) ---
-		// If a user selects one or two rows in Excel/CSV and copies them, the clipboard becomes a
-		// wide (many columns) but short (1-2 rows) grid. For common 2-column year/value tables,
-		// we reshape it into the expected column-oriented format.
-		//
-		// Rule:
-		//  - if maxCols > 3 and rowCount < 3:
-		//      * 1 row  => transpose into a single column vector (paste down selected column)
-		//      * 2 rows => treat as [yearsRow, valuesRow] and convert to 2-column rows
 		if (maxCols > 3 && grid.size() < 3) {
 			if (grid.size() == 1) {
 				grid = ClipboardTableParser.transposeSingleRowToColumn(grid.get(0));
@@ -240,17 +225,8 @@ public class TableUtils {
 			maxCols = ClipboardTableParser.maxColumns(grid);
 		}
 
-		// --- Auto-expand rows when possible ---
-		// Many GLIMPSE tables use DataPoint (year/value). For those tables, we can safely append
-		// blank rows so pasting can extend the table.
 		int desiredRowCount = startRow + grid.size();
 		ensureRowCapacityForPaste(table, desiredRowCount);
-
-		// We support:
-		//  - 1-column pastes: paste down the currently selected column
-		//  - 2+-column pastes: paste into consecutive columns starting from the selected column
-		// For 2-column year/value tables, users can either select col 0 (years) or col 1 (values)
-		// and paste a single column, or select col 0 and paste 2 columns.
 
 		for (int r = 0; r < grid.size(); r++) {
 			int rowTable = startRow + r;
@@ -263,7 +239,6 @@ public class TableUtils {
 			List<String> rowCells = grid.get(r);
 			int colsToPaste = Math.min(rowCells.size(), table.getColumns().size() - startCol);
 			if (maxCols == 1) {
-				// Always paste 1-column grid down the selected column.
 				colsToPaste = Math.min(1, table.getColumns().size() - startCol);
 			}
 
@@ -280,7 +255,6 @@ public class TableUtils {
 				TableColumn tableColumn = table.getColumns().get(colTable);
 				ObservableValue observableValue = tableColumn.getCellObservableValue(rowTable);
 
-				// TODO: handle boolean, etc
 				if (observableValue instanceof DoubleProperty) {
 					try {
 						double value = numberFormatter.parse(clipboardCellContent).doubleValue();
@@ -308,7 +282,6 @@ public class TableUtils {
 	}
 
 	private static void ensureRowCapacityForPaste(TableView<?> table, int desiredRowCount) {
-		// Safety cap: never auto-expand beyond a reasonable size.
 		desiredRowCount = Math.min(desiredRowCount, MAX_ROWS_AFTER_PASTE);
 
 		if (desiredRowCount <= table.getItems().size()) {
@@ -317,7 +290,6 @@ public class TableUtils {
 
 		ObservableList<?> items = table.getItems();
 		if (items == null || items.isEmpty()) {
-			// If there's no item, we can't infer an item type safely.
 			return;
 		}
 
@@ -329,7 +301,5 @@ public class TableUtils {
 				dpItems.add(new DataPoint("", ""));
 			}
 		}
-		// else: unknown item type; do not auto-expand.
 	}
-
 }

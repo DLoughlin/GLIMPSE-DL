@@ -40,7 +40,7 @@ import java.util.ArrayList;
 import glimpseUtil.GLIMPSEStyles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
-import glimpseUtil.TableUtils;
+import glimpseUtil.UtilsTable;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
@@ -166,7 +166,7 @@ public class PaneForComponentDetails extends VBox {
 
         table.setItems(data);
         table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        TableUtils.installCopyPasteHandler(table);
+        UtilsTable.installCopyPasteHandler(table);
 
         // Bind input field widths to table width
         textFieldYear.prefWidthProperty().bind(table.widthProperty().divide(8. / 2.75));

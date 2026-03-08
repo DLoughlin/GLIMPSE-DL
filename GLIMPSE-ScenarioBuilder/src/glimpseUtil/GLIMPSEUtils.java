@@ -105,7 +105,6 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
-// ...existing code...
 import javafx.stage.Stage;
 
 import com.github.difflib.DiffUtils;
@@ -203,6 +202,7 @@ public class GLIMPSEUtils {
 		vars = v;
 		styles = s;
 		files = f;
+		UtilsDialogs.getInstance().init(s);
 	}
 
 	/**
@@ -235,14 +235,7 @@ public class GLIMPSEUtils {
 	 * @return true if match found, false otherwise
 	 */
 	public boolean getMatch(String str, List<String> marketList) {
-		if (str == null || marketList == null)
-			return false;
-		for (String item : marketList) {
-			if (str.equals(item)) {
-				return true;
-			}
-		}
-		return false;
+		return UtilsStrings.getMatch(str, marketList);
 	}
 
 	/**
@@ -253,15 +246,7 @@ public class GLIMPSEUtils {
 	 * @return Updated list
 	 */
 	public ArrayList<String> addToArrayListIfUnique(ArrayList<String> list, String str) {
-		if (list == null || str == null)
-			return list;
-		for (String item : list) {
-			if (item.compareTo(str) == 0) {
-				return list;
-			}
-		}
-		list.add(str);
-		return list;
+		return UtilsStrings.addToArrayListIfUnique(list, str);
 	}
 
 	/**
@@ -273,15 +258,7 @@ public class GLIMPSEUtils {
 	 * @return Token containing the text, or empty string if not found
 	 */
 	public String getTokenWithText(String line, String txt, String delim) {
-		if (line == null || txt == null || delim == null)
-			return "";
-		String[] tokens = line.split(delim);
-		for (String token : tokens) {
-			if (token.indexOf(txt) >= 0) {
-				return token;
-			}
-		}
-		return "";
+		return UtilsStrings.getTokenWithText(line, txt, delim);
 	}
 
 	/**
@@ -293,13 +270,7 @@ public class GLIMPSEUtils {
 	 * @return Concatenated string
 	 */
 	public String getStringFromList(ObservableList<String> ol, String separator) {
-		if (ol == null || separator == null || vars == null)
-			return "";
-		StringBuilder rtn_str = new StringBuilder();
-		for (String o : ol) {
-			rtn_str.append(o).append(separator);
-		}
-		return rtn_str.toString();
+		return UtilsStrings.getStringFromList(ol, separator);
 	}
 
 	/**
@@ -308,10 +279,7 @@ public class GLIMPSEUtils {
 	 * @return Current date string
 	 */
 	public String getCurrentTimeStamp() {
-		SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd");// dd/MM/yyyy
-		Date now = new Date();
-		String strDate = sdfDate.format(now);
-		return strDate;
+		return UtilsDateNumber.getCurrentTimeStamp();
 	}
 
 	/**
@@ -321,16 +289,7 @@ public class GLIMPSEUtils {
 	 * @return Date object, or null if parsing fails
 	 */
 	public Date getFormattedDate(String dateStr) {
-		if (dateStr == null)
-			return null;
-		DateFormat format = new SimpleDateFormat(dateFormatStr, Locale.ENGLISH);
-		Date formattedDate = null;
-		try {
-			formattedDate = format.parse(dateStr);
-		} catch (Exception e) {
-			System.out.println("Error formatting " + dateStr);
-		}
-		return formattedDate;
+		return UtilsDateNumber.getFormattedDate(dateStr, dateFormatStr);
 	}
 
 
@@ -340,26 +299,7 @@ public class GLIMPSEUtils {
 	 * @param msg Message to display
 	 */
 	public void warningMessage(String msg) {
-        if (msg == null)
-            return;
-        if (!modalDialogsReady) {
-            deferredWarningMessages.add(msg);
-            return;
-        }
-        Runnable showAlert = () -> {
-            Alert alert = new Alert(AlertType.WARNING);
-            applyModernThemeToDialog(alert);
-            alert.setTitle(LABEL_WARNING);
-            alert.setHeaderText(LABEL_WARNING);
-            alert.setContentText(msg);
-            alert.showAndWait();
-        };
-        if (Platform.isFxApplicationThread()) {
-            showAlert.run();
-        } else {
-            Platform.runLater(showAlert);
-        }
-        return;
+		UtilsDialogs.getInstance().warningMessage(msg);
     }
 
     /**
@@ -367,15 +307,7 @@ public class GLIMPSEUtils {
      * Call this after the primary stage is shown.
      */
     public void setModalDialogsReadyAndFlushWarnings() {
-        modalDialogsReady = true;
-        if (deferredWarningMessages.isEmpty()) {
-            return;
-        }
-        if (Platform.isFxApplicationThread()) {
-            flushQueuedWarnings();
-        } else {
-            Platform.runLater(this::flushQueuedWarnings);
-        }
+    	UtilsDialogs.getInstance().setModalDialogsReadyAndFlushWarnings();
     }
 
     private void flushQueuedWarnings() {
@@ -403,59 +335,7 @@ public class GLIMPSEUtils {
 	 * @return Entered text
 	 */
 	public String getTextDialog(String descriptionType) {
-		if (descriptionType == null)
-			descriptionType = "";
-		String title = descriptionType;
-		TextArea textArea = new TextArea();
-		textArea.setEditable(true);
-		// Allow the dialog text area to grow with its container instead of using a fixed preferred size
-		textArea.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		textArea.setMinHeight(0);
-
-		try {
-			Stage stage = new Stage();
-
-			stage.setTitle(title);
-			stage.setWidth(400);
-			stage.setHeight(400);
-			Scene scene = new Scene(new Group());
-			gui.ScenarioBuilder.applyModernTheme(scene);
-			stage.setResizable(false);
-			stage.setAlwaysOnTop(true);
-
-			Button okButton = createButton("OK", styles.getBigButtonWidth(), null);
-
-			okButton.setOnAction(e -> {
-				stage.close();
-			});
-
-			VBox root = new VBox();
-			// Use centralized small padding for dialog roots
-			root.setPadding(styles.getSmallPadding());
-			root.setSpacing(5);
-			root.setAlignment(Pos.TOP_LEFT);
-
-			String text = "";
-
-			textArea.setText(text);
-
-			HBox buttonBox = new HBox();
-			// Use centralized small padding for dialog button areas
-			buttonBox.setPadding(styles.getSmallPadding());
-			buttonBox.setSpacing(5);
-			buttonBox.setAlignment(Pos.CENTER);
-			buttonBox.getChildren().addAll(okButton);
-
-			root.getChildren().addAll(textArea, buttonBox);
-			scene.setRoot(root);
-
-			stage.setScene(scene);
-			stage.showAndWait();
-		} catch (Exception e) {
-			System.out.println("Exception on textArea dialog:" + e);
-		}
-
-		return textArea.getText();
+		return UtilsDialogs.getInstance().getTextDialog(descriptionType);
 	}
 
 	/**
@@ -465,16 +345,7 @@ public class GLIMPSEUtils {
 	 * @return Integer value
 	 */
 	public int convertStringToInt(String s) {
-		s = s.replaceAll("\"", "").replaceAll("'", ""); // Remove quotations
-		if (s == null)
-			return 0;
-		int rtn_val = 0;
-		try {
-			rtn_val = Integer.parseInt(s);
-		} catch (Exception e) {
-			System.out.println("problem converting " + s + " to int: " + e);
-		}
-		return rtn_val;
+		return UtilsDateNumber.convertStringToInt(s);
 	}
 
 	/**
@@ -484,20 +355,7 @@ public class GLIMPSEUtils {
 	 * @return Year as string
 	 */
 	public String getYearForPeriod(int period) {
-		String rtn_str = "";
-
-		if (period == -1) {
-			rtn_str = "2100";
-		} else if (period == 0) {
-			rtn_str = "1975";
-		} else if (period == 1) {
-			rtn_str = "1990";
-		} else if (period == 2) {
-			rtn_str = "2005";
-		} else {
-			rtn_str = 2005 + 5 * (period - 2) + "";
-		}
-		return rtn_str;
+		return UtilsDateNumber.getYearForPeriod(period);
 	}
 
 	/**
@@ -507,17 +365,7 @@ public class GLIMPSEUtils {
 	 * @return Period index as string
 	 */
 	public String getPeriodForYear(String year) {
-		if (year == null)
-			return "";
-		double year_d = 0;
-		try {
-			year_d = Double.parseDouble(year);
-		} catch (NumberFormatException e) {
-			return "";
-		}
-		double increment = (year_d - 2005.) / 5. + 2;
-		int increment_int = (int) increment;
-		return "" + increment_int;
+		return UtilsDateNumber.getPeriodForYear(year);
 	}
 
 	/**
@@ -527,12 +375,7 @@ public class GLIMPSEUtils {
 	 * @return String without trailing commas
 	 */
 	public String getRidOfTrailingCommasInString(String s) {
-		if (s == null)
-			return null;
-		while (s.endsWith(",")) {
-			s = s.substring(0, s.length() - 1);
-		}
-		return s;
+		return UtilsStrings.getRidOfTrailingCommasInString(s);
 	}
 
 	/**
@@ -542,13 +385,7 @@ public class GLIMPSEUtils {
 	 * @return Array with trailing commas removed
 	 */
 	public String[] getRidOfTrailingCommasInStringArray(String[] s) {
-		if (s == null)
-			return null;
-		int i = 0;
-		for (String str : s) {
-			s[i++] = getRidOfTrailingCommasInString(str);
-		}
-		return s;
+		return UtilsStrings.getRidOfTrailingCommasInStringArray(s);
 	}
 
 	/**
@@ -569,17 +406,7 @@ public class GLIMPSEUtils {
 	 * @return String with only the first letter capitalized
 	 */
 	public String capitalizeOnlyFirstLetterOfString(String input_string) {
-		if (input_string == null || input_string.isEmpty())
-			return input_string;
-		String output_string = input_string;
-
-		if (input_string.length() == 1) {
-			output_string = input_string.toUpperCase();
-		}
-		if (input_string.length() > 1) {
-			output_string = input_string.substring(0, 1).toUpperCase() + input_string.substring(1).toLowerCase();
-		}
-		return output_string;
+		return UtilsStrings.capitalizeOnlyFirstLetterOfString(input_string);
 	}
 
 	/**
@@ -588,17 +415,7 @@ public class GLIMPSEUtils {
 	 * @return true if user confirms, false otherwise
 	 */
 	public boolean confirmDelete() {
-		boolean continueWithDelete = true;
-		Alert alert = new Alert(AlertType.CONFIRMATION);
-		applyModernThemeToDialog(alert);
-		alert.setTitle(LABEL_CONFIRMATION_DIALOG);
-		alert.setHeaderText(LABEL_DELETE_SELECTED_ITEMS);
-		alert.setContentText(LABEL_PLEASE_CONFIRM_DELETION);
-		Optional<ButtonType> result = alert.showAndWait();
-		if (result.isPresent() && result.get() == ButtonType.CANCEL) {
-			continueWithDelete = false;
-		}
-		return continueWithDelete;
+		return UtilsDialogs.getInstance().confirmDelete();
 	}
 
 	/**
@@ -618,10 +435,7 @@ public class GLIMPSEUtils {
 	 * @return Array of split strings
 	 */
 	public String[] splitString(String str, String delim) {
-		if (str == null || delim == null)
-			return new String[0];
-		String s[] = str.split(delim);
-		return s;
+		return UtilsStrings.splitString(str, delim);
 	}
 
 	/**
@@ -652,14 +466,7 @@ public class GLIMPSEUtils {
 	 * @return ArrayList of strings
 	 */
 	public ArrayList<String> createArrayListFromString(String line, String delim) {
-		if (line == null || delim == null)
-			return new ArrayList<>();
-		ArrayList<String> linesList = new ArrayList<>();
-		String[] lines = splitString(line, delim);
-		for (String l : lines) {
-			linesList.add(l);
-		}
-		return linesList;
+		return UtilsStrings.createArrayListFromString(line, delim);
 	}
 
 	/**
@@ -686,13 +493,7 @@ public class GLIMPSEUtils {
 	 * @return Concatenated string
 	 */
 	public String createStringFromArrayList(ArrayList<String> arrayList) {
-		if (arrayList == null)
-			return "";
-		StringBuilder result = new StringBuilder();
-		for (String s : arrayList) {
-			result.append(s).append(vars.getEol());
-		}
-		return result.toString();
+		return UtilsStrings.createStringFromArrayList(arrayList, vars.getEol());
 	}
 
 	/**
@@ -703,16 +504,7 @@ public class GLIMPSEUtils {
 	 * @return Concatenated string
 	 */
 	public String createStringFromArrayList(List<String> filesToSave, String delimiter) {
-		if (filesToSave == null || delimiter == null)
-			return "";
-		StringBuilder result = new StringBuilder();
-		for (int i = 0; i < filesToSave.size(); i++) {
-			result.append(filesToSave.get(i));
-			if (i < filesToSave.size() - 1) {
-				result.append(delimiter);
-			}
-		}
-		return result.toString();
+		return UtilsStrings.createStringFromArrayList(filesToSave, delimiter);
 	}
 
 	/**
@@ -739,15 +531,7 @@ public class GLIMPSEUtils {
 	 * @return Concatenated string
 	 */
 	public String createStringFromStringArray(String[] str_array) {
-		if (str_array == null)
-			return "";
-		StringBuilder rtn_str = new StringBuilder();
-		for (int i = 0; i < str_array.length; i++) {
-			if (i > 0)
-				rtn_str.append(",");
-			rtn_str.append(str_array[i]);
-		}
-		return rtn_str.toString();
+		return UtilsStrings.createStringFromStringArray(str_array);
 	}
 
 	/**
@@ -1321,44 +1105,15 @@ public class GLIMPSEUtils {
 	}
 
 	public String trimIfExists(String str) {
-		if (str != null)
-			str = str.trim();
-		return str;
+		return UtilsStrings.trimIfExists(str);
 	}
 
 	public String toSignificantFiguresString(double val, int significantFigures) {
-		BigDecimal bd = new BigDecimal(val);
-		String test = String.format("%." + significantFigures + "G", bd);
-		if (test.contains("E+")) {
-			test = String.format(Locale.US, "%.0f", Double.valueOf(String.format("%." + significantFigures + "G", bd)));
-		}
-		return test;
+		return UtilsDateNumber.toSignificantFiguresString(val, significantFigures);
 	}
 
 	public String[] convertTo1990Dollars(String[] vals, String dollarYear) {
-		if (files == null)
-			return vals;
-		String[] ret_vals = vals;
-		String conversion_str = "1.0";
-
-		try {
-			for (int i = 0; i < files.getMonetaryConversionsFileContent().size(); i++) {
-				String s[] = files.getMonetaryConversionsFileContent().get(i).split(",");
-				if (s[0].equals(dollarYear))
-					conversion_str = s[1];
-			}
-
-			double conversion_dbl = Double.parseDouble(conversion_str);
-
-			for (int i = 0; i < vals.length; i++) {
-				double val = Double.parseDouble(vals[i]) * conversion_dbl;
-				ret_vals[i] = "" + val;
-			}
-		} catch (Exception e) {
-			System.out.println("Error making dollar year conversion. Returning original values.");
-		}
-
-		return ret_vals;
+		return UtilsSeriesCalculations.convertTo1990Dollars(vals, dollarYear, files);
 	}
 
 	public String[] getAllSelectedRegions(TreeView<String> tree) {
@@ -1465,81 +1220,25 @@ public class GLIMPSEUtils {
 	}
 
 	public boolean confirmAction(String s) {
-		// confirmation of delete
-		boolean continueAction = true;
-		Alert alert = new Alert(AlertType.CONFIRMATION);
-		applyModernThemeToDialog(alert);
-		alert.setTitle("Confirmation Dialog");
-		alert.setHeaderText(s);
-		alert.setContentText("Please confirm.");
-		Optional<ButtonType> result = alert.showAndWait();
-		if (result.isPresent() && result.get() == ButtonType.CANCEL) {
-			continueAction = false;
-		}
-		return continueAction;
+		return UtilsDialogs.getInstance().confirmAction(s);
 	}
 
 	public boolean showInformationDialog(String title, String header, String content) {
-		if (title == null || header == null || content == null)
-			return false;
-		Alert alert = new Alert(AlertType.INFORMATION);
-		applyModernThemeToDialog(alert);
-		alert.setTitle(title);
-		alert.setHeaderText(header);
-		alert.setContentText(content);
-		alert.showAndWait();
-		return true;
+		return UtilsDialogs.getInstance().showInformationDialog(title, header, content);
 	}
 
 	public boolean confirmArchiveScenario() {
 		if (vars == null)
 			return false;
-		Alert alert = new Alert(AlertType.CONFIRMATION);
-		applyModernThemeToDialog(alert);
-		alert.setTitle(LABEL_CONFIRMATION_DIALOG);
-		alert.setHeaderText(LABEL_ARCHIVE_SCENARIO);
-		alert.setContentText(LABEL_PLEASE_CONFIRM_ARCHIVE);
-
-		ButtonType yes = new ButtonType("Yes");
-		ButtonType no = new ButtonType("No", ButtonBar.ButtonData.CANCEL_CLOSE);
-		alert.getButtonTypes().setAll(yes, no);
-		// Make the safer choice the default.
-		try {
-			Button noBtn = (Button) alert.getDialogPane().lookupButton(no);
-			if (noBtn != null) {
-				noBtn.setDefaultButton(true);
-				noBtn.setCancelButton(true);
-			}
-		} catch (Exception e) {
-			// ignore; default behavior will still treat close as NO
-		}
-
-		Optional<ButtonType> result = alert.showAndWait();
-		return result.isPresent() && result.get() == yes;
+		return UtilsDialogs.getInstance().confirmArchiveScenario();
 	}
  
 	public boolean showStatusDialog(String title, String header, String content) {
-		if (title == null || header == null || content == null)
-			return false;
-		Alert alert = new Alert(AlertType.INFORMATION);
-		applyModernThemeToDialog(alert);
-		alert.setTitle(title);
-		alert.setHeaderText(header);
-		alert.setContentText(content);
-		Optional<ButtonType> result = alert.showAndWait();
-		return !(result.isPresent() && result.get() == ButtonType.CANCEL);
+		return UtilsDialogs.getInstance().showStatusDialog(title, header, content);
 	}
 
 	public boolean selectYesOrNoDialog(String s) {
-		boolean b = false;
-
-		JFrame jf = new JFrame();
-		jf.setAlwaysOnTop(true);
-
-		int dialogButton = JOptionPane.YES_NO_OPTION;
-		int dialogResult = JOptionPane.showConfirmDialog(jf, s, "Confirmation required", dialogButton);
-		b = (dialogResult == 0);
-		return b;
+		return UtilsDialogs.getInstance().selectYesOrNoDialog(s);
 	}
 
 	public void resetLogFile(String filename) {
@@ -1965,7 +1664,7 @@ public class GLIMPSEUtils {
 			// Avoid fixed preferred size; allow table to grow and shrink with its container
 			table.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
 			table.setMinHeight(0);
-			TableUtils.installCopyPasteHandler(table);
+			UtilsTable.installCopyPasteHandler(table);
 			table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
 			String[][] rawData = getDataMatrixFromArrayList(csvData);
@@ -2046,7 +1745,7 @@ public class GLIMPSEUtils {
 			table.setEditable(false);
 			table.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
 			table.setMinHeight(0);
-			TableUtils.installCopyPasteHandler(table);
+			UtilsTable.installCopyPasteHandler(table);
 			table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
 			String[][] rawData = getDataMatrixFromArrayList(csvData);
