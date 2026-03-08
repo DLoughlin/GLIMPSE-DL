@@ -84,8 +84,10 @@ import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
+import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.Separator;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
@@ -97,10 +99,14 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
-import javafx.stage.Stage;
+import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
+// ...existing code...
+import javafx.stage.Stage;
 
 import com.github.difflib.DiffUtils;
 import com.github.difflib.algorithm.DiffException;
@@ -1850,13 +1856,89 @@ public class GLIMPSEUtils {
 	private final Pattern doublePattern = Pattern.compile("-?(([0-9]+)|([0-9]*\\.[0-9]+))");
 
 	public String[][] getDataMatrixFromArrayList(ArrayList<String> data) {
-		int num_cols = data.get(0).toString().split(",").length;
+		if (data == null || data.isEmpty())
+			return new String[0][0];
 		int num_rows = data.size();
-		String[][] dataMatrix = new String[num_rows][num_cols];
+		String[][] dataMatrix = new String[num_rows][];
 		for (int r = 0; r < num_rows; r++) {
-			dataMatrix[r] = data.get(r).toString().split(",");
+			String row = data.get(r);
+			if (row == null) {
+				dataMatrix[r] = new String[0];
+			} else {
+				dataMatrix[r] = row.split(",", -1);
+			}
 		}
 		return dataMatrix;
+	}
+
+	private int computeMaxRowLength(String[][] data) {
+		if (data == null)
+			return 0;
+		int maxLength = 0;
+		for (String[] row : data) {
+			if (row != null && row.length > maxLength) {
+				maxLength = row.length;
+			}
+		}
+		return maxLength;
+	}
+
+	private String[] extractColumn(String[][] data, int columnIndex) {
+		if (data == null || columnIndex < 0)
+			return new String[0];
+		String[] column = new String[data.length];
+		for (int rowIndex = 0; rowIndex < data.length; rowIndex++) {
+			if (data[rowIndex] != null && columnIndex < data[rowIndex].length && data[rowIndex][columnIndex] != null) {
+				column[rowIndex] = data[rowIndex][columnIndex];
+			} else {
+				column[rowIndex] = "";
+			}
+		}
+		return column;
+	}
+
+	private Class<?> deduceColumnType(String[] column) {
+		if (column == null || column.length <= 1)
+			return String.class;
+		boolean hasValue = false;
+		boolean allIntegers = true;
+		boolean allNumeric = true;
+		for (int rowIndex = 1; rowIndex < column.length; rowIndex++) {
+			String value = column[rowIndex];
+			if (value == null)
+				continue;
+			value = value.trim();
+			if (value.isEmpty())
+				continue;
+			hasValue = true;
+			if (!intPattern.matcher(value).matches()) {
+				allIntegers = false;
+			}
+			if (!doublePattern.matcher(value).matches()) {
+				allNumeric = false;
+				break;
+			}
+		}
+		if (!hasValue)
+			return String.class;
+		if (allIntegers)
+			return Integer.class;
+		if (allNumeric)
+			return Double.class;
+		return String.class;
+	}
+
+	private String getColumnHeader(String[][] data, int columnIndex) {
+		if (columnIndex < 0)
+			return "";
+		String fallback = "Column " + (columnIndex + 1);
+		if (data == null || data.length == 0 || data[0] == null || columnIndex >= data[0].length)
+			return fallback;
+		String header = data[0][columnIndex];
+		if (header == null)
+			return fallback;
+		header = header.trim();
+		return header.isEmpty() ? fallback : header;
 	}
 
 	public void showPopupTableOfCSVData(String title, ArrayList<String> csvData, int wd, int ht) {
@@ -1888,16 +1970,16 @@ public class GLIMPSEUtils {
 
 			String[][] rawData = getDataMatrixFromArrayList(csvData);
 			int numCols = computeMaxRowLength(rawData);
+			int startRowIndex = rawData.length > 0 ? 1 : 0;
 
 			Class<?>[] types = new Class<?>[numCols];
 
 			for (int columnIndex = 0; columnIndex < numCols; columnIndex++) {
 				String[] column = extractColumn(rawData, columnIndex);
 				types[columnIndex] = deduceColumnType(column);
-				table.getColumns().add(createColumn(types[columnIndex], columnIndex, rawData[0][columnIndex]));
+				table.getColumns().add(createColumn(types[columnIndex], columnIndex, getColumnHeader(rawData, columnIndex)));
 			}
-			;
-			for (int rowIndex = 1; rowIndex < rawData.length; rowIndex++) {
+			for (int rowIndex = startRowIndex; rowIndex < rawData.length; rowIndex++) {
 				List<Object> row = new ArrayList<>();
 				for (int columnIndex = 0; columnIndex < numCols; columnIndex++) {
 					row.add(getDataAsType(rawData[rowIndex], types[columnIndex], columnIndex));
@@ -1969,17 +2051,21 @@ public class GLIMPSEUtils {
 
 			String[][] rawData = getDataMatrixFromArrayList(csvData);
 			int numCols = computeMaxRowLength(rawData);
-			int classCol = findColumnIndex(rawData[0], "Classification");
+			String[] headerRow = rawData.length > 0 ? rawData[0] : new String[0];
+			int startRowIndex = rawData.length > 0 ? 1 : 0;
+			int classCol = findColumnIndex(headerRow, "Classification");
 
 			Class<?>[] types = new Class<?>[numCols];
 			for (int columnIndex = 0; columnIndex < numCols; columnIndex++) {
 				String[] column = extractColumn(rawData, columnIndex);
 				types[columnIndex] = deduceColumnType(column);
-				table.getColumns().add(createColumn(types[columnIndex], columnIndex, rawData[0][columnIndex]));
+				TableColumn<List<Object>, String> col = createColumn(types[columnIndex], columnIndex, getColumnHeader(rawData, columnIndex));
+				installErrorReportOverflowBehavior(table, col, columnIndex, numCols);
+				table.getColumns().add(col);
 			}
 
 			ObservableList<List<Object>> master = FXCollections.observableArrayList();
-			for (int rowIndex = 1; rowIndex < rawData.length; rowIndex++) {
+			for (int rowIndex = startRowIndex; rowIndex < rawData.length; rowIndex++) {
 				List<Object> row = new ArrayList<>();
 				for (int columnIndex = 0; columnIndex < numCols; columnIndex++) {
 					row.add(getDataAsType(rawData[rowIndex], types[columnIndex], columnIndex));
@@ -2034,7 +2120,7 @@ public class GLIMPSEUtils {
 						ArrayList<String> exportRows = new ArrayList<>();
 						ArrayList<String> header = new ArrayList<>();
 						for (int col = 0; col < numCols; col++) {
-							header.add(sanitizeCsvField(rawData[0][col]));
+							header.add(sanitizeCsvField(getColumnHeader(rawData, col)));
 						}
 						exportRows.add(buildCsvRow(header, numCols));
 						for (List<Object> row : filtered) {
@@ -2149,68 +2235,91 @@ public class GLIMPSEUtils {
 		return col;
 	}
 
-	private Class<?> deduceColumnType(String[] column) {
-		/**
-		 * Deduces the data type of a column based on its values.
-		 * 
-		 * @param column The column as a String array
-		 * @return The deduced Class type (Integer.class, Double.class, or String.class)
-		 */
-		boolean allInts = true;
-		boolean allDoubles = true;
-		try {
-			for (int i = 1; i < column.length; i++) {
-				String str = column[i];
-				if ((str != null) && (!str.equals(""))) {
-					allInts = allInts && intPattern.matcher(str).matches();
-					allDoubles = allDoubles && doublePattern.matcher(str).matches();
+	private void installErrorReportOverflowBehavior(TableView<List<Object>> table, TableColumn<List<Object>, String> col,
+			int colIndex, int totalColumns) {
+		col.setCellFactory(column -> new TableCell<List<Object>, String>() {
+			private final Text textNode = new Text();
+			private final StackPane textPane = new StackPane(textNode);
+			private final Rectangle clip = new Rectangle();
+
+			{
+				textNode.fontProperty().bind(fontProperty());
+				textNode.fillProperty().bind(textFillProperty());
+				textPane.setAlignment(Pos.CENTER_LEFT);
+				setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+				clip.widthProperty().bind(widthProperty());
+				clip.heightProperty().bind(heightProperty());
+			}
+
+			@Override
+			protected void updateItem(String item, boolean empty) {
+				super.updateItem(item, empty);
+				if (empty || item == null) {
+					setGraphic(null);
+					setText(null);
+					setClip(clip);
+					toBack();
+					return;
+				}
+
+				textNode.setText(item);
+				setText(null);
+				setGraphic(textPane);
+
+				boolean allowOverflow = shouldAllowOverflow(item, colIndex, totalColumns);
+				if (allowOverflow) {
+					setClip(null);
+					toFront();
+				} else {
+					setClip(clip);
+					toBack();
 				}
 			}
-			if (allInts) {
-				return Integer.class;
+
+			private boolean shouldAllowOverflow(String text, int columnIndex, int columnCount) {
+				if (text == null || text.trim().isEmpty()) {
+					return false;
+				}
+				Object rowObj = getTableRow() == null ? null : getTableRow().getItem();
+				if (!(rowObj instanceof List)) {
+					return false;
+				}
+				@SuppressWarnings("unchecked")
+				List<Object> rowItem = (List<Object>) rowObj;
+				if (!areRightCellsEmpty(rowItem, columnIndex, columnCount)) {
+					return false;
+				}
+				double available = getWidth();
+				if (available <= 0) {
+					available = col.getWidth();
+				}
+				if (getInsets() != null) {
+					available -= (getInsets().getLeft() + getInsets().getRight());
+				}
+				if (available <= 0) {
+					return false;
+				}
+				Font font = getFont();
+				if (font == null) {
+					return false;
+				}
+				double textWidth = Toolkit.getToolkit().getFontLoader().computeStringWidth(text, font);
+				return textWidth > (available + 1.0);
 			}
-			if (allDoubles) {
-				return Double.class;
-			}
-		} catch (Exception e) {
-			;
-		}
-		return String.class;
+		});
 	}
 
-	private int computeMaxRowLength(Object[][] array) {
-		/**
-		 * Computes the maximum row length in a 2D array.
-		 * 
-		 * @param array The 2D array
-		 * @return The maximum row length
-		 */
-		int maxLength = Integer.MIN_VALUE;
-		for (int i = 0; i < array.length; i++) {
-			if (array[i].length > maxLength) {
-				maxLength = array[i].length;
+	private boolean areRightCellsEmpty(List<Object> rowItem, int columnIndex, int columnCount) {
+		if (rowItem == null) {
+			return false;
+		}
+		for (int i = columnIndex + 1; i < columnCount; i++) {
+			String value = i < rowItem.size() && rowItem.get(i) != null ? rowItem.get(i).toString() : "";
+			if (!value.trim().isEmpty()) {
+				return false;
 			}
 		}
-		return maxLength;
-	}
-
-	private String[] extractColumn(String[][] data, int columnIndex) {
-		/**
-		 * Extracts a column from a 2D String array.
-		 * 
-		 * @param data        The 2D String array
-		 * @param columnIndex The index of the column to extract
-		 * @return The extracted column as a String array
-		 */
-		String[] column = new String[data.length];
-		for (int i = 0; i < data.length; i++) {
-			if (columnIndex < data[i].length) {
-				column[i] = data[i][columnIndex];
-			} else {
-				column[i] = "";
-			}
-		}
-		return column;
+		return true;
 	}
 
 	public double[][] calculateValues(String type, int start_year, int end_year, double initial_value, double growth,
@@ -2512,6 +2621,8 @@ public class GLIMPSEUtils {
 		int region_col = param_col + 1;
 		int sector_col = region_col + 1;
 		int subsector_col = sector_col + 1;
+		int tech_col = subsector_col + 1;
+
 		for (int j = 0; j < data.length; j++) {
 			String data_region = data[j][region_col];
 			String data_subsector = data[j][subsector_col];
