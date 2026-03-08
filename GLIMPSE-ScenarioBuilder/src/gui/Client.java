@@ -61,7 +61,6 @@ import javafx.scene.layout.RowConstraints;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import javafx.geometry.Insets;
 import javafx.scene.paint.Color;
 import javafx.stage.Modality;
 import javafx.stage.Stage;

@@ -79,7 +79,6 @@ import ModelInterface.UnitConversionInstance;
 import ModelInterface.ModelGUI2.queries.QueryGenerator;
 import ModelInterface.ModelGUI2.tables.ComboTableModel;
 import ModelInterface.ModelGUI2.tables.CopyPaste;
-import ModelInterface.ModelGUI2.xmldb.DbProcInterrupt;
 import ModelInterface.ModelGUI2.xmldb.QueryBinding;
 import filter.FilteredTable;
 

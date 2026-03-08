@@ -48,8 +48,6 @@ import java.io.File;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.List;
-import java.util.StringTokenizer;
-
 import glimpseElement.DataPoint;
 
 import javafx.beans.property.DoubleProperty;

@@ -36,27 +36,17 @@
 package glimpseUtil;
 
 import java.io.File;
-import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.text.DateFormat;
 import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.Scanner;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-
 import org.controlsfx.control.CheckComboBox;
 import org.controlsfx.control.StatusBar;
 
@@ -70,20 +60,14 @@ import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
-import javafx.scene.Group;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.CheckBoxTreeItem;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
-import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TableCell;
@@ -99,7 +83,6 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
@@ -137,12 +120,7 @@ public class GLIMPSEUtils {
     public GLIMPSEStyles styles;
     public GLIMPSEFiles files;
     public StatusBar sb;
-
-    public String[][] trn_veh_info_table = null;
-    public String[][] ldv2W_table = null;
-    public String[][] ldv4W_table = null;
-    public String[][] hdv_table = null;
-    public String[][] oth_table = null;
+    private UtilsTransport transportUtils;
 
     // Constants for label texts, combo box options, and other hardcoded strings
     public static final String[] STATE_CODES = { "AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI",
@@ -198,30 +176,10 @@ public class GLIMPSEUtils {
 		vars = v;
 		styles = s;
 		files = f;
+		transportUtils = new UtilsTransport(v, f, this);
 		UtilsDialogs.getInstance().init(s);
 	}
 
-	/**
-	 * Applies the ScenarioBuilder modern theme to a JavaFX Alert/Dialog.
-	 */
-	private void applyModernThemeToDialog(javafx.scene.control.Dialog<?> dialog) {
-		if (dialog == null)
-			return;
-		try {
-			javafx.scene.control.DialogPane pane = dialog.getDialogPane();
-			if (pane == null)
-				return;
-			java.net.URL cssUrl = gui.ScenarioBuilder.class.getResource(gui.ScenarioBuilder.getModernCssResource());
-			if (cssUrl != null) {
-				String css = cssUrl.toExternalForm();
-				if (!pane.getStylesheets().contains(css)) {
-					pane.getStylesheets().add(css);
-				}
-			}
-		} catch (Exception e) {
-			// ignore theme failures; fall back to default Alert styling
-		}
-	}
 
 	/**
 	 * Checks if a string matches any item in the provided list.
@@ -2196,6 +2154,56 @@ public class GLIMPSEUtils {
 		return rtn_str.trim();
 	}
 
+	/**
+	 * Retrieves the load factor for a transportation technology in a specific
+	 * region, sector, and year.
+	 */
+	public String getLoadFactor(String region, String sector, String subsector, String tech, String year) {
+		if (transportUtils == null)
+			return null;
+		return transportUtils.getLoadFactor(region, sector, subsector, tech, year);
+	}
+
+	/**
+	 * Retrieves the vehicle coefficient for a transportation technology in a
+	 * specific region, sector, and year.
+	 */
+	public String getVehCoefficient(String region, String sector, String subsector, String tech, String year) {
+		if (transportUtils == null)
+			return null;
+		return transportUtils.getVehCoefficient(region, sector, subsector, tech, year);
+	}
+
+	/**
+	 * Retrieves the technology names for a given subsector in a region.
+	 */
+	public String[] getTrnTechsInSubsector(String region, String sector, String subsector) {
+		if (transportUtils == null)
+			return null;
+		return transportUtils.getTrnTechsInSubsector(region, sector, subsector);
+	}
+
+	/**
+	 * Retrieves transportation vehicle information for a given parameter, region,
+	 * sector, subsector, technology, and year.
+	 */
+	public String getTrnVehInfo(String param, String region, String sector, String subsector, String tech,
+			String year_str) {
+		if (transportUtils == null)
+			return null;
+		return transportUtils.getTrnVehInfo(param, region, sector, subsector, tech, year_str);
+	}
+
+	/**
+	 * Loads transportation vehicle information from a file and categorizes it into
+	 * different tables based on vehicle type.
+	 */
+	public void loadTrnVehInfo() {
+		if (transportUtils == null)
+			return;
+		transportUtils.loadTrnVehInfo();
+	}
+
 	public String getSubsectorConversions(double numf, String region, String sector, String subsector, int year) {
 
 		String val = null;
@@ -2262,16 +2270,6 @@ public class GLIMPSEUtils {
 		return val;
 	}
 
-	private boolean isOldFormatTrnVehInfo(String[][] data) {
-		if (data == null || data.length == 0 || data[0] == null || data[0].length == 0)
-			return true;
-		String firstHeader = data[0][0];
-		if (firstHeader == null)
-			return true;
-		String header = firstHeader.trim().toLowerCase();
-		return !(header.contains("param") || header.contains("variable"));
-	}
-
 	/**
 	 * Checks if a subsector is present in the specified region and sector.
 	 * 
@@ -2281,207 +2279,9 @@ public class GLIMPSEUtils {
 	 * @return true if subsector is in region, false otherwise
 	 */
 	public boolean isSubsectorInRegion(String region, String sector, String subsector) {
-		boolean b = false;
-
-//		if (isState(region))
-//			region = "USA";
-
-		String[][] data = getTrnDataForProcessing(sector);
-
-		int match_row = -1;
-
-		boolean old_format = isOldFormatTrnVehInfo(data);
-
-		int param_col = 0;
-		if (old_format)
-			param_col = -1;
-		int region_col = param_col + 1;
-		int sector_col = region_col + 1;
-		int subsector_col = sector_col + 1;
-		int tech_col = subsector_col + 1;
-
-		for (int j = 0; j < data.length; j++) {
-			String data_region = data[j][region_col];
-			String data_subsector = data[j][subsector_col];
-			if ((region.equals(data_region)) && (subsector.equals(data_subsector))) {
-				match_row = j;
-				break;
-			}
-		}
-
-		if (match_row > -1)
-			b = true;
-		return b;
-	}
-
-	/**
-	 * Retrieves the load factor for a transportation technology in a specific
-	 * region, sector, and year.
-	 * 
-	 * @param region    Region name
-	 * @param sector    Sector name
-	 * @param subsector Subsector name
-	 * @param tech      Technology name
-	 * @param year      Year as string
-	 * @return Load factor as string
-	 */
-	public String getLoadFactor(String region, String sector, String subsector, String tech, String year) {
-		return getTrnVehInfo("load", region, sector, subsector, tech, year);
-	}
-
-	/**
-	 * Retrieves the vehicle coefficient for a transportation technology in a
-	 * specific region, sector, and year.
-	 * 
-	 * @param region    Region name
-	 * @param sector    Sector name
-	 * @param subsector Subsector name
-	 * @param tech      Technology name
-	 * @param year      Year as string
-	 * @return Vehicle coefficient as string
-	 */
-	public String getVehCoefficient(String region, String sector, String subsector, String tech, String year) {
-		return getTrnVehInfo("coefficient", region, sector, subsector, tech, year);
-	}
-
-	private String[][] getTrnDataForProcessing(String sector) {
-
-		String[][] data;
-
-		if (ldv4W_table == null)
-			loadTrnVehInfo();
-
-		if (sector.indexOf("4W") >= 0) {
-			data = ldv4W_table;
-		} else if (sector.indexOf("LDV") >= 0) {
-			data = ldv2W_table;
-		} else if (sector.indexOf("freight_road") >= 0) {
-			data = hdv_table;
-		} else {
-			data = oth_table;
-		}
-		return data;
-	}
-
-	/**
-	 * Retrieves the technology names for a given subsector in a region.
-	 * 
-	 * @param region    Region name
-	 * @param sector    Sector name
-	 * @param subsector Subsector name
-	 * @return Array of technology names
-	 */
-	public String[] getTrnTechsInSubsector(String region, String sector, String subsector) {
-
-		region = region.toLowerCase();
-		sector = sector.toLowerCase();
-		subsector = subsector.toLowerCase();
-
-		String[][] data = getTrnDataForProcessing(sector);
-
-		boolean old_format = isOldFormatTrnVehInfo(data);
-
-		if (old_format) {
-			System.out.println("TrnVehInfoData file is not in correct format to support CAFE.");
-			return null;
-		}
-
-		int param_col = 0;
-		int region_col = param_col + 1;
-		int sector_col = region_col + 1;
-		int subsector_col = sector_col + 1;
-		int tech_col = subsector_col + 1;
-
-		ArrayList<String> list = new ArrayList<String>();
-
-		for (int j = 1; j < data.length; j++) {
-			if (data[j][region_col].toLowerCase().equals(region)) {
-				if (data[j][sector_col].toLowerCase().equals(sector)) {
-					if (data[j][subsector_col].toLowerCase().equals(subsector)) {
-						if ((data[j][param_col]).toLowerCase().trim().startsWith("load")) {
-							list = addToArrayListIfUnique(list, data[j][tech_col]);
-						}
-					}
-				}
-			}
-		}
-
-		String[] tech_list = createStringArrayFromArrayList(list);
-
-		return tech_list;
-	}
-
-	/**
-	 * Retrieves transportation vehicle information for a given parameter, region,
-	 * sector, subsector, technology, and year.
-	 * 
-	 * @param param     Parameter name
-	 * @param region    Region name
-	 * @param sector    Sector name
-	 * @param subsector Subsector name
-	 * @param tech      Technology name
-	 * @param year_str  Year as string
-	 * @return Parameter value as string
-	 */
-	public String getTrnVehInfo(String param, String region, String sector, String subsector, String tech,
-			String year_str) {
-		String val = null;
-
-		String[][] data = getTrnDataForProcessing(sector);
-
-		param = param.toLowerCase();
-
-		try {
-			// test to see if file is in old format (e.g., no variable as first column)
-			boolean old_format = isOldFormatTrnVehInfo(data);
-
-			int param_col = 0;
-			if (old_format)
-				param_col = -1;
-			int region_col = param_col + 1;
-			int sector_col = region_col + 1;
-			int subsector_col = sector_col + 1;
-			int tech_col = subsector_col + 1;
-
-			int year_col = -1;
-			for (int i = 0; i < data[0].length; i++) {
-				String cmp_str = data[0][i].trim();
-				if (year_str.equals(cmp_str)) {
-					year_col = i;
-					break;
-				}
-			}
-
-			int match_row = -1;
-
-			if (year_col > -1) {
-				for (int j = 1; j < data.length; j++) {
-					String temp = data[j][0];
-					if (((old_format) && ("load".equals(param))) || (temp.toLowerCase().trim().startsWith(param))) {
-						String data_region = data[j][region_col].trim();
-						String data_subsector = data[j][subsector_col].trim();
-						String data_tech = data[j][tech_col].trim();
-						if ((region.equals(data_region)) && (subsector.equals(data_subsector))) {
-							if (("load".equals(param)) || ((!"load".equals(param)) && (tech.equals(data_tech)))) {
-
-								match_row = j;
-								break;
-							}
-						}
-					}
-				}
-
-				if (match_row > -1) {
-					val = data[match_row][year_col];
-				}
-			}
-		} catch (Exception e) {
-			System.out.println("Error reading transportation input file. Please check format. Exception: " + e);
-			val = null;
-		}
-		if (val == null)
-			System.out.println("Problem finding " + param + " for " + sector + " / " + subsector);
-		return val;
+		if (transportUtils == null)
+			return false;
+		return transportUtils.isSubsectorInRegion(region, sector, subsector);
 	}
 
 	public int getMaxValFromStringArray(String[] str_array) {
@@ -2515,50 +2315,6 @@ public class GLIMPSEUtils {
 			}
 		}
 		return return_val;
-	}
-
-	/**
-	 * Loads transportation vehicle information from a file and categorizes it into
-	 * different tables based on vehicle type.
-	 */
-	public void loadTrnVehInfo() {
-		if (vars == null || files == null)
-			return;
-		String filename = vars.getTrnVehInfoFilename();
-		System.out.println("Loading transportation info from " + filename);
-
-		try {
-
-			ArrayList<String> contents = files.getStringArrayFromFile(filename, "#");
-			ArrayList<String> ldv2w = new ArrayList<String>();
-			ArrayList<String> ldv4w = new ArrayList<String>();
-			ArrayList<String> hdv = new ArrayList<String>();
-			ArrayList<String> other = new ArrayList<String>();
-			ldv2w.add(contents.get(0));
-			ldv4w.add(contents.get(0));
-			hdv.add(contents.get(0));
-			other.add(contents.get(0));
-
-			for (int i = 1; i < contents.size(); i++) {
-				String str = contents.get(i);
-				if (str.indexOf("4W") >= 0) {
-					ldv4w.add(str);
-				} else if (str.indexOf("2W") >= 0) {
-					ldv2w.add(str);
-				} else if (str.indexOf("trn_freight_road") >= 0) {
-					hdv.add(str);
-				} else {
-					other.add(str);
-				}
-			}
-
-			ldv4W_table = getDataMatrixFromArrayList(ldv4w);
-			ldv2W_table = getDataMatrixFromArrayList(ldv2w);
-			hdv_table = getDataMatrixFromArrayList(hdv);
-			oth_table = getDataMatrixFromArrayList(other);
-		} catch (Exception e) {
-			System.out.println("Problem reading transportation technology load data from " + filename + ": " + e);
-		}
 	}
 
 	/**
