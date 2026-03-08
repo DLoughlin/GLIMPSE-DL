@@ -38,6 +38,9 @@ package glimpseUtil;
 import java.io.File;
 import java.math.BigDecimal;
 import java.nio.file.Path;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -49,6 +52,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Scanner;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.swing.JFrame;
@@ -59,7 +63,9 @@ import org.controlsfx.control.StatusBar;
 
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
@@ -74,6 +80,7 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.CheckBoxTreeItem;
+import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
@@ -132,6 +139,9 @@ public class GLIMPSEUtils {
     public String[][] ldv4W_table = null;
     public String[][] hdv_table = null;
     public String[][] oth_table = null;
+
+    private final ConcurrentLinkedQueue<String> deferredWarningMessages = new ConcurrentLinkedQueue<>();
+    private volatile boolean modalDialogsReady = false;
 
     // Constants for label texts, combo box options, and other hardcoded strings
     public static final String[] STATE_CODES = { "AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI",
@@ -324,27 +334,61 @@ public class GLIMPSEUtils {
 	 * @param msg Message to display
 	 */
 	public void warningMessage(String msg) {
-		if (msg == null)
-			return;
-		if (Platform.isFxApplicationThread()) {
-			Alert alert = new Alert(AlertType.WARNING);
-			applyModernThemeToDialog(alert);
-			alert.setTitle(LABEL_WARNING);
-			alert.setHeaderText(LABEL_WARNING);
-			alert.setContentText(msg);
-			alert.showAndWait();
-		} else {
-			Platform.runLater(() -> {
-				Alert alert = new Alert(AlertType.WARNING);
-				applyModernThemeToDialog(alert);
-				alert.setTitle(LABEL_WARNING);
-				alert.setHeaderText(LABEL_WARNING);
-				alert.setContentText(msg);
-				alert.showAndWait();
-			});
-		}
-		return;
-	}
+        if (msg == null)
+            return;
+        if (!modalDialogsReady) {
+            deferredWarningMessages.add(msg);
+            return;
+        }
+        Runnable showAlert = () -> {
+            Alert alert = new Alert(AlertType.WARNING);
+            applyModernThemeToDialog(alert);
+            alert.setTitle(LABEL_WARNING);
+            alert.setHeaderText(LABEL_WARNING);
+            alert.setContentText(msg);
+            alert.showAndWait();
+        };
+        if (Platform.isFxApplicationThread()) {
+            showAlert.run();
+        } else {
+            Platform.runLater(showAlert);
+        }
+        return;
+    }
+
+    /**
+     * Enables modal dialogs and flushes any queued warning messages.
+     * Call this after the primary stage is shown.
+     */
+    public void setModalDialogsReadyAndFlushWarnings() {
+        modalDialogsReady = true;
+        if (deferredWarningMessages.isEmpty()) {
+            return;
+        }
+        if (Platform.isFxApplicationThread()) {
+            flushQueuedWarnings();
+        } else {
+            Platform.runLater(this::flushQueuedWarnings);
+        }
+    }
+
+    private void flushQueuedWarnings() {
+        if (!modalDialogsReady) {
+            return;
+        }
+        String msg;
+        while ((msg = deferredWarningMessages.poll()) != null) {
+            if (msg.trim().isEmpty()) {
+                continue;
+            }
+            Alert alert = new Alert(AlertType.WARNING);
+            applyModernThemeToDialog(alert);
+            alert.setTitle(LABEL_WARNING);
+            alert.setHeaderText(LABEL_WARNING);
+            alert.setContentText(msg);
+            alert.showAndWait();
+        }
+    }
 	
 	/**
 	 * Displays a dialog for text input and returns the entered text.
@@ -717,6 +761,52 @@ public class GLIMPSEUtils {
 		return result;
 	}
 
+	public String[] createStringArrayFromListOfIntegers(List<Integer> list) {
+		if (list == null)
+			return new String[0];
+		String[] result = new String[list.size()];
+		for (int i = 0; i < list.size(); i++) {
+			Integer val = list.get(i);
+			result[i] = val == null ? "" : String.valueOf(val);
+		}
+		return result;
+	}
+
+	public ArrayList<String> getStringListFromString(String str, String delim) {
+		ArrayList<String> list = new ArrayList<>();
+		if (str == null || delim == null)
+			return list;
+		String[] parts = str.split(delim);
+		for (String part : parts) {
+			if (part == null)
+				continue;
+			String trimmed = part.trim();
+			if (!trimmed.isEmpty())
+				list.add(trimmed);
+		}
+		return list;
+	}
+
+	public boolean hasSpecialCharacter(String str) {
+		if (str == null)
+			return false;
+		return !str.matches("[A-Za-z0-9_\\- ]+");
+	}
+
+	public String getParentheticString(String s) {
+		return getTextBetweenParen(s);
+	}
+
+	public String getTextBetweenParen(String s) {
+		if (s == null)
+			return "";
+		int start = s.indexOf('(');
+		int end = s.indexOf(')', start + 1);
+		if (start < 0 || end < 0 || end <= start)
+			return "";
+		return s.substring(start + 1, end);
+	}
+
 	/**
 	 * Creates a JavaFX Separator with specified orientation, length, and visibility.
 	 *
@@ -883,6 +973,36 @@ public class GLIMPSEUtils {
 		tf.setMinWidth(wid);
 		tf.setMaxWidth(wid);
 		return tf;
+	}
+
+	public ComboBox<String> createComboBox() {
+		return createComboBoxString();
+	}
+
+	public ComboBox<String> createComboBoxString(double wid) {
+		ComboBox<String> comboBox = new ComboBox<>();
+		comboBox.setPrefWidth(wid);
+		comboBox.setMinWidth(wid);
+		comboBox.setMaxWidth(wid);
+		return comboBox;
+	}
+
+	public ComboBox<String> createComboBoxString(String[] items) {
+		ComboBox<String> comboBox = createComboBoxString();
+		if (items != null) {
+			for (String item : items) {
+				comboBox.getItems().add(item);
+			}
+		}
+		return comboBox;
+	}
+
+	public CheckComboBox<String> createCheckComboBox(double wid) {
+		CheckComboBox<String> checkComboBox = new CheckComboBox<>();
+		checkComboBox.setPrefWidth(wid);
+		checkComboBox.setMinWidth(wid);
+		checkComboBox.setMaxWidth(wid);
+		return checkComboBox;
 	}
 
 	/**
@@ -1415,6 +1535,13 @@ public class GLIMPSEUtils {
 		b = (dialogResult == 0);
 		return b;
 	}
+
+	public void resetLogFile(String filename) {
+		if (files == null || filename == null)
+			return;
+		ArrayList<String> empty = new ArrayList<>();
+		files.saveFile(empty, filename);
+	}
  
 	public boolean diffTwoFiles(String file1, String file2) {
 		if (files == null)
@@ -1486,6 +1613,57 @@ public class GLIMPSEUtils {
 		displayArrayList(diff, "Differences");
 
 		return b;
+	}
+
+	public List<DiffLineRow> generateSideBySideDiffRows(String file1, String file2) {
+		if (files == null)
+			return new ArrayList<>();
+		ArrayList<String> file1Content = files.getStringArrayFromFile(file1, "#");
+		ArrayList<String> file2Content = files.getStringArrayFromFile(file2, "#");
+
+		DiffRowGenerator generator = DiffRowGenerator.create()
+				.showInlineDiffs(true)
+				.inlineDiffByWord(true)
+				.oldTag(f -> "")
+				.newTag(f -> "")
+				.build();
+
+		List<DiffLineRow> rows = new ArrayList<>();
+		List<DiffRow> diffRows;
+		try {
+			diffRows = generator.generateDiffRows(file1Content, file2Content);
+		} catch (DiffException e) {
+			diffRows = new ArrayList<>();
+			diffRows.add(new DiffRow(DiffRow.Tag.CHANGE, "Diff failed: " + e.getMessage(), ""));
+		}
+		int oldLine = 1;
+		int newLine = 1;
+		for (DiffRow row : diffRows) {
+			if (row == null)
+				continue;
+			DiffRow.Tag tag = row.getTag();
+			int oldNum = 0;
+			int newNum = 0;
+			switch (tag) {
+			case INSERT:
+				newNum = newLine++;
+				break;
+			case DELETE:
+				oldNum = oldLine++;
+				break;
+			case CHANGE:
+				oldNum = oldLine++;
+				newNum = newLine++;
+				break;
+			case EQUAL:
+			default:
+				oldNum = oldLine++;
+				newNum = newLine++;
+				break;
+			}
+			rows.add(new DiffLineRow(oldNum, newNum, row.getOldLine(), row.getNewLine(), tag));
+		}
+		return rows;
 	}
 
 	/** Returns a readable short label for a file path (basename when available). */
@@ -1762,6 +1940,164 @@ public class GLIMPSEUtils {
 		popupTask.run();
 	}
 
+	public void showPopupTableOfErrorReport(String title, ArrayList<String> csvData, int wd, int ht) {
+		if (styles == null)
+			return;
+		if (csvData == null || csvData.isEmpty()) {
+			showPopupTableOfCSVData(title, csvData, wd, ht);
+			return;
+		}
+		final String finalTitle = title;
+		Runnable popupTask = () -> {
+			String usedTitle = finalTitle == null ? LABEL_DISPLAY : finalTitle;
+			Stage stage = new Stage();
+			stage.setTitle(usedTitle);
+			stage.setWidth(wd);
+			stage.setHeight(ht);
+			BorderPane border = new BorderPane();
+			stage.setResizable(true);
+
+			Button closeButton = createButton(LABEL_CLOSE, styles.getBigButtonWidth(), null);
+			closeButton.setOnAction(e -> stage.close());
+
+			TableView<List<Object>> table = new TableView<>();
+			table.setEditable(false);
+			table.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+			table.setMinHeight(0);
+			TableUtils.installCopyPasteHandler(table);
+			table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+			String[][] rawData = getDataMatrixFromArrayList(csvData);
+			int numCols = computeMaxRowLength(rawData);
+			int classCol = findColumnIndex(rawData[0], "Classification");
+
+			Class<?>[] types = new Class<?>[numCols];
+			for (int columnIndex = 0; columnIndex < numCols; columnIndex++) {
+				String[] column = extractColumn(rawData, columnIndex);
+				types[columnIndex] = deduceColumnType(column);
+				table.getColumns().add(createColumn(types[columnIndex], columnIndex, rawData[0][columnIndex]));
+			}
+
+			ObservableList<List<Object>> master = FXCollections.observableArrayList();
+			for (int rowIndex = 1; rowIndex < rawData.length; rowIndex++) {
+				List<Object> row = new ArrayList<>();
+				for (int columnIndex = 0; columnIndex < numCols; columnIndex++) {
+					row.add(getDataAsType(rawData[rowIndex], types[columnIndex], columnIndex));
+				}
+				master.add(row);
+			}
+
+			FilteredList<List<Object>> filtered = new FilteredList<>(master, row -> true);
+			table.setItems(filtered);
+
+			ChoiceBox<String> viewSelector = new ChoiceBox<>(FXCollections.observableArrayList(
+					"All lines",
+					"Major errors",
+					"Moderate errors",
+					"Minor errors"));
+			viewSelector.getSelectionModel().select(0);
+			viewSelector.setTooltip(new Tooltip("Choose which rows to display"));
+
+			viewSelector.getSelectionModel().selectedIndexProperty().addListener((obs, oldV, newV) -> {
+				int idx = newV == null ? 0 : newV.intValue();
+				filtered.setPredicate(row -> {
+					if (row == null)
+						return false;
+					if (idx == 0)
+						return true;
+					String classification = getCellString(row, classCol);
+					switch (idx) {
+					case 1:
+						return "major".equalsIgnoreCase(classification);
+					case 2:
+						return "moderate".equalsIgnoreCase(classification);
+					case 3:
+						return "minor".equalsIgnoreCase(classification);
+					default:
+						return true;
+					}
+				});
+				table.getSelectionModel().clearSelection();
+				if (!table.getItems().isEmpty()) {
+					table.scrollTo(0);
+				}
+			});
+
+			Button saveAsBtn = new Button("Save As...");
+			saveAsBtn.setTooltip(new Tooltip("Save the currently visible error report as CSV"));
+			saveAsBtn.setOnAction(ev -> {
+				try {
+					File initialDir = new File(vars.getGlimpseLogDir());
+					FileChooser.ExtensionFilter csvFilter = FileChooserPlus.createExtensionFilter("CSV files (*.csv)", "csv");
+					File chosen = FileChooserPlus.showSaveDialog(stage, "Save Error Report", initialDir, "error_report.csv", csvFilter);
+					if (chosen != null) {
+						ArrayList<String> exportRows = new ArrayList<>();
+						ArrayList<String> header = new ArrayList<>();
+						for (int col = 0; col < numCols; col++) {
+							header.add(sanitizeCsvField(rawData[0][col]));
+						}
+						exportRows.add(buildCsvRow(header, numCols));
+						for (List<Object> row : filtered) {
+							ArrayList<String> fields = new ArrayList<>();
+							for (int col = 0; col < numCols; col++) {
+								fields.add(sanitizeCsvField(getCellString(row, col)));
+							}
+							exportRows.add(buildCsvRow(fields, numCols));
+						}
+						files.saveFile(exportRows, chosen.getPath());
+						showInformationDialog("Information", "Export successful", "Saved report to: " + chosen.getPath());
+					}
+				} catch (Exception ex) {
+					showInformationDialog("Information", "Export failed", "Could not save report: " + ex.getMessage());
+				}
+			});
+
+			HBox controls = new HBox(10, new Label("View:"), viewSelector, saveAsBtn);
+			controls.setPadding(new Insets(6, 10, 6, 10));
+			controls.setAlignment(Pos.CENTER_LEFT);
+
+			HBox buttonBox = new HBox();
+			buttonBox.setPadding(new Insets(4, 4, 4, 4));
+			buttonBox.setSpacing(5);
+			buttonBox.setAlignment(Pos.CENTER);
+			buttonBox.getChildren().addAll(closeButton);
+
+			border.setTop(controls);
+			border.setCenter(table);
+			border.setBottom(buttonBox);
+
+			Scene scene = new Scene(border);
+			try {
+				java.net.URL cssUrl = GLIMPSEUtils.class.getResource("/resources/modern.css");
+				if (cssUrl != null) {
+					scene.getStylesheets().add(cssUrl.toExternalForm());
+				}
+			} catch (Exception ignored) {
+			}
+		 stage.setScene(scene);
+			stage.show();
+		};
+		popupTask.run();
+	}
+
+	private int findColumnIndex(String[] headerRow, String headerName) {
+		if (headerRow == null || headerName == null)
+			return -1;
+		for (int i = 0; i < headerRow.length; i++) {
+			String header = headerRow[i] == null ? "" : headerRow[i].trim();
+			if (headerName.equalsIgnoreCase(header))
+				return i;
+		}
+		return -1;
+	}
+
+	private String getCellString(List<Object> row, int colIndex) {
+		if (row == null || colIndex < 0 || colIndex >= row.size())
+			return "";
+		Object value = row.get(colIndex);
+		return value == null ? "" : value.toString();
+	}
+
 	private Object getDataAsType(String[] row, Class<?> type, int columnIndex) {
 		/**
 		 * Converts a value from a row to the specified type for a given column index.
@@ -1781,7 +2117,7 @@ public class GLIMPSEUtils {
 				}
 			} else if (type == Double.class) {
 				if (columnIndex < row.length) {
-					return Double.valueOf(row[columnIndex]);
+				 return Double.valueOf(row[columnIndex]);
 				} else {
 					return new Double(0.0);
 				}
@@ -2018,7 +2354,7 @@ public class GLIMPSEUtils {
 				d = 0.56;
 			} else if ("2015$s".equals(fromYear)) {
 				d = 0.61;
-			} else if ("2010$s".equals(fromYear)) {
+					} else if ("2010$s".equals(fromYear)) {
 				d = 0.66;
 			} else if ("2005$s".equals(fromYear)) {
 				d = 0.73;
@@ -2138,6 +2474,16 @@ public class GLIMPSEUtils {
 
 //		}
 		return val;
+	}
+
+	private boolean isOldFormatTrnVehInfo(String[][] data) {
+		if (data == null || data.length == 0 || data[0] == null || data[0].length == 0)
+			return true;
+		String firstHeader = data[0][0];
+		if (firstHeader == null)
+			return true;
+		String header = firstHeader.trim().toLowerCase();
+		return !(header.contains("param") || header.contains("variable"));
 	}
 
 	/**
@@ -2428,693 +2774,302 @@ public class GLIMPSEUtils {
 	}
 
 	/**
-	 * Generates a detailed error report from the main log file.
-	 * 
+	 * Generates a detailed error report from the main log file as CSV rows.
+	 *
 	 * @param main_log_file Path to main log file
 	 * @param scenario      Scenario name
-	 * @return List of error report lines
+	 * @return List of CSV rows (no header)
 	 */
 	public ArrayList<String> generateErrorReport(String main_log_file, String scenario) {
 		if (files == null || vars == null)
 			return new ArrayList<>();
-		DecimalFormat formatter = new DecimalFormat("#,###.0");
+		DecimalFormat formatter = new DecimalFormat("0.###");
+		formatter.setGroupingUsed(false);
 		double min_dmd = 0.0001;
 		double min_red = 0.01;
 		int total_fails = 0, minor_fails = 0, min_smallmkt_fails = 0, major_fails = 0, moderate_fails = 0,
 				maj_smallmkt_fails = 0;
-		if (scenario == null)
-			scenario = "exe/main_log.txt";
+		String scenarioLabel = (scenario == null || scenario.trim().isEmpty()) ? "exe/main_log.txt" : scenario;
 		ArrayList<String> report = new ArrayList<>();
+		ArrayList<String[]> tokenRows = new ArrayList<>();
+		ArrayList<String> classifications = new ArrayList<>();
+		ArrayList<String> smallMarkets = new ArrayList<>();
+		int maxTokenCount = 0;
 		File mainlogfile = new File(main_log_file);
 		if (mainlogfile.exists()) {
 			String[] str = { "ERROR", "SEVERE", "Period" };
 			ArrayList<String> error_lines = files.getStringArrayWithPrefix(mainlogfile.getPath(), str);
 			for (String errorLine : error_lines) {
-				String line = scenario + ":" + errorLine.replace(":", ",");
+				if (errorLine == null)
+					continue;
+				String normalized = errorLine.replace(":", ",");
+				String[] tokens = normalized.split(",");
+				maxTokenCount = Math.max(maxTokenCount, tokens.length);
+				String classification = "";
+				String smallMarket = "";
 				try {
-					String right = null;
-					if (line.contains(":")) {
-						right = line.substring(line.indexOf(":") + 1);
-						String[] tokens = right.split(",");
-						if (tokens.length > 9) {
-							double red = Double.parseDouble(tokens[7].trim());
-							String mkt = tokens[12].trim();
-							String mktyp = tokens[11].trim();
-							total_fails++;
-							if ((red > min_red) && (!mkt.contains("water consumption"))) {
-								String state = mkt.trim().substring(0, 2);
-								if (isState(state) || "US".equals(state)) {
-								}
-								if (mkt.toLowerCase().contains("grid")) {
-								}
-								if (mkt.toLowerCase().contains("water")) {
-								}
-								if (mkt.toLowerCase().contains("trial")) {
-								}
-								if (mktyp.equals("RES")) {
-								}
-								double dmd = Double.parseDouble(tokens[9].trim());
-								if (dmd <= min_dmd)
-									maj_smallmkt_fails++;
-								if (red > min_red * 5.0) {
-									line += " *** MAJOR (" + formatter.format(red * 100.) + "%>"
-											+ formatter.format(min_red * 5.0 * 100.) + "%) ***";
-									major_fails++;
-								} else {
-									line += " *** MODERATE (" + formatter.format(red * 100.) + "% is >" + min_red * 100.
-											+ " and <" + formatter.format(min_red * 5.0 * 100.) + "%) ***";
-									moderate_fails++;
-								}
+					if (tokens.length > 12) {
+						double red = Double.parseDouble(tokens[7].trim());
+						double dmd = Double.parseDouble(tokens[9].trim());
+						String mkt = tokens[12].trim();
+						total_fails++;
+						if (dmd <= min_dmd)
+							min_smallmkt_fails++;
+						if (red > min_red) {
+							if (red > min_red * 5.0) {
+								classification = "MAJOR";
+								major_fails++;
 							} else {
-								minor_fails++;
-								String state = mkt.trim().substring(0, 2);
-								if (isState(state) || "US".equals(state)) {
-								}
-								if (mkt.toLowerCase().contains("water")) {
-								}
-								if (mkt.toLowerCase().contains("trial")) {
-								}
-								if (mktyp.equals("RES")) {
-								}
-								double dmd = Double.parseDouble(tokens[9].trim());
-								if (dmd <= min_dmd)
-									min_smallmkt_fails++;
+								classification = "MODERATE";
+								moderate_fails++;
 							}
+						} else {
+							classification = "MINOR";
+							minor_fails++;
 						}
+						smallMarket = (dmd <= min_dmd) ? "true" : "false";
 					}
 				} catch (Exception e) {
 					// Ignore parse errors for robustness
 				}
-				report.add(line);
+				tokenRows.add(tokens);
+				classifications.add(classification);
+				smallMarkets.add(smallMarket);
+			}
+			if (tokenRows.isEmpty()) {
+				maxTokenCount = Math.max(maxTokenCount, 1);
+				tokenRows.add(new String[] { "No errors reported" });
+				classifications.add("");
+				smallMarkets.add("");
 			}
 			if (total_fails > 0) {
-				report.add("------------------------------");
-				String rtn_str = "Evaluation:" + vars.getEol() + "Total errors=" + total_fails + vars.getEol()
-						+ "Major errors (>" + formatter.format(min_red * 5.0 * 100.0) + "%)=" + major_fails
-						+ vars.getEol() + "Moderate errors (>" + formatter.format(min_red * 100.0) + "%)="
-						+ moderate_fails + vars.getEol() + "Small market errors (DMD<" + min_dmd + ")="
-						+ (maj_smallmkt_fails + min_smallmkt_fails) + vars.getEol() + ">>>";
+				maxTokenCount = Math.max(maxTokenCount, 1);
+				String verdict;
 				if (total_fails == 0) {
-					rtn_str += "Verdict: Pass (no errors)";
+					verdict = "Verdict: Pass (no errors)";
 				} else if (total_fails == minor_fails) {
-					rtn_str += "Verdict: Pass? (all errors are minor)";
+					verdict = "Verdict: Pass? (all errors are minor)";
 				} else if (total_fails == minor_fails + moderate_fails) {
-					rtn_str += "Verdict: Pass? (all errors are minor or moderate)";
+					verdict = "Verdict: Pass? (all errors are minor or moderate)";
+				} else if (total_fails == maj_smallmkt_fails + min_smallmkt_fails) {
+					verdict = "Verdict: Pass? (all fails are in small markets)";
+				} else if (total_fails == maj_smallmkt_fails + minor_fails) {
+					verdict = "Verdict: Pass? (all fails are minor or in small markets)";
 				} else {
-					if (total_fails == maj_smallmkt_fails + min_smallmkt_fails) {
-						rtn_str += "Verdict: Pass? (all fails are in small markets)";
-					} else if (total_fails == maj_smallmkt_fails + minor_fails) {
-						rtn_str += "Verdict: Pass? (all fails are minor or in small markets)";
-					} else {
-						rtn_str += "Verdict: Fail? (major, non-small market failures)";
-					}
+					verdict = "Verdict: Fail? (major, non-small market failures)";
 				}
-				rtn_str += vars.getEol();
-				report.add(rtn_str);
-				report.add("------------------------------");
+				String summary = "Total errors=" + total_fails + "; Major errors=" + major_fails + "; Moderate errors="
+						+ moderate_fails + "; Small market errors=" + (maj_smallmkt_fails + min_smallmkt_fails) + "; "
+						+ verdict + " (" + formatter.format(min_red * 100.0) + "-" + formatter.format(min_red * 5.0 * 100.0)
+						+ "% thresholds)";
+				tokenRows.add(new String[] { "Summary", summary });
+				classifications.add("");
+				smallMarkets.add("");
 			}
+		} else {
+			maxTokenCount = Math.max(maxTokenCount, 1);
+			tokenRows.add(new String[] { "Main log not found" });
+			classifications.add("");
+			smallMarkets.add("");
+		}
+
+		int columnCount = 1 + Math.max(1, maxTokenCount) + 2;
+		for (int i = 0; i < tokenRows.size(); i++) {
+			ArrayList<String> fields = new ArrayList<>();
+			fields.add(sanitizeCsvField(scenarioLabel));
+			String[] tokens = tokenRows.get(i);
+			for (int t = 0; t < Math.max(1, maxTokenCount); t++) {
+				String token = (tokens != null && t < tokens.length) ? tokens[t] : "";
+				fields.add(sanitizeCsvField(token));
+			}
+			fields.add(sanitizeCsvField(classifications.get(i)));
+			fields.add(sanitizeCsvField(smallMarkets.get(i)));
+			report.add(buildCsvRow(fields, columnCount));
 		}
 		return report;
 	}
 
 	/**
-	 * Removes interior quotes from a string and wraps with quotes.
-	 * 
-	 * @param orig Input string
-	 * @return Modified string
+	 * Builds a table-ready CSV list for error reports (adds a header and pads rows).
+	 *
+	 * @param rows CSV rows from generateErrorReport
+	 * @return CSV with header and uniform column count
 	 */
-	public String correctInteriorQuotes(String orig) {
-		if (orig == null)
-			return null;
-		return '"' + orig.replaceAll("\"", "") + '"';
+	public ArrayList<String> buildErrorReportTable(ArrayList<String> rows) {
+		ArrayList<String> table = new ArrayList<>();
+		int maxCols = 0;
+		if (rows != null) {
+			for (String row : rows) {
+				if (row == null)
+					continue;
+				int len = row.split(",", -1).length;
+				if (len > maxCols)
+					maxCols = len;
+			}
+		}
+		if (maxCols < 4)
+			maxCols = 4; // Scenario + at least 1 field + Classification + SmallMarket
+		int tokenCols = Math.max(1, maxCols - 3);
+		ArrayList<String> header = new ArrayList<>();
+		header.add("Scenario");
+		for (int i = 1; i <= tokenCols; i++) {
+			header.add("Field" + i);
+		}
+		header.add("Classification");
+		header.add("SmallMarket");
+		table.add(buildCsvRow(header, header.size()));
+
+		if (rows == null || rows.isEmpty()) {
+			ArrayList<String> noErr = new ArrayList<>();
+			noErr.add(" ");
+			noErr.add("No errors reported");
+			table.add(buildCsvRow(noErr, header.size()));
+			return table;
+		}
+		for (String row : rows) {
+			String[] parts = row == null ? new String[0] : row.split(",", -1);
+			ArrayList<String> fields = new ArrayList<>();
+			Collections.addAll(fields, parts);
+			table.add(buildCsvRow(fields, header.size()));
+		}
+		return table;
 	}
 
-	/**
-	 * Processes error lines and summarizes error types.
-	 * 
-	 * @param errors  List of error lines
-	 * @param min_red Minimum RED value
-	 * @return Summary string
-	 */
 	public String processErrors(ArrayList<String> errors, double min_red) {
-		if (vars == null)
+		if (errors == null || vars == null)
 			return "";
-		if (errors == null)
-			return "";
-		String rtn_str = "";
 		double min_dmd = 0.0001;
-		int total_fails = 0, minor_fails = 0, min_us_fails = 0, min_smallmkt_fails = 0, min_res_type_fails = 0,
-				major_fails = 0, maj_us_fails = 0, maj_smallmkt_fails = 0, maj_res_type_fails = 0;
-		for (String line : errors) {
+		int total = 0;
+		int major = 0;
+		int moderate = 0;
+		int minor = 0;
+		int smallMarkets = 0;
+		for (String errorLine : errors) {
+			if (errorLine == null)
+				continue;
+			String normalized = errorLine.replace(":", ",");
+			String[] tokens = normalized.split(",");
 			try {
-				String right = null;
-				if (line.contains(":")) {
-					right = line.substring(line.indexOf(":") + 1);
-					String[] tokens = right.split(",");
-					if (tokens.length > 9) {
-						double red = Double.parseDouble(tokens[7].trim());
-						String mkt = tokens[12].trim();
-						String mktyp = tokens[11].trim();
-						total_fails++;
-						if ((red > min_red) && (!mkt.contains("water consumption"))) {
-							major_fails++;
-							String state = mkt.trim().substring(0, 2);
-							if (isState(state) || "US".equals(state))
-								maj_us_fails++;
-							if (mkt.toLowerCase().contains("grid")) {
-							}
-							if (mkt.toLowerCase().contains("water")) {
-							}
-							if (mkt.toLowerCase().contains("trial")) {
-							}
-							if (mktyp.equals("RES"))
-								maj_res_type_fails++;
-							double dmd = Double.parseDouble(tokens[9].trim());
-							if (dmd <= min_dmd)
-								maj_smallmkt_fails++;
+				if (tokens.length > 12) {
+					double red = Double.parseDouble(tokens[7].trim());
+					double dmd = Double.parseDouble(tokens[9].trim());
+					String mkt = tokens[12].trim();
+					total++;
+					if (dmd <= min_dmd)
+						smallMarkets++;
+					if ((red > min_red) && (!mkt.contains("water consumption"))) {
+						if (red > min_red * 5.0) {
+							major++;
 						} else {
-							minor_fails++;
-							String state = mkt.trim().substring(0, 2);
-							if (isState(state) || "US".equals(state))
-								min_us_fails++;
-							if (mkt.toLowerCase().contains("water")) {
-							}
-							if (mkt.toLowerCase().contains("trial")) {
-							}
-							if (mktyp.equals("RES"))
-								min_res_type_fails++;
-							double dmd = Double.parseDouble(tokens[9].trim());
-							if (dmd <= min_dmd)
-								min_smallmkt_fails++;
+							moderate++;
 						}
+					} else {
+						minor++;
 					}
 				}
 			} catch (Exception e) {
-				// Ignore parse errors for robustness
+				// ignore parse errors
 			}
 		}
-		if (total_fails > 0) {
-			if (total_fails == minor_fails) {
-				rtn_str = "Pass (all minor: RED<" + min_red + ")";
-			} else if (total_fails == maj_smallmkt_fails + min_smallmkt_fails) {
-				rtn_str = "Pass (all major are small market: DMD<" + min_dmd + ")";
-			} else if (total_fails == maj_smallmkt_fails + minor_fails) {
-				rtn_str = "Pass (all are major+small market or minor)";
-			} else if (total_fails == maj_res_type_fails + min_res_type_fails) {
-				rtn_str = "All failures are of type RES";
-			} else {
-				rtn_str = "Fail";
-			}
-			rtn_str += "... Major (RED>" + min_red + "): " + major_fails + ", of which " + maj_res_type_fails
-					+ " are type RES, " + maj_us_fails + " are in US, " + maj_smallmkt_fails + " are small mkt; Minor: "
-					+ minor_fails + ", of which " + min_res_type_fails + " are type RES, " + min_us_fails
-					+ " are in US, " + min_smallmkt_fails + " are small mkt." + vars.getEol();
-		}
-		return rtn_str;
+		if (total == 0)
+			return "";
+		return "total=" + total + ";major=" + major + ";moderate=" + moderate + ";minor=" + minor
+				+ ";small=" + smallMarkets;
 	}
 
-	/**
-	 * Retrieves the scenario name from the main log file.
-	 * 
-	 * @param current_main_log_file Main log file
-	 * @return Scenario name as string
-	 */
-	public String getRunningScenario(File current_main_log_file) {
-		if (current_main_log_file == null)
+	public String getRunningScenario(File mainLogFile) {
+		if (files == null || mainLogFile == null || !mainLogFile.exists())
 			return "";
-		String rtn_str = "";
-
-		if (current_main_log_file.exists()) {
-			rtn_str = this.getScenarioNameFromMainLog(current_main_log_file);
-		}
-
-		return rtn_str;
+		String configLine = files.searchForTextInFileS(mainLogFile, "Configuration file:", "#");
+		if (configLine == null || configLine.trim().isEmpty())
+			return "";
+		String path = configLine.replace("Configuration file:", "").trim();
+		if (path.isEmpty())
+			return "";
+		String name = new File(path).getParent();
+		if (name == null)
+			return "";
+		String scenName = name.substring(name.lastIndexOf(File.separator) + 1);
+		return scenName == null ? "" : scenName;
 	}
 
-	/**
-	 * Extracts the scenario name from the main log file.
-	 * 
-	 * @param file Main log file
-	 * @return Scenario name as string
-	 */
-	public String getScenarioNameFromMainLog(File file) {
-		if (file == null)
+	public String getScenarioStatusFromMainLog(File mainLogFile) {
+		if (files == null || mainLogFile == null || !mainLogFile.exists())
 			return "";
-		String rtn_str = "";
-		try (Scanner fileScanner = new Scanner(file)) {
-			boolean stop_recording = false;
-			while ((fileScanner.hasNext()) && !stop_recording) {
-				String line = fileScanner.nextLine().trim();
-				if (line.startsWith("Configuration file: ")) {
-					try {
-						line = line.substring(line.indexOf(":") + 1).trim();
-						File f = new File(line);
-						if (f.exists())
-							rtn_str = f.getParentFile().getName();
-					} catch (Exception e) {
-						rtn_str = "";
-					}
-					stop_recording = true;
-				}
-			}
-		} catch (Exception e) {
-			System.out.println("Problem reading components from " + file.getName() + ": " + e);
+		String unsolved = files.searchForTextInFileS(mainLogFile, "The following model periods did not solve:", "#");
+		if (unsolved != null && !unsolved.trim().isEmpty()) {
+			String msg = unsolved.replace("The following model periods did not solve:", "").trim();
+			return "Unsolved,ERR " + msg;
 		}
-		return rtn_str;
-	}
-
-	/**
-	 * Retrieves the status of a scenario from the main log file.
-	 * 
-	 * @param file Main log file
-	 * @return Status string
-	 */
-	public String getScenarioStatusFromMainLog(File file) {
-		if (file == null)
-			return "";
-		boolean has_err = false;
-		String status = "";
-		String errors = "";
-		String current_period = "";
-		boolean new_period = true;
-		try (Scanner fileScanner = new Scanner(file)) {
-			boolean stop_recording = false;
-			while ((fileScanner.hasNext()) && !stop_recording) {
-				String line = fileScanner.nextLine().trim();
-				if (line.startsWith("Period ")) {
-					try {
-						current_period = line.substring(7, line.indexOf(":"));
-						status = current_period;
-						new_period = true;
-					} catch (Exception e) {
-						status = "?";
-					}
-				}
-				if (line.startsWith("ERROR:X")) {
-					has_err = true;
-					if (new_period) {
-						if (!errors.isEmpty())
-							errors += ",";
-						errors += current_period;
-						new_period = false;
-					}
-				}
-
-				if (line.startsWith("Model run completed")) {
-					status = "Finishing";
-				}
-			}
-			if (has_err)
-				status += ",ERR" + errors;
-		} catch (Exception e) {
-			System.out.println("Problem reading components from " + file.getName() + ": " + e);
+		String err = files.searchForTextInFileS(mainLogFile, "ERROR", "#");
+		if (err != null && !err.trim().isEmpty()) {
+			return "ERROR,ERR " + err.trim();
 		}
-
-		return status;
+		return "";
 	}
 
 	public void fixLostHandle() {
 		if (vars == null || files == null)
 			return;
-		String main_log_filename = vars.getgCamExecutableDir() + File.separator + "logs" + File.separator
-				+ "main_log.txt";
-		String err_msg = main_log_filename + " does not exist.";
-		String scenario_name = "";
-		String scenario_main_log_name = "";
-		File main_log_file = new File(main_log_filename);
-		if (main_log_file.exists()) {
-			scenario_name = this.getScenarioNameFromMainLog(main_log_file);
-			if (scenario_name != "") {
-				scenario_main_log_name = vars.getScenarioDir() + File.separator + scenario_name + File.separator
-						+ "main_log.txt";
-				files.copyFile(main_log_filename, scenario_main_log_name);
-			}
-		} else {
-			this.showInformationDialog(LABEL_NOTICE, LABEL_CANNOT_BE_EXECUTED, err_msg);
+		String exeDir = vars.getgCamExecutableDir();
+		if (exeDir == null || exeDir.trim().isEmpty())
+			return;
+		File exeMainLog = new File(exeDir + File.separator + "logs" + File.separator + "main_log.txt");
+		if (!exeMainLog.exists()) {
+			showInformationDialog("Notice", "Fix Lost Handle", "Executable main_log.txt not found.");
+			return;
+		}
+		String scenarioName = getRunningScenario(exeMainLog);
+		if (scenarioName == null || scenarioName.trim().isEmpty()) {
+			showInformationDialog("Notice", "Fix Lost Handle", "No running scenario detected in main_log.txt.");
+			return;
+		}
+		Path scenarioDir = Paths.get(vars.getScenarioDir(), scenarioName);
+		if (!Files.exists(scenarioDir)) {
+			showInformationDialog("Notice", "Fix Lost Handle", "Scenario folder not found: " + scenarioDir.toString());
+			return;
+		}
+		Path dest = scenarioDir.resolve("main_log.txt");
+		try {
+			Files.copy(exeMainLog.toPath(), dest, StandardCopyOption.REPLACE_EXISTING);
+			showInformationDialog("Notice", "Fix Lost Handle", "Copied executable main_log.txt to scenario: " + scenarioName);
+		} catch (Exception e) {
+			warningMessage("Problem copying main_log.txt: " + e.getMessage());
 		}
 	}
 
 	public String getComputerStatString() {
-
-		boolean warning = false;
-
-		String status = "";
-		try {
-
-			com.sun.management.OperatingSystemMXBean os = (com.sun.management.OperatingSystemMXBean) java.lang.management.ManagementFactory
-					.getOperatingSystemMXBean();
-
-			double gb = 1073741824;
-
-			float physicalMemorySize = (float) (os.getTotalPhysicalMemorySize() / gb);
-			float physicalMemoryFree = (float) (os.getFreePhysicalMemorySize() / gb);
-			float swapSpaceSize = (float) (os.getTotalSwapSpaceSize() / gb);
-			float freeSwapSpace = (float) (os.getFreeSwapSpaceSize() / gb);
-			File drive = new File("/");
-			float total_space = (float) (drive.getTotalSpace() / gb);
-			float free_space = (float) (drive.getFreeSpace() / gb);
-			float cpu_load = (float) (os.getSystemCpuLoad());
-
-			String database_name = vars.getgCamOutputDatabase();
-			String database_short_name = database_name.substring(database_name.lastIndexOf(File.separator) + 1);
-			File database_folder = new File(database_name);
-			Path database_path = database_folder.toPath();
-			float database_size = (float) (files.getDirectorySize(database_path) / gb);
-			String warning_RAM = "";
-			String warning_disk = "";
-			String warning_swap = "";
-			String warning_db = "";
-
-			if (physicalMemoryFree / physicalMemorySize < 0.05)
-				warning_RAM = "*";
-			if (freeSwapSpace / swapSpaceSize < 0.05)
-				warning_swap = "*";
-			if (free_space < 40.0)
-				warning_disk = "*";
-			if (database_size > vars.getMaxDatabaseSize() * .8)
-				warning_db = "*";
-
-			if ((physicalMemoryFree / physicalMemorySize < 0.05) || (freeSwapSpace / swapSpaceSize < 0.05)
-					|| (free_space < 40.0) || (database_size > vars.getMaxDatabaseSize() * .8)) {
-				warning = true;
-			}
-
-			status = "  Resources... " + "CPU: " + String.format("%,.0f", cpu_load * 100.0) + "% | " + "RAM: "
-					+ String.format("%,.0f", physicalMemorySize) + "GB Free:"
-					+ String.format("%,.0f", physicalMemoryFree / physicalMemorySize * 100.) + "%" + warning_RAM + " | "
-					+ "HD: " + String.format("%,.0f", free_space) + "GB Free:"
-					+ String.format("%,.0f", free_space / total_space * 100.) + "%" + warning_disk + " | " + "Swap: "
-					+ String.format("%,.0f", swapSpaceSize) + "GB Free:"
-					+ String.format("%,.0f", freeSwapSpace / swapSpaceSize * 100.0) + "%" + warning_swap + " | "
-					+ "DB: " + database_short_name + " " + String.format("%,.1f", database_size) + "GB Free:"
-					+ String.format("%,.0f", (1.0 - (database_size / vars.getMaxDatabaseSize())) * 100.0) + "%"
-					+ warning_db;
-		} catch (Exception e) {
-			status = "";
+		Runtime rt = Runtime.getRuntime();
+		long total = rt.totalMemory();
+		long free = rt.freeMemory();
+		long used = total - free;
+		double usedPct = total == 0 ? 0.0 : (double) used / (double) total;
+		long totalMb = total / (1024 * 1024);
+		long usedMb = used / (1024 * 1024);
+		String suffix = "";
+		if (usedPct >= 0.95) {
+			suffix = "!!!";
+		} else if (usedPct >= 0.90) {
+			suffix = "!";
 		}
-		if (warning)
-			status = status.trim() + " !!!";
-
-		return status;
+		return "Mem " + usedMb + "MB/" + totalMb + "MB" + suffix;
 	}
 
-	public void resetLogFile() {
-		if (vars == null || files == null)
-			return;
-		// replace glimpse log file with empty file
-		String glimpse_log_filename = vars.getGlimpseLogDir() + File.separator + "glimpse_log.txt";
-		files.deleteFile(glimpse_log_filename);
-		File f = new File(glimpse_log_filename);
-		files.saveFile("", f);
-	}
-
-	public void resetLogFile(String s) {
-		if (vars == null || files == null)
-			return;
-		// replace glimpse log file with empty file
-		String glimpse_log_filename = vars.getGlimpseLogDir() + File.separator + "glimpse_log.txt";
-		String glimpse_log_prior_filename = vars.getGlimpseLogDir() + File.separator + "glimpse_log_prior.txt";
-		files.deleteFile(glimpse_log_prior_filename);
-		files.copyFile(glimpse_log_filename, glimpse_log_prior_filename);
-		files.deleteFile(glimpse_log_filename);
-
-		File f = new File(glimpse_log_filename);
-		files.saveFile("", f);
-
-		SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-		Date date = new Date();
-		String time = formatter.format(date);
-
-		String msg = "Information at startup " + time + ":" + vars.getEol() + s.trim() + vars.getEol() + vars.getEol()
-				+ "--- Resource warnings during current session follow: ---" + vars.getEol();
-		files.appendTextToFile(msg, glimpse_log_filename);
-	}
-
-	public String getParentheticString(String orig) {
-		String rtn_str = orig;
-
-		try {
-			String s = orig.substring((orig.indexOf("(") + 1), orig.indexOf(")"));
-			rtn_str = s;
-		} catch (Exception e) {
-			;
-		}
-		return rtn_str;
-	}
-
-	public boolean hasSpecialCharacter(String s) {
-		if (s == null || s.trim().isEmpty()) {
-			System.out.println("Incorrect format of string");
-			return false;
-		}
-		Pattern special = Pattern.compile("[!@#$%&*()+=|<>?{}\\[\\]~]");
-		Matcher m = special.matcher(s);
-		boolean b = m.find();
-		return b;
-	}
-
-	/**
-	 * Checks if the transportation vehicle info data is in old format.
-	 * 
-	 * @param data Transportation vehicle info data matrix
-	 * @return true if old format, false otherwise
-	 */
-	private boolean isOldFormatTrnVehInfo(String[][] data) {
-		/**
-		 * Checks if the transportation vehicle info data is in old format.
-		 * 
-		 * @param data Transportation vehicle info data matrix
-		 * @return true if old format, false otherwise
-		 */
-		boolean old_format = false;
-		if ((data[0][0] != null) && (data[0][0].toLowerCase().trim().startsWith("parameter"))) {
-			old_format = false;
-		}
-		return old_format;
-	}
-
-	/**
-	 * Helper method to check if a string is null or empty.
-	 * 
-	 * @param s String to check
-	 * @return true if null or empty, false otherwise
-	 */
-	private boolean isNullOrEmpty(String s) {
-		/**
-		 * Helper method to check if a string is null or empty.
-		 * 
-		 * @param s String to check
-		 * @return true if null or empty, false otherwise
-		 */
-		return s == null || s.trim().isEmpty();
-	}
-
-	/**
-	 * Creates a JavaFX ComboBox<String> and populates it with the provided options.
-	 * 
-	 * @param convertFromOptions Array of string options to add to the ComboBox
-	 * @return ComboBox<String> instance with the given options
-	 */
-	public ComboBox<String> createComboBoxString(String[] convertFromOptions) {
-		ComboBox<String> comboBox = new ComboBox<>();
-		if (convertFromOptions != null) {
-			for (String option : convertFromOptions) {
-				if (!isNullOrEmpty(option)) {
-					comboBox.getItems().add(option);
-				}
-			}
-		}
-		return comboBox;
-	}
-
-	/**
-	 * Concatenates elements of an ArrayList<String> into a single string separated
-	 * by the given separator.
-	 * 
-	 * @param ol        ArrayList<String> to concatenate
-	 * @param separator Separator string
-	 * @return Concatenated string
-	 */
-	public String getStringFromList(ArrayList<String> ol, String separator) {
-		if (ol == null || separator == null || vars == null)
+	private String sanitizeCsvField(String value) {
+		if (value == null)
 			return "";
-		StringBuilder rtn_str = new StringBuilder();
-		for (String o : ol) {
-			rtn_str.append(o).append(separator);
+		return value.replace(",", ";").replace("\r", " ").replace("\n", " ").trim();
+	}
+
+	private String buildCsvRow(List<String> fields, int columnCount) {
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < columnCount; i++) {
+			if (i > 0)
+				sb.append(",");
+
+			String value = i < fields.size() ? fields.get(i) : "";
+			sb.append(value == null ? "" : value);
 		}
-		return rtn_str.toString();
+		return sb.toString();
 	}
-
-	/**
-	 * Creates a new JavaFX ComboBox<String> instance.
-	 * 
-	 * @return ComboBox<String> instance
-	 */
-	public ComboBox<String> createComboBox() {
-		ComboBox<String> comboBox = new ComboBox<>();
-		return comboBox;
-	}
-
-	/**
-	 * Converts a list of integers to a string array.
-	 * 
-	 * @param allowablePolicyYears List of integers to convert
-	 * @return Array of strings representing the integers
-	 */
-	public String[] createStringArrayFromListOfIntegers(List<Integer> allowablePolicyYears) {
-		String[] str_array = new String[allowablePolicyYears.size()];
-		for (int i = 0; i < allowablePolicyYears.size(); i++) {
-			str_array[i] = Integer.toString(allowablePolicyYears.get(i));
-		}
-		return str_array;
-	}
-
-	/**
-	 * Splits the given string using the specified delimiter and returns the result
-	 * as a List<String>.
-	 *
-	 * @param val       the input string to split
-	 * @param delimeter the delimiter to use for splitting the string
-	 * @return a List<String> containing the split elements; empty list if input or
-	 *         delimiter is null
-	 */
-	public List<String> getStringListFromString(String val, String delimeter) {
-		List<String> rtn_list = new ArrayList<>();
-		if (val == null || delimeter == null)
-			return rtn_list;
-		String[] parts = val.split(delimeter);
-		for (String part : parts) {
-			rtn_list.add(part);
-		}
-		return rtn_list;
-	}
-
-	/**
-	 * Creates a JavaFX ComboBox<String> with the specified preferred width.
-	 *
-	 * @param prefWidth the preferred width of the ComboBox
-	 * @return a ComboBox<String> instance with the given preferred width
-	 */
-	public ComboBox<String> createComboBoxString(double prefWidth) {
-		ComboBox<String> comboBox = new ComboBox<>();
-		comboBox.setPrefWidth(prefWidth);
-		return comboBox;
-	}
-
-	/**
-	 * Creates a ControlsFX CheckComboBox<String> with the specified preferred
-	 * width.
-	 *
-	 * @param prefWidth the preferred width of the CheckComboBox
-	 * @return a CheckComboBox<String> instance with the given preferred width
-	 */
-	public CheckComboBox<String> createCheckComboBox(double prefWidth) {
-		CheckComboBox<String> checkComboBox = new CheckComboBox<>();
-		checkComboBox.setPrefWidth(prefWidth);
-		return checkComboBox;
-	}
-
-	/**
-	 * Creates a JavaFX Label with the specified preferred width.
-	 *
-	 * @param labelWidth the preferred width of the Label
-	 * @return a Label instance with the given preferred width
-	 */
-	public Label createLabel(double labelWidth) {
-		Label label = new Label();
-		label.setPrefWidth(labelWidth);
-		return label;
-	}
-
-	/**
-	 * Extracts and returns the text between parentheses in the given string.
-	 *
-	 * @param policyType the input string containing parentheses
-	 * @return the text found between the first '(' and ')', or the original string
-	 *         if not found
-	 */
-	public String getTextBetweenParen(String policyType) {
-		if (policyType == null)
-			return null;
-		if ((policyType.indexOf("(") >= 0) || (policyType.indexOf(")") >= 0)) {
-			int start = policyType.indexOf("(");
-			int end = policyType.indexOf(")");
-			if (end > start) {
-				policyType = policyType.substring(start + 1, end).trim();
-			}
-		}
-		return policyType;
-	}
-
-	/**
-	 * Generates a side-by-side diff (line aligned) using java-diff-utils {@link DiffRowGenerator}.
-	 *
-	 * <p>Intended for UI display (TableView) rather than unified diff text output.</p>
-	 *
-	 * @param file1 original file
-	 * @param file2 new file
-	 * @return list of DiffLineRow objects suitable for rendering
-	 */
-	public java.util.List<DiffLineRow> generateSideBySideDiffRows(String file1, String file2) {
-		java.util.List<DiffLineRow> out = new java.util.ArrayList<>();
-		if (files == null) {
-			return out;
-		}
-
-		java.util.ArrayList<String> file1Content = files.getStringArrayFromFile(file1, "#");
-		java.util.ArrayList<String> file2Content = files.getStringArrayFromFile(file2, "#");
-		if (file1Content == null) file1Content = new java.util.ArrayList<>();
-		if (file2Content == null) file2Content = new java.util.ArrayList<>();
-
-		try {
-			DiffRowGenerator generator = DiffRowGenerator.create()
-					.showInlineDiffs(true)
-					.inlineDiffByWord(true)
-					.oldTag(f -> "")
-					.newTag(f -> "")
-					.build();
-
-			java.util.List<DiffRow> rows = generator.generateDiffRows(file1Content, file2Content);
-
-			int oldLine = 0;
-			int newLine = 0;
-			for (DiffRow r : rows) {
-				if (r == null) continue;
-				DiffRow.Tag tag = r.getTag();
-
-				String oldText = r.getOldLine();
-				String newText = r.getNewLine();
-
-				int oldNum = 0;
-				int newNum = 0;
-				switch (tag) {
-				case INSERT:
-					newNum = ++newLine;
-					break;
-				case DELETE:
-					oldNum = ++oldLine;
-					break;
-				case CHANGE:
-					oldNum = ++oldLine;
-					newNum = ++newLine;
-					break;
-				case EQUAL:
-				default:
-					oldNum = ++oldLine;
-					newNum = ++newLine;
-					break;
-				}
-
-				out.add(new DiffLineRow(oldNum, newNum, oldText, newText, tag));
-			}
-
-		} catch (Exception e) {
-			// Best-effort: return a minimal message row.
-			out.clear();
-			out.add(new DiffLineRow(0, 0, "Diff failed:", String.valueOf(e), com.github.difflib.text.DiffRow.Tag.CHANGE));
-		}
-
-		return out;
-	}
-
 }

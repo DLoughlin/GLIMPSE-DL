@@ -1729,10 +1729,8 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         } catch (Exception e) {
             System.out.println("error developing error log:" + e);
         }
-        if (report.size() == 0) {
-            report.add("No errors reported.");
-        }
-        utils.displayArrayList(report, "Error Report", false);
+        ArrayList<String> tableData = utils.buildErrorReportTable(report);
+        utils.showPopupTableOfErrorReport("Error Report", tableData, 910, 600);
     }
 
     /**
@@ -1755,10 +1753,8 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         } catch (Exception e) {
             System.out.println("error developing error log:" + e);
         }
-        if (report.size() == 0) {
-            report.add("No errors reported.");
-        }
-        utils.displayArrayList(report, "Error Report", false);
+        ArrayList<String> tableData = utils.buildErrorReportTable(report);
+        utils.showPopupTableOfErrorReport("Error Report", tableData, 910, 600);
     }
 
     /**

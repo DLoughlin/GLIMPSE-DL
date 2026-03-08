@@ -240,7 +240,14 @@ public class Client extends Application {
         }
 
         // Reset log file and log computer stats
-        utils.resetLogFile(utils.getComputerStatString());
+        String glimpseLogDir = vars.getGlimpseLogDir();
+        if (glimpseLogDir != null && glimpseLogDir.trim().length() > 0) {
+            String glimpseLogFilename = glimpseLogDir + File.separator + "glimpse_log.txt";
+            utils.resetLogFile(glimpseLogFilename);
+            files.appendTextToFile(utils.getComputerStatString() + vars.getEol(), glimpseLogFilename);
+        } else {
+            System.out.println("Warning: glimpseLogDir not set; skipping log reset.");
+        }
 
         // NOTE: Intentionally NOT calling files.loadFiles() here.
         // It can be heavy and would delay first window paint.
@@ -445,6 +452,7 @@ public class Client extends Application {
         primaryStage.setMinWidth(MIN_WINDOW_WIDTH);
         primaryStage.setWidth(MIN_WINDOW_WIDTH);
         primaryStage.show();
+        utils.setModalDialogsReadyAndFlushWarnings();
 
         // Optionally show splash screen on startup
         if (vars.getShowSplash()) {
