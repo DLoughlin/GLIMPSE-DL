@@ -34,9 +34,9 @@ public final class UtilsDateNumber {
 	}
 
 	public static int convertStringToInt(String s) {
-		s = s.replaceAll("\"", "").replaceAll("'", "");
 		if (s == null)
 			return 0;
+		s = s.replaceAll("\"", "").replaceAll("'", "");
 		int rtnVal = 0;
 		try {
 			rtnVal = Integer.parseInt(s);
