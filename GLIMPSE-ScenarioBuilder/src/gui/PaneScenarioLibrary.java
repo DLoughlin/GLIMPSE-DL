@@ -1782,10 +1782,6 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         databasePromptAwaitingReset = true;
 
         try {
-            updateRunStatus();
-        } catch (Exception ignored) {}
-
-        try {
             ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
                     ConsoleManager.MessageKind.GLIMPSE_INFO,
                     "GCAM is waiting for ModelInterface/database access to be released.");
@@ -1793,6 +1789,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
         Platform.runLater(() -> {
             try {
+                try {
+                    updateRunStatus();
+                } catch (Exception ignored) {}
+
                 ProcessRunner.RunningProcess live = currentGcamRun;
                 if (live == null || live.getProcess() == null || !live.getProcess().isAlive()) {
                     gcamPromptDialogActive = false;
