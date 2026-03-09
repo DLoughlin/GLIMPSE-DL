@@ -2071,7 +2071,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             String whenRun = new Date(mainLog.lastModified()).toString();
             String modelVersion = extractModelVersion(mainLog);
             String notSolved = extractUnsolvedMarkets(mainLog);
-            boolean isCompleted = files.searchForTextInFileS(mainLog, "Model run completed.", "#") != null;
+            boolean isCompleted = files.searchForTextInFile(mainLog, "Model run completed.", "#");
             String solutionTime = extractLastLogValue(mainLog, "Solution time:");
             String totalTime = extractLastLogValue(mainLog, "Data Readin, Model Run & Write Time:");
             String components = getComponentsFromConfig(configFile);
