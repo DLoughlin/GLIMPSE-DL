@@ -2667,7 +2667,7 @@ public class GLIMPSEUtils {
 			}
 
 			String dbFreePct = (maxDbSize > 0f) ? String.format("%,.0f", (1.0f - (databaseSize / maxDbSize)) * 100.0f) : "n/a";
-			status = "  Resources... " + "CPU: " + String.format("%,.0f", cpuLoad * 1000.0f) + "% | " + "RAM: "
+			status = "  Resources... " + "CPU: " + String.format("%,.0f", cpuLoad * 100.0f) + "% | " + "RAM: "
 					+ String.format("%,.0f", physicalMemorySize) + "GB Free:"
 					+ String.format("%,.0f", physicalMemorySize > 0f ? physicalMemoryFree / physicalMemorySize * 100.0f : 0.0f)
 					+ "%" + warningRAM + " | " + "HD: " + String.format("%,.0f", freeSpace) + "GB Free:"
