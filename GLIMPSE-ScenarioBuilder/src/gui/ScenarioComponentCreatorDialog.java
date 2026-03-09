@@ -43,6 +43,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import glimpseElement.ComponentLibraryTable;
 import glimpseElement.ComponentRow;
@@ -117,6 +118,7 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 	private PolicyTab currentTab;
 	private Task<?> saveTask;
 	private Thread saveThread;
+	private final AtomicBoolean saveInProgress = new AtomicBoolean(false);
 	private Stage stageWithTabs;
 
 	// === Tab Components ===
@@ -255,9 +257,18 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 		buttonClose.setOnAction(e -> cleanupOnClose());
 
 		buttonSaveComponent.setOnAction(e -> {
+			if (saveThread != null && saveThread.isAlive()) {
+				return;
+			}
+			if (!saveInProgress.compareAndSet(false, true)) {
+				return;
+			}
+			setSaveButtonDisabled(true);
 			String which = addComponentTabPane.getSelectionModel().getSelectedItem().getText();
 			currentTab = getTabByName(which);
 			if (currentTab == null) {
+				saveInProgress.set(false);
+				setSaveButtonDisabled(false);
 				utils.warningMessage(WARNING_UNKNOWN_TAB + which);
 				return;
 			}
@@ -273,16 +284,18 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 				@Override
 				protected void succeeded() {
 					super.succeeded();
+					saveInProgress.set(false);
 					Platform.runLater(() -> saveComponentFile(currentTab));
 				}
 
 				@Override
 				protected void cancelled() {
 					super.cancelled();
+					saveInProgress.set(false);
 					Platform.runLater(() -> {
+						setSaveButtonDisabled(false);
 						System.out.println("Cancelled!");
 						utils.warningMessage(WARNING_PROCESS_CANCELLED);
-						enableButtons();
 						currentTab.resetFileContent();
 						currentTab.resetFilenameSuggestion();
 						currentTab.resetProgressBar();
@@ -292,13 +305,14 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 				@Override
 				protected void failed() {
 					super.failed();
+					saveInProgress.set(false);
 					Platform.runLater(() -> {
+						setSaveButtonDisabled(false);
 						System.out.println("Failed!");
-					 utils.warningMessage(WARNING_PROCESS_FAILED);
-					 enableButtons();
-					 currentTab.resetFileContent();
-					 currentTab.resetFilenameSuggestion();
-					 currentTab.resetProgressBar();
+						 utils.warningMessage(WARNING_PROCESS_FAILED);
+						currentTab.resetFileContent();
+						currentTab.resetFilenameSuggestion();
+						currentTab.resetProgressBar();
 					});
 				}
 			};
@@ -306,7 +320,6 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 			saveThread = new Thread(saveTask);
 			saveThread.setDaemon(true);
 			saveThread.start();
-			disableButtons();
 		});
 
 		if (whichTab != null) {
@@ -321,6 +334,7 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 	}
 
 	private void cleanupOnClose() {
+		saveInProgress.set(false);
 		if (saveTask != null) {
 			saveTask.cancel();
 		}
@@ -376,16 +390,21 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 	}
 
 	public void saveComponentFile(PolicyTab tab) {
-		if (tab == null) return;
+		if (tab == null) {
+			setSaveButtonDisabled(false);
+			return;
+		}
 		String filenameSuggestion = tab.getFilenameSuggestion();
 		String fileContent = tab.getFileContent();
-		if (fileContent == null) return;
+		if (fileContent == null) {
+			setSaveButtonDisabled(false);
+			return;
+		}
 		boolean useTempFile = false;
 		if (fileContent.equals("use temp file")) {
 			useTempFile = true;
 		}
 		if ((filenameSuggestion != null) && (!filenameSuggestion.isEmpty())) {
-			enableButtons();
 			String filter1 = "";
 			String filter2 = "";
 			if (fileContent.contains(XML_LIST_KEYWORD)) {
@@ -402,8 +421,10 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 			File file = FileChooserPlus.showSaveDialog(stageWithTabs, "Save Scenario Component",
 					new File(vars.getScenarioComponentsDir()), filenameSuggestion,
 					FileChooserPlus.createExtensionFilter(filter1, filter2));
-			if (file == null)
+			if (file == null) {
+				setSaveButtonDisabled(false);
 				return;
+			}
 			boolean saved = true;
 			if (!useTempFile) {
 				files.saveFile(fileContent, file);
@@ -426,17 +447,14 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 				ComponentLibraryTable.addOrUpdateFiles(fileArr);
 			}
 		}
+		setSaveButtonDisabled(false);
 		afterSaveOrClose.run();
 	}
 
-	public void disableButtons() {
-		if (buttonSaveComponent != null) buttonSaveComponent.setDisable(true);
-		if (buttonClose != null) buttonClose.setDisable(true);
-	}
-
-	public void enableButtons() {
-		if (buttonSaveComponent != null) buttonSaveComponent.setDisable(false);
-		if (buttonClose != null) buttonClose.setDisable(false);
+	private void setSaveButtonDisabled(boolean disabled) {
+		if (buttonSaveComponent != null) {
+			buttonSaveComponent.setDisable(disabled);
+		}
 	}
 
 	private HBox createButtonHBox() {

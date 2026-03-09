@@ -480,7 +480,7 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
                 if (param.equals("table data")) {
                     String[] s = utils.splitString(value, ",");
                     if (s.length >= 2) {
-                         paneForComponentDetails.data.add(new DataPoint(s[0], s[1]));
+                         paneForComponentDetails.addTableRow(s[0], s[1]);
                     }
                 }
             }

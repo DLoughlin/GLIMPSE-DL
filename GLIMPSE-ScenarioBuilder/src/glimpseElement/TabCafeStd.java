@@ -446,6 +446,9 @@ public class TabCafeStd extends PolicyTab implements Runnable {
      */
     @Override
     public void loadContent(ArrayList<String> content) {
+        if (content == null) {
+            return;
+        }
         for (String line : content) {
             int pos = line.indexOf(":");
             if (line.startsWith("#") && (pos > -1)) {
@@ -482,15 +485,18 @@ public class TabCafeStd extends PolicyTab implements Runnable {
                         break;
                     case "table data":
                         String[] s = utils.splitString(value, ",");
-                        paneForComponentDetails.data.add(new DataPoint(s[0], s[1]));
+                        if (s.length >= 2) {
+                            paneForComponentDetails.addTableRow(s[0], s[1]);
+                        }
                         break;
                     default:
                         break;
                 }
             }
         }
-        setUnitsLabel(); // Update units label after loading
-        paneForComponentDetails.updateTable(); // Refresh table
+        paneForComponentDetails.updateTable();
+        setPolicyAndMarketNames();
+        setUnitsLabel();
     }
 
     /**

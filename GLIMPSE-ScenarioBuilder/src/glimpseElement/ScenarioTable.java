@@ -86,24 +86,24 @@ public class ScenarioTable {
 	}
 
 	/* Returns Birth Date TableColumn */
-	public static TableColumn<ScenarioRow, Date> getCreatedDateColumn() {
-		TableColumn<ScenarioRow, Date> createdCol = new TableColumn<>("Created");
+	public static TableColumn<ScenarioRow, String> getCreatedDateColumn() {
+		TableColumn<ScenarioRow, String> createdCol = new TableColumn<>("Created");
 		createdCol.setStyle("-fx-alignment: CENTER;");
 		createdCol.setCellValueFactory(new PropertyValueFactory<>("createdDate"));
 		return createdCol;
 	}
 
 	/* Returns Birth Date TableColumn */
-	public static TableColumn<ScenarioRow, Date> getStartedDateColumn() {
-		TableColumn<ScenarioRow, Date> startedCol = new TableColumn<>("Started");
+	public static TableColumn<ScenarioRow, String> getStartedDateColumn() {
+		TableColumn<ScenarioRow, String> startedCol = new TableColumn<>("Started");
 		startedCol.setStyle("-fx-alignment: CENTER;");
 		startedCol.setCellValueFactory(new PropertyValueFactory<>("startedDate"));
 		return startedCol;
 	}
 	
 	/* Returns Birth Date TableColumn */
-	public static TableColumn<ScenarioRow, Date> getCompletedDateColumn() {
-		TableColumn<ScenarioRow, Date> completedCol = new TableColumn<>("Completed");
+	public static TableColumn<ScenarioRow, String> getCompletedDateColumn() {
+		TableColumn<ScenarioRow, String> completedCol = new TableColumn<>("Completed");
 		completedCol.setCellValueFactory(new PropertyValueFactory<>("completedDate"));
 		completedCol.setStyle("-fx-alignment: CENTER;");
 		return completedCol;

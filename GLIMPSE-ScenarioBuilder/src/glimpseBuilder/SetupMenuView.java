@@ -64,7 +64,8 @@ public final class SetupMenuView {
             createMenuItem("Current Main Log", () -> files.showFileInTextEditor(mainLogPath)),
             createMenuItem("Errors in Main Log", () -> {
                 ArrayList<String> errors = utils.generateErrorReport(mainLogPath, null);
-                utils.displayArrayList(errors, "Error Report", false);
+                ArrayList<String> tableData = utils.buildErrorReportTable(errors);
+                utils.showPopupTableOfErrorReport("Error Report", tableData, 910, 600);
             }),
             createMenuItem("Current Solver Log", () -> files.showFileInTextEditor(Paths.get(vars.getgCamExecutableDir(), "logs", "solver_log.csv").toString())),
             createMenuItem("Current Worst Market Log", () -> files.showFileInTextEditor(Paths.get(vars.getgCamExecutableDir(), "logs", "worst_market_log.txt").toString())),
@@ -110,4 +111,3 @@ public final class SetupMenuView {
         return menuItem;
     }
 }
-

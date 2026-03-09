@@ -93,7 +93,6 @@ import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 import javax.swing.ToolTipManager;
 import javax.swing.TransferHandler;
 import javax.swing.filechooser.FileFilter;
@@ -2964,7 +2963,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		shutdownThread.setDaemon(true);
 		shutdownThread.start();
 	}
-}
+}
 
 
 

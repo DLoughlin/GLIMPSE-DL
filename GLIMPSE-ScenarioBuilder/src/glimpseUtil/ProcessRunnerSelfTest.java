@@ -32,6 +32,34 @@ public class ProcessRunnerSelfTest {
         assertTrue(tokens.get(6).equals("--flag"), "token6 mismatch: " + tokens);
     }
 
+    private static void testInteractiveSendLine() throws Exception {
+        boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
+        ArrayList<String> cmd = new ArrayList<>();
+
+        if (isWindows) {
+            cmd.add("cmd.exe");
+            cmd.add("/c");
+            cmd.add("set /p IN=& echo stdin=%IN% & exit /b 0");
+        } else {
+            cmd.add("sh");
+            cmd.add("-c");
+            cmd.add("IFS= read IN; echo stdin=$IN; exit 0");
+        }
+
+        ProcessRunner.RunningProcess rp = ProcessRunner.start(cmd, new File("."), null, null, null);
+        try {
+            Thread.sleep(150);
+            assertTrue(rp.sendLine(), "Expected sendLine() to succeed while process is waiting for input");
+            ProcessResult r = rp.waitForResult(java.time.Duration.ofSeconds(5));
+            assertTrue(r.getExitCode() == 0, "Expected interactive process to exit cleanly: " + r.getExitCode());
+            assertTrue(r.getStdout().contains("stdin="), "stdout missing echoed stdin marker: " + r.getStdout());
+        } finally {
+            try {
+                rp.stop();
+            } catch (Exception ignored) {}
+        }
+    }
+
     public static void main(String[] args) throws Exception {
         testTokenizer();
         boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
@@ -57,6 +85,8 @@ public class ProcessRunnerSelfTest {
         assertTrue(r.getExitCode() == 7, "Expected exitCode=7");
         assertTrue(r.getStdout().contains("hello_stdout"), "stdout missing expected text");
         assertTrue(r.getStderr().contains("hello_stderr"), "stderr missing expected text");
+
+        testInteractiveSendLine();
 
         System.out.println("OK");
     }
