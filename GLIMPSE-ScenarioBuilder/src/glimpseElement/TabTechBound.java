@@ -873,7 +873,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 				if (param.equals("table data")) {
 					String[] s = utils.splitString(value, ",");
 					if (s.length >= 2) {
-						this.paneForComponentDetails.data.add(new DataPoint(s[0], s[1]));
+						this.paneForComponentDetails.addTableRow(s[0], s[1]);
 					}
 				}
 			}

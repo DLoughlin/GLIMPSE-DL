@@ -467,7 +467,7 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     private void parseAndAddTableData(String value) {
         String[] s = utils.splitString(value, ",");
         if (s.length >= 2 && paneForComponentDetails != null) {
-            this.paneForComponentDetails.data.add(new DataPoint(s[0], s[1]));
+            this.paneForComponentDetails.addTableRow(s[0], s[1]);
         }
     }
 

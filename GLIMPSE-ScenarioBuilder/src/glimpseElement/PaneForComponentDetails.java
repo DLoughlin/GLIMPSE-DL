@@ -270,13 +270,47 @@ public class PaneForComponentDetails extends VBox {
     }
 
     /**
+     * Adds a table row while replacing the seeded blank placeholder when present.
+     */
+    public void addTableRow(String year, String value) {
+        addOrReplacePlaceholderRow(year, value);
+    }
+
+    /**
+     * Returns true when the table currently contains only the seeded blank placeholder row.
+     */
+    private boolean hasOnlyBlankPlaceholderRow() {
+        if (data == null || data.size() != 1) {
+            return false;
+        }
+        DataPoint first = data.get(0);
+        if (first == null) {
+            return false;
+        }
+        String year = first.getYear() == null ? "" : first.getYear().trim();
+        String value = first.getValue() == null ? "" : first.getValue().trim();
+        return year.isEmpty() && value.isEmpty();
+    }
+
+    /**
+     * Adds a row of data, replacing the starter blank row when real content is first loaded.
+     */
+    private void addOrReplacePlaceholderRow(String year, String value) {
+        DataPoint dp = new DataPoint(year, value);
+        if (hasOnlyBlankPlaceholderRow()) {
+            data.set(0, dp);
+        } else {
+            data.add(dp);
+        }
+    }
+
+    /**
      * Adds a new DataPoint with year and value.
      * @param name0 Year for the DataPoint
      * @param name1 Value for the DataPoint
      */
     public void addItem(String name0, String name1) {
-        DataPoint dp = new DataPoint(name0, name1);
-        data.add(dp);
+        addOrReplacePlaceholderRow(name0, name1);
     }
 
     /**
@@ -523,7 +557,7 @@ public class PaneForComponentDetails extends VBox {
         for (int i = 0; i < values[0].length; i++) {
             int yr = (int) values[0][i];
             double val = values[1][i];
-            data.add(new DataPoint(yr, val));
+            addOrReplacePlaceholderRow(String.valueOf(yr), String.valueOf(val));
         }
         updateTable();
     }
@@ -539,7 +573,7 @@ public class PaneForComponentDetails extends VBox {
 			if (parts.length == 2) {
 				String col0 = parts[0].trim();
 				String col1 = parts[1].trim();
-				data.add(new DataPoint(col0, col1));
+				addOrReplacePlaceholderRow(col0, col1);
 			}
 		}
 		updateTable();
@@ -554,7 +588,7 @@ public class PaneForComponentDetails extends VBox {
         for (int i = 0; i < values[0].length; i++) {
             String col0 = values[0][i];
             String col1 = values[1][i];
-            data.add(new DataPoint(col0, col1));
+            addOrReplacePlaceholderRow(col0, col1);
         }
         updateTable();
     }
@@ -571,7 +605,7 @@ public class PaneForComponentDetails extends VBox {
         if (parts.length == 2) {
             String year = parts[0].trim();
             String value = parts[1].trim();
-            data.add(new DataPoint(year, value));
+            addOrReplacePlaceholderRow(year, value);
         }
     }
 

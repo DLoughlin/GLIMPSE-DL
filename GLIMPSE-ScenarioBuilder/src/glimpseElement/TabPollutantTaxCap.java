@@ -149,7 +149,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	 * Initialize UI controls, populate choice lists, and wire listeners.
 	 *
 	 * This method prepares the left/center/right column controls, fills the
-	 * measure, pollutant and category lists using data from vars, configures
+	 * measure, pollutant, and category lists using data from vars, configures
 	 * default selections, and registers listeners that keep derived values
 	 * (for example auto-generated names) in sync with user changes.
 	 */
@@ -916,7 +916,9 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 					break;
 				case "table data":
 					String[] s = utils.splitString(value, ",");
-					paneForComponentDetails.data.add(new DataPoint(s[0], s[1]));
+					if (s.length >= 2) {
+						paneForComponentDetails.addTableRow(s[0], s[1]);
+					}
 					break;
 				}
 			}

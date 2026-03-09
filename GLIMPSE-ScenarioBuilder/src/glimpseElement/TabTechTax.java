@@ -776,7 +776,9 @@ public class TabTechTax extends PolicyTab implements Runnable {
 						break;
 					case "table data":
 						String[] s = utils.splitString(value, ",");
-						this.paneForComponentDetails.data.add(new DataPoint(s[0], s[1]));
+						if (s.length >= 2) {
+							this.paneForComponentDetails.addTableRow(s[0], s[1]);
+						}
 						break;
 					}
 				}
