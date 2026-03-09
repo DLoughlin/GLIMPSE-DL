@@ -2359,19 +2359,23 @@ public class GLIMPSEUtils {
 						double dmd = Double.parseDouble(tokens[9].trim());
 						String mkt = tokens[12].trim();
 						total_fails++;
-						if (dmd <= min_dmd)
-							min_smallmkt_fails++;
 						if (red > min_red) {
 							if (red > min_red * 5.0) {
 								classification = "MAJOR";
 								major_fails++;
+								if (dmd <= min_dmd)
+									maj_smallmkt_fails++;
 							} else {
 								classification = "MODERATE";
 								moderate_fails++;
+								if (dmd <= min_dmd)
+									min_smallmkt_fails++;
 							}
 						} else {
 							classification = "MINOR";
 							minor_fails++;
+							if (dmd <= min_dmd)
+								min_smallmkt_fails++;
 						}
 						smallMarket = (dmd <= min_dmd) ? "true" : "false";
 					}
