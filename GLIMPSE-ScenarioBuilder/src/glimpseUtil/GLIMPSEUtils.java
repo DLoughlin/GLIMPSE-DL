@@ -518,7 +518,7 @@ public class GLIMPSEUtils {
 	public boolean hasSpecialCharacter(String str) {
 		if (str == null)
 			return false;
-		return !str.matches("[A-Za-z0-9_\\- ]+");
+		return !str.matches("[A-Za-z0-9_.-]+");
 	}
 
 	public String getParentheticString(String s) {

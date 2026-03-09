@@ -161,6 +161,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private static final String GCAM_WRITE_TOKEN_PRINTING_OUTPUT = "printing output";
     private static final String GCAM_WRITE_TOKEN_XML_DATABASE = "starting output to xml database";
     private static final String GCAM_WRITE_TOKEN_WRITE_TIME = "write time:";
+    private static final String[] GCAM_STDOUT_SUCCESS_MARKERS = {
+            "Model exiting successfully.",
+            "Exiting successfully.",
+            "Model run completed.",
+            "Finished printing output."
+    };
 
     private static boolean isTailedLogLine(String line) {
         return line != null && line.startsWith(TAILED_LOG_PREFIX);
@@ -1022,14 +1028,20 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                                 new File(exeDir),
                                 null,
                                 line -> {
+                                    handlePotentialInteractivePrompt(line);
+                                    maybeMarkLiveGcamSuccess(line);
                                     if (isTailedLogLine(line)) {
                                         return;
                                     }
                                     ConsoleManager.appendLineBuffered(ConsoleManager.StreamSource.GCAM_STDOUT,
                                             ConsoleManager.MessageKind.MODEL_STDOUT, line);
                                 },
-                                line -> ConsoleManager.appendLineBuffered(ConsoleManager.StreamSource.GCAM_STDOUT,
-                                        ConsoleManager.MessageKind.STDERR, line)
+                                line -> {
+                                    handlePotentialInteractivePrompt(line);
+                                    maybeMarkLiveGcamSuccess(line);
+                                    ConsoleManager.appendLineBuffered(ConsoleManager.StreamSource.GCAM_STDOUT,
+                                            ConsoleManager.MessageKind.STDERR, line);
+                                }
                         );
 
                         currentGcamRun = rp;
@@ -1503,6 +1515,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                         }
                     }
                 }
+                if (!"Success".equals(status) && hasStdoutSuccessMarker(scenarioFolder)) {
+                    status = "Success";
+                }
                 if (!searchArray.get(1).isEmpty()) {
                     try {
                         runtime = searchArray.get(1).split(":")[1].trim();
@@ -1660,6 +1675,62 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 || normalized.contains(GCAM_WRITE_TOKEN_WRITE_TIME);
     }
 
+    private boolean hasStdoutSuccessMarker(File scenarioFolder) {
+        if (scenarioFolder == null) {
+            return false;
+        }
+        try {
+            File stdoutFile = new File(scenarioFolder, "gcam_stdout.txt");
+            if (!stdoutFile.exists()) {
+                return false;
+            }
+            ArrayList<String> stdoutLines = files.getStringArrayFromFile(stdoutFile.getAbsolutePath(), "#");
+            for (String line : stdoutLines) {
+                if (containsStdoutSuccessMarker(line)) {
+                    return true;
+                }
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
+    private boolean containsStdoutSuccessMarker(String line) {
+        String normalizedLine = normalizeDatabasePromptText(line);
+        if (normalizedLine.isEmpty()) {
+            return false;
+        }
+        for (String marker : GCAM_STDOUT_SUCCESS_MARKERS) {
+            if (normalizedLine.contains(normalizeDatabasePromptText(marker))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void maybeMarkLiveGcamSuccess(String line) {
+        if (!containsStdoutSuccessMarker(line)) {
+            return;
+        }
+        String scenarioName = currentGcamScenarioName;
+        if (scenarioName == null || scenarioName.trim().isEmpty()) {
+            return;
+        }
+        Platform.runLater(() -> {
+            try {
+                for (ScenarioRow row : ScenarioTable.listOfScenarioRuns) {
+                    if (row == null || !scenarioName.equals(row.getScenarioName())) {
+                        continue;
+                    }
+                    if (!"Success".equals(row.getStatus())) {
+                        row.setStatus("Success");
+                        ScenarioTable.tableScenariosLibrary.refresh();
+                    }
+                    break;
+                }
+            } catch (Exception ignored) {}
+        });
+    }
+
     // --- Modified: maybePromptForDatabaseRelease ---
     private void maybePromptForDatabaseRelease(String promptLine) {
         if (!looksLikeDatabaseSavePrompt(promptLine)) {
@@ -1720,20 +1791,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 content.setFillWidth(true);
                 content.setMaxWidth(440);
                 content.getChildren().addAll(msg);
-//                if (promptLine != null && promptLine.trim().length() > 0) {
-//                    Label detailLabel = new Label("GCAM message:");
-//                    TextArea detail = new TextArea(promptLine.trim());
-//                    detail.setEditable(false);
-//                    detail.setWrapText(true);
-//                    detail.setPrefColumnCount(40);
-//                    detail.setPrefRowCount(4);
-//                    detail.setMaxWidth(420);
-//                    detail.setPrefWidth(420);
-//                    detail.setMinHeight(80);
-//                    detail.setPrefHeight(100);
-//                    detail.setMaxHeight(140);
-//                    content.getChildren().addAll(detailLabel, detail);
-//                }
+
                 alert.getDialogPane().setContent(content);
                 alert.getDialogPane().setPrefWidth(480);
                 alert.getDialogPane().setMaxWidth(480);
