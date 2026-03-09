@@ -2333,8 +2333,7 @@ public class GLIMPSEUtils {
 		formatter.setGroupingUsed(false);
 		double min_dmd = 0.0001;
 		double min_red = 0.01;
-		int total_fails = 0, minor_fails = 0, min_smallmkt_fails = 0, major_fails = 0, moderate_fails = 0,
-				maj_smallmkt_fails = 0;
+		int total_fails = 0, minor_fails = 0, min_smallmkt_fails = 0, major_fails = 0, moderate_fails = 0;
 		String scenarioLabel = (scenario == null || scenario.trim().isEmpty()) ? "exe/main_log.txt" : scenario;
 		ArrayList<String> report = new ArrayList<>();
 		ArrayList<String[]> tokenRows = new ArrayList<>();
@@ -2397,15 +2396,15 @@ public class GLIMPSEUtils {
 					verdict = "Verdict: Pass? (all errors are minor)";
 				} else if (total_fails == minor_fails + moderate_fails) {
 					verdict = "Verdict: Pass? (all errors are minor or moderate)";
-				} else if (total_fails == maj_smallmkt_fails + min_smallmkt_fails) {
+				} else if (total_fails == min_smallmkt_fails) {
 					verdict = "Verdict: Pass? (all fails are in small markets)";
-				} else if (total_fails == maj_smallmkt_fails + minor_fails) {
+				} else if (total_fails == minor_fails + min_smallmkt_fails) {
 					verdict = "Verdict: Pass? (all fails are minor or in small markets)";
 				} else {
 					verdict = "Verdict: Fail? (major, non-small market failures)";
 				}
 				String summary = "Total errors=" + total_fails + "; Major errors=" + major_fails + "; Moderate errors="
-						+ moderate_fails + "; Small market errors=" + (maj_smallmkt_fails + min_smallmkt_fails) + "; "
+						+ moderate_fails + "; Small market errors=" + min_smallmkt_fails + "; "
 						+ verdict + " (" + formatter.format(min_red * 100.0) + "-" + formatter.format(min_red * 5.0 * 100.0)
 						+ "% thresholds)";
 				tokenRows.add(new String[] { "Summary", summary });
