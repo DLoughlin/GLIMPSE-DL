@@ -2087,7 +2087,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             }
 
             ArrayList<String> errorLines = utils.generateErrorReport(mainLog.getAbsolutePath(), scenarioName);
-            int numErrors = errorLines == null ? 0 : errorLines.size();
+            int numErrors = countLogMatches(mainLog, "ERROR");
             int numWarnings = countLogMatches(mainLog, "WARNING");
             String whenCreated = new Date(configFile.lastModified()).toString();
             String whenRun = new Date(mainLog.lastModified()).toString();
