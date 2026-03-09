@@ -12,6 +12,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -140,6 +143,20 @@ public final class ProcessRunner {
 
         /** @return the underlying Process (may be null if start failed). */
         Process getProcess();
+
+        /**
+         * Sends raw text to the child process stdin using UTF-8.
+         *
+         * @return true if the text was written and flushed; false if stdin was unavailable or the process had already exited.
+         */
+        boolean sendInput(String text);
+
+        /**
+         * Sends a single platform newline to the child process stdin.
+         *
+         * @return true if the newline was written and flushed.
+         */
+        boolean sendLine();
     }
 
     /**
@@ -178,6 +195,8 @@ public final class ProcessRunner {
         private final ExecutorService ioPool;
         private final Future<String> outFuture;
         private final Future<String> errFuture;
+        private final Writer stdinWriter;
+        private final Object stdinLock = new Object();
         private final long startMillis;
         private final AtomicBoolean stopRequested = new AtomicBoolean(false);
 
@@ -185,6 +204,7 @@ public final class ProcessRunner {
             this.process = process;
             this.startMillis = System.currentTimeMillis();
             Charset charset = StandardCharsets.UTF_8;
+            this.stdinWriter = new OutputStreamWriter(process.getOutputStream(), charset);
             this.ioPool = Executors.newFixedThreadPool(2);
             this.outFuture = ioPool.submit(streamToString(process.getInputStream(), charset, stdoutLineConsumer));
             this.errFuture = ioPool.submit(streamToString(process.getErrorStream(), charset, stderrLineConsumer));
@@ -259,6 +279,30 @@ public final class ProcessRunner {
             return process;
         }
 
+        @Override
+        public boolean sendInput(String text) {
+            if (text == null) {
+                return false;
+            }
+            if (process == null || !isAlive(process)) {
+                return false;
+            }
+            synchronized (stdinLock) {
+                try {
+                    stdinWriter.write(text);
+                    stdinWriter.flush();
+                    return true;
+                } catch (Exception e) {
+                    return false;
+                }
+            }
+        }
+
+        @Override
+        public boolean sendLine() {
+            return sendInput(System.lineSeparator());
+        }
+
         /**
          * Waits for the process to finish (or timeout) and returns the collected outputs.
          */
@@ -285,7 +329,15 @@ public final class ProcessRunner {
             long duration = System.currentTimeMillis() - startMillis;
 
             // Ensure the pool is stopped.
-            ioPool.shutdownNow();
+            try {
+                synchronized (stdinLock) {
+                    try {
+                        stdinWriter.close();
+                    } catch (Exception ignored) {}
+                }
+            } finally {
+                ioPool.shutdownNow();
+            }
             return new ProcessResult(exitCode, stdout, stderr, timedOut, duration);
         }
 

@@ -3,9 +3,6 @@ package glimpseUtil;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-
 import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
@@ -15,6 +12,7 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -56,6 +54,9 @@ public final class UtilsDialogs {
 				if (!pane.getStylesheets().contains(css)) {
 					pane.getStylesheets().add(css);
 				}
+			}
+			if (styles != null) {
+				pane.setStyle(styles.getFontStyle());
 			}
 		} catch (Exception e) {
 			// ignore theme failures; fall back to default Alert styling
@@ -247,10 +248,37 @@ public final class UtilsDialogs {
 	}
 
 	public boolean selectYesOrNoDialog(String s) {
-		JFrame jf = new JFrame();
-		jf.setAlwaysOnTop(true);
-		int dialogButton = JOptionPane.YES_NO_OPTION;
-		int dialogResult = JOptionPane.showConfirmDialog(jf, s, "Confirmation required", dialogButton);
-		return dialogResult == 0;
+		Alert alert = new Alert(AlertType.CONFIRMATION);
+		applyModernThemeToDialog(alert);
+		alert.setTitle("Confirmation required");
+		alert.setHeaderText(null);
+
+		Label msg = new Label(s == null ? "" : s);
+		msg.setWrapText(true);
+		if (styles != null) {
+			msg.setStyle(styles.getFontStyle());
+		}
+		msg.setMaxWidth(420);
+
+		VBox content = new VBox(10, msg);
+		content.setFillWidth(true);
+		content.setMaxWidth(440);
+		if (styles != null) {
+			content.setStyle(styles.getFontStyle());
+		}
+		alert.getDialogPane().setContent(content);
+		alert.getDialogPane().setPrefWidth(480);
+		alert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+
+		try {
+			Button noBtn = (Button) alert.getDialogPane().lookupButton(ButtonType.NO);
+			if (noBtn != null) {
+				noBtn.setDefaultButton(true);
+				noBtn.setCancelButton(true);
+			}
+		} catch (Exception ignored) {}
+
+		Optional<ButtonType> result = alert.showAndWait();
+		return result.isPresent() && result.get() == ButtonType.YES;
 	}
 }
