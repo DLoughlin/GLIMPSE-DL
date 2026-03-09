@@ -96,13 +96,13 @@ public class SetupTableScenariosLibrary {
 		TableColumn<ScenarioRow, String> runComponentsCol = ScenarioTable.getComponentsColumn();
 		runComponentsCol.setMinWidth(220);
 
-		TableColumn<ScenarioRow, Date> createdCol = ScenarioTable.getCreatedDateColumn();
+		TableColumn<ScenarioRow, String> createdCol = ScenarioTable.getCreatedDateColumn();
 		createdCol.setMinWidth(110);
 
-		TableColumn<ScenarioRow, Date> startedCol = ScenarioTable.getStartedDateColumn();
+		TableColumn<ScenarioRow, String> startedCol = ScenarioTable.getStartedDateColumn();
 		startedCol.setMinWidth(110);
 		
-		TableColumn<ScenarioRow, Date> completedCol = ScenarioTable.getCompletedDateColumn();
+		TableColumn<ScenarioRow, String> completedCol = ScenarioTable.getCompletedDateColumn();
 		completedCol.setMinWidth(110);
 		
 		TableColumn<ScenarioRow, String> statusCol = ScenarioTable.getStatusColumn();

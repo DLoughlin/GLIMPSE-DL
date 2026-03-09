@@ -45,21 +45,26 @@ import glimpseUtil.GLIMPSEVariables;
 import glimpseUtil.WindowsRuntimePreflight;
 import java.io.File;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javafx.animation.FadeTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
-import javafx.scene.layout.RowConstraints;
-import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Modality;
@@ -112,6 +117,12 @@ public class Client extends Application {
     private static final double SPLASH_WIDTH = 383.0;
     private static final double SPLASH_HEIGHT = 384.0;
     private static final String OPTIONS_ARG_FLAG = "-options";
+    private static final String STARTUP_READY_MESSAGE = "Ready";
+    private static final String SCENARIO_REFRESHED_MESSAGE = "Scenario status refreshed.";
+    private static final String STARTUP_FILES_MESSAGE = "Loading required files...";
+    private static final String STARTUP_UI_MESSAGE = "Building window layout...";
+    private static final String STARTUP_SCENARIO_MESSAGE = "Loading scenario status...";
+    private static final String STARTUP_COMPONENT_MESSAGE = "Loading scenario components...";
     // endregion
 
     // region Static Fields
@@ -195,6 +206,11 @@ public class Client extends Application {
     /** Keep a global handle so deferred/background tasks can update the status bar safely. */
     private static Client instanceForStatus;
 
+    /** Explicit startup completion state. */
+    private static volatile boolean startupBusyState = true;
+    /** Cached post-startup status message. */
+    private static volatile String deferredStatusBarText;
+
     /**
      * The entry point of the application. Sets up JavaFX and launches the GUI.
      *
@@ -217,7 +233,8 @@ public class Client extends Application {
      */
     @Override
     public void init() throws Exception {
-        // Install console redirection as early as possible so startup prints are captured.
+    	
+    		// Install console redirection as early as possible so startup prints are captured.
         ConsoleOutputRedirect.install();
 
         final long t0 = System.nanoTime();
@@ -277,12 +294,11 @@ public class Client extends Application {
             Platform.exit();
         });
 
-        // Build GUI panels and layout
+        setStartupStatus(STARTUP_UI_MESSAGE, -1, true);
         getScenarioBuilder().build();
 
-        // Disable file-dependent actions until deferred file loading completes.
         setFileDependentUiEnabled(false);
-        setStatusBarTextStatic("Loading required files...");
+        setStartupStatus(STARTUP_FILES_MESSAGE, -1, true);
 
         // Set up the main window with menu and content (this calls primaryStage.show())
         setMainWindow(combineAllElementsIntoOnePane(), createMenuBar());
@@ -298,6 +314,7 @@ public class Client extends Application {
         Platform.runLater(() -> {
             logStartupCheckpoint("Primary stage shown (first FX pulse after show)", STARTUP_T0_NANOS);
             WindowsRuntimePreflight.ensureMsvcRuntimeAvailableOrWarn(utils, "Startup");
+            setStartupStatus(STARTUP_SCENARIO_MESSAGE, -1, true);
             startDeferredFileLoading();
         });
 
@@ -389,11 +406,11 @@ public class Client extends Application {
 		mainGridPane.getColumnConstraints().setAll(leftCol, arrowCol, spacerCol, rightCol);
 
         // Give the bottom (scenario library) row more vertical space so the divider sits lower.
-        RowConstraints topRow = new RowConstraints();
+        javafx.scene.layout.RowConstraints topRow = new javafx.scene.layout.RowConstraints();
         topRow.setVgrow(Priority.ALWAYS);
         topRow.setPercentHeight(45);
 
-        RowConstraints bottomRow = new RowConstraints();
+        javafx.scene.layout.RowConstraints bottomRow = new javafx.scene.layout.RowConstraints();
         bottomRow.setVgrow(Priority.ALWAYS);
         bottomRow.setPercentHeight(55);
 
@@ -429,7 +446,13 @@ public class Client extends Application {
     private void setMainWindow(GridPane mainGridPane, MenuBar menuBar) {
         // Compose the root layout
         sb.setStyle(styles.getBackgroundStyle() + " -fx-padding: 5; -fx-border-color: #B0B0B0; -fx-border-width: 1 0 0 0;");
-        final VBox root = new VBox(menuBar, mainGridPane, sb);
+        final StackPane centerStack = new StackPane();
+        centerStack.getChildren().add(mainGridPane);
+        startupOverlayBox = createStartupOverlay();
+        centerStack.getChildren().add(startupOverlayBox);
+        StackPane.setAlignment(startupOverlayBox, Pos.TOP_LEFT);
+        StackPane.setMargin(startupOverlayBox, new Insets(12, 12, 0, 12));
+        final VBox root = new VBox(menuBar, centerStack, sb);
         final Scene scene = new Scene(root, vars.DEFAULT_SCENARIO_BUILDER_WIDTH, vars.DEFAULT_SCENARIO_BUILDER_HEIGHT);
 
         // Apply Modern CSS
@@ -490,35 +513,35 @@ public class Client extends Application {
             final long t0 = System.nanoTime();
             try {
                 System.out.println("Loading GLIMPSE files (deferred)...");
+                setStartupStatus(STARTUP_FILES_MESSAGE, -1, true);
                 files.loadFiles();
                 filesLoaded = true;
                 logStartupCheckpoint("files.loadFiles complete (deferred)", t0);
 
-                // Now that required files are loaded, refresh any panes that depend on them.
                 Platform.runLater(() -> {
                     try {
+                        setStartupStatus(STARTUP_COMPONENT_MESSAGE, -1, true);
                         if (Client.getPaneComponentLibrary() != null) {
                             Client.getPaneComponentLibrary().refreshComponentLibraryTable();
                         }
                     } catch (Throwable ignored) {
                     }
                     try {
+                        setStartupStatus(STARTUP_SCENARIO_MESSAGE, -1, true);
                         if (Client.getPaneScenarioLibrary() != null) {
-                            Client.getPaneScenarioLibrary().clearAndRefreshScenarioTable();
+                            Client.getPaneScenarioLibrary().refreshScenarioStatusAsync(false);
                         }
                     } catch (Throwable ignored) {
                     }
                     setFileDependentUiEnabled(true);
-                    setStatusBarTextStatic("Ready");
                 });
 
             } catch (Throwable ex) {
                 System.err.println("Deferred file loading failed: " + ex.getMessage());
                 ex.printStackTrace();
-                // Even on failure, re-enable UI so user can inspect options/paths and recover.
                 Platform.runLater(() -> {
                     setFileDependentUiEnabled(true);
-                    setStatusBarTextStatic("Error loading required files (see console)");
+                    setStartupStatus("Error loading required files (see console)", -1, false);
                 });
             }
         }, "glimpse-deferred-file-loader");
@@ -527,42 +550,108 @@ public class Client extends Application {
     }
 
     /** Updates the status bar text (safe from any thread). */
-    private static void setStatusBarTextStatic(String text) {
+    public static void setStartupStatus(String text, double progress, boolean busy) {
         final Client inst = instanceForStatus;
+        startupBusyState = busy;
+        final String safeText = (text == null || text.trim().isEmpty()) ? STARTUP_READY_MESSAGE : text.trim();
         if (inst == null) {
             return;
         }
+        Runnable update = () -> inst.applyStartupStatus(safeText, progress, busy);
         if (Platform.isFxApplicationThread()) {
-            inst.sb.setText(text);
+            update.run();
         } else {
-            Platform.runLater(() -> {
-                try {
-                    inst.sb.setText(text);
-                } catch (Throwable ignored) {
-                }
-            });
+            Platform.runLater(update);
+        }
+    }
+
+    private void applyStartupStatus(String text, double progress, boolean busy) {
+        String safeText = (text == null || text.trim().isEmpty()) ? STARTUP_READY_MESSAGE : text.trim();
+        sb.setText(safeText);
+        if (startupOverlayLabel != null) {
+            startupOverlayLabel.setText(safeText);
+        }
+        if (startupOverlayIndicator != null) {
+            if (progress >= 0.0 && progress <= 1.0) {
+                startupOverlayIndicator.setProgress(progress);
+            } else {
+                startupOverlayIndicator.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
+            }
+        }
+        boolean showOverlay = busy && !STARTUP_READY_MESSAGE.equalsIgnoreCase(safeText);
+        startupOverlayVisible.set(showOverlay);
+        if (startupOverlayBox != null) {
+            startupOverlayBox.setVisible(showOverlay);
+            startupOverlayBox.toFront();
+        }
+        if (!busy && shouldApplyDeferredStatusAfter(safeText)) {
+            applyDeferredStatusBarTextIfReady();
+        }
+    }
+
+    private boolean shouldApplyDeferredStatusAfter(String text) {
+        if (text == null) {
+            return false;
+        }
+        String safeText = text.trim();
+        return STARTUP_READY_MESSAGE.equalsIgnoreCase(safeText)
+                || SCENARIO_REFRESHED_MESSAGE.equalsIgnoreCase(safeText);
+    }
+
+    public static boolean isStartupBusy() {
+        return startupBusyState;
+    }
+
+    public static void setDeferredStatusBarText(String text, String style) {
+        final String safeText = (text == null) ? "" : text.trim();
+        if (safeText.isEmpty()) {
+            return;
+        }
+        deferredStatusBarText = safeText + "\n" + ((style == null || style.trim().isEmpty()) ? "-fx-text-fill: black" : style.trim());
+        applyDeferredStatusBarTextIfReady();
+    }
+
+    private static void applyDeferredStatusBarTextIfReady() {
+        if (startupBusyState) {
+            return;
+        }
+        final Client inst = instanceForStatus;
+        final String pending = deferredStatusBarText;
+        if (inst == null || pending == null || pending.trim().isEmpty()) {
+            return;
+        }
+        Runnable update = () -> {
+            String[] parts = pending.split("\\n", 2);
+            inst.sb.setText(parts[0]);
+            inst.sb.setStyle((parts.length > 1 ? parts[1] : "-fx-text-fill: black"));
+        };
+        if (Platform.isFxApplicationThread()) {
+            update.run();
+        } else {
+            Platform.runLater(update);
         }
     }
 
     /**
-     * Enables/disables UI actions that rely on GLIMPSEFiles having been loaded.
-     * Keep this method on the JavaFX Application Thread.
+     * Creates the overlay that shows startup progress and messages.
+     *
+     * @return VBox the overlay container
      */
-    private static void setFileDependentUiEnabled(boolean enabled) {
-        if (!Platform.isFxApplicationThread()) {
-            Platform.runLater(() -> setFileDependentUiEnabled(enabled));
-            return;
-        }
-        // Primary dependency: New Scenario Component Creator uses loaded file content.
-        if (Client.buttonNewComponent != null) {
-            Client.buttonNewComponent.setDisable(!enabled);
-        }
-        if (Client.buttonEditComponent != null) {
-            Client.buttonEditComponent.setDisable(!enabled);
-        }
-        if (Client.buttonRefreshComponents != null) {
-            Client.buttonRefreshComponents.setDisable(!enabled);
-        }
+    private VBox createStartupOverlay() {
+        startupOverlayLabel = new Label("Starting...");
+        startupOverlayLabel.setWrapText(true);
+        startupOverlayIndicator = new ProgressIndicator();
+        startupOverlayIndicator.setMaxSize(28, 28);
+        startupOverlayIndicator.setPrefSize(28, 28);
+        HBox row = new HBox(10, startupOverlayIndicator, startupOverlayLabel);
+        row.setAlignment(Pos.CENTER_LEFT);
+        VBox overlay = new VBox(row);
+        overlay.setMouseTransparent(true);
+        overlay.setManaged(false);
+        overlay.setVisible(false);
+        overlay.setMaxWidth(420);
+        overlay.setStyle("-fx-background-color: rgba(255,255,255,0.94); -fx-background-radius: 8; -fx-padding: 10 14 10 14; -fx-border-color: rgba(0,0,0,0.15); -fx-border-radius: 8;");
+        return overlay;
     }
 
     /**
@@ -868,5 +957,24 @@ public class Client extends Application {
 		return scenarioBuilder;
 	}
 
+    private final AtomicBoolean startupOverlayVisible = new AtomicBoolean(false);
+    private Label startupOverlayLabel;
+    private ProgressIndicator startupOverlayIndicator;
+    private VBox startupOverlayBox;
 
+    private static void setFileDependentUiEnabled(boolean enabled) {
+        if (!Platform.isFxApplicationThread()) {
+            Platform.runLater(() -> setFileDependentUiEnabled(enabled));
+            return;
+        }
+        if (Client.buttonNewComponent != null) {
+            Client.buttonNewComponent.setDisable(!enabled);
+        }
+        if (Client.buttonEditComponent != null) {
+            Client.buttonEditComponent.setDisable(!enabled);
+        }
+        if (Client.buttonRefreshComponents != null) {
+            Client.buttonRefreshComponents.setDisable(!enabled);
+        }
+    }
 }

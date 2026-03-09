@@ -43,6 +43,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import glimpseElement.ComponentLibraryTable;
 import glimpseElement.ComponentRow;
@@ -74,12 +75,16 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 	private static final String INFO_UNSUPPORTED_ACTION = "Unsupported action";
 	private static final String WARNING_COMPONENT_USED = "Cannot delete selected scenario component since it is used in a scenario.";
 	private static final String PROMPT_FILTER_COMPONENTS = "Filter components...";
+	private static final String LOADING_COMPONENTS_MESSAGE = "Loading components...";
+	private static final String NO_COMPONENTS_MESSAGE = "No scenario components found.";
 
 	// === UI Components ===
 	private final VBox mainVBox = new VBox(1);
 
 	// Dialog
 	private final ScenarioComponentCreatorDialog creatorDialog;
+
+	private final AtomicBoolean componentRefreshInProgress = new AtomicBoolean(false);
 
 	public PaneComponentLibrary() {
 		this.creatorDialog = new ScenarioComponentCreatorDialog(this::refreshComponentLibraryTable);
@@ -119,7 +124,10 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 
 	private void initializeComponentLibraryTable() {
 		try {
-			refreshComponentLibraryTable();
+			if (ComponentLibraryTable.getTableComponents() != null) {
+				ComponentLibraryTable.getTableComponents().setPlaceholder(utils.createLabel(LOADING_COMPONENTS_MESSAGE));
+			}
+			refreshComponentLibraryTableAsync(false);
 		} catch (Exception exception) {
 			utils.warningMessage(ERROR_LOADING_COMPONENTS);
 			System.out.println("Error loading scenario component files from:");
@@ -230,17 +238,53 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 	}
 
 	public void refreshComponentLibraryTable() {
-		File folder = new File(vars.getScenarioComponentsDir());
-		ArrayList<File> fileList = buildFileList(folder.toPath());
-		ComponentRow[] fileArr = new ComponentRow[fileList.size()];
-		int k = 0;
-		for (File file : fileList) {
-			String relativeName = files.getRelativePath(folder.toString(), file.getAbsolutePath());
-			ComponentRow p1 = new ComponentRow(relativeName, file.getPath(), new Date(file.lastModified()));
-			fileArr[k] = p1;
-			k++;
+		refreshComponentLibraryTableAsync(true);
+	}
+
+	private void refreshComponentLibraryTableAsync(boolean userInitiated) {
+		if (!componentRefreshInProgress.compareAndSet(false, true)) {
+			return;
 		}
-		ComponentLibraryTable.createListOfFiles(fileArr);
+		if (ComponentLibraryTable.getTableComponents() != null) {
+			ComponentLibraryTable.getTableComponents().setPlaceholder(utils.createLabel(LOADING_COMPONENTS_MESSAGE));
+		}
+		Client.setStartupStatus("Loading scenario components...", -1, false);
+		Thread thread = new Thread(() -> {
+			try {
+				File folder = new File(vars.getScenarioComponentsDir());
+				ArrayList<File> fileList = buildFileList(folder.toPath());
+				ComponentRow[] fileArr = new ComponentRow[fileList.size()];
+				int k = 0;
+				for (File file : fileList) {
+					String relativeName = files.getRelativePath(folder.toString(), file.getAbsolutePath());
+					ComponentRow p1 = new ComponentRow(relativeName, file.getPath(), new Date(file.lastModified()));
+					fileArr[k] = p1;
+					k++;
+				}
+				javafx.application.Platform.runLater(() -> {
+					ComponentLibraryTable.createListOfFiles(fileArr);
+					if (ComponentLibraryTable.getTableComponents() != null && fileArr.length == 0) {
+						ComponentLibraryTable.getTableComponents().setPlaceholder(utils.createLabel(NO_COMPONENTS_MESSAGE));
+					}
+					Client.setStartupStatus(userInitiated ? "Component library refreshed." : "Scenario components loaded.", -1, false);
+				});
+			} catch (Exception exception) {
+				javafx.application.Platform.runLater(() -> {
+					utils.warningMessage(ERROR_LOADING_COMPONENTS);
+					System.out.println("Error loading scenario component files from:");
+					System.out.println("    " + vars.getScenarioComponentsDir());
+					System.out.println("Error: " + exception);
+					if (ComponentLibraryTable.getTableComponents() != null) {
+						ComponentLibraryTable.getTableComponents().setPlaceholder(utils.createLabel(ERROR_LOADING_COMPONENTS));
+					}
+					Client.setStartupStatus("Problem loading scenario components.", -1, false);
+				});
+			} finally {
+				componentRefreshInProgress.set(false);
+			}
+		}, "component-library-refresh");
+		thread.setDaemon(true);
+		thread.start();
 	}
 
 	public ArrayList<File> buildFileList(Path path) {

@@ -51,6 +51,7 @@ import java.util.Optional;
 import java.util.Scanner;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import glimpseUtil.CommandLineTokenizer;
 import glimpseUtil.ProcessResult;
@@ -137,7 +138,6 @@ import javafx.animation.Timeline;
  * </ul>
  */
 public class PaneScenarioLibrary extends ScenarioBuilder {
-
     // --- Live tail of exe/logs/main_log.txt (optional) ---
     // If true, the GCAM stdout console will also show lines tailed from exeDir/logs/main_log.txt while GCAM runs.
     // This helps on Windows when native stdout is block-buffered.
@@ -154,6 +154,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             "Model run completed.",
             "Finished printing output."
     };
+
+    private static final String LOADING_SCENARIOS_MESSAGE = "Loading scenario status...";
+    private static final String NO_SCENARIOS_MESSAGE = "No scenarios found.";
+    private static final String READY_MESSAGE = "Ready";
 
     private static boolean isTailedLogLine(String line) {
         return line != null && line.startsWith(TAILED_LOG_PREFIX);
@@ -389,6 +393,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
     private long startupTime = 0;
     private final HBox scenarioLibraryHBox = new HBox(1);
+    private final AtomicBoolean scenarioRefreshInProgress = new AtomicBoolean(false);
 
     /**
      * Constructs the scenario library pane, sets up UI controls, event handlers, and initializes the scenario table.
@@ -407,9 +412,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         ScenarioTable.tableScenariosLibrary.prefWidthProperty().bind(stage.widthProperty().multiply(1.0)); // Bind table width to stage
         ScenarioTable.tableScenariosLibrary.prefHeightProperty().bind(stage.heightProperty().multiply(0.7)); // Bind table height to stage
         scenarioLibraryHBox.getChildren().addAll(ScenarioTable.tableScenariosLibrary); // Add table to HBox
+        if (ScenarioTable.tableScenariosLibrary != null) {
+            ScenarioTable.tableScenariosLibrary.setPlaceholder(utils.createLabel(LOADING_SCENARIOS_MESSAGE));
+        }
         if (startupTime == 0) startupTime = (new Date()).getTime(); // Record startup time
         System.out.println("time now=" + (new SimpleDateFormat("MM/dd/yyyy HH:mm:ss")).format(startupTime));
-        updateRunStatus(); // Initial update of scenario run status
+        refreshScenarioStatusAsync(false); // Initial update of scenario run status
     }
 
     /**
@@ -463,7 +471,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
         // Event handlers for each button
         Client.buttonRefreshScenarioStatus.setOnAction(e -> {
-            updateRunStatus();
+            refreshScenarioStatusAsync(true);
             ScenarioTable.tableScenariosLibrary.refresh();
         });
         Client.buttonConsole.setOnAction(e -> ConsoleManager.show());
@@ -477,7 +485,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 System.out.println("Error: " + ex);
                 utils.exitOnException();
             }
-            updateRunStatus();
+            refreshScenarioStatusAsync(true);
         });
         Client.buttonStopScenario.setOnAction(e -> stopCurrentGcamRun());
 
@@ -1402,15 +1410,43 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
      * Also updates the UI with computer stats and logs status changes.
      */
     public void updateRunStatus() {
-        String currentMainLogName = ScenarioLibraryPathHelper.exeMainLogFile(vars.getgCamExecutableDir());
-        File currentMainLogFile = new File(currentMainLogName);
-        String runningScenario = utils.getRunningScenario(currentMainLogFile);
-        String stopRequestedScenario = getStopRequestedScenarioName();
-        ScenarioTable.tableScenariosLibrary.refresh();
-        String address = ScenarioLibraryPathHelper.glimpseRunsFile(vars.getGlimpseLogDir());
-        DateFormat format = new SimpleDateFormat("EE MMM dd HH:mm:ss z yyyy", Locale.ENGLISH);
-        DateFormat format2 = new SimpleDateFormat("yyyy-MM-dd: HH:mm", Locale.ENGLISH);
-        ArrayList<String> searchArray = new ArrayList<>();
+        final String currentMainLogName = ScenarioLibraryPathHelper.exeMainLogFile(vars.getgCamExecutableDir());
+        final File currentMainLogFile = new File(currentMainLogName);
+        final String runningScenario = utils.getRunningScenario(currentMainLogFile);
+        final String stopRequestedScenario = getStopRequestedScenarioName();
+        final DateFormat format2 = new SimpleDateFormat("yyyy-MM-dd: HH:mm", Locale.ENGLISH);
+        final ArrayList<ScenarioStatusSnapshot> snapshots = new ArrayList<>();
+        final boolean[] noScenarios = new boolean[] { false };
+
+        updateStatusBarComputerStats(runningScenario);
+
+        try {
+            File[] scenarioFolders = new File(vars.getScenarioDir()).listFiles(File::isDirectory);
+            if (scenarioFolders == null) {
+                noScenarios[0] = true;
+            } else {
+                for (File scenarioFolder : scenarioFolders) {
+                    ScenarioStatusSnapshot snapshot = buildScenarioStatusSnapshot(
+                            scenarioFolder, currentMainLogFile, runningScenario, stopRequestedScenario, format2);
+                    if (snapshot != null) {
+                        snapshots.add(snapshot);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            System.out.println("Problem updating scenario table: " + ex);
+            Platform.runLater(() -> {
+                if (ScenarioTable.tableScenariosLibrary != null) {
+                    ScenarioTable.tableScenariosLibrary.refresh();
+                }
+            });
+            return;
+        }
+
+        Platform.runLater(() -> applyScenarioStatusSnapshots(snapshots, noScenarios[0]));
+    }
+
+    private void updateStatusBarComputerStats(String runningScenario) {
         Platform.runLater(() -> {
             String computerStats = utils.getComputerStatString().trim();
             if (computerStats.endsWith("!!!")) {
@@ -1421,162 +1457,181 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 String logText = runningScenario + ":" + time + ":" + computerStats + vars.getEol();
                 files.appendTextToFile(logText, glimpseLogFilename);
             }
-            utils.sb.setText(computerStats);
-            if (computerStats.endsWith("!")) {
-                utils.sb.setStyle("-fx-text-fill: red");
-            } else {
-                utils.sb.setStyle("-fx-text-fill: black");
+            String statusStyle = computerStats.endsWith("!") ? "-fx-text-fill: red" : "-fx-text-fill: black";
+            Client.setDeferredStatusBarText(computerStats, statusStyle);
+            if (!Client.isStartupBusy() && utils.sb != null) {
+                utils.sb.setText(computerStats);
+                utils.sb.setStyle(statusStyle);
             }
         });
-        try {
-            File[] scenarioFolders = new File(vars.getScenarioDir()).listFiles(File::isDirectory);
-            if (scenarioFolders == null) return;
-            for (File scenarioFolder : scenarioFolders) {
-                searchArray.clear();
-                searchArray.add("Model run completed.");
-                searchArray.add("Data Readin, Model Run & Write Time:");
-                searchArray.add("The following model periods did not solve:");
-                Long createdDate = 0L;
-                Long completedDate = 0L;
-                String scenarioName = scenarioFolder.getName();
-                String configName = ScenarioLibraryPathHelper.scenarioConfigFile(vars.getScenarioDir(), scenarioName);
-                File configFile = new File(configName);
-                if (!configFile.exists()) continue;
-                String components = getComponentsFromConfig(configFile); // Get scenario components from config
-                String mainLogName = ScenarioLibraryPathHelper.scenarioMainLogFile(vars.getScenarioDir(), scenarioName);
-                File mainLogFile = new File(mainLogName);
-                boolean mainLogExists = mainLogFile.exists();
-                String status = "";
-                String runtime = "";
-                String unsolved = "";
-                createdDate = configFile.lastModified();
-                if (mainLogExists) {
-                    completedDate = mainLogFile.lastModified();
-                    searchArray = files.getMatchingTextArrayInFile(mainLogName, searchArray);
-                    if (!searchArray.get(0).isEmpty()) {
-                        status = "Success";
-                    } else {
-                        status = "DNF";
-                        String runningStatus = utils.getScenarioStatusFromMainLog(mainLogFile);
-                        if (runningStatus.contains(",ERR")) {
-                            String errorStr = runningStatus.substring(runningStatus.indexOf(",") + 4);
-                            unsolved = errorStr;
-                        }
-                    }
-                    for (int i = 0; i < runsQueuedList.size(); i++) {
-                        String line = runsQueuedList.get(i);
-                        if (line.equals(scenarioName)) {
-                            status = "In queue";
-                            if (mainLogExists) {
-                                runsCompletedList.add(line);
-                                runsQueuedList.remove(i);
-                            }
-                            break;
-                        }
-                    }
-                }
-                if (!"Success".equals(status) && hasStdoutSuccessMarker(scenarioFolder)) {
-                    status = "Success";
-                }
-                if (!searchArray.get(1).isEmpty()) {
-                    try {
-                        runtime = searchArray.get(1).split(":")[1].trim();
-                    } catch (Exception e) {
-                        runtime = "";
-                    }
-                    runtime = runtime.replace("seconds.", "").trim();
-                    try {
-                        int totalSecs = (int) Math.round(Float.parseFloat(runtime));
-                        int hours = (totalSecs - totalSecs % 3600) / 3600;
-                        int minutes = (totalSecs % 3600 - totalSecs % 3600 % 60) / 60;
-                        runtime = hours + " hr " + minutes + " min ";
-                    } catch (Exception e) {
-                        runtime += "";
-                    }
-                }
-                if (!searchArray.get(2).isEmpty()) {
-                    try {
-                        unsolved = searchArray.get(2).split(":")[1].trim();
-                        status = "Unsolved mkts";
-                    } catch (Exception e) {
-                        unsolved = "";
-                    }
-                }
-                String createdDateStr = createdDate != 0L ? format2.format(createdDate) : "";
-                String completedDateStr = completedDate != 0L ? format2.format(completedDate) : "";
-                if ((!status.equals("Success")) && (!status.equals("Unsolved mkts")) && (!status.equals("DNF"))) {
-                    if (scenarioName.equals(runningScenario)) {
-                        status = "Running";
-                        long lastDate = currentMainLogFile.lastModified();
-                        // Only consider "Lost handle" for a truly running scenario, and avoid transient
-                        // misclassification immediately after startup / when runs are merely queued.
-                        boolean isQueued = runsQueuedList.contains(scenarioName);
-                        long graceMs = 30_000L; // allow some time for main_log.txt to begin updating
-                        if (!isQueued && (startupTime > 0) && (System.currentTimeMillis() - startupTime > graceMs)
-                                && lastDate < startupTime) {
-                            status = "Lost handle";
-                        } else {
-                            String runningStatus = utils.getScenarioStatusFromMainLog(currentMainLogFile);
-                            String explicitRunState = getExplicitRunStateLabel(scenarioName, currentMainLogFile, runningStatus);
-                            if (!explicitRunState.isEmpty()) {
-                                status = explicitRunState;
-                            } else if (runningStatus.contains(",ERR")) {
-                                String temp = runningStatus.substring(0, runningStatus.indexOf(","));
-                                status = status + "(" + temp + ")";
+    }
 
-                                String errorStr = runningStatus.substring(runningStatus.indexOf(",") + 4);
-                                unsolved = errorStr;
-                            } else {
-                                String temp = runningStatus;
-                                if (!temp.isEmpty()) {
-                                    status = status + "(" + temp + ")";
-                                }
-                            }
-                        }
-                    } else {
-                        for (String line : runsQueuedList) {
-                            if (line.equals(scenarioName)) {
-                                status = "In queue";
-                                break;
-                            }
-                        }
-                    }
-                }
-                if ((status.isEmpty() || status.startsWith("Running") || GCAM_STATUS_BLOCKED.equals(status) || GCAM_STATUS_WRITING.equals(status))
-                        && scenarioName.equals(stopRequestedScenario) && !isScenarioActivelyRunning(scenarioName)) {
-                    status = "DNF";
-                }
-                boolean match = false;
-                for (ScenarioRow s : ScenarioTable.listOfScenarioRuns) {
-                    if (s.getScenarioName().equals(scenarioName)) {
-                        match = true;
-                        if (!s.getStatus().equals("In queue") || !status.isEmpty()) {
-                            s.setStatus(status);
-                        }
-                        s.setCreatedDate(createdDateStr);
-                        s.setCompletedDate(completedDateStr);
-                        s.setComponents(components);
-                        s.setRuntime(runtime);
-                        s.setUnsolvedMarkets(unsolved);
-                    }
-                }
-                if (!match) {
-                    ScenarioRow sr = new ScenarioRow(scenarioName);
-                    sr.setComponents(components);
-                    sr.setCreatedDate(createdDateStr);
-                    sr.setCompletedDate(completedDateStr);
-                    if (!"In queue".equals(sr.getStatus()) || !status.isEmpty()) {
-                        sr.setStatus(status);
-                    }
-                    sr.setRuntime(runtime);
-                    sr.setUnsolvedMarkets(unsolved);
-                    ScenarioTable.listOfScenarioRuns.add(sr);
+    private ScenarioStatusSnapshot buildScenarioStatusSnapshot(File scenarioFolder, File currentMainLogFile,
+            String runningScenario, String stopRequestedScenario, DateFormat format2) {
+        ArrayList<String> searchArray = new ArrayList<>();
+        searchArray.add("Model run completed.");
+        searchArray.add("Data Readin, Model Run & Write Time:");
+        searchArray.add("The following model periods did not solve:");
+
+        Long createdDate = 0L;
+        Long completedDate = 0L;
+        String scenarioName = scenarioFolder.getName();
+        String configName = ScenarioLibraryPathHelper.scenarioConfigFile(vars.getScenarioDir(), scenarioName);
+        File configFile = new File(configName);
+        if (!configFile.exists()) {
+            return null;
+        }
+
+        String components = getComponentsFromConfig(configFile);
+        String mainLogName = ScenarioLibraryPathHelper.scenarioMainLogFile(vars.getScenarioDir(), scenarioName);
+        File mainLogFile = new File(mainLogName);
+        boolean mainLogExists = mainLogFile.exists();
+        String status = "";
+        String runtime = "";
+        String unsolved = "";
+        createdDate = configFile.lastModified();
+
+        if (mainLogExists) {
+            completedDate = mainLogFile.lastModified();
+            searchArray = files.getMatchingTextArrayInFile(mainLogName, searchArray);
+            if (!searchArray.get(0).isEmpty()) {
+                status = "Success";
+            } else {
+                status = "DNF";
+                String runningStatus = utils.getScenarioStatusFromMainLog(mainLogFile);
+                if (runningStatus.contains(",ERR")) {
+                    String errorStr = runningStatus.substring(runningStatus.indexOf(",") + 4);
+                    unsolved = errorStr;
                 }
             }
-            ScenarioTable.tableScenariosLibrary.refresh();
-        } catch (Exception ex) {
-            System.out.println("Problem updating scenario table: " + ex);
+            for (int i = 0; i < runsQueuedList.size(); i++) {
+                String line = runsQueuedList.get(i);
+                if (line.equals(scenarioName)) {
+                    status = "In queue";
+                    if (mainLogExists) {
+                        runsCompletedList.add(line);
+                        runsQueuedList.remove(i);
+                    }
+                    break;
+                }
+            }
         }
+
+        if (!"Success".equals(status) && hasStdoutSuccessMarker(scenarioFolder)) {
+            status = "Success";
+        }
+        if (!searchArray.get(1).isEmpty()) {
+            try {
+                runtime = searchArray.get(1).split(":")[1].trim();
+            } catch (Exception e) {
+                runtime = "";
+            }
+            runtime = runtime.replace("seconds.", "").trim();
+            try {
+                int totalSecs = (int) Math.round(Float.parseFloat(runtime));
+                int hours = (totalSecs - totalSecs % 3600) / 3600;
+                int minutes = (totalSecs % 3600 - totalSecs % 3600 % 60) / 60;
+                runtime = hours + " hr " + minutes + " min ";
+            } catch (Exception e) {
+                runtime += "";
+            }
+        }
+        if (!searchArray.get(2).isEmpty()) {
+            try {
+                unsolved = searchArray.get(2).split(":")[1].trim();
+                status = "Unsolved mkts";
+            } catch (Exception e) {
+                unsolved = "";
+            }
+        }
+
+        String createdDateStr = createdDate != 0L ? format2.format(createdDate) : "";
+        String completedDateStr = completedDate != 0L ? format2.format(completedDate) : "";
+        if ((!status.equals("Success")) && (!status.equals("Unsolved mkts")) && (!status.equals("DNF"))) {
+            if (scenarioName.equals(runningScenario)) {
+                status = "Running";
+                long lastDate = currentMainLogFile.lastModified();
+                boolean isQueued = runsQueuedList.contains(scenarioName);
+                long graceMs = 30_000L;
+                if (!isQueued && (startupTime > 0) && (System.currentTimeMillis() - startupTime > graceMs)
+                        && lastDate < startupTime) {
+                    status = "Lost handle";
+                } else {
+                    String runningStatus = utils.getScenarioStatusFromMainLog(currentMainLogFile);
+                    String explicitRunState = getExplicitRunStateLabel(scenarioName, currentMainLogFile, runningStatus);
+                    if (!explicitRunState.isEmpty()) {
+                        status = explicitRunState;
+                    } else if (runningStatus.contains(",ERR")) {
+                        String temp = runningStatus.substring(0, runningStatus.indexOf(","));
+                        status = status + "(" + temp + ")";
+                        String errorStr = runningStatus.substring(runningStatus.indexOf(",") + 4);
+                        unsolved = errorStr;
+                    } else {
+                        String temp = runningStatus;
+                        if (!temp.isEmpty()) {
+                            status = status + "(" + temp + ")";
+                        }
+                    }
+                }
+            } else {
+                for (String line : runsQueuedList) {
+                    if (line.equals(scenarioName)) {
+                        status = "In queue";
+                        break;
+                    }
+                }
+            }
+        }
+        if ((status.isEmpty() || status.startsWith("Running") || GCAM_STATUS_BLOCKED.equals(status)
+                || GCAM_STATUS_WRITING.equals(status))
+                && scenarioName.equals(stopRequestedScenario) && !isScenarioActivelyRunning(scenarioName)) {
+            status = "DNF";
+        }
+
+        return new ScenarioStatusSnapshot(scenarioName, components, createdDateStr, completedDateStr, status, runtime, unsolved);
+    }
+
+    private void applyScenarioStatusSnapshots(List<ScenarioStatusSnapshot> snapshots, boolean noScenarios) {
+        if (ScenarioTable.tableScenariosLibrary == null) {
+            return;
+        }
+        ScenarioTable.tableScenariosLibrary.refresh();
+        if (noScenarios) {
+            ScenarioTable.tableScenariosLibrary.setPlaceholder(utils.createLabel(NO_SCENARIOS_MESSAGE));
+            return;
+        }
+        for (ScenarioStatusSnapshot snapshot : snapshots) {
+            boolean match = false;
+            for (ScenarioRow s : ScenarioTable.listOfScenarioRuns) {
+                if (s.getScenarioName().equals(snapshot.scenarioName)) {
+                    match = true;
+                    if (!s.getStatus().equals("In queue") || !snapshot.status.isEmpty()) {
+                        s.setStatus(snapshot.status);
+                    }
+                    s.setCreatedDate(snapshot.createdDate);
+                    s.setCompletedDate(snapshot.completedDate);
+                    s.setComponents(snapshot.components);
+                    s.setRuntime(snapshot.runtime);
+                    s.setUnsolvedMarkets(snapshot.unsolved);
+                }
+            }
+            if (!match) {
+                ScenarioRow sr = new ScenarioRow(snapshot.scenarioName);
+                sr.setComponents(snapshot.components);
+                sr.setCreatedDate(snapshot.createdDate);
+                sr.setCompletedDate(snapshot.completedDate);
+                if (!"In queue".equals(sr.getStatus()) || !snapshot.status.isEmpty()) {
+                    sr.setStatus(snapshot.status);
+                }
+                sr.setRuntime(snapshot.runtime);
+                sr.setUnsolvedMarkets(snapshot.unsolved);
+                ScenarioTable.listOfScenarioRuns.add(sr);
+            }
+        }
+        if (ScenarioTable.listOfScenarioRuns.isEmpty()) {
+            ScenarioTable.tableScenariosLibrary.setPlaceholder(utils.createLabel(NO_SCENARIOS_MESSAGE));
+        }
+        ScenarioTable.tableScenariosLibrary.refresh();
     }
 
     // --- Added: Explicit run-state handling ---
@@ -2080,18 +2135,64 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
      * from the scenario directory using the current refresh logic.
      */
     public void clearAndRefreshScenarioTable() {
-        Runnable refreshTask = () -> {
-            ScenarioTable.clear();
-            updateRunStatus();
-            if (ScenarioTable.tableScenariosLibrary != null) {
-                ScenarioTable.tableScenariosLibrary.refresh();
-            }
-        };
+        refreshScenarioStatusAsync(true);
+    }
 
-        if (Platform.isFxApplicationThread()) {
-            refreshTask.run();
-        } else {
-            Platform.runLater(refreshTask);
+    public void refreshScenarioStatusAsync(boolean userInitiated) {
+        if (!scenarioRefreshInProgress.compareAndSet(false, true)) {
+            return;
+        }
+        Platform.runLater(() -> {
+            if (ScenarioTable.tableScenariosLibrary != null) {
+                ScenarioTable.tableScenariosLibrary.setPlaceholder(utils.createLabel(LOADING_SCENARIOS_MESSAGE));
+            }
+            ScenarioTable.clear();
+        });
+        Client.setStartupStatus(userInitiated ? "Refreshing scenario status..." : "Loading scenario status...", -1, !userInitiated);
+        Thread refreshThread = new Thread(() -> {
+            try {
+                updateRunStatus();
+                Platform.runLater(() -> {
+                    try {
+                        if (ScenarioTable.tableScenariosLibrary != null) {
+                            ScenarioTable.tableScenariosLibrary.refresh();
+                        }
+                        Client.setStartupStatus(userInitiated ? "Scenario status refreshed." : READY_MESSAGE, -1, false);
+                    } finally {
+                        scenarioRefreshInProgress.set(false);
+                    }
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    System.out.println("Problem updating scenario table: " + ex);
+                    Client.setStartupStatus("Problem loading scenario status.", -1, false);
+                    scenarioRefreshInProgress.set(false);
+                });
+            }
+        }, "scenario-status-refresh");
+        refreshThread.setDaemon(true);
+        refreshThread.start();
+    }
+
+    private static final class ScenarioStatusSnapshot {
+        final String scenarioName;
+        final String components;
+        final String createdDate;
+        final String completedDate;
+        final String status;
+        final String runtime;
+        final String unsolved;
+
+        ScenarioStatusSnapshot(String scenarioName, String components, String createdDate, String completedDate,
+                String status, String runtime, String unsolved) {
+            this.scenarioName = scenarioName;
+            this.components = components;
+            this.createdDate = createdDate;
+            this.completedDate = completedDate;
+            this.status = status;
+            this.runtime = runtime;
+            this.unsolved = unsolved;
         }
     }
 }
+

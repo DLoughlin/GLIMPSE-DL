@@ -41,7 +41,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ScenarioRow {
 
-
 	private final StringProperty scenName = new SimpleStringProperty(this, "scenName", null);
 	private final StringProperty components = new SimpleStringProperty(this, "components", null);
 	private final StringProperty createdDate = new SimpleStringProperty(this, "createdDate", null);
@@ -64,6 +63,10 @@ public class ScenarioRow {
 	}
 	
 
+	public final StringProperty scenNameProperty() {
+		return scenName;
+	}
+	
 	public final String getScenName() {
 		return scenName.get();
 	}
@@ -76,12 +79,20 @@ public class ScenarioRow {
 		scenName.set(name);
 	}
 
+	public final StringProperty componentsProperty() {
+		return components;
+	}
+	
 	public final String getComponents() {
 		return components.get();
 	}
 	
 	public final void setComponents(String txt) {
 		components.set(txt);
+	}
+	
+	public final StringProperty statusProperty() {
+		return status;
 	}
 	
 	public final String getStatus() {
@@ -92,6 +103,10 @@ public class ScenarioRow {
 		status.set(txt);
 	}	
 	
+	public final StringProperty unsolvedMarketsProperty() {
+		return unsolvedMarkets;
+	}
+	
 	public final String getUnsolvedMarkets() {
 		return unsolvedMarkets.get();
 	}	
@@ -99,6 +114,10 @@ public class ScenarioRow {
 	public final void setUnsolvedMarkets(String txt) {
 		unsolvedMarkets.set(txt);
 	}	
+	
+	public final StringProperty noErrProperty() {
+		return noErr;
+	}
 	
 	public final String getNoErr() {
 		return noErr.get();
@@ -108,6 +127,10 @@ public class ScenarioRow {
 		noErr.set(txt);
 	}	
 	
+	public final StringProperty noIterProperty() {
+		return noIter;
+	}
+	
 	public final String getNoIter() {
 		return noIter.get();
 	}	
@@ -115,6 +138,10 @@ public class ScenarioRow {
 	public final void setNoIter(String txt) {
 		noIter.set(txt);
 	}	
+	
+	public final StringProperty runtimeProperty() {
+		return runtime;
+	}
 	
 	public final String getRuntime() {
 		return runtime.get();
@@ -140,6 +167,10 @@ public class ScenarioRow {
 		computingTooltip.set(false);
 	}
 
+	public final StringProperty createdDateProperty() {
+		return createdDate;
+	}
+	
 	public final String getCreatedDate() {
 		return createdDate.get();
 	}
@@ -156,6 +187,10 @@ public class ScenarioRow {
 		createdDate.set(new Date(date).toString());
 	}		
 	
+	public final StringProperty completedDateProperty() {
+		return completedDate;
+	}
+	
 	public final String getCompletedDate() {
 		return completedDate.get();
 	}	
@@ -171,6 +206,10 @@ public class ScenarioRow {
 	public final void setCompletedDate(Long date) {
 		completedDate.set(new Date(date).toString());
 	}	
+	
+	public final StringProperty startedDateProperty() {
+		return startedDate;
+	}
 	
 	public final String getStartedDate() {
 		return startedDate.get();
