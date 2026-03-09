@@ -169,12 +169,33 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
         liveStatusRefreshTimeline = new Timeline(new KeyFrame(javafx.util.Duration.seconds(LIVE_STATUS_REFRESH_INTERVAL.getSeconds()), e -> {
             try {
-                if (hasActiveGcamRun()) {
-                    updateRunStatus();
-                    ScenarioTable.tableScenariosLibrary.refresh();
-                } else {
+                if (!hasActiveGcamRun()) {
                     stopLiveStatusRefresh();
+                    return;
                 }
+                // Guard against a previous tick's background work still running.
+                if (!liveStatusRefreshInProgress.compareAndSet(false, true)) {
+                    return;
+                }
+                Thread refreshThread = new Thread(() -> {
+                    try {
+                        updateRunStatus();
+                    } catch (Exception ex) {
+                        System.out.println("Problem during live status refresh: " + ex);
+                    } finally {
+                        Platform.runLater(() -> {
+                            try {
+                                if (ScenarioTable.tableScenariosLibrary != null) {
+                                    ScenarioTable.tableScenariosLibrary.refresh();
+                                }
+                            } finally {
+                                liveStatusRefreshInProgress.set(false);
+                            }
+                        });
+                    }
+                }, "live-status-refresh");
+                refreshThread.setDaemon(true);
+                refreshThread.start();
             } catch (Exception ignored) {}
         }));
         liveStatusRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
@@ -390,6 +411,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     /** Tracks the scenario name currently being executed by GCAM (best-effort). */
     private volatile String currentGcamScenarioName;
     private Timeline liveStatusRefreshTimeline;
+    private final AtomicBoolean liveStatusRefreshInProgress = new AtomicBoolean(false);
 
     private long startupTime = 0;
     private final HBox scenarioLibraryHBox = new HBox(1);
