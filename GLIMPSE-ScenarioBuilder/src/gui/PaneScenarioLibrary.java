@@ -1060,6 +1060,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                         currentGcamScenarioName = queuedScenarioName;
                         lastStoppedGcamScenarioName = null;
                         clearScenarioRunStatusFields(queuedScenarioName);
+                        startLiveStatusRefresh();
 
                         Platform.runLater(() -> {
                             try {
@@ -1083,6 +1084,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                         } catch (Exception ignored) {}
                         currentGcamRun = null;
                         currentGcamScenarioName = null;
+                        stopLiveStatusRefresh();
                         Platform.runLater(() -> {
                             try {
                                 if (Client.buttonStopScenario != null) {
