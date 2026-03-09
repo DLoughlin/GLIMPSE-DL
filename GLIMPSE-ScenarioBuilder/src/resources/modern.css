@@ -126,6 +126,11 @@
     -fx-text-background-color: #1565c0;
 }
 
+.table-row-cell:selected:hover {
+    -fx-background-color: #e3f2fd;
+    -fx-text-background-color: #1565c0;
+}
+
 .table-row-cell:hover {
     -fx-background-color: #f5f5f5;
 }

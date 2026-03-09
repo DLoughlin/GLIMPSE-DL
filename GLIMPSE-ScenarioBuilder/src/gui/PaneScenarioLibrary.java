@@ -45,8 +45,10 @@ import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.concurrent.Callable;
@@ -183,15 +185,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                     } catch (Exception ex) {
                         System.out.println("Problem during live status refresh: " + ex);
                     } finally {
-                        Platform.runLater(() -> {
-                            try {
-                                if (ScenarioTable.tableScenariosLibrary != null) {
-                                    ScenarioTable.tableScenariosLibrary.refresh();
-                                }
-                            } finally {
-                                liveStatusRefreshInProgress.set(false);
-                            }
-                        });
+                        Platform.runLater(() -> liveStatusRefreshInProgress.set(false));
                     }
                 }, "live-status-refresh");
                 refreshThread.setDaemon(true);
@@ -1619,43 +1613,84 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         if (ScenarioTable.tableScenariosLibrary == null) {
             return;
         }
-        ScenarioTable.tableScenariosLibrary.refresh();
         if (noScenarios) {
+            if (!ScenarioTable.listOfScenarioRuns.isEmpty()) {
+                ScenarioTable.listOfScenarioRuns.clear();
+                ScenarioTable.tableScenariosLibrary.refresh();
+            }
             ScenarioTable.tableScenariosLibrary.setPlaceholder(utils.createLabel(NO_SCENARIOS_MESSAGE));
             return;
         }
+
+        ScenarioTable.tableScenariosLibrary.setPlaceholder(utils.createLabel(READY_MESSAGE));
+
+        Map<String, ScenarioStatusSnapshot> snapshotsByName = new LinkedHashMap<>();
         for (ScenarioStatusSnapshot snapshot : snapshots) {
-            boolean match = false;
-            for (ScenarioRow s : ScenarioTable.listOfScenarioRuns) {
-                if (s.getScenarioName().equals(snapshot.scenarioName)) {
-                    match = true;
-                    if (!s.getStatus().equals("In queue") || !snapshot.status.isEmpty()) {
-                        s.setStatus(snapshot.status);
-                    }
-                    s.setCreatedDate(snapshot.createdDate);
-                    s.setCompletedDate(snapshot.completedDate);
-                    s.setComponents(snapshot.components);
-                    s.setRuntime(snapshot.runtime);
-                    s.setUnsolvedMarkets(snapshot.unsolved);
-                }
-            }
-            if (!match) {
-                ScenarioRow sr = new ScenarioRow(snapshot.scenarioName);
-                sr.setComponents(snapshot.components);
-                sr.setCreatedDate(snapshot.createdDate);
-                sr.setCompletedDate(snapshot.completedDate);
-                if (!"In queue".equals(sr.getStatus()) || !snapshot.status.isEmpty()) {
-                    sr.setStatus(snapshot.status);
-                }
-                sr.setRuntime(snapshot.runtime);
-                sr.setUnsolvedMarkets(snapshot.unsolved);
-                ScenarioTable.listOfScenarioRuns.add(sr);
+            if (snapshot != null && snapshot.scenarioName != null) {
+                snapshotsByName.put(snapshot.scenarioName, snapshot);
             }
         }
+
+        boolean rowsRemoved = false;
+        for (int i = ScenarioTable.listOfScenarioRuns.size() - 1; i >= 0; i--) {
+            ScenarioRow row = ScenarioTable.listOfScenarioRuns.get(i);
+            if (row == null || row.getScenarioName() == null) {
+                ScenarioTable.listOfScenarioRuns.remove(i);
+                rowsRemoved = true;
+                continue;
+            }
+            if (!snapshotsByName.containsKey(row.getScenarioName())) {
+                ScenarioTable.listOfScenarioRuns.remove(i);
+                rowsRemoved = true;
+            }
+        }
+
+        Map<String, ScenarioRow> rowsByName = new LinkedHashMap<>();
+        for (ScenarioRow row : ScenarioTable.listOfScenarioRuns) {
+            if (row != null && row.getScenarioName() != null) {
+                rowsByName.put(row.getScenarioName(), row);
+            }
+        }
+
+        boolean rowsAdded = false;
+        for (ScenarioStatusSnapshot snapshot : snapshotsByName.values()) {
+            ScenarioRow row = rowsByName.get(snapshot.scenarioName);
+            if (row == null) {
+                row = new ScenarioRow(snapshot.scenarioName);
+                ScenarioTable.listOfScenarioRuns.add(row);
+                rowsByName.put(snapshot.scenarioName, row);
+                rowsAdded = true;
+            }
+            applySnapshotToRow(row, snapshot);
+        }
+
         if (ScenarioTable.listOfScenarioRuns.isEmpty()) {
             ScenarioTable.tableScenariosLibrary.setPlaceholder(utils.createLabel(NO_SCENARIOS_MESSAGE));
+        } else if (rowsAdded || rowsRemoved) {
+            ScenarioTable.tableScenariosLibrary.refresh();
         }
-        ScenarioTable.tableScenariosLibrary.refresh();
+    }
+
+    private void applySnapshotToRow(ScenarioRow row, ScenarioStatusSnapshot snapshot) {
+        if (row == null || snapshot == null) {
+            return;
+        }
+        if (!"In queue".equals(row.getStatus()) || !snapshot.status.isEmpty()) {
+            setScenarioRowValue(row.getStatus(), row::setStatus, snapshot.status);
+        }
+        setScenarioRowValue(row.getCreatedDate(), row::setCreatedDate, snapshot.createdDate);
+        setScenarioRowValue(row.getCompletedDate(), row::setCompletedDate, snapshot.completedDate);
+        setScenarioRowValue(row.getComponents(), row::setComponents, snapshot.components);
+        setScenarioRowValue(row.getRuntime(), row::setRuntime, snapshot.runtime);
+        setScenarioRowValue(row.getUnsolvedMarkets(), row::setUnsolvedMarkets, snapshot.unsolved);
+    }
+
+    private void setScenarioRowValue(String currentValue, java.util.function.Consumer<String> setter, String newValue) {
+        String normalizedCurrent = currentValue == null ? "" : currentValue;
+        String normalizedNew = newValue == null ? "" : newValue;
+        if (!normalizedCurrent.equals(normalizedNew)) {
+            setter.accept(normalizedNew);
+        }
     }
 
     // --- Added: Explicit run-state handling ---
@@ -2178,9 +2213,6 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 updateRunStatus();
                 Platform.runLater(() -> {
                     try {
-                        if (ScenarioTable.tableScenariosLibrary != null) {
-                            ScenarioTable.tableScenariosLibrary.refresh();
-                        }
                         Client.setStartupStatus(userInitiated ? "Scenario status refreshed." : READY_MESSAGE, -1, false);
                     } finally {
                         scenarioRefreshInProgress.set(false);
@@ -2219,4 +2251,3 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 }
-

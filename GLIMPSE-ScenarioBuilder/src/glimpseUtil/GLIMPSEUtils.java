@@ -2333,6 +2333,7 @@ public class GLIMPSEUtils {
 		formatter.setGroupingUsed(false);
 		double min_dmd = 0.0001;
 		double min_red = 0.01;
+		int maj_smallmkt_fails = 0;
 		int total_fails = 0, minor_fails = 0, min_smallmkt_fails = 0, major_fails = 0, moderate_fails = 0;
 		String scenarioLabel = (scenario == null || scenario.trim().isEmpty()) ? "exe/main_log.txt" : scenario;
 		ArrayList<String> report = new ArrayList<>();
