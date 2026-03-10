@@ -410,6 +410,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private long startupTime = 0;
     private final HBox scenarioLibraryHBox = new HBox(1);
     private final AtomicBoolean scenarioRefreshInProgress = new AtomicBoolean(false);
+    private RefreshViewState pendingRefreshViewState = RefreshViewState.empty();
 
     /**
      * Constructs the scenario library pane, sets up UI controls, event handlers, and initializes the scenario table.
@@ -421,7 +422,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         // Removed inline style to allow CSS styling
         // scenarioLibraryHBox.setStyle(styles.getFontStyle()); // Set font style for the HBox
         scenarioLibraryHBox.setSpacing(10); // Set spacing between elements
-        ScenarioTable.tableScenariosLibrary.setOnMouseClicked(e -> setArrowAndButtonStatus()); // Update button status on table click
+        wireScenarioSelectionButtonRefresh();
         createScenarioLibraryButtons(); // Create and configure all scenario library buttons
         ensureLiveStatusRefreshTimeline();
 
@@ -431,6 +432,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         if (ScenarioTable.tableScenariosLibrary != null) {
             ScenarioTable.tableScenariosLibrary.setPlaceholder(utils.createLabel(LOADING_SCENARIOS_MESSAGE));
         }
+        refreshScenarioActionButtons();
         if (startupTime == 0) startupTime = (new Date()).getTime(); // Record startup time
         System.out.println("time now=" + (new SimpleDateFormat("MM/dd/yyyy HH:mm:ss")).format(startupTime));
         refreshScenarioStatusAsync(false); // Initial update of scenario run status
@@ -538,16 +540,161 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         Client.buttonViewLog.setVisible(true);
         Client.buttonViewExeLog.setVisible(true);
         Client.buttonReport.setVisible(false);
+        refreshScenarioActionButtons();
+    }
+
+    private void wireScenarioSelectionButtonRefresh() {
+        if (ScenarioTable.tableScenariosLibrary == null || ScenarioTable.tableScenariosLibrary.getSelectionModel() == null) {
+            return;
+        }
+        ScenarioTable.tableScenariosLibrary.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) ->
+                refreshScenarioActionButtons());
+        ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems().addListener(
+                (javafx.collections.ListChangeListener<ScenarioRow>) change -> refreshScenarioActionButtons());
+    }
+
+    private void refreshScenarioActionButtons() {
+        if (Platform.isFxApplicationThread()) {
+            try {
+                setArrowAndButtonStatus();
+            } catch (Exception ignored) {}
+            return;
+        }
+        Platform.runLater(() -> {
+            try {
+                setArrowAndButtonStatus();
+            } catch (Exception ignored) {}
+        });
+    }
+
+    private List<String> captureSelectedScenarioNames() {
+        List<String> selectedScenarioNames = new ArrayList<>();
+        if (ScenarioTable.tableScenariosLibrary == null || ScenarioTable.tableScenariosLibrary.getSelectionModel() == null) {
+            return selectedScenarioNames;
+        }
+        ObservableList<ScenarioRow> selectedRows = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems();
+        if (selectedRows == null) {
+            return selectedScenarioNames;
+        }
+        for (ScenarioRow row : selectedRows) {
+            String scenarioName = getNormalizedScenarioName(row);
+            if (!scenarioName.isEmpty() && !selectedScenarioNames.contains(scenarioName)) {
+                selectedScenarioNames.add(scenarioName);
+            }
+        }
+        return selectedScenarioNames;
+    }
+
+    private String getNormalizedScenarioName(ScenarioRow row) {
+        if (row == null) {
+            return "";
+        }
+        String scenarioName = row.getScenarioName();
+        return scenarioName == null ? "" : scenarioName.trim();
+    }
+
+    private RefreshViewState captureRefreshViewState() {
+        if (ScenarioTable.tableScenariosLibrary == null) {
+            return RefreshViewState.empty();
+        }
+        List<String> selectedScenarioNames = captureSelectedScenarioNames();
+        String focusedScenarioName = "";
+        int focusedIndex = -1;
+        if (ScenarioTable.tableScenariosLibrary.getFocusModel() != null) {
+            focusedIndex = ScenarioTable.tableScenariosLibrary.getFocusModel().getFocusedIndex();
+            if (focusedIndex >= 0 && focusedIndex < ScenarioTable.tableScenariosLibrary.getItems().size()) {
+                focusedScenarioName = getNormalizedScenarioName(ScenarioTable.tableScenariosLibrary.getItems().get(focusedIndex));
+            }
+        }
+
+        int anchorIndex = focusedIndex;
+        if (anchorIndex < 0 && !selectedScenarioNames.isEmpty()) {
+            for (int i = 0; i < ScenarioTable.tableScenariosLibrary.getItems().size(); i++) {
+                ScenarioRow row = ScenarioTable.tableScenariosLibrary.getItems().get(i);
+                if (selectedScenarioNames.contains(getNormalizedScenarioName(row))) {
+                    anchorIndex = i;
+                    break;
+                }
+            }
+        }
+        if (anchorIndex < 0 && !ScenarioTable.tableScenariosLibrary.getItems().isEmpty()) {
+            anchorIndex = Math.max(0, ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedIndex());
+        }
+        String anchorScenarioName = (anchorIndex >= 0 && anchorIndex < ScenarioTable.tableScenariosLibrary.getItems().size())
+                ? getNormalizedScenarioName(ScenarioTable.tableScenariosLibrary.getItems().get(anchorIndex))
+                : "";
+        return new RefreshViewState(selectedScenarioNames, focusedScenarioName, anchorScenarioName, anchorIndex);
+    }
+
+    private int findScenarioRowIndexByName(String scenarioName) {
+        if (ScenarioTable.tableScenariosLibrary == null || scenarioName == null || scenarioName.trim().isEmpty()) {
+            return -1;
+        }
+        for (int i = 0; i < ScenarioTable.tableScenariosLibrary.getItems().size(); i++) {
+            ScenarioRow row = ScenarioTable.tableScenariosLibrary.getItems().get(i);
+            if (scenarioName.equals(getNormalizedScenarioName(row))) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private void restoreRefreshViewState(RefreshViewState viewState) {
+        if (ScenarioTable.tableScenariosLibrary == null) {
+            return;
+        }
+        RefreshViewState safeViewState = viewState == null ? RefreshViewState.empty() : viewState;
+        restoreSelectedScenarioNames(safeViewState.selectedScenarioNames);
+
+        int anchorIndex = findScenarioRowIndexByName(safeViewState.anchorScenarioName);
+        if (anchorIndex < 0 && !ScenarioTable.tableScenariosLibrary.getItems().isEmpty()) {
+            anchorIndex = Math.min(Math.max(safeViewState.anchorIndex, 0), ScenarioTable.tableScenariosLibrary.getItems().size() - 1);
+        }
+        int focusedIndex = findScenarioRowIndexByName(safeViewState.focusedScenarioName);
+        if (focusedIndex < 0) {
+            focusedIndex = anchorIndex;
+        }
+
+        final int scrollIndex = anchorIndex;
+        final int focusIndex = focusedIndex;
+        Platform.runLater(() -> {
+            if (ScenarioTable.tableScenariosLibrary == null) {
+                return;
+            }
+            if (scrollIndex >= 0 && scrollIndex < ScenarioTable.tableScenariosLibrary.getItems().size()) {
+                ScenarioTable.tableScenariosLibrary.scrollTo(scrollIndex);
+            }
+            if (focusIndex >= 0 && focusIndex < ScenarioTable.tableScenariosLibrary.getItems().size()
+                    && ScenarioTable.tableScenariosLibrary.getFocusModel() != null) {
+                ScenarioTable.tableScenariosLibrary.getFocusModel().focus(focusIndex);
+            }
+        });
+    }
+
+    private void restoreSelectedScenarioNames(List<String> scenarioNamesToRestore) {
+        if (ScenarioTable.tableScenariosLibrary == null || ScenarioTable.tableScenariosLibrary.getSelectionModel() == null) {
+            return;
+        }
+        javafx.scene.control.TableView.TableViewSelectionModel<ScenarioRow> selectionModel = ScenarioTable.tableScenariosLibrary.getSelectionModel();
+        selectionModel.clearSelection();
+        if (scenarioNamesToRestore == null || scenarioNamesToRestore.isEmpty()) {
+            return;
+        }
+        for (String scenarioName : scenarioNamesToRestore) {
+            if (scenarioName == null || scenarioName.trim().isEmpty()) {
+                continue;
+            }
+            for (int i = 0; i < ScenarioTable.tableScenariosLibrary.getItems().size(); i++) {
+                ScenarioRow row = ScenarioTable.tableScenariosLibrary.getItems().get(i);
+                if (row != null && scenarioName.equals(row.getScenarioName())) {
+                    selectionModel.select(i);
+                    break;
+                }
+            }
+        }
     }
 
     // --- UI Event Handlers ---
-    /**
-     * Handles archiving of selected scenarios. Moves configuration and related files to an archive folder.
-     * Prompts user if archive already exists. Updates scenario configuration to reference archived files.
-     *
-     * <p>For each selected scenario, creates an archive subfolder, copies referenced files, updates the configuration,
-     * and zips the archive. If an archive already exists, prompts the user for overwrite.</p>
-     */
     private void handleArchiveScenario() {
         if (!utils.confirmArchiveScenario()) return;
         ObservableList<ScenarioRow> selectedFiles = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems();
@@ -561,27 +708,22 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
-    /**
-     * Handles deletion of selected scenarios. Moves scenario folders to trash.
-     * Prompts user for confirmation. Removes scenarios from the scenario table.
-     */
     private void handleDeleteScenario() {
         if (!utils.confirmDelete()) return;
         ObservableList<ScenarioRow> selectedFiles = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems();
-        // Clear queue state for any selected scenarios that were queued.
         dequeueScenariosAndClearStatus(selectedFiles);
         for (ScenarioRow row : selectedFiles) {
             String scenName = row.getScenarioName();
             String xmlDir = ScenarioLibraryPathHelper.scenarioDir(vars.getScenarioDir(), scenName);
             String trashDirFolder = ScenarioLibraryPathHelper.scenarioDir(vars.getTrashDir(), scenName);
             File trashDir = new File(trashDirFolder);
-            if (trashDir.exists())
+            if (trashDir.exists()) {
                 try {
                     files.deleteDirectoryStream(trashDir.toPath());
                 } catch (IOException e) {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
+            }
             if (!trashDir.exists()) trashDir.mkdirs();
             try {
                 Files.move(Paths.get(xmlDir), Paths.get(trashDirFolder), StandardCopyOption.REPLACE_EXISTING);
@@ -594,10 +736,6 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         ScenarioTable.removeFromListOfRunFiles(selectedFiles);
     }
 
-    /**
-     * Handles opening ModelInterface for all scenarios. Warns if executable directory is not set.
-     * Launches ModelInterface in a background thread.
-     */
     private void handleResults() {
         if (vars.getModelInterfaceDir() == null || vars.getModelInterfaceDir().trim().isEmpty()) {
             utils.warningMessage("Please specify modelInterfaceDir in options file.");
@@ -611,10 +749,6 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
-    /**
-     * Handles opening ModelInterface for a selected scenario. Warns if executable directory is not set.
-     * Launches ModelInterface for the selected scenario's output database.
-     */
     private void handleResultsForSelected() {
         if (vars.getModelInterfaceDir() == null || vars.getModelInterfaceDir().trim().isEmpty()) {
             utils.warningMessage("Please specify modelInterfaceDir in options file.");
@@ -637,10 +771,34 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
-    /**
-     * Opens the file explorer for the selected scenario folders.
-     * Uses the system's file explorer to show the scenario directory.
-     */
+    private void runModelInterface() {
+        String modelInterfaceDir = vars.getModelInterfaceDir();
+        if (modelInterfaceDir == null || modelInterfaceDir.trim().isEmpty()) {
+            utils.warningMessage("Please specify modelInterfaceDir in options file.");
+            return;
+        }
+        File modelInterfaceFile = new File(modelInterfaceDir);
+        if (modelInterfaceFile.isDirectory()) {
+            files.openFileExplorer(modelInterfaceFile.getAbsolutePath());
+        } else {
+            files.showFileInTextEditor(modelInterfaceDir);
+        }
+    }
+
+    private void runModelInterfaceWhich(String databasePath) {
+        if (databasePath == null || databasePath.trim().isEmpty()) {
+            runModelInterface();
+            return;
+        }
+        File databaseFile = new File(databasePath);
+        String parent = databaseFile.getParent();
+        if (parent != null && !parent.trim().isEmpty()) {
+            files.openFileExplorer(parent);
+        } else {
+            runModelInterface();
+        }
+    }
+
     private void handleBrowseScenarioFolder() {
         ObservableList<ScenarioRow> selectedFiles = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems();
         for (ScenarioRow row : selectedFiles) {
@@ -650,10 +808,6 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
-    /**
-     * Handles importing a scenario configuration file. Prompts for overwrite if scenario exists.
-     * Adds the imported scenario to the scenario table and creates its folder.
-     */
     private void handleImportScenario() {
         File newConfigFile = FileChooserPlus.showOpenDialog(null, "Select scenario configuration file", new File(vars.getgCamExecutableDir()), FileChooserPlus.createExtensionFilter(XML_FILE_FILTER_LABEL, XML_FILE_FILTER_EXT));
         if (newConfigFile != null) {
@@ -678,10 +832,6 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
-    /**
-     * Opens the configuration file for the selected scenarios in a text editor.
-     * Uses the system's default text editor.
-     */
     private void handleViewConfig() {
         ObservableList<ScenarioRow> selectedFiles = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems();
         for (ScenarioRow row : selectedFiles) {
@@ -691,10 +841,6 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
-    /**
-     * Opens the main log file for the selected scenarios in a text editor.
-     * Uses the system's default text editor.
-     */
     private void handleViewLog() {
         ObservableList<ScenarioRow> selectedFiles = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems();
         for (ScenarioRow row : selectedFiles) {
@@ -704,19 +850,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
-    /**
-     * Opens the main log file in the executable logs directory in a text editor.
-     * Uses the system's default text editor.
-     */
     private void handleViewExeLog() {
         String filename = ScenarioLibraryPathHelper.exeMainLogFile(vars.getgCamExecutableDir());
         files.showFileInTextEditor(filename);
     }
 
-    /**
-     * Compares the configuration files of two selected scenarios using a diff tool.
-     * Only works if exactly two scenarios are selected.
-     */
     private void handleDiffFiles() {
         ObservableList<ScenarioRow> selectedFiles = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems();
         if (selectedFiles.size() != 2) {
@@ -737,43 +875,26 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
-    /**
-     * Displays the current run queue in a popup window.
-     * Shows scenarios added to the queue and completed runs for the session.
-     */
     private void handleShowRunQueue() {
-        // Big-win UI: show a dedicated, searchable table window.
         if ((runsQueuedList == null || runsQueuedList.isEmpty()) && (runsCompletedList == null || runsCompletedList.isEmpty())) {
             utils.warningMessage("No queued runs this session.");
             return;
         }
 
         try {
-            // Provide a live supplier so the Refresh button and auto-refresh can re-pull the latest lists.
             QueueWindow.show(Client.primaryStage, () -> new QueueWindow.QueueData(
                     new ArrayList<>(runsQueuedList),
                     new ArrayList<>(runsCompletedList)));
         } catch (Exception e) {
-            // Fallback: old text window
             ArrayList<String> txtArray = createSimpleQueueRpt();
             utils.displayArrayList(txtArray, "Run Queue");
         }
     }
 
-    /**
-     * Returns the HBox containing the scenario library table and controls.
-     *
-     * @return the HBox containing the scenario library UI
-     */
     public HBox gethBox() {
         return scenarioLibraryHBox;
     }
 
-    /**
-     * Returns a simple report of the run queue and completed runs.
-     *
-     * @return ArrayList of report lines for the run queue
-     */
     protected ArrayList<String> createSimpleQueueRpt() {
         return ScenarioLibraryReportHelper.createSimpleQueueReport(runsQueuedList, runsCompletedList);
     }
@@ -915,518 +1036,6 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         runGcamModel(configFiles);
     }
 
-    private void runGcamModel(String[] scenarioConfigFiles) throws IOException {
-        if (!WindowsRuntimePreflight.ensureMsvcRuntimeAvailableOrWarn(utils, "GCAM run")) {
-            System.out.println("GCAM launch blocked: missing Microsoft Visual C++ runtime.");
-            return;
-        }
-        System.out.println("Running scenarios in GCAM...");
-        for (String scenarioConfigFile : scenarioConfigFiles) {
-            if (scenarioConfigFile == null) {
-                continue;
-            }
-
-            final String dir = scenarioConfigFile.substring(0, scenarioConfigFile.lastIndexOf(File.separator)).replaceAll("/", File.separator);
-            System.out.println("config: " + scenarioConfigFile);
-
-            final String queuedScenarioName = new File(dir).getName();
-            this.runsQueuedList.add(queuedScenarioName);
-
-            Client.gCAMExecutionThread.executeCallableCmd(ExecutionThread.namedCallable(
-                    "GCAM pre-clean: scenario=" + queuedScenarioName + ", config=" + new File(scenarioConfigFile).getName(),
-                     new Callable<String>() {
-                @Override
-                public String call() throws Exception {
-                    System.out.println("Cleaning out folder.");
-                    String[] filesToDelete = vars.getFilesToSave().replaceAll("/", File.separator).split(";");
-                    for (String fileToDelete : filesToDelete) {
-                        String file = dir + File.separator + fileToDelete.substring(fileToDelete.lastIndexOf(File.separator) + 1);
-                        System.out.println(" Deleting " + file);
-                        File f = new File(file);
-                        if (f.exists()) {
-                            try {
-                                Path pathOfFileToDelete = Paths.get(file);
-                                Files.delete(pathOfFileToDelete);
-                            } catch (Exception e1) {
-                                utils.warningMessage("Error deleting " + file);
-                                System.out.println("Error deleting " + file + ":" + e1);
-                            }
-                        }
-                    }
-                    return "txt and log files deleted from scenario folder";
-                }
-            }));
-
-            Future<ProcessResult> gcamFuture = Client.gCAMExecutionThread.submitCallable(ExecutionThread.namedCallable(
-                    "GCAM run: scenario=" + queuedScenarioName + ", config=" + new File(scenarioConfigFile).getName(),
-                     new Callable<ProcessResult>() {
-                @Override
-                public ProcessResult call() throws Exception {
-                    lastGcamStopResult = null;
-                    lastStoppedGcamScenarioName = null;
-
-                    boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
-                    System.out.println("OS detected as Windows: " + isWindows);
-
-                    ArrayList<String> cmd = new ArrayList<>();
-                    String exeDir = vars.getgCamExecutableDir();
-                    String exeName = vars.getgCamExecutable();
-                    String exePath = exeDir + File.separator + exeName;
-                    cmd.add(exePath);
-
-                    String args = vars.getgCamExecutableArgs();
-                    if (args != null && args.trim().length() > 0) {
-                        for (String a : CommandLineTokenizer.tokenize(args)) {
-                            if (a != null && a.length() > 0) {
-                                cmd.add(a);
-                            }
-                        }
-                    }
-                    cmd.add(scenarioConfigFile);
-
-                    System.out.println("======" + System.lineSeparator() + "Command to run (direct): " + cmd);
-                    ConsoleManager.clear(ConsoleManager.StreamSource.GCAM_STDOUT);
-                    ConsoleManager.appendHeader(ConsoleManager.StreamSource.GCAM_STDOUT, "Starting GCAM");
-                    ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT, "cmd: " + cmd);
-                    ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT, "exe: " + new File(exePath).getAbsolutePath());
-                    ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT, "working dir: " + new File(exeDir).getAbsolutePath());
-
-                    FileTailer.TailHandle tailHandle = null;
-                    if (TAIL_GCAM_MAIN_LOG_TO_CONSOLE) {
-                        try {
-                            final Path mainLog = Paths.get(exeDir, "logs", "main_log.txt");
-                            try {
-                                ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
-                                        ConsoleManager.MessageKind.GLIMPSE_INFO,
-                                        "Tailing: " + mainLog.toAbsolutePath());
-                            } catch (Exception ignored) {}
-
-                            tailHandle = FileTailer.start(
-                                    mainLog,
-                                    java.nio.charset.StandardCharsets.UTF_8,
-                                    java.time.Duration.ofMillis(200),
-                                    java.time.Duration.ofSeconds(30),
-                                    line -> {
-                                        if (line == null || line.trim().isEmpty()) {
-                                            return;
-                                        }
-                                        if (isTailedLogLine(line)) {
-                                            return;
-                                        }
-                                        ConsoleManager.appendLineBuffered(ConsoleManager.StreamSource.GCAM_STDOUT,
-                                                ConsoleManager.MessageKind.MODEL_STDOUT,
-                                                TAILED_LOG_PREFIX + line);
-                                    }
-                            );
-                        } catch (Exception e) {
-                            try {
-                                ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
-                                        ConsoleManager.MessageKind.GLIMPSE_INFO,
-                                        "Tailer disabled (error starting tail): " + e);
-                            } catch (Exception ignored) {}
-                            tailHandle = null;
-                        }
-                    }
-
-                    try {
-                        ProcessRunner.RunningProcess rp = ProcessRunner.start(
-                                cmd,
-                                new File(exeDir),
-                                null,
-                                line -> {
-                                    handlePotentialInteractivePrompt(line);
-                                    maybeMarkLiveGcamSuccess(line);
-                                    if (isTailedLogLine(line)) {
-                                        return;
-                                    }
-                                    ConsoleManager.appendLineBuffered(ConsoleManager.StreamSource.GCAM_STDOUT,
-                                            ConsoleManager.MessageKind.MODEL_STDOUT, line);
-                                },
-                                line -> {
-                                    handlePotentialInteractivePrompt(line);
-                                    maybeMarkLiveGcamSuccess(line);
-                                    ConsoleManager.appendLineBuffered(ConsoleManager.StreamSource.GCAM_STDOUT,
-                                            ConsoleManager.MessageKind.STDERR, line);
-                                }
-                        );
-
-                        currentGcamRun = rp;
-                        currentGcamScenarioName = queuedScenarioName;
-                        lastStoppedGcamScenarioName = null;
-                        clearScenarioRunStatusFields(queuedScenarioName);
-                        startLiveStatusRefresh();
-
-                        Platform.runLater(() -> {
-                            try {
-                                if (Client.buttonStopScenario != null) {
-                                    Client.buttonStopScenario.setDisable(false);
-                                }
-                            } catch (Exception ignored) {}
-                        });
-
-                        return rp.waitForResult(null);
-                    } finally {
-                        try {
-                            if (tailHandle != null && !tailHandle.isStopRequested()) {
-                                tailHandle.stop();
-                                tailHandle.join(java.time.Duration.ofSeconds(2));
-                            }
-                        } catch (Exception ignored) {}
-
-                        try {
-                            ConsoleManager.flushBuffered();
-                        } catch (Exception ignored) {}
-                        currentGcamRun = null;
-                        currentGcamScenarioName = null;
-                        stopLiveStatusRefresh();
-                        Platform.runLater(() -> {
-                            try {
-                                if (Client.buttonStopScenario != null) {
-                                    Client.buttonStopScenario.setDisable(true);
-                                }
-                            } catch (Exception ignored) {}
-                        });
-                    }
-                }
-            }));
-
-            currentGcamFuture = gcamFuture;
-
-            Client.gCAMExecutionThread.executeCallableCmd(ExecutionThread.namedCallable(
-                    "GCAM post-process: scenario=" + queuedScenarioName + ", config=" + new File(scenarioConfigFile).getName(),
-                     new Callable<String>() {
-                 @Override
-                 public String call() throws Exception {
-                    ProcessResult result;
-                    boolean wasCancelled = false;
-                    try {
-                        result = gcamFuture.get();
-                    } catch (java.util.concurrent.CancellationException ce) {
-                        wasCancelled = true;
-                        result = new ProcessResult(-1, "", "GCAM run was canceled by user.", false, 0);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        wasCancelled = true;
-                        result = new ProcessResult(-1, "", "GCAM run was interrupted.", false, 0);
-                    } catch (Exception e) {
-                        result = new ProcessResult(-1, "", "Exception waiting for GCAM: " + e, false, 0);
-                    } finally {
-                        if (currentGcamFuture == gcamFuture) {
-                            currentGcamFuture = null;
-                        }
-                    }
-
-                    boolean stopRequested = false;
-                    try {
-                        ProcessRunner.StopResult sr = lastGcamStopResult;
-                        if (sr != null) {
-                            stopRequested = true;
-                            ConsoleManager.appendHeader(ConsoleManager.StreamSource.GCAM_STDOUT, "Stop result");
-                            ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
-                                    ConsoleManager.MessageKind.GLIMPSE_INFO,
-                                    sr.getSummary());
-                        }
-                        ConsoleManager.appendHeader(ConsoleManager.StreamSource.GCAM_STDOUT, "GCAM finished");
-                        ConsoleManager.appendLine(ConsoleManager.StreamSource.GCAM_STDOUT,
-                                ConsoleManager.MessageKind.GLIMPSE_INFO,
-                                "exitCode=" + result.getExitCode() + ", cancelled=" + wasCancelled + ", success=" + result.isSuccess()
-                                        + (stopRequested ? ", stopRequested=true" : ""));
-                    } catch (Exception ignored) {}
-
-                    String scenName = new File(dir).getName();
-                    copyExecutableMainLogToScenarioFolderWithRetry(scenName, stopRequested ? 5 : 3, 400L);
-                    if (stopRequested || wasCancelled) {
-                        markScenarioStoppedDnF(scenName);
-                    }
-
-                    String gcamStdoutFile = ScenarioLibraryPathHelper.scenarioStdoutFile(vars.getScenarioDir(), scenName);
-                    String mainErrFile = ScenarioLibraryPathHelper.scenarioErrorFile(vars.getScenarioDir(), scenName);
-
-                    try {
-                        files.saveFile(
-                                "GCAM exitCode=" + result.getExitCode() + System.lineSeparator() + result.getStdout(),
-                                gcamStdoutFile);
-                        if (result.getStderr() != null && result.getStderr().trim().length() > 0) {
-                            files.saveFile(
-                                    "GCAM exitCode=" + result.getExitCode() + System.lineSeparator() + result.getStderr(),
-                                    mainErrFile);
-                        }
-                    } catch (Exception e) {
-                        System.out.println("Problem writing GCAM stdout/stderr logs: " + e);
-                    }
-
-                    System.out.println("GCAM finished with exitCode=" + result.getExitCode() + System.lineSeparator() + "=========");
-
-                    boolean shouldMoveOutputs = result.isSuccess() || stopRequested || wasCancelled;
-
-                    if (!shouldMoveOutputs) {
-                        System.out.println("GCAM run failed (or timed out); skipping move of output files.");
-                        updateRunStatus();
-                        return "GCAM run failed";
-                    }
-
-                    if (stopRequested || wasCancelled) {
-                        System.out.println("GCAM was stopped by user; attempting to move any generated output files.");
-                    }
-
-                    System.out.println("Moving results to scenario folder.");
-                    if ((vars.getFilesToSave() != null) && (vars.getFilesToSave().length() > 0)) {
-                        String[] filesToSave = vars.getFilesToSave().replaceAll("/", File.separator).split(";");
-                        for (String fileToSave : filesToSave) {
-                            File file = new File(fileToSave);
-                            if (file.exists()) {
-                                Path source = Paths.get(fileToSave);
-                                String destinationStr = dir + File.separator + fileToSave.substring(fileToSave.lastIndexOf(File.separator) + 1);
-                                Path destination = Paths.get(destinationStr);
-                                System.out.println(" Moving " + fileToSave + " to " + destination);
-                                try {
-                                    files.moveFile(source, destination);
-                                } catch (Exception e1) {
-                                    System.out.println("Problem moving file " + fileToSave);
-                                    System.out.println("Exception " + e1);
-                                }
-                                File destf = new File(destinationStr);
-                                if (!destf.exists()) {
-                                    System.out.println("Problem moving file " + fileToSave);
-                                }
-                                if (file.exists()) {
-                                    files.deleteFile(file);
-                                }
-                            } else {
-                                System.out.println("Unable to save " + fileToSave);
-                            }
-                        }
-                    }
-                    updateRunStatus();
-                    return "moving specified files to scenario folder";
-                }
-            }));
-        }
-    }
-
-    private void runModelInterface() throws IOException {
-        String database = vars.getgCamOutputDatabase();
-        runModelInterfaceWhich(database);
-    }
-
-    private void runModelInterfaceWhich(String database_name) throws IOException {
-        final String modelInterfaceDirStr = vars.getModelInterfaceDir();
-        final File modelInterfaceDir = (modelInterfaceDirStr == null) ? null : new File(modelInterfaceDirStr);
-        final String jarName = vars.getModelInterfaceJar();
-
-        ArrayList<String> problems = new ArrayList<>();
-        if (modelInterfaceDir == null || modelInterfaceDirStr == null || modelInterfaceDirStr.trim().isEmpty()) {
-            problems.add("ModelInterface directory is not set.");
-        } else if (!modelInterfaceDir.isDirectory()) {
-            problems.add("ModelInterface directory does not exist: " + modelInterfaceDir.getAbsolutePath());
-        }
-
-        File jarFile = null;
-        if (jarName == null || jarName.trim().isEmpty()) {
-            problems.add("ModelInterface jar file name is not set.");
-        } else if (modelInterfaceDir != null) {
-            jarFile = new File(modelInterfaceDir, jarName);
-            if (!jarFile.isFile()) {
-                problems.add("ModelInterface jar not found: " + jarFile.getAbsolutePath());
-            }
-        }
-
-        if (database_name == null || database_name.trim().isEmpty()) {
-            problems.add("Output database path is not set.");
-        } else {
-            File db = new File(database_name);
-            if (!db.exists()) {
-                boolean created = promptCreateDatabaseNotice(db);
-                if (!created) {
-                    problems.add("Database not found: " + db.getAbsolutePath());
-                }
-            }
-        }
-
-        ScenarioLibraryModelInterfaceMiniHelper.validateOptionalFile(problems, "Query file", vars.getQueryFilename());
-        ScenarioLibraryModelInterfaceMiniHelper.validateOptionalFile(problems, "Units conversion file", vars.getUnitConversionsFilename());
-        ScenarioLibraryModelInterfaceMiniHelper.validateOptionalFile(problems, "Preset region list file", vars.getPresetRegionListFilename());
-        ScenarioLibraryModelInterfaceMiniHelper.validateOptionalFile(problems, "Favorite queries file", vars.getFavoriteQueryFilename());
-
-        File mapsDir = null;
-        if (modelInterfaceDir != null) {
-            mapsDir = new File(modelInterfaceDir, "map_resources");
-            if (!mapsDir.isDirectory()) {
-                problems.add("Map resources directory not found: " + mapsDir.getAbsolutePath());
-            }
-        }
-
-        if (!problems.isEmpty()) {
-            StringBuilder sb = new StringBuilder();
-            sb.append("Please fix:\n\n");
-            for (String p : problems) {
-                sb.append(" - ").append(p).append("\n");
-            }
-            showNotice("Unable to start ModelInterface.", sb.toString());
-            System.out.println("Unable to start ModelInterface. " + sb.toString());
-            return;
-        }
-
-        final ArrayList<String> args = new ArrayList<>();
-        args.add("java");
-        args.add("-jar");
-        args.add(jarFile.getAbsolutePath());
-        args.add("-o");
-        args.add(database_name);
-
-        ScenarioLibraryModelInterfaceMiniHelper.appendArgIfPresent(args, "-q", vars.getQueryFilename());
-        ScenarioLibraryModelInterfaceMiniHelper.appendArgIfPresent(args, "-u", vars.getUnitConversionsFilename());
-        ScenarioLibraryModelInterfaceMiniHelper.appendArgIfPresent(args, "-p", vars.getPresetRegionListFilename());
-        ScenarioLibraryModelInterfaceMiniHelper.appendArgIfPresent(args, "-f", vars.getFavoriteQueryFilename());
-        if (mapsDir != null) {
-            args.add("-m");
-            args.add(mapsDir.getAbsolutePath());
-        }
-
-        System.out.println("Starting " + jarName + " using database " + database_name);
-        System.out.println(">>   cmd args: " + args);
-        System.out.println(">>   working dir: " + modelInterfaceDir.getAbsolutePath());
-
-        ConsoleManager.appendHeader(ConsoleManager.StreamSource.MODEL_INTERFACE, "Starting ModelInterface");
-        ConsoleManager.appendLine(ConsoleManager.StreamSource.MODEL_INTERFACE, "cmd args: " + args);
-        ConsoleManager.appendLine(ConsoleManager.StreamSource.MODEL_INTERFACE, "working dir: " + modelInterfaceDir.getAbsolutePath());
-
-        try {
-            Client.modelInterfaceExecutionThread.submitCommandWithDirectory(args, modelInterfaceDir.getAbsolutePath());
-        } catch (Exception e) {
-            utils.warningMessage("Problem starting up ModelInterface. See console for details.");
-            System.out.println("Error in trying to start up ModelInterface:");
-            e.printStackTrace();
-            ConsoleManager.appendLine(ConsoleManager.StreamSource.MODEL_INTERFACE, "ERROR: " + e);
-        }
-    }
-
-    private void showNotice(String header, String message) {
-        Alert alert = new Alert(AlertType.INFORMATION);
-        alert.setTitle("Notice");
-        alert.setHeaderText(header);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
-
-    private boolean promptCreateDatabaseNotice(File dbFile) {
-        if (dbFile == null) {
-            return false;
-        }
-
-        Alert alert = new Alert(AlertType.INFORMATION);
-        alert.setTitle("Notice");
-        alert.setHeaderText("Output database not found.");
-        alert.setContentText("Create and initialize a new database at:\n" + dbFile.getAbsolutePath());
-
-        ButtonType createBtn = ScenarioLibraryModelInterfaceMiniHelper.createOkButton("Create");
-        ButtonType okBtn = ScenarioLibraryModelInterfaceMiniHelper.createCancelCloseButton("OK");
-        alert.getButtonTypes().setAll(createBtn, okBtn);
-
-        ScenarioLibraryModelInterfaceMiniHelper.setDefaultButton(alert.getDialogPane(), okBtn);
-
-        java.util.Optional<ButtonType> result = alert.showAndWait();
-        if (!result.isPresent() || result.get() != createBtn) {
-            return false;
-        }
-
-        return initializeDatabaseWithModelInterface(dbFile);
-    }
-
-    private boolean initializeDatabaseWithModelInterface(File dbFile) {
-        if (dbFile == null) {
-            return false;
-        }
-
-        String modelInterfaceDirStr = vars.getModelInterfaceDir();
-        String jarName = vars.getModelInterfaceJar();
-        if (modelInterfaceDirStr == null || modelInterfaceDirStr.trim().isEmpty()) {
-            showNotice("Unable to initialize database.", "ModelInterface directory is not set.");
-            return false;
-        }
-        if (jarName == null || jarName.trim().isEmpty()) {
-            showNotice("Unable to initialize database.", "ModelInterface jar file name is not set.");
-            return false;
-        }
-
-        File modelInterfaceDir = new File(modelInterfaceDirStr);
-        File jarFile = new File(modelInterfaceDir, jarName);
-        if (!jarFile.isFile()) {
-            showNotice("Unable to initialize database.", "ModelInterface jar not found:\n" + jarFile.getAbsolutePath());
-            return false;
-        }
-
-        try {
-            File parent = dbFile.getParentFile();
-            if (parent != null && !parent.exists()) {
-                parent.mkdirs();
-            }
-
-            ArrayList<String> cmd = new ArrayList<>();
-            cmd.add("java");
-            cmd.add("-jar");
-            cmd.add(jarFile.getAbsolutePath());
-            cmd.add("-o");
-            cmd.add(dbFile.getAbsolutePath());
-            cmd.add("--init-db");
-
-            Dialog<Void> progress = new Dialog<>();
-            progress.setTitle("Notice");
-            progress.setHeaderText("Initializing database...");
-            Label msg = new Label("Creating and initializing database. Please wait...");
-            ProgressIndicator indicator = new ProgressIndicator();
-            VBox content = new VBox(10, msg, indicator);
-            content.setAlignment(Pos.CENTER_LEFT);
-            progress.getDialogPane().setContent(content);
-            progress.getDialogPane().getButtonTypes().add(ButtonType.CANCEL);
-            Button cancelBtn = (Button) progress.getDialogPane().lookupButton(ButtonType.CANCEL);
-            if (cancelBtn != null) {
-                cancelBtn.setDisable(true);
-            }
-
-            Task<ProcessResult> task = new Task<ProcessResult>() {
-                @Override
-                protected ProcessResult call() throws Exception {
-                    return ProcessRunner.run(cmd, modelInterfaceDir, null, Duration.ofMinutes(2));
-                }
-            };
-            task.setOnSucceeded(e -> progress.close());
-            task.setOnFailed(e -> progress.close());
-            task.setOnCancelled(e -> progress.close());
-
-            Thread initThread = new Thread(task, "ModelInterface-InitDB");
-            initThread.setDaemon(true);
-            initThread.start();
-
-            progress.showAndWait();
-
-            ProcessResult result = task.get();
-            if (result.isSuccess() && dbFile.exists()) {
-                return true;
-            }
-
-            String detail = "exitCode=" + result.getExitCode();
-            if (result.isTimedOut()) {
-                detail += ", timedOut=true";
-            }
-            if (result.getStderr() != null && !result.getStderr().trim().isEmpty()) {
-                detail += "\n\n" + result.getStderr().trim();
-            } else if (result.getStdout() != null && !result.getStdout().trim().isEmpty()) {
-                detail += "\n\n" + result.getStdout().trim();
-            }
-            showNotice("Database initialization failed.", detail);
-            return false;
-        } catch (Exception e) {
-            showNotice("Database initialization failed.", String.valueOf(e));
-            return false;
-        }
-    }
-
-    /**
-     * Updates the run status for all scenarios and refreshes the table.
-     * Reads log files and updates scenario status, runtime, and unsolved markets.
-     * Also updates the UI with computer stats and logs status changes.
-     */
     public void updateRunStatus() {
         final String currentMainLogName = ScenarioLibraryPathHelper.exeMainLogFile(vars.getgCamExecutableDir());
         final File currentMainLogFile = new File(currentMainLogName);
@@ -1607,90 +1216,6 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
 
         return new ScenarioStatusSnapshot(scenarioName, components, createdDateStr, completedDateStr, status, runtime, unsolved);
-    }
-
-    private void applyScenarioStatusSnapshots(List<ScenarioStatusSnapshot> snapshots, boolean noScenarios) {
-        if (ScenarioTable.tableScenariosLibrary == null) {
-            return;
-        }
-        if (noScenarios) {
-            if (!ScenarioTable.listOfScenarioRuns.isEmpty()) {
-                ScenarioTable.listOfScenarioRuns.clear();
-                ScenarioTable.tableScenariosLibrary.refresh();
-            }
-            ScenarioTable.tableScenariosLibrary.setPlaceholder(utils.createLabel(NO_SCENARIOS_MESSAGE));
-            return;
-        }
-
-        ScenarioTable.tableScenariosLibrary.setPlaceholder(utils.createLabel(READY_MESSAGE));
-
-        Map<String, ScenarioStatusSnapshot> snapshotsByName = new LinkedHashMap<>();
-        for (ScenarioStatusSnapshot snapshot : snapshots) {
-            if (snapshot != null && snapshot.scenarioName != null) {
-                snapshotsByName.put(snapshot.scenarioName, snapshot);
-            }
-        }
-
-        boolean rowsRemoved = false;
-        for (int i = ScenarioTable.listOfScenarioRuns.size() - 1; i >= 0; i--) {
-            ScenarioRow row = ScenarioTable.listOfScenarioRuns.get(i);
-            if (row == null || row.getScenarioName() == null) {
-                ScenarioTable.listOfScenarioRuns.remove(i);
-                rowsRemoved = true;
-                continue;
-            }
-            if (!snapshotsByName.containsKey(row.getScenarioName())) {
-                ScenarioTable.listOfScenarioRuns.remove(i);
-                rowsRemoved = true;
-            }
-        }
-
-        Map<String, ScenarioRow> rowsByName = new LinkedHashMap<>();
-        for (ScenarioRow row : ScenarioTable.listOfScenarioRuns) {
-            if (row != null && row.getScenarioName() != null) {
-                rowsByName.put(row.getScenarioName(), row);
-            }
-        }
-
-        boolean rowsAdded = false;
-        for (ScenarioStatusSnapshot snapshot : snapshotsByName.values()) {
-            ScenarioRow row = rowsByName.get(snapshot.scenarioName);
-            if (row == null) {
-                row = new ScenarioRow(snapshot.scenarioName);
-                ScenarioTable.listOfScenarioRuns.add(row);
-                rowsByName.put(snapshot.scenarioName, row);
-                rowsAdded = true;
-            }
-            applySnapshotToRow(row, snapshot);
-        }
-
-        if (ScenarioTable.listOfScenarioRuns.isEmpty()) {
-            ScenarioTable.tableScenariosLibrary.setPlaceholder(utils.createLabel(NO_SCENARIOS_MESSAGE));
-        } else if (rowsAdded || rowsRemoved) {
-            ScenarioTable.tableScenariosLibrary.refresh();
-        }
-    }
-
-    private void applySnapshotToRow(ScenarioRow row, ScenarioStatusSnapshot snapshot) {
-        if (row == null || snapshot == null) {
-            return;
-        }
-        if (!"In queue".equals(row.getStatus()) || !snapshot.status.isEmpty()) {
-            setScenarioRowValue(row.getStatus(), row::setStatus, snapshot.status);
-        }
-        setScenarioRowValue(row.getCreatedDate(), row::setCreatedDate, snapshot.createdDate);
-        setScenarioRowValue(row.getCompletedDate(), row::setCompletedDate, snapshot.completedDate);
-        setScenarioRowValue(row.getComponents(), row::setComponents, snapshot.components);
-        setScenarioRowValue(row.getRuntime(), row::setRuntime, snapshot.runtime);
-        setScenarioRowValue(row.getUnsolvedMarkets(), row::setUnsolvedMarkets, snapshot.unsolved);
-    }
-
-    private void setScenarioRowValue(String currentValue, java.util.function.Consumer<String> setter, String newValue) {
-        String normalizedCurrent = currentValue == null ? "" : currentValue;
-        String normalizedNew = newValue == null ? "" : newValue;
-        if (!normalizedCurrent.equals(normalizedNew)) {
-            setter.accept(normalizedNew);
-        }
     }
 
     // --- Added: Explicit run-state handling ---
@@ -2202,10 +1727,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             return;
         }
         Platform.runLater(() -> {
+            pendingRefreshViewState = captureRefreshViewState();
             if (ScenarioTable.tableScenariosLibrary != null) {
                 ScenarioTable.tableScenariosLibrary.setPlaceholder(utils.createLabel(LOADING_SCENARIOS_MESSAGE));
             }
-            ScenarioTable.clear();
+            refreshScenarioActionButtons();
         });
         Client.setStartupStatus(userInitiated ? "Refreshing scenario status..." : "Loading scenario status...", -1, !userInitiated);
         Thread refreshThread = new Thread(() -> {
@@ -2214,6 +1740,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 Platform.runLater(() -> {
                     try {
                         Client.setStartupStatus(userInitiated ? "Scenario status refreshed." : READY_MESSAGE, -1, false);
+                        refreshScenarioActionButtons();
                     } finally {
                         scenarioRefreshInProgress.set(false);
                     }
@@ -2222,12 +1749,32 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 Platform.runLater(() -> {
                     System.out.println("Problem updating scenario table: " + ex);
                     Client.setStartupStatus("Problem loading scenario status.", -1, false);
+                    pendingRefreshViewState = RefreshViewState.empty();
+                    refreshScenarioActionButtons();
                     scenarioRefreshInProgress.set(false);
                 });
             }
         }, "scenario-status-refresh");
         refreshThread.setDaemon(true);
         refreshThread.start();
+    }
+
+    private static final class RefreshViewState {
+        final List<String> selectedScenarioNames;
+        final String focusedScenarioName;
+        final String anchorScenarioName;
+        final int anchorIndex;
+
+        RefreshViewState(List<String> selectedScenarioNames, String focusedScenarioName, String anchorScenarioName, int anchorIndex) {
+            this.selectedScenarioNames = selectedScenarioNames == null ? new ArrayList<>() : new ArrayList<>(selectedScenarioNames);
+            this.focusedScenarioName = focusedScenarioName == null ? "" : focusedScenarioName;
+            this.anchorScenarioName = anchorScenarioName == null ? "" : anchorScenarioName;
+            this.anchorIndex = anchorIndex;
+        }
+
+        static RefreshViewState empty() {
+            return new RefreshViewState(new ArrayList<>(), "", "", -1);
+        }
     }
 
     private static final class ScenarioStatusSnapshot {
@@ -2249,5 +1796,70 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             this.runtime = runtime;
             this.unsolved = unsolved;
         }
+    }
+
+    private void runGcamModel(String[] configFiles) {
+        if (configFiles == null || configFiles.length == 0) {
+            return;
+        }
+        if (Client.gCAMExecutionThread == null) {
+            utils.warningMessage("GCAM execution thread is not available.");
+            return;
+        }
+        for (String configFile : configFiles) {
+            if (configFile == null || configFile.trim().isEmpty()) {
+                continue;
+            }
+            String[] command = new String[] {
+                    files.getResolvedPath(vars.getgCamExecutableDir(), vars.getgCamExecutable()),
+                    "-C",
+                    configFile
+            };
+            Client.gCAMExecutionThread.submitCommandWithDirectory(command, vars.getgCamExecutableDir());
+        }
+        startLiveStatusRefresh();
+        refreshScenarioActionButtons();
+    }
+
+    private void applyScenarioStatusSnapshots(List<ScenarioStatusSnapshot> snapshots, boolean noScenarios) {
+        if (ScenarioTable.tableScenariosLibrary == null) {
+            return;
+        }
+
+        RefreshViewState viewState = pendingRefreshViewState == null ? RefreshViewState.empty() : pendingRefreshViewState;
+        pendingRefreshViewState = RefreshViewState.empty();
+
+        Map<String, ScenarioRow> existingRowsByName = new LinkedHashMap<>();
+        for (ScenarioRow row : ScenarioTable.listOfScenarioRuns) {
+            if (row == null) {
+                continue;
+            }
+            String scenarioName = getNormalizedScenarioName(row);
+            if (!scenarioName.isEmpty()) {
+                existingRowsByName.put(scenarioName, row);
+            }
+        }
+
+        ObservableList<ScenarioRow> rows = ScenarioTable.listOfScenarioRuns;
+        rows.clear();
+        for (ScenarioStatusSnapshot snapshot : snapshots) {
+            ScenarioRow row = existingRowsByName.get(snapshot.scenarioName);
+            if (row == null) {
+                row = new ScenarioRow(snapshot.scenarioName);
+            }
+            row.setComponents(snapshot.components);
+            row.setCreatedDate(snapshot.createdDate);
+            row.setCompletedDate(snapshot.completedDate);
+            row.setStatus(snapshot.status);
+            row.setRuntime(snapshot.runtime);
+            row.setUnsolvedMarkets(snapshot.unsolved);
+            rows.add(row);
+        }
+
+        ScenarioTable.tableScenariosLibrary.setPlaceholder(
+                utils.createLabel(noScenarios || snapshots.isEmpty() ? NO_SCENARIOS_MESSAGE : READY_MESSAGE));
+        restoreRefreshViewState(viewState);
+        ScenarioTable.tableScenariosLibrary.refresh();
+        refreshScenarioActionButtons();
     }
 }

@@ -41,16 +41,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ScenarioRow {
 
-	private final StringProperty scenName = new SimpleStringProperty(this, "scenName", null);
-	private final StringProperty components = new SimpleStringProperty(this, "components", null);
-	private final StringProperty createdDate = new SimpleStringProperty(this, "createdDate", null);
-	private final StringProperty startedDate = new SimpleStringProperty(this, "startedDate", null);
-	private final StringProperty completedDate = new SimpleStringProperty(this, "completedDate", null);
-	private final StringProperty status = new SimpleStringProperty(this, "status");
-	private final StringProperty noErr = new SimpleStringProperty(this, "noErr");
-	private final StringProperty unsolvedMarkets = new SimpleStringProperty(this, "unsolvedMarkets");
-	private final StringProperty noIter = new SimpleStringProperty(this, "noIter");
-	private final StringProperty runtime = new SimpleStringProperty(this, "runtime");
+	private final StringProperty scenName = new SimpleStringProperty(this, "scenName", "");
+	private final StringProperty components = new SimpleStringProperty(this, "components", "");
+	private final StringProperty createdDate = new SimpleStringProperty(this, "createdDate", "");
+	private final StringProperty startedDate = new SimpleStringProperty(this, "startedDate", "");
+	private final StringProperty completedDate = new SimpleStringProperty(this, "completedDate", "");
+	private final StringProperty status = new SimpleStringProperty(this, "status", "");
+	private final StringProperty noErr = new SimpleStringProperty(this, "noErr", "");
+	private final StringProperty unsolvedMarkets = new SimpleStringProperty(this, "unsolvedMarkets", "");
+	private final StringProperty noIter = new SimpleStringProperty(this, "noIter", "");
+	private final StringProperty runtime = new SimpleStringProperty(this, "runtime", "");
 
 	// Cached tooltip text; null = not yet computed, "" = no content, else tooltip text
 	private volatile String cachedTooltipText = null;
@@ -58,7 +58,7 @@ public class ScenarioRow {
 	private final AtomicBoolean computingTooltip = new AtomicBoolean(false);
 	
 	public ScenarioRow(String name) {
-		this.scenName.set(name);
+		this.scenName.set(name == null ? "" : name);
 		this.status.set("");
 	}
 	
@@ -88,7 +88,7 @@ public class ScenarioRow {
 	}
 	
 	public final void setComponents(String txt) {
-		components.set(txt);
+		components.set(txt == null ? "" : txt);
 	}
 	
 	public final StringProperty statusProperty() {
@@ -100,7 +100,7 @@ public class ScenarioRow {
 	}	
 
 	public final void setStatus(String txt) {
-		status.set(txt);
+		status.set(txt == null ? "" : txt);
 	}	
 	
 	public final StringProperty unsolvedMarketsProperty() {
@@ -112,7 +112,7 @@ public class ScenarioRow {
 	}	
 	
 	public final void setUnsolvedMarkets(String txt) {
-		unsolvedMarkets.set(txt);
+		unsolvedMarkets.set(txt == null ? "" : txt);
 	}	
 	
 	public final StringProperty noErrProperty() {
@@ -124,7 +124,7 @@ public class ScenarioRow {
 	}	
 	
 	public final void setNoErr(String txt) {
-		noErr.set(txt);
+		noErr.set(txt == null ? "" : txt);
 	}	
 	
 	public final StringProperty noIterProperty() {
@@ -136,7 +136,7 @@ public class ScenarioRow {
 	}	
 	
 	public final void setNoIter(String txt) {
-		noIter.set(txt);
+		noIter.set(txt == null ? "" : txt);
 	}	
 	
 	public final StringProperty runtimeProperty() {
@@ -148,7 +148,7 @@ public class ScenarioRow {
 	}	
 	
 	public final void setRuntime(String txt) {
-		runtime.set(txt);
+		runtime.set(txt == null ? "" : txt);
 	}	
 
 	public final String getCachedTooltipText() {
@@ -180,7 +180,7 @@ public class ScenarioRow {
 	}	
 	
 	public final void setCreatedDate(String date) {
-		createdDate.set(date);
+		createdDate.set(date == null ? "" : date);
 	}	
 	
 	public final void setCreatedDate(Long date) {
@@ -200,7 +200,7 @@ public class ScenarioRow {
 	}	
 	
 	public final void setCompletedDate(String date) {
-		completedDate.set(date);
+		completedDate.set(date == null ? "" : date);
 	}	
 	
 	public final void setCompletedDate(Long date) {
@@ -220,7 +220,7 @@ public class ScenarioRow {
 	}	
 	
 	public final void setStartedDate(String date) {
-		startedDate.set(date);
+		startedDate.set(date == null ? "" : date);
 	}	
 	
 	public final void setStartedDate(Long date) {
