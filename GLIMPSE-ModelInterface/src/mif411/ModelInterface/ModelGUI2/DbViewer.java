@@ -1775,7 +1775,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		
 		
 		JFrame parentFrame = InterfaceMain.getInstance().getFrame();
-		Container contentPane = parentFrame.getContentPane();
+		parentFrame.getContentPane();
 		// Use InterfaceMain.setMainView to replace the CENTER component while keeping the
 		// global status bar (installed in InterfaceMain.SOUTH) intact.
 		InterfaceMain.getInstance().setMainView(tableCreatorSplit);
@@ -2204,7 +2204,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		JFrame parentFrame = InterfaceMain.getInstance().getFrame();
 		if (parentFrame == null)
 			return;
-		Container contentPane = parentFrame.getContentPane();
+		parentFrame.getContentPane();
 
 		// Replace the CENTER view via InterfaceMain so the status bar remains visible.
 		InterfaceMain.getInstance().setMainView(tableCreatorSplit);

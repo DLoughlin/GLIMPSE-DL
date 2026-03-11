@@ -1046,7 +1046,6 @@ public class QueryGenerator implements java.io.Serializable{
 	
 	public boolean editDialog(final MiUndoableEditListener listener) {
 		final Object lock = new Object();
-		String oldTitle = title;
 		final JDialog editDialog = new JDialog(InterfaceMain.getInstance().getFrame(), "Edit Query", false);
 		final QueryGenerator thisGen = this;
 		// Center over the main frame

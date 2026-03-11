@@ -99,21 +99,7 @@ public class TabTechParam extends PolicyTab implements Runnable {
     private static final String LABEL_INPUT = "Input: ";
     private static final String LABEL_OUTPUT = "Output: ";
     private static final String LABEL_UNITS = "Units: ";
-    private static final String LABEL_FINAL_VAL = "Final Val: ";
-    private static final String LABEL_GROWTH = "Growth (%):";
-    private static final String LABEL_DELTA = "Delta:";
-
-    // === Constants for Metadata ===
-    // Metadata header/footer and keys for scenario component file output
-    private static final String SCENARIO_COMPONENT_TYPE = "Tech Param";
-    private static final String METADATA_HEADER = "########## Scenario Component Metadata ##########";
-    private static final String METADATA_FOOTER = "#################################################";
-    private static final String METADATA_SCENARIO_TYPE = "#Scenario component type: ";
-    private static final String METADATA_CATEGORY = "#Category: ";
-    private static final String METADATA_TECHNOLOGIES = "#Technologies: ";
-    private static final String METADATA_PARAMETER = "#Parameter: ";
-    private static final String METADATA_REGIONS = "#Regions: ";
-    private static final String METADATA_TABLE_DATA = "#Table data:";
+    
 
     // === Layout and UI Components ===
     // Layout containers for tab columns and panes

@@ -859,7 +859,7 @@ public abstract class PolicyTab extends Tab {
         		ArrayList<String> values = paneForComponentDetails.getDataYrValsArrayList();
         		
             	int startYear = Integer.parseInt(textFieldStartYear.getText());
-				int endYear = Integer.parseInt(vars.getStopYear());
+				Integer.parseInt(vars.getStopYear());
 				List<Integer> policyYears = vars.getAllowablePolicyYears();
         		
         		// case with empty list - fill with zeros for all policy years: Note: ignores endYear field

@@ -82,8 +82,6 @@ import mapOptions.MapOptionsUtil;
  * It provides interactive controls for scenario/year selection, color palette, legend, and export options.
  */
 public class WorldMapPanel extends JFrame implements ComponentListener {
-    // Debug flag
-    private boolean debug = false;
     // Chart name for display
     private String chartName;
     // Whether states are included in the map
@@ -486,7 +484,7 @@ public class WorldMapPanel extends JFrame implements ComponentListener {
             return map;
         }
         try {
-            ArrayList<String> yearColInTable = MapOptionsUtil.getYearListFromTableData(jtable);
+            MapOptionsUtil.getYearListFromTableData(jtable);
             dataForCountry = MapOptionsUtil.getTableDataForStateOrCountry(jtable, (String) yearListMenu.getSelectedItem(), (String) scenarioListMenu.getSelectedItem());
         } catch (Exception e) {
             e.printStackTrace();

@@ -46,6 +46,7 @@ import glimpseUtil.WindowsRuntimePreflight;
 import java.io.File;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import javafx.animation.FadeTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -56,6 +57,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -110,6 +112,9 @@ public class Client extends Application {
 
 	// version
 	private static final String VERSION = "GLIMPSE-CE ScenarioBuilder";
+	private static final String STATUS_BAR_BASE_STYLE = " -fx-padding: 6 10 6 10; -fx-border-color: #e0e0e0 transparent transparent transparent; -fx-border-width: 1 0 0 0;";
+	private static final double STATUS_BAR_OPERATION_PROGRESS_WIDTH = 120.0;
+	private static final double STATUS_BAR_OPERATION_PROGRESS_HEIGHT = 12.0;
 	
     // region Constants
     private static final double MIN_WINDOW_HEIGHT = 850;
@@ -190,6 +195,8 @@ public class Client extends Application {
     private final GLIMPSEFiles files = GLIMPSEFiles.getInstance();
     private final glimpseUtil.GLIMPSEUtils utils = glimpseUtil.GLIMPSEUtils.getInstance();
     private final StatusBar sb = new StatusBar();
+    private final AtomicInteger activeScenarioOperationCount = new AtomicInteger(0);
+    private ProgressBar scenarioOperationProgressBar;
 
     /** Startup timing anchor (nanoseconds). */
     private static final long STARTUP_T0_NANOS = System.nanoTime();
@@ -448,7 +455,8 @@ public class Client extends Application {
      */
     private void setMainWindow(GridPane mainGridPane, MenuBar menuBar) {
         // Compose the root layout
-        sb.setStyle(styles.getBackgroundStyle() + " -fx-padding: 5; -fx-border-color: #B0B0B0; -fx-border-width: 1 0 0 0;");
+        sb.setStyle(buildStatusBarStyle("-fx-text-fill: black;"));
+        configureStatusBarRightItems();
         final StackPane centerStack = new StackPane();
         centerStack.getChildren().add(mainGridPane);
         startupOverlayBox = createStartupOverlay();
@@ -624,7 +632,7 @@ public class Client extends Application {
         if (safeText.isEmpty()) {
             return;
         }
-        deferredStatusBarText = safeText + "\n" + ((style == null || style.trim().isEmpty()) ? "-fx-text-fill: black" : style.trim());
+        deferredStatusBarText = safeText + "\n" + ((style == null || style.trim().isEmpty()) ? "-fx-text-fill: black;" : style.trim());
         applyDeferredStatusBarTextIfReady();
     }
 
@@ -640,7 +648,7 @@ public class Client extends Application {
         Runnable update = () -> {
             String[] parts = pending.split("\\n", 2);
             inst.sb.setText(parts[0]);
-            inst.sb.setStyle((parts.length > 1 ? parts[1] : "-fx-text-fill: black"));
+            inst.sb.setStyle(inst.buildStatusBarStyle(parts.length > 1 ? parts[1] : "-fx-text-fill: black;"));
         };
         if (Platform.isFxApplicationThread()) {
             update.run();
@@ -992,6 +1000,76 @@ public class Client extends Application {
         }
         if (Client.buttonRefreshComponents != null) {
             Client.buttonRefreshComponents.setDisable(!enabled);
+        }
+    }
+
+    private String buildStatusBarStyle(String extraStyle) {
+        String normalizedExtraStyle = (extraStyle == null) ? "" : extraStyle.trim();
+        if (!normalizedExtraStyle.isEmpty() && !normalizedExtraStyle.endsWith(";")) {
+            normalizedExtraStyle = normalizedExtraStyle + ";";
+        }
+        return styles.getBackgroundStyle() + STATUS_BAR_BASE_STYLE + (normalizedExtraStyle.isEmpty() ? "" : " " + normalizedExtraStyle);
+    }
+
+    public static void beginScenarioOperationProgress() {
+        final Client inst = instanceForStatus;
+        if (inst == null) {
+            return;
+        }
+        Runnable update = inst::incrementScenarioOperationProgress;
+        if (Platform.isFxApplicationThread()) {
+            update.run();
+        } else {
+            Platform.runLater(update);
+        }
+    }
+
+    public static void endScenarioOperationProgress() {
+        final Client inst = instanceForStatus;
+        if (inst == null) {
+            return;
+        }
+        Runnable update = inst::decrementScenarioOperationProgress;
+        if (Platform.isFxApplicationThread()) {
+            update.run();
+        } else {
+            Platform.runLater(update);
+        }
+    }
+
+    private void configureStatusBarRightItems() {
+        if (scenarioOperationProgressBar != null) {
+            return;
+        }
+        scenarioOperationProgressBar = new ProgressBar();
+        scenarioOperationProgressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
+        scenarioOperationProgressBar.setPrefWidth(STATUS_BAR_OPERATION_PROGRESS_WIDTH);
+        scenarioOperationProgressBar.setMinWidth(STATUS_BAR_OPERATION_PROGRESS_WIDTH);
+        scenarioOperationProgressBar.setMaxWidth(STATUS_BAR_OPERATION_PROGRESS_WIDTH);
+        scenarioOperationProgressBar.setPrefHeight(STATUS_BAR_OPERATION_PROGRESS_HEIGHT);
+        scenarioOperationProgressBar.setMaxHeight(STATUS_BAR_OPERATION_PROGRESS_HEIGHT);
+        scenarioOperationProgressBar.setVisible(false);
+        scenarioOperationProgressBar.setManaged(false);
+        scenarioOperationProgressBar.setFocusTraversable(false);
+        sb.getRightItems().setAll(scenarioOperationProgressBar);
+    }
+
+    private void incrementScenarioOperationProgress() {
+        configureStatusBarRightItems();
+        if (activeScenarioOperationCount.incrementAndGet() > 0) {
+            scenarioOperationProgressBar.setVisible(true);
+            scenarioOperationProgressBar.setManaged(true);
+            scenarioOperationProgressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
+        }
+    }
+
+    private void decrementScenarioOperationProgress() {
+        configureStatusBarRightItems();
+        int remaining = activeScenarioOperationCount.decrementAndGet();
+        if (remaining <= 0) {
+            activeScenarioOperationCount.set(0);
+            scenarioOperationProgressBar.setVisible(false);
+            scenarioOperationProgressBar.setManaged(false);
         }
     }
 }

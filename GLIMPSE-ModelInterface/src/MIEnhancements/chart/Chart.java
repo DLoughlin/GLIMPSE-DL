@@ -386,7 +386,7 @@ public class Chart {
 				if (myLine.contains(":") && !myLine.contains("*")) {
 					String queryNameInFile = ((String) temp[i]).split(":")[0].trim();
 					if (queryNameInFile.equals(queryNameForChart)) {
-						String secondPart = ((String) temp[i]).split(":")[1].trim();
+						((String) temp[i]).split(":")[1].trim();
 					}
 				} else {
 					String firstPart = ((String) temp[i]).split("=")[0];

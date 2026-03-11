@@ -411,9 +411,9 @@ public class DemandComponentsQueryBuilder extends QueryBuilder {
             }
         }
 		int pipeIndex = qg.getXPath().indexOf('|');
-		String part1 = qg.getXPath().substring(0, pipeIndex+1);
-		String part2 = qg.getXPath().substring(pipeIndex+1, qg.getXPath().length());
-		String retStr = ret.toString();
+		qg.getXPath().substring(0, pipeIndex+1);
+		qg.getXPath().substring(pipeIndex+1, qg.getXPath().length());
+		ret.toString();
 		//System.out.println("XPath would be: "+ret.append(part1).append(retStr).append(part2));
 		return ret.append(qg.getXPath()).toString();
 		/*
@@ -443,14 +443,10 @@ public class DemandComponentsQueryBuilder extends QueryBuilder {
 
 		// attemp to find axis values at the current node
 		String type = attrMap.get("type");
-		boolean addedNodeLevel = false;
-		boolean addedYearLevel = false;
 		if(qg.nodeLevel.getKey().equals(type)) {
-			addedNodeLevel = true;
 			axisValue.setValue(attrMap.get(qg.nodeLevel.getValue()));
 		} 
 		if(qg.yearLevel.getKey().equals(type)) {
-			addedYearLevel = true;
 			String sectorType = attrMap.get(qg.yearLevel.getValue());
 			if(sectorType.equals("Household")) {
 				axisValue.setKey("Consumption");

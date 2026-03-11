@@ -136,10 +136,6 @@ public class RunMIQuery extends QueryModule {
         }
     }
     private void buildTable(QueryProcessor queryProc, QueryGenerator qg, FElem outputDoc) throws Exception {
-        //System.out.println("In Function: "+System.currentTimeMillis());
-        // TODO: replicate these checks, currently just assuming they are all false
-        boolean sumAll = false;
-        boolean isTotal = false;
         boolean isGlobal = false;
 
         Iter res = queryProc.iter();

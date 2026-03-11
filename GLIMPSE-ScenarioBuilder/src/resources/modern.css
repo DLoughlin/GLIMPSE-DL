@@ -80,7 +80,8 @@
 
 /* Status Bar */
 .status-bar {
-    -fx-background-color: #e0e0e0;
+    -fx-background-color: #ffffff;
+    -fx-background-insets: 0;
     -fx-padding: 5;
 }
 

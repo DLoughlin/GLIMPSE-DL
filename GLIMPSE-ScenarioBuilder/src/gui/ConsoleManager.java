@@ -582,8 +582,7 @@ final class ConsoleManager {
             if (flow == null) {
                 // Drain anyway to keep memory bounded.
                 int drained = 0;
-                BufferedItem it;
-                while (drained < maxItems && (it = queue.poll()) != null) {
+                while (drained < maxItems && (queue.poll()) != null) {
                     drained++;
                 }
                 approxCharsQueued = 0;

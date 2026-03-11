@@ -728,12 +728,7 @@ public class DiffWindow {
      * Captures selected cell positions, in selection order.
      */
     private static class TablePosition2 {
-        final int row;
-        final int colId;
-
         private TablePosition2(int row, int colId) {
-            this.row = row;
-            this.colId = colId;
         }
 
         static java.util.List<TablePosition2> from(TableView<DiffLineRow> tv) {

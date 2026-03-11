@@ -633,7 +633,7 @@ public class SingleQueryExtension implements TreeSelectionListener, ListSelectio
 			       Object[] scenarios = currSelection.getKey().toArray();
 			       Object[] regions = currSelection.getValue().toArray();
 			       List<SingleQueryValue> tempValues;
-			       final long startTime = System.currentTimeMillis();
+			       System.currentTimeMillis();
 			       QueryProcessor queryProc = XMLDB.getInstance().createQuery(new SingleQueryListQueryBinding(qg, 
 						       XMLDB.getInstance().getContainer(), qg.getCollapseOnList()), scenarios, regions, gatherContext);
 			       try {
@@ -701,7 +701,7 @@ public class SingleQueryExtension implements TreeSelectionListener, ListSelectio
 	       return (new Runnable() {
 		       public void run() {
 			       List<SingleQueryValue> tempValues = null;
-			       final long startTime = System.currentTimeMillis();
+			       System.currentTimeMillis();
                    QueryProcessor queryProc = XMLDB.getInstance().createQuery("/singleQueryListCache/cache[@id="
 					       +qg.getStorageHashCode()+"]/text()", null, null, null);
 			       try {

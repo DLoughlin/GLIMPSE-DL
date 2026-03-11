@@ -66,8 +66,7 @@ public class CsvFileWriter {
      * @param args Command line arguments
      */
     public static void main(String[] args) {
-        CsvFileWriter writer = new CsvFileWriter();
-        //writer.test();
+        new CsvFileWriter();
     }
 
     /**
@@ -98,15 +97,13 @@ public class CsvFileWriter {
     public ArrayList<String> createCsvContent(ArrayList<String> colList, ArrayList<String> dataList) {
         ArrayList<String> fileContentList = new ArrayList<String>();
 
-        boolean isNested = false; // Flag for nested header structure
-
         // Extract key scenario values from dataList using utility methods
         String sectorText = utils.getMatch(dataList, "sector", ";", ":");
         String subsector1Text = utils.getMatch(dataList, "subsector", ";", ":");
         String subsector2Text = "";
         String technologyText = utils.getMatch(dataList, "technology", ";", ":");
         String inputText = utils.getStringUpToChar(utils.getMatch(dataList, "input", ";", ":"), ")");
-        String outputText = utils.getStringUpToChar(utils.getMatch(dataList, "output", ";", ":"), ")");
+        utils.getStringUpToChar(utils.getMatch(dataList, "output", ";", ":"), ")");
         String paramText = utils.getMatch(dataList, "param", ";", ":");
         String param2Text = utils.getMatch(dataList, "param2", ";", ":");
         String[] yearsText = utils.getMatches(dataList, "year", ";", ":", ",");
@@ -132,16 +129,12 @@ public class CsvFileWriter {
 			comboText = "all/" + paramText;
 		}
 
-        int no_years = yearsText.length;
-        int no_regions = regionsText.length;
-
         // Find header text from column list
         String headerText = utils.getMatch(colList, comboText, ";");
         System.out.println("Echo header text: " + headerText);
 
         // Handle nested header structure if present
         if (headerText.contains("=>")) {
-            isNested = true;
             headerText = headerText.replace("=>", ",");
 
             // Split technology text if nested

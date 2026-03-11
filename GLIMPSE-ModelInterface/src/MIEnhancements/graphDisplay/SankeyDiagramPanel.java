@@ -395,7 +395,7 @@ public class SankeyDiagramPanel extends JFrame implements ComponentListener {
 				if (bt != null) {
 				//gather all flowDatasets into a HashMap first
 				JTable jTable = null;
-				JSplitPane sp = new JSplitPane();
+				new JSplitPane();
 				jTable = bt.getAsSortedTable();
 				String datasetName = selPaths[i].getLastPathComponent().toString();
 				//the scenario string in the tables are slightly different from the ones in the scenario list

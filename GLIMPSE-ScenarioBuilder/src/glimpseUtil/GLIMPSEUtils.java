@@ -1025,7 +1025,7 @@ public class GLIMPSEUtils {
 		long now = d.getTime();
 		int diff_sec = (int) Math.floor((now - orig_date) / 1000.);
 		String temp="" + diff_sec;
-		String rtn_str = temp.substring(temp.length() - 6);
+		temp.substring(temp.length() - 6);
 
 		return "" + diff_sec;
 	}
@@ -2333,7 +2333,6 @@ public class GLIMPSEUtils {
 		formatter.setGroupingUsed(false);
 		double min_dmd = 0.0001;
 		double min_red = 0.01;
-		int maj_smallmkt_fails = 0;
 		int total_fails = 0, minor_fails = 0, min_smallmkt_fails = 0, major_fails = 0, moderate_fails = 0;
 		String scenarioLabel = (scenario == null || scenario.trim().isEmpty()) ? "exe/main_log.txt" : scenario;
 		ArrayList<String> report = new ArrayList<>();
@@ -2357,14 +2356,14 @@ public class GLIMPSEUtils {
 					if (tokens.length > 12) {
 						double red = Double.parseDouble(tokens[7].trim());
 						double dmd = Double.parseDouble(tokens[9].trim());
-						String mkt = tokens[12].trim();
+						tokens[12].trim();
 						total_fails++;
 						if (red > min_red) {
 							if (red > min_red * 5.0) {
 								classification = "MAJOR";
 								major_fails++;
-								if (dmd <= min_dmd)
-									maj_smallmkt_fails++;
+								if (dmd <= min_dmd) {
+								}
 							} else {
 								classification = "MODERATE";
 								moderate_fails++;

@@ -68,8 +68,6 @@ public class Thumbnail {
     private SwingWorker<Chart[], Void> worker;
     private final Cursor waitCursor = new Cursor(WAIT_CURSOR_TYPE);
     private final Cursor defaultCursor = new Cursor(DEFAULT_CURSOR_TYPE);
-    private HashMap<String, String> unitLookup;
-
     /**
      * Constructs a Thumbnail object and creates thumbnail charts from table data.
      * Sets up the chart pane in the provided JSplitPane.
@@ -111,8 +109,6 @@ public class Thumbnail {
         }
 
         sp.setCursor(waitCursor);
-        this.unitLookup = unitLookup;
-
         // Run chart data creation in background to avoid blocking the EDT.
         final Map<String, Integer[]> metaMapFinal = metaMap; // capture for worker
         worker = new SwingWorker<Chart[], Void>() {

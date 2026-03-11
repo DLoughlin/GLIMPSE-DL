@@ -137,11 +137,6 @@ public class InterfaceMain implements ActionListener {
 		return trimmed.split("\\s*[;,]\\s*");
 	}
 
-	/**
-	 * Unique identifier used for serializing.
-	 */
-	private static final long serialVersionUID = -9137748180688015902L;
-
 	public static final int FILE_MENU_POS = 0;
 	public static final int EDIT_MENU_POS = 1;
 	public static final int VIEW_MENU_POS = 2;
@@ -181,39 +176,21 @@ public class InterfaceMain implements ActionListener {
 	private static File propertiesFile;
 	private static String oldControl;
 	private static InterfaceMain main;
-	private JMenuItem newMenu;
 	private JMenuItem saveMenu;
 	private JMenuItem saveAsMenu;
 	private JMenuItem quitMenu;
-	private JMenuItem copyMenu;
-	private JMenuItem pasteMenu;
 	private JMenuItem undoMenu;
 	private JMenuItem redoMenu;
 	private JMenuItem batchMenu;
-	private JMenuItem toolsCSVMenu; // YD added
-	private JMenuItem toolsUnitMenu; // YD added
-	private JMenuItem editRegionsMenu; // Added: Edit Regions menu item
 	private JMenuItem selectQueryMenu;
 	private JMenuItem editQueryFileMenu; // Open current query file in XML editor
 
-	// New Config menu items
-	private JMenuItem selectQueryFileMenu;
-	private JMenuItem selectUnitsFileMenu;
-	private JMenuItem selectRegionsFileMenu;
-	private JMenuItem selectMapResourceFolderMenu;
-
-	private JMenuItem editQuerySubMenu; // YD added
 	private JMenuItem toggleAutoGraphicsMenu;
-	private JMenu advancedSubMenu1;// YD added
-	private JMenu advancedSubMenu2;// YD added
 	private Properties savedProperties;
 	private UndoManager undoManager;
 
 	// New: Help menu primary item
 	private JMenuItem helpItem;
-
-	// New: Edit -> Query File menu item (enabled only when a query file is set)
-	private JMenuItem queryTreeFileMenu;
 
 	private MenuAdder dbView = null;
 
@@ -1619,10 +1596,6 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
-	// Preferences dialog implementation
-	private javax.swing.JLabel unitsFileLabel;
-	private javax.swing.JLabel regionsFileLabel;
-	private javax.swing.JLabel mapResourceFolderLabel;
 	private javax.swing.JTextField xmlEditorField;
 	private javax.swing.JTextField csvEditorField;
 	private javax.swing.JTextField txtEditorField;

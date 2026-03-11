@@ -77,9 +77,6 @@ import javafx.stage.Stage;
 
 /** Manages the scenario library pane, including scenario actions, GCAM runs, and status refresh. */
 public class PaneScenarioLibrary extends ScenarioBuilder {
-    // --- Constants ---
-    private static final boolean TAIL_GCAM_MAIN_LOG_TO_CONSOLE = false;
-    private static final String TAILED_LOG_PREFIX = "[main_log] ";
     private static final Duration LIVE_STATUS_REFRESH_INTERVAL = Duration.ofSeconds(3);
     private static final String[] EXE_LOG_ARTIFACT_FILENAMES = {
             "main_log.txt",
@@ -87,8 +84,6 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             "gcam_stdout.txt"
     };
 
-    private static final String GCAM_STATUS_BLOCKED = "Blocked";
-    private static final String GCAM_STATUS_WRITING = "Writing";
     private static final String[] GCAM_STDOUT_SUCCESS_MARKERS = {
             "Model exiting successfully.",
             "Exiting successfully.",
@@ -99,7 +94,6 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private static final String LOADING_SCENARIOS_MESSAGE = "Loading scenario status...";
     private static final String NO_SCENARIOS_MESSAGE = "No scenarios found.";
     private static final String READY_MESSAGE = "Ready";
-    private static final String REFRESHING_SCENARIOS_MESSAGE = "Refreshing scenario status...";
     private static final String ERROR_LOADING_SCENARIOS_MESSAGE = "Problem loading scenario status.";
 
     private static final String DIFF_LABEL = "Diff";
@@ -447,15 +441,20 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             return;
         }
 
-        ScenarioFileActionService.ImportResult importResult = scenarioFileActionService.importScenarioConfig(newConfigFile);
-        if (!importResult.wasImported()) {
-            return;
+        Client.beginScenarioOperationProgress();
+        try {
+            ScenarioFileActionService.ImportResult importResult = scenarioFileActionService.importScenarioConfig(newConfigFile);
+            if (!importResult.wasImported()) {
+                return;
+            }
+            if (doesScenarioExist) {
+                clearImportedScenarioRunResultFields(scenarioName);
+            }
+            ScenarioRow[] newRun = { importResult.getScenarioRow() };
+            ScenarioTable.addToListOfRunFiles(newRun);
+        } finally {
+            Client.endScenarioOperationProgress();
         }
-        if (doesScenarioExist) {
-            clearImportedScenarioRunResultFields(scenarioName);
-        }
-        ScenarioRow[] newRun = { importResult.getScenarioRow() };
-        ScenarioTable.addToListOfRunFiles(newRun);
     }
 
     private void handleViewConfig() {
@@ -1034,7 +1033,6 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             }
             refreshScenarioActionButtons();
         });
-        String refreshMessage = userInitiated ? REFRESHING_SCENARIOS_MESSAGE : LOADING_SCENARIOS_MESSAGE;
         //System.out.println(refreshMessage);
         Thread refreshThread = new Thread(() -> {
             try {

@@ -267,8 +267,7 @@ public class LandAllocatorQueryBuilder extends QueryBuilder {
 		qg.group = false;
 		qg.sumAll = false;
 	}
-	private boolean passedIt;
-        /*
+	/*
 	private Map addToDataTree(ANode currNode, Map dataTree) throws Exception {
         BXNode currDOM = BXNode.get(currNode);
 		if (currDOM.getNodeType() == BXNode.DOCUMENT_NODE) {

@@ -606,7 +606,7 @@ public class TabTechTax extends PolicyTab implements Runnable {
 		} else {
 			String[] listOfSelectedLeaves = utils.getAllSelectedRegions(tree);
 			listOfSelectedLeaves = utils.removeUSADuplicate(listOfSelectedLeaves);
-			String states = utils.returnAppendedString(listOfSelectedLeaves);
+			utils.returnAppendedString(listOfSelectedLeaves);
 			filenameSuggestion = "";
 			String taxOrSubsidy = comboBoxMeasure.getSelectionModel().getSelectedItem().trim().toLowerCase();
             String ID = null;
