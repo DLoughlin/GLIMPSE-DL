@@ -210,6 +210,9 @@ public class Client extends Application {
     private static volatile boolean startupBusyState = true;
     /** Cached post-startup status message. */
     private static volatile String deferredStatusBarText;
+    /** Initial library loads that must finish before steady-state resource text is restored. */
+    private static volatile boolean initialScenarioLoadPending = true;
+    private static volatile boolean initialComponentLoadPending = true;
 
     /**
      * The entry point of the application. Sets up JavaFX and launches the GUI.
@@ -598,6 +601,20 @@ public class Client extends Application {
                 || SCENARIO_REFRESHED_MESSAGE.equalsIgnoreCase(safeText);
     }
 
+    public static void markInitialScenarioLoadComplete() {
+        initialScenarioLoadPending = false;
+        applyDeferredStatusBarTextIfReady();
+    }
+
+    public static void markInitialComponentLoadComplete() {
+        initialComponentLoadPending = false;
+        applyDeferredStatusBarTextIfReady();
+    }
+
+    private static boolean areInitialLibraryLoadsPending() {
+        return initialScenarioLoadPending || initialComponentLoadPending;
+    }
+
     public static boolean isStartupBusy() {
         return startupBusyState;
     }
@@ -612,7 +629,7 @@ public class Client extends Application {
     }
 
     private static void applyDeferredStatusBarTextIfReady() {
-        if (startupBusyState) {
+        if (startupBusyState || areInitialLibraryLoadsPending()) {
             return;
         }
         final Client inst = instanceForStatus;

@@ -99,6 +99,8 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private static final String LOADING_SCENARIOS_MESSAGE = "Loading scenario status...";
     private static final String NO_SCENARIOS_MESSAGE = "No scenarios found.";
     private static final String READY_MESSAGE = "Ready";
+    private static final String REFRESHING_SCENARIOS_MESSAGE = "Refreshing scenario status...";
+    private static final String ERROR_LOADING_SCENARIOS_MESSAGE = "Problem loading scenario status.";
 
     private static final String DIFF_LABEL = "Diff";
     private static final String DIFF_TOOLTIP = "Diff: Compare first two selected configurations";
@@ -1032,12 +1034,16 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             }
             refreshScenarioActionButtons();
         });
-        Client.setStartupStatus(userInitiated ? "Refreshing scenario status..." : "Loading scenario status...", -1, !userInitiated);
+        String refreshMessage = userInitiated ? REFRESHING_SCENARIOS_MESSAGE : LOADING_SCENARIOS_MESSAGE;
+        //System.out.println(refreshMessage);
         Thread refreshThread = new Thread(() -> {
             try {
                 updateRunStatus();
                 Platform.runLater(() -> {
                     try {
+                        if (!userInitiated) {
+                            Client.markInitialScenarioLoadComplete();
+                        }
                         refreshScenarioActionButtons();
                     } finally {
                         scenarioRefreshInProgress.set(false);
@@ -1046,8 +1052,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             } catch (Exception ex) {
                 Platform.runLater(() -> {
                     System.out.println("Problem updating scenario table: " + ex);
-                    Client.setStartupStatus("Problem loading scenario status.", -1, false);
+                    System.out.println(ERROR_LOADING_SCENARIOS_MESSAGE);
                     pendingRefreshViewState = ScenarioLibraryViewStateHelper.RefreshViewState.empty();
+                    if (!userInitiated) {
+                        Client.markInitialScenarioLoadComplete();
+                    }
                     refreshScenarioActionButtons();
                     scenarioRefreshInProgress.set(false);
                 });

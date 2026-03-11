@@ -784,7 +784,6 @@ public class GLIMPSEFiles {
             return;
         }
 
-        // Preferred: run the configured editor as a proper arg list (handles paths with spaces).
         String editorCmd = vars.getTextEditor();
         if (editorCmd != null) {
             editorCmd = editorCmd.trim();
@@ -792,36 +791,33 @@ public class GLIMPSEFiles {
 
         try {
             if (editorCmd != null && editorCmd.length() > 0) {
-                // Allow options files to specify an editor with args, e.g.:
-                //   "C:\\Program Files\\Notepad++\\notepad++.exe" -multiInst
-                // Tokenize into args and append the filename as final arg.
+                java.util.List<String> tokenizedEditor = CommandLineTokenizer.tokenize(editorCmd);
                 java.util.ArrayList<String> cmdArgs = new java.util.ArrayList<>();
-                for (String a : CommandLineTokenizer.tokenize(editorCmd)) {
+                for (String a : tokenizedEditor) {
                     if (a != null && a.trim().length() > 0) {
                         cmdArgs.add(a);
                     }
                 }
                 cmdArgs.add(f.getAbsolutePath());
-
-                // Fire-and-forget: we only care if it starts successfully.
                 new ProcessBuilder(cmdArgs).start();
                 return;
             }
         } catch (Exception e) {
             utils.warningMessage("Could not use text editor specified in options file. Using system default.");
-            System.out.println("Error trying to open file to view with editor.");
-            System.out.println("   file: " + filename);
-            System.out.println("   editor: " + vars.getTextEditor());
-            System.out.println("Error: " + e);
+            System.out.println("Text editor launch failed for file: " + filename);
+            System.out.println("   configured editor: " + vars.getTextEditor());
+            System.out.println("   falling back to system default editor.");
+            System.out.println("   exception type: " + e.getClass().getName());
+            System.out.println("   exception msg : " + e.getMessage());
         }
 
-        // Fallback: system default editor.
         try {
             Desktop.getDesktop().edit(f);
         } catch (Exception e1) {
             utils.warningMessage("Problem trying to open file with system text editor.");
-            System.out.println("Error trying to open file to view with system text editor.");
-            System.out.println("Error: " + e1);
+            System.out.println("System text editor fallback failed for file: " + filename);
+            System.out.println("   exception type: " + e1.getClass().getName());
+            System.out.println("   exception msg : " + e1.getMessage());
         }
     }
 

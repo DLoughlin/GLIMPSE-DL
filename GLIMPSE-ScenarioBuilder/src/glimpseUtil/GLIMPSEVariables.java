@@ -1496,13 +1496,13 @@ public class GLIMPSEVariables {
      */
     private void set(String param, String val) {
 
-    	if ((val==null)||(param==null)) return;
-    	if (val.trim().isEmpty() || param.trim().isEmpty()) return;
-    	
-        param = param.toLowerCase().trim();
-        if (val.indexOf("#") > -1){
-            val = fixDir(val);
-        }
+	if ((val==null)||(param==null)) return;
+	if (val.trim().isEmpty() || param.trim().isEmpty()) return;
+	
+    param = param.toLowerCase().trim();
+    if (val.indexOf("#") > -1){
+        val = fixDir(val);
+    }
 
 
         switch (param) {
@@ -2004,7 +2004,6 @@ public class GLIMPSEVariables {
         ArrayList<String> sector_list=new ArrayList<>(); 
         ArrayList<String> output_list=new ArrayList<>(); 
         ArrayList<String> units_list=new ArrayList<>(); 
-        
         for (int i=0;i<techInfo.length;i++) {
             String sect_i=techInfo[i][0].trim();
             String output_i=techInfo[i][5].trim();
@@ -2560,5 +2559,5 @@ public class GLIMPSEVariables {
     public void setGhgOutputUnit(List<String> ghgOutputUnit) {
         this.ghgOutputUnit = ghgOutputUnit;
     }
-
 }
+
