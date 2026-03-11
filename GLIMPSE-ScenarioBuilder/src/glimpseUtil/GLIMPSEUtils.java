@@ -2044,7 +2044,7 @@ public class GLIMPSEUtils {
 		int init_year = start_year;
 		double val = 0.0;
 		int year = 0;
-		returnMatrix = new double[2][num_periods];
+	 returnMatrix = new double[2][num_periods];
 
 		if (isPercent) {
 			initial_value /= 100.0;
@@ -2613,10 +2613,10 @@ public class GLIMPSEUtils {
 		}
 		Path dest = scenarioDir.resolve("main_log.txt");
 		try {
-			Files.copy(exeMainLog.toPath(), dest, StandardCopyOption.REPLACE_EXISTING);
-			showInformationDialog("Notice", "Fix Lost Handle", "Copied executable main_log.txt to scenario: " + scenarioName);
+			Files.move(exeMainLog.toPath(), dest, StandardCopyOption.REPLACE_EXISTING);
+			showInformationDialog("Notice", "Fix Lost Handle", "Moved executable main_log.txt to scenario: " + scenarioName);
 		} catch (Exception e) {
-			warningMessage("Problem copying main_log.txt: " + e.getMessage());
+			warningMessage("Problem moving main_log.txt: " + e.getMessage());
 		}
 	}
 

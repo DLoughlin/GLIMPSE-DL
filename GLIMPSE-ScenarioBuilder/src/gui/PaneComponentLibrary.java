@@ -266,7 +266,6 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 					if (ComponentLibraryTable.getTableComponents() != null && fileArr.length == 0) {
 						ComponentLibraryTable.getTableComponents().setPlaceholder(utils.createLabel(NO_COMPONENTS_MESSAGE));
 					}
-					Client.setStartupStatus(userInitiated ? "Component library refreshed." : "Scenario components loaded.", -1, false);
 				});
 			} catch (Exception exception) {
 				javafx.application.Platform.runLater(() -> {

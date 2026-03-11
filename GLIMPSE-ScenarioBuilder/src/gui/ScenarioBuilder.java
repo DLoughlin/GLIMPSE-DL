@@ -428,11 +428,6 @@ public class ScenarioBuilder {
 		}
 
 		String components = getNormalizedScenarioComponents(selectedScenario);
-		if (components.isEmpty()) {
-			utils.showInformationDialog("Information", "Scenario metadata not ready.", "The selected scenario does not have component metadata yet. Please refresh the scenario library and try again.");
-			return;
-		}
-
 		if (isExternallyCreatedScenario(components)) {
 			utils.showInformationDialog("Information", "Function not supported.", "Cannot modify scenario components in a scenario created outside of the ScenarioBuilder.");
 			return;
@@ -566,19 +561,18 @@ public class ScenarioBuilder {
 		int numSelectedScenarios = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems().size();
 		int numSelectedCreate = ComponentLibraryTable.getTableCreateScenario().getSelectionModel().getSelectedItems().size();
 		int numSelectedCandidate = ComponentLibraryTable.getTableComponents().getSelectionModel().getSelectedItems().size();
-		ScenarioRow selectedScenario = numSelectedScenarios == 1 ? ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItem() : null;
-		boolean hasEditableScenarioSelected = numSelectedScenarios == 1 && isScenarioEditable(selectedScenario);
+		boolean hasScenariosSelected = numSelectedScenarios >= 1;
+		boolean hasSingleScenarioSelected = numSelectedScenarios == 1;
 
 		// Scenario Library buttons
-		boolean hasScenariosSelected = numSelectedScenarios >= 1;
 		Client.buttonBrowseScenarioFolder.setDisable(!hasScenariosSelected);
 		Client.buttonDeleteScenario.setDisable(!hasScenariosSelected);
-		Client.buttonViewConfig.setDisable(!hasScenariosSelected);
+		Client.buttonViewConfig.setDisable(false);
 		Client.buttonArchiveScenario.setDisable(!hasScenariosSelected);
 		Client.buttonViewLog.setDisable(!hasScenariosSelected);
 		Client.buttonViewErrors.setDisable(!hasScenariosSelected);
 		Client.buttonRunScenario.setDisable(!hasScenariosSelected);
-		Client.buttonEditScenario.setDisable(!hasEditableScenarioSelected);
+		Client.buttonEditScenario.setDisable(!hasSingleScenarioSelected);
 		Client.buttonResultsForSelected.setDisable(numSelectedScenarios != 1);
 		Client.buttonDiffFiles.setDisable(numSelectedScenarios != 2);
 

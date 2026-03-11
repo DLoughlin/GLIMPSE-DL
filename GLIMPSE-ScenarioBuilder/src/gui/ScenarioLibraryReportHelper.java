@@ -2,11 +2,17 @@ package gui;
 
 import glimpseUtil.GLIMPSEFiles;
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
 
+import glimpseElement.ScenarioRow;
+
 final class ScenarioLibraryReportHelper {
+
+    private static final String RUNTIME_PREFIX = "Data Readin, Model Run & Write Time:";
 
     private ScenarioLibraryReportHelper() {
     }
@@ -120,5 +126,124 @@ final class ScenarioLibraryReportHelper {
         } catch (Exception ignored) {
         }
         return "";
+    }
+
+    static ArrayList<String> createScenarioExecutionReport(GLIMPSEFiles files, String scenarioDir,
+            List<ScenarioRow> scenarioRows, List<String> selectedScenarioNames, List<String> queuedRuns,
+            List<String> completedRuns, String stopRequestedScenarioName) {
+        ArrayList<String> reportLines = new ArrayList<>();
+        reportLines.add("Scenario Execution Report");
+        reportLines.add("Generated: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+        reportLines.add("Queued this session: " + safeSize(queuedRuns));
+        reportLines.add("Completed this session: " + safeSize(completedRuns));
+        reportLines.add("---");
+
+        boolean filterToSelection = selectedScenarioNames != null && !selectedScenarioNames.isEmpty();
+        if (scenarioRows != null) {
+            for (ScenarioRow row : scenarioRows) {
+                if (row == null) {
+                    continue;
+                }
+                String scenarioName = safeText(row.getScenarioName());
+                if (scenarioName.isEmpty()) {
+                    continue;
+                }
+                if (filterToSelection && !selectedScenarioNames.contains(scenarioName)) {
+                    continue;
+                }
+                reportLines.add("Scenario: " + scenarioName);
+                reportLines.add("  Status: " + safeText(row.getStatus()));
+                reportLines.add("  Components: " + safeText(row.getComponents()));
+                reportLines.add("  Created: " + safeText(row.getCreatedDate()));
+                reportLines.add("  Completed: " + safeText(row.getCompletedDate()));
+                reportLines.add("  Runtime: " + safeText(row.getRuntime()));
+                reportLines.add("  Unsolved markets: " + safeText(row.getUnsolvedMarkets()));
+                reportLines.add("  Stop requested: " + (scenarioName.equals(safeText(stopRequestedScenarioName)) ? "yes" : "no"));
+
+                File mainLog = ScenarioLibraryPathHelper.scenarioMainLogPath(scenarioDir, scenarioName).toFile();
+                if (mainLog.exists()) {
+                    reportLines.add("  Main log: " + mainLog.getAbsolutePath());
+                    String version = extractModelVersion(files, mainLog);
+                    if (!version.isEmpty()) {
+                        reportLines.add("  Version: " + version);
+                    }
+                    String unsolved = extractUnsolvedMarkets(files, mainLog);
+                    if (!unsolved.isEmpty()) {
+                        reportLines.add("  Log unsolved: " + unsolved);
+                    }
+                    String runtimeLine = extractLastLogValue(files, mainLog, RUNTIME_PREFIX);
+                    if (!runtimeLine.isEmpty()) {
+                        reportLines.add("  Runtime raw: " + runtimeLine);
+                    }
+                }
+                reportLines.add("---");
+            }
+        }
+        return reportLines;
+    }
+
+    static ArrayList<String> createExecutableErrorReport(GLIMPSEFiles files, File mainLog) {
+        ArrayList<String> reportLines = new ArrayList<>();
+        reportLines.add("Executable Errors");
+        reportLines.add("Log: " + (mainLog == null ? "" : mainLog.getAbsolutePath()));
+        reportLines.add("---");
+        appendMatchingLogLines(files, reportLines, mainLog, "ERROR");
+        appendMatchingLogLines(files, reportLines, mainLog, "Exception");
+        appendMatchingLogLines(files, reportLines, mainLog, ",ERR");
+        return reportLines;
+    }
+
+    static ArrayList<String> createScenarioErrorReport(GLIMPSEFiles files, String scenarioDir, List<ScenarioRow> rows) {
+        ArrayList<String> reportLines = new ArrayList<>();
+        reportLines.add("Scenario Errors");
+        reportLines.add("---");
+        if (rows != null) {
+            for (ScenarioRow row : rows) {
+                if (row == null) {
+                    continue;
+                }
+                String scenarioName = safeText(row.getScenarioName());
+                if (scenarioName.isEmpty()) {
+                    continue;
+                }
+                File mainLog = ScenarioLibraryPathHelper.scenarioMainLogPath(scenarioDir, scenarioName).toFile();
+                reportLines.add("Scenario: " + scenarioName);
+                reportLines.add("Log: " + mainLog.getAbsolutePath());
+                appendMatchingLogLines(files, reportLines, mainLog, "ERROR");
+                appendMatchingLogLines(files, reportLines, mainLog, "Exception");
+                appendMatchingLogLines(files, reportLines, mainLog, ",ERR");
+                reportLines.add("---");
+            }
+        }
+        return reportLines;
+    }
+
+    private static void appendMatchingLogLines(GLIMPSEFiles files, List<String> linesOut, File logFile, String token) {
+        if (files == null || linesOut == null || logFile == null || token == null || token.trim().isEmpty() || !logFile.exists()) {
+            return;
+        }
+        try {
+            ArrayList<String> lines = files.getStringArrayFromFile(logFile.getAbsolutePath(), "#");
+            boolean addedHeader = false;
+            for (String line : lines) {
+                if (line == null || !line.contains(token)) {
+                    continue;
+                }
+                if (!addedHeader) {
+                    linesOut.add("Matches for '" + token + "':");
+                    addedHeader = true;
+                }
+                linesOut.add("  " + line.trim());
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static int safeSize(List<?> list) {
+        return list == null ? 0 : list.size();
+    }
+
+    private static String safeText(String text) {
+        return text == null || text.trim().isEmpty() ? "" : text.trim();
     }
 }

@@ -300,22 +300,24 @@ class PaneCreateScenario extends ScenarioBuilder {
     protected void processScenario(String scenName, ObservableList<ComponentRow> list, ObservableList<ComponentRow> list1,
                                    String runName, String scenarioName, boolean execute) throws IOException {
         String message = "";
-
+        boolean overwritingScenario = checkInList(scenName, ScenarioTable.tableScenariosLibrary);
+ 
         // Check if scenario already exists and prompt for overwrite
-        if (checkInList(scenName, ScenarioTable.tableScenariosLibrary)) {
+        if (overwritingScenario) {
             String s = SCENARIO_OVERWRITE_PROMPT + scenName + "?";
             boolean overwrite = utils.confirmAction(s);
             if (!overwrite) {
                 return;
             }
         }
-
+ 
         // Create scenario dialog and collect metadata
         message = createScenarioDialog(scenarioName);
         if (message == null) return;
-
+ 
         // Delete old log and XML files if scenario is being overwritten
-        if (checkInList(scenName, ScenarioTable.tableScenariosLibrary)) {
+        if (overwritingScenario) {
+            clearScenarioRunResultFields(scenName);
             String mainLogFile = vars.getScenarioDir() + File.separator + scenName + File.separator + "main_log.txt";
             files.deleteFile(mainLogFile);
         }
@@ -740,5 +742,33 @@ class PaneCreateScenario extends ScenarioBuilder {
         if ((saveSolverLog) && (foundSolver == null)) filesToSave.add(vars.getgCamExecutableDir() + File.separator + "logs" + File.separator + "solver_log.csv");
         if ((saveDebugFile) && (foundDebug == null)) filesToSave.add(vars.getgCamExecutableDir() + File.separator + "debug.xml");
         return utils.createStringFromArrayList(filesToSave, ";");
+    }
+
+    /**
+     * Clears the run-result fields for a scenario by resetting the matching table row.
+     * This is used when a scenario is recreated to clear stale run-result data.
+     *
+     * @param scenarioName The name of the scenario whose run-result fields should be cleared.
+     */
+    private void clearScenarioRunResultFields(String scenarioName) {
+        if (scenarioName == null || scenarioName.trim().isEmpty()) {
+            return;
+        }
+        if (ScenarioTable.listOfScenarioRuns == null) {
+            return;
+        }
+        ScenarioLibraryViewStateHelper viewStateHelper = new ScenarioLibraryViewStateHelper(utils);
+        viewStateHelper.preserveSelectionAndRefresh(() -> {
+            for (ScenarioRow row : ScenarioTable.listOfScenarioRuns) {
+                if (row == null || !scenarioName.equals(row.getScenarioName())) {
+                    continue;
+                }
+                row.setCompletedDate("");
+                row.setStatus("");
+                row.setUnsolvedMarkets("");
+                row.setRuntime("");
+                break;
+            }
+        });
     }
 }

@@ -140,6 +140,88 @@
     -fx-background-color: #bdbdbd;
 }
 
+/* Diff dialog styling */
+.diff-table .table-row-cell.diff-row-insert {
+    -fx-background-color: #dff3e4;
+    -fx-background-insets: 0;
+}
+
+.diff-table .table-row-cell.diff-row-delete {
+    -fx-background-color: #fde3e6;
+    -fx-background-insets: 0;
+}
+
+.diff-table .table-row-cell.diff-row-change {
+    -fx-background-color: #fff1cc;
+    -fx-background-insets: 0;
+}
+
+.diff-table .table-row-cell.diff-row-different:hover,
+.diff-table .table-row-cell.diff-row-insert:hover {
+    -fx-background-color: #cdebd4;
+}
+
+.diff-table .table-row-cell.diff-row-delete:hover {
+    -fx-background-color: #fac9cf;
+}
+
+.diff-table .table-row-cell.diff-row-change:hover {
+    -fx-background-color: #ffe39a;
+}
+
+.diff-table .table-row-cell:selected.diff-row-insert,
+.diff-table .table-row-cell:selected.diff-row-delete,
+.diff-table .table-row-cell:selected.diff-row-change,
+.diff-table .table-row-cell:selected.diff-row-different {
+    -fx-background-color: #d7e9ff;
+}
+
+.diff-table .table-cell.diff-cell {
+    -fx-border-color: transparent #eceff1 transparent transparent;
+    -fx-padding: 3 8 3 8;
+}
+
+.diff-table .table-cell.diff-insert {
+    -fx-background-color: linear-gradient(to right, #66bb6a 0, #66bb6a 4, #bfe5c4 4, #bfe5c4 100%);
+    -fx-text-fill: #0f4d1f;
+}
+
+.diff-table .table-cell.diff-delete {
+    -fx-background-color: linear-gradient(to right, #ef5350 0, #ef5350 4, #f7c4cb 4, #f7c4cb 100%);
+    -fx-text-fill: #8e1720;
+}
+
+.diff-table .table-cell.diff-change {
+    -fx-background-color: linear-gradient(to right, #ffb300 0, #ffb300 4, #ffe08a 4, #ffe08a 100%);
+    -fx-text-fill: #6b4f00;
+}
+
+.diff-table .table-cell.diff-empty-side {
+    -fx-background-color: #f1f3f4;
+    -fx-text-fill: #8b949e;
+}
+
+.diff-table .table-cell.diff-line-no {
+    -fx-font-size: 11px;
+    -fx-text-fill: #607d8b;
+}
+
+.diff-table .table-row-cell:selected .table-cell.diff-insert,
+.diff-table .table-row-cell:selected .table-cell.diff-delete,
+.diff-table .table-row-cell:selected .table-cell.diff-change,
+.diff-table .table-row-cell:selected .table-cell.diff-empty-side,
+.diff-table .table-row-cell:selected .table-cell.diff-line-no {
+    -fx-background-color: transparent;
+}
+
+.diff-table .table-cell.diff-insert .label,
+.diff-table .table-cell.diff-delete .label,
+.diff-table .table-cell.diff-change .label,
+.diff-table .table-cell.diff-empty-side .label,
+.diff-table .table-cell.diff-line-no .label {
+    -fx-text-fill: inherit;
+}
+
 /* Tab Pane */
 .tab-pane .tab-header-area .tab-header-background {
     -fx-background-color: transparent;
