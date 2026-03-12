@@ -169,6 +169,49 @@ import filter.FilterTreePaneYears;
  * @since 2012
  */
 public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
+	private JPanel loadingPanel;
+	private JLabel loadingLabel;
+	private volatile boolean dbViewInitialized = false;
+	private javax.swing.SwingWorker<StartupData, Void> startupLoader;
+
+	private static final class StartupData {
+		private final Vector<ScenarioListItem> scenarios;
+		private final Vector regions;
+		private final QueryTreeModel queries;
+
+		private StartupData(Vector<ScenarioListItem> scenarios, Vector regions, QueryTreeModel queries) {
+			this.scenarios = scenarios;
+			this.regions = regions;
+			this.queries = queries;
+		}
+	}
+
+	private static long elapsedMillis(long startNanos) {
+		return (System.nanoTime() - startNanos) / 1_000_000L;
+	}
+
+	private static void logStartup(String stage, long startNanos) {
+		InterfaceMain.logStartupTiming("DbViewer:" + stage + " " + elapsedMillis(startNanos) + " ms");
+	}
+
+	private void showLoadingShell() {
+		final InterfaceMain main = InterfaceMain.getInstance();
+		final JFrame frame = main.getFrame();
+		if (frame == null) {
+			return;
+		}
+		if (loadingPanel == null) {
+			loadingPanel = new JPanel(new BorderLayout());
+			loadingLabel = new JLabel("Loading database view...", SwingConstants.CENTER);
+			loadingLabel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+			loadingPanel.add(loadingLabel, BorderLayout.CENTER);
+		}
+		main.setMainView(loadingPanel);
+		frame.setLocationRelativeTo(null);
+		frame.setVisible(true);
+		frame.getGlassPane().setVisible(false);
+	}
+
 	private Document queriesDoc;
 
 	private static String controlStr = "DbViewer";
@@ -565,12 +608,16 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 * @param menuMan The menu manager to which menu items are added.
 	 */
 	public void addMenuItems(InterfaceMain.MenuManager menuMan) {
+		final long menuStart = System.nanoTime();
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
 		final ActionListener thisListener = this;
 		addFileMenuItems(menuMan, main, parentFrame, thisListener);
+		logStartup("addMenuItems:file", menuStart);
 		addViewMenuItems(menuMan, main, parentFrame);
+		logStartup("addMenuItems:view", menuStart);
 		addAdvancedMenuItems(menuMan, main, parentFrame);
+		logStartup("addMenuItems:advanced", menuStart);
 	}
 
 	/**
@@ -1102,14 +1149,14 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 * @param create Whether to create the database if it doesn't exist.
 	 */
 	public void doOpenDB(File dbFile, boolean create) {
+		final long openStart = System.nanoTime();
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
 		main.getProperties().setProperty("lastDirectory", dbFile.getParent());
-		// put up a wait cursor so that the user knows things are happening while the
-		// database loads
 		parentFrame.getGlassPane().setVisible(true);
 		try {
 			XMLDB.openDatabase(dbFile.getAbsolutePath(), create);
+			logStartup("doOpenDB:XMLDB.openDatabase", openStart);
 		} catch (Exception e) {
 			e.printStackTrace();
 			parentFrame.getGlassPane().setVisible(false);
@@ -1123,15 +1170,50 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		TabDragListener dragListener = new TabDragListener();
 		tablesTabs.addMouseListener(dragListener);
 		tablesTabs.addMouseMotionListener(dragListener);
+		logStartup("doOpenDB:table tabs initialized", openStart);
 
-		createTableSelector();
-		// Keep a consistent app title; show active DB in the InterfaceMain status bar instead.
-		parentFrame.setTitle("GLIMPSE-CE ModelInterface");
-		// Persist and broadcast active DB selection.
-		main.setProperty("paramPath", dbFile.getAbsolutePath());
-		main.updateActiveDatabaseStatus(dbFile.getAbsolutePath());
+		showLoadingShell();
+		logStartup("doOpenDB:loadingShell", openStart);
+		startBackgroundInitialization(openStart, dbFile);
 	}
 
+	private void startBackgroundInitialization(final long openStart, final File dbFile) {
+		final InterfaceMain main = InterfaceMain.getInstance();
+		final JFrame parentFrame = main.getFrame();
+		startupLoader = new javax.swing.SwingWorker<StartupData, Void>() {
+			@Override
+			protected StartupData doInBackground() {
+				final long loadStart = System.nanoTime();
+				Vector<ScenarioListItem> loadedScenarios = getScenarios();
+				Vector loadedRegions = getRegions();
+				QueryTreeModel loadedQueries = getQueries();
+				InterfaceMain.logStartupTiming("DbViewer:backgroundLoad:modelData " + elapsedMillis(loadStart) + " ms");
+				return new StartupData(loadedScenarios, loadedRegions, loadedQueries);
+			}
+
+			@Override
+			protected void done() {
+				try {
+					if (isCancelled() || dbViewInitialized) {
+						return;
+					}
+					StartupData data = get();
+					createTableSelector(data);
+					logStartup("doOpenDB:createTableSelector", openStart);
+					parentFrame.setTitle("GLIMPSE-CE ModelInterface");
+					main.setProperty("paramPath", dbFile.getAbsolutePath());
+					main.updateActiveDatabaseStatus(dbFile.getAbsolutePath());
+					logStartup("doOpenDB:complete", openStart);
+				} catch (Exception e) {
+					e.printStackTrace();
+					parentFrame.getGlassPane().setVisible(false);
+					InterfaceMain.getInstance().showMessageDialog("Could not finish loading the database view.",
+							"Open DB Error", JOptionPane.ERROR_MESSAGE);
+				}
+			}
+		};
+		startupLoader.execute();
+	}
 	/**
 	 * Gets the list of scenarios from the database.
 	 * 
@@ -1246,17 +1328,49 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 * entire user interface by calling various setup helper methods.
 	 */
 	protected void createTableSelector() {
+		if (dbViewInitialized) {
+			return;
+		}
 		setupScenarioRegionLists();
+		createTableSelector(new StartupData(scns, regions, queries));
+	}
+
+	private void createTableSelector(StartupData data) {
+		if (dbViewInitialized) {
+			return;
+		}
+		final long selectorStart = System.nanoTime();
+		applyStartupData(data);
+		logStartup("createTableSelector:scenarioRegionLists", selectorStart);
 		setupQueryTree();
+		logStartup("createTableSelector:queryTree", selectorStart);
 		setupQueryPanel();
+		logStartup("createTableSelector:queryPanel", selectorStart);
 		setupButtonPanel();
+		logStartup("createTableSelector:buttonPanel", selectorStart);
 		setupSplitPanes();
-		// Track tab closure as completion.
+		logStartup("createTableSelector:splitPanes", selectorStart);
 		installResultsTabCompletionTracking();
+		logStartup("createTableSelector:tabTracking", selectorStart);
 		setupPresetRegionDropdown();
+		logStartup("createTableSelector:presetRegionDropdown", selectorStart);
 		favoriteQueriesManager = new FavoriteQueriesManager(queryList, listScrollQueries);
+		logStartup("createTableSelector:favoriteQueriesManager", selectorStart);
 		setupListeners();
+		logStartup("createTableSelector:listeners", selectorStart);
 		finalizeUI();
+		dbViewInitialized = true;
+		logStartup("createTableSelector:finalizeUI", selectorStart);
+	}
+
+	private void applyStartupData(StartupData data) {
+		scns = data.scenarios;
+		regions = data.regions;
+		queries = data.queries;
+		scnList = new JList(scns);
+		scnList.setName(SCENARIO_LIST_NAME);
+		regionList = new JList(regions);
+		regionList.setName(REGION_LIST_NAME);
 	}
 
 	/**
@@ -1537,6 +1651,10 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 * managing favorites, and handling tree selections.
 	 */
 	private void setupListeners() {
+		if (queryList == null || scnList == null || regionList == null || runQueryButton == null || diffQueryButton == null
+				|| queryFilterButton == null || favoriteQueryButton == null || favoriteQueriesManager == null) {
+			return;
+		}
 		// Move all listeners from createTableSelector here
 		// YD edits,2024
 		queryFilterButton.addActionListener(new ActionListener() { // YD,2024
@@ -2205,13 +2323,13 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		if (parentFrame == null)
 			return;
 		parentFrame.getContentPane();
-
-		// Replace the CENTER view via InterfaceMain so the status bar remains visible.
 		InterfaceMain.getInstance().setMainView(tableCreatorSplit);
-
 		parentFrame.setLocationRelativeTo(null);
 		parentFrame.setVisible(true);
 		parentFrame.getGlassPane().setVisible(false);
+		if (loadingPanel != null) {
+			loadingPanel.setVisible(false);
+		}
 	}
 
 	/**
@@ -2964,7 +3082,3 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		shutdownThread.start();
 	}
 }
-
-
-
-

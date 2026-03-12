@@ -59,6 +59,7 @@ import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.Separator;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.ColumnConstraints;
@@ -128,6 +129,9 @@ public class Client extends Application {
     private static final String STARTUP_UI_MESSAGE = "Building window layout...";
     private static final String STARTUP_SCENARIO_MESSAGE = "Loading scenario status...";
     private static final String STARTUP_COMPONENT_MESSAGE = "Loading scenario components...";
+    private static final String STARTUP_DIALOG_TITLE = "GLIMPSE startup";
+    private static final String STARTUP_DIALOG_HEADING = "GLIMPSE startup:";
+    private static final double STARTUP_DIALOG_ICON_SIZE = 28.0;
     // endregion
 
     // region Static Fields
@@ -217,6 +221,8 @@ public class Client extends Application {
     private static volatile boolean startupBusyState = true;
     /** Cached post-startup status message. */
     private static volatile String deferredStatusBarText;
+    /** Allows the lightweight startup dialog to stay dismissed for the rest of the session once the user closes it. */
+    private static volatile boolean startupDialogDismissed = false;
     /** Initial library loads that must finish before steady-state resource text is restored. */
     private static volatile boolean initialScenarioLoadPending = true;
     private static volatile boolean initialComponentLoadPending = true;
@@ -312,6 +318,7 @@ public class Client extends Application {
 
         // Set up the main window with menu and content (this calls primaryStage.show())
         setMainWindow(combineAllElementsIntoOnePane(), createMenuBar());
+        hideStartupDialog();
 
         // Set up execution threads for GCAM and post-processor
         setupExecutionThreads();
@@ -589,6 +596,7 @@ public class Client extends Application {
                 startupOverlayIndicator.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
             }
         }
+        updateStartupDialogStatus(safeText, progress, busy);
         boolean showOverlay = busy && !STARTUP_READY_MESSAGE.equalsIgnoreCase(safeText);
         startupOverlayVisible.set(showOverlay);
         if (startupOverlayBox != null) {
@@ -679,6 +687,134 @@ public class Client extends Application {
         return overlay;
     }
 
+    private void ensureStartupDialog() {
+        if (startupDialogStage != null) {
+            return;
+        }
+        startupDialogStage = new Stage(StageStyle.UTILITY);
+        startupDialogStage.setTitle(STARTUP_DIALOG_TITLE);
+        startupDialogStage.initModality(Modality.NONE);
+        startupDialogStage.setResizable(false);
+        startupDialogStage.setAlwaysOnTop(true);
+        try {
+            final String iconFile = "file:" + vars.getGlimpseResourceDir() + File.separator + "GLIMPSE_icon_large.png";
+            Image stageIcon = new Image(iconFile);
+            if (!stageIcon.isError()) {
+                startupDialogStage.getIcons().add(stageIcon);
+            }
+        } catch (Exception ignored) {}
+        if (primaryStage != null) {
+            startupDialogStage.initOwner(primaryStage);
+        }
+
+        Label heading = new Label(STARTUP_DIALOG_HEADING);
+        heading.setStyle("-fx-font-weight: bold;");
+        HBox headerRow = new HBox(10);
+        headerRow.setAlignment(Pos.CENTER_LEFT);
+        ImageView startupIconView = createStartupDialogIconView();
+        if (startupIconView != null) {
+            headerRow.getChildren().add(startupIconView);
+        }
+        headerRow.getChildren().add(heading);
+
+        startupDialogStatusLabel = new Label(STARTUP_READY_MESSAGE);
+        startupDialogStatusLabel.setWrapText(true);
+        startupDialogStatusLabel.setMinWidth(280);
+        startupDialogStatusLabel.setPrefWidth(320);
+        startupDialogStatusLabel.setMaxWidth(360);
+
+        startupDialogIndicator = new ProgressIndicator();
+        startupDialogIndicator.setMaxSize(22, 22);
+        startupDialogIndicator.setPrefSize(22, 22);
+        startupDialogIndicator.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
+
+        HBox statusRow = new HBox(10, startupDialogIndicator, startupDialogStatusLabel);
+        statusRow.setAlignment(Pos.CENTER_LEFT);
+
+        Button dismissButton = new Button("Dismiss");
+        dismissButton.setDefaultButton(false);
+        dismissButton.setCancelButton(true);
+        dismissButton.setOnAction(event -> {
+            startupDialogDismissed = true;
+            hideStartupDialog();
+        });
+
+        HBox buttonRow = new HBox(dismissButton);
+        buttonRow.setAlignment(Pos.CENTER_RIGHT);
+
+        VBox root = new VBox(10, headerRow, statusRow, new Separator(), buttonRow);
+        root.setPadding(new Insets(12));
+        root.setStyle("-fx-background-color: white;");
+
+        Scene dialogScene = new Scene(root);
+        startupDialogStage.setScene(dialogScene);
+        startupDialogStage.sizeToScene();
+        startupDialogStage.setOnCloseRequest(event -> startupDialogDismissed = true);
+        startupDialogStage.setOnHidden(event -> {
+            if (!startupBusyState) {
+                startupDialogDismissed = false;
+            }
+        });
+    }
+
+    private ImageView createStartupDialogIconView() {
+        try {
+            final String iconFile = "file:" + vars.getGlimpseResourceDir() + File.separator + "GLIMPSE_icon_large.png";
+            Image image = new Image(iconFile);
+            if (image.isError()) {
+                return null;
+            }
+            ImageView imageView = new ImageView(image);
+            imageView.setFitWidth(STARTUP_DIALOG_ICON_SIZE);
+            imageView.setFitHeight(STARTUP_DIALOG_ICON_SIZE);
+            imageView.setPreserveRatio(true);
+            imageView.setSmooth(true);
+            return imageView;
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private void updateStartupDialogStatus(String text, double progress, boolean busy) {
+        if (startupDialogDismissed && busy) {
+            return;
+        }
+        ensureStartupDialog();
+        if (startupDialogStatusLabel != null) {
+            startupDialogStatusLabel.setText(text);
+        }
+        if (startupDialogIndicator != null) {
+            if (progress >= 0.0 && progress <= 1.0) {
+                startupDialogIndicator.setProgress(progress);
+            } else {
+                startupDialogIndicator.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
+            }
+        }
+        if (!busy) {
+            hideStartupDialog();
+            return;
+        }
+        if (startupDialogDismissed) {
+            return;
+        }
+        showStartupDialog();
+    }
+
+    private void showStartupDialog() {
+        if (startupDialogStage == null || startupDialogDismissed) {
+            return;
+        }
+        if (!startupDialogStage.isShowing()) {
+            startupDialogStage.show();
+        }
+        startupDialogStage.toFront();
+    }
+
+    private void hideStartupDialog() {
+        if (startupDialogStage != null && startupDialogStage.isShowing()) {
+            startupDialogStage.hide();
+        }
+    }
+
     /**
      * Loads and displays the splash screen with fade-in and fade-out effects.
      *
@@ -700,7 +836,6 @@ public class Client extends Application {
             splashStage.setOpacity(0.9);
 
             final GridPane pane = new GridPane();
-            // Use lowercase 'file:' for cross-platform compatibility
             final String imagePath = "file:" + vars.getGlimpseDir() + File.separator + "resources" + File.separator + "glimpse-splash.png";
             final Image image = new Image(imagePath);
 
@@ -714,24 +849,17 @@ public class Client extends Application {
             splashRoot.setStyle("-fx-background-color: transparent;");
             splashStage.show();
 
-            // Fade in effect
             final FadeTransition fadeIn = new FadeTransition(Duration.seconds(3), pane);
             fadeIn.setFromValue(0.1);
             fadeIn.setToValue(1);
 
-            // Fade out effect
             final FadeTransition fadeOut = new FadeTransition(Duration.seconds(3), pane);
             fadeOut.setFromValue(1);
             fadeOut.setToValue(0);
 
-            // After fade in, start fade out
             fadeIn.setOnFinished(e -> fadeOut.play());
-
-            // After fade out, hide the splash screen
             fadeOut.setOnFinished(e -> splashStage.hide());
-
             fadeIn.play();
-
         } catch (Exception ex) {
             System.err.println("An error occurred while loading the splash screen.");
             ex.printStackTrace();
@@ -986,6 +1114,9 @@ public class Client extends Application {
     private Label startupOverlayLabel;
     private ProgressIndicator startupOverlayIndicator;
     private VBox startupOverlayBox;
+    private Stage startupDialogStage;
+    private Label startupDialogStatusLabel;
+    private ProgressIndicator startupDialogIndicator;
 
     private static void setFileDependentUiEnabled(boolean enabled) {
         if (!Platform.isFxApplicationThread()) {

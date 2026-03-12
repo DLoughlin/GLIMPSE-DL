@@ -111,6 +111,10 @@ import javax.swing.JPanel;
 public class InterfaceMain implements ActionListener {
 	// Restore missing shutdown guard for orderly exit.
 	private final java.util.concurrent.atomic.AtomicBoolean shuttingDown = new java.util.concurrent.atomic.AtomicBoolean(false);
+	private static final String LAZY_OPEN_INPUT_VIEWER = "LazyOpen:InputViewer";
+	private static final String LAZY_OPEN_PP_VIEWER = "LazyOpen:PPViewer";
+	private static final String LAZY_OPEN_CONFIGURATION_EDITOR = "LazyOpen:ConfigurationEditor";
+	private static final long STARTUP_NANOS = System.nanoTime();
 
 	// Use platform Look & Feel defaults for fonts (do not force a unified size).
 	private static final Color UNIFIED_BG = new Color(245, 245, 250); // Soft background
@@ -135,6 +139,36 @@ public class InterfaceMain implements ActionListener {
 		}
 		// split on ';' or ',' with optional surrounding whitespace
 		return trimmed.split("\\s*[;,]\\s*");
+	}
+
+	private static long elapsedMillis(long startNanos) {
+		return (System.nanoTime() - startNanos) / 1_000_000L;
+	}
+
+	private static final String STARTUP_TIMING_PROPERTY = "do_output_timings";
+	private static volatile boolean outputStartupTimings = false;
+
+	public static boolean shouldOutputStartupTimings() {
+		return outputStartupTimings;
+	}
+
+	public static void configureStartupTimingOutput(Properties props) {
+		String value = System.getProperty(STARTUP_TIMING_PROPERTY);
+		if (value == null && props != null) {
+			value = props.getProperty(STARTUP_TIMING_PROPERTY);
+		}
+		outputStartupTimings = value != null && Boolean.parseBoolean(value.trim());
+	}
+
+	public static void logStartupTiming(String message) {
+		if (!shouldOutputStartupTimings()) {
+			return;
+		}
+		System.out.println("[startup] " + message);
+	}
+
+	private static void logStartup(String stage) {
+		logStartupTiming(stage + " @ " + elapsedMillis(STARTUP_NANOS) + " ms");
 	}
 
 	public static final int FILE_MENU_POS = 0;
@@ -195,6 +229,9 @@ public class InterfaceMain implements ActionListener {
 	private MenuAdder dbView = null;
 
 	private List<MenuAdder> menuAdders;
+	private MenuAdder inputView = null;
+	private MenuAdder ppView = null;
+	private MenuAdder confEditor = null;
 	static String path = null;
 	static String queryFilename = null;
 
@@ -321,6 +358,7 @@ public class InterfaceMain implements ActionListener {
 				ioe.printStackTrace();
 			}
 		}
+		configureStartupTimingOutput(bootProps);
 
 		Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
 			public void uncaughtException(Thread t, Throwable e) {
@@ -631,6 +669,7 @@ public class InterfaceMain implements ActionListener {
 		} catch (IOException ioe) {
 			ioe.printStackTrace();
 		}
+		logStartup("boot properties resolved");
 
 		try {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
@@ -641,7 +680,9 @@ public class InterfaceMain implements ActionListener {
 
 		javax.swing.SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
+				final long guiStart = System.nanoTime();
 				createGUI();
+				logStartupTiming("createGUI finished in " + elapsedMillis(guiStart) + " ms");
 				if (path != null) {
 					File dbFile = new File(path);
 					if (!dbFile.exists()) {
@@ -657,9 +698,12 @@ public class InterfaceMain implements ActionListener {
 						// If yes, doOpenDB will create it.
 					}
 					DbViewer db = (DbViewer) main.dbView;
+					final long dbOpenStart = System.nanoTime();
 					try {
 						db.doOpenDB(dbFile, !dbFile.exists());
+						logStartupTiming("DbViewer.doOpenDB finished in " + elapsedMillis(dbOpenStart) + " ms");
 					} catch (Exception e) {
+						logStartupTiming("DbViewer.doOpenDB failed after " + elapsedMillis(dbOpenStart) + " ms");
 						// Suppress "Provider rsrc not installed" error which can happen with BaseX initialization in some environments
 						if (e instanceof java.nio.file.FileSystemNotFoundException && e.getMessage() != null && e.getMessage().contains("rsrc")) {
 							// do nothing
@@ -701,6 +745,7 @@ public class InterfaceMain implements ActionListener {
 					}
 				}
 				showGUI();
+				logStartup("main window shown");
 			}
 		});
 
@@ -739,6 +784,7 @@ public class InterfaceMain implements ActionListener {
 	 * Create a new instance of this class and makes it visible
 	 */
 	private static void createGUI() {
+		final long createGuiStart = System.nanoTime();
 		main = null;
 		main = new InterfaceMain();
 		main.mainFrame = new JFrame("Model Interface");
@@ -777,6 +823,7 @@ public class InterfaceMain implements ActionListener {
 
 		main.mainFrame.setLayout(new BorderLayout());
 		main.initialize();
+		logStartupTiming("initialize() finished in " + elapsedMillis(createGuiStart) + " ms");
 		main.initStatusBar();
 		// main.pack();
 		main.mainFrame.setVisible(false);
@@ -784,6 +831,7 @@ public class InterfaceMain implements ActionListener {
 			main.fireControlChange("DbViewer");
 
 		}
+		logStartupTiming("createGUI total " + elapsedMillis(createGuiStart) + " ms");
 	}
 
 	private void initStatusBar() {
@@ -1122,13 +1170,94 @@ public class InterfaceMain implements ActionListener {
 
 	private void initialize() {
 		MenuManager menuMan = new MenuManager(null);
+		final long initStart = System.nanoTime();
 		addWindowAdapters();
+		logStartupTiming("initialize:addWindowAdapters " + elapsedMillis(initStart) + " ms");
 		addMenuItems(menuMan);
+		logStartupTiming("initialize:addMenuItems " + elapsedMillis(initStart) + " ms");
 		addMenuAdderMenuItems(menuMan);
+		logStartupTiming("initialize:addMenuAdderMenuItems " + elapsedMillis(initStart) + " ms");
 		finalizeMenu(menuMan);
+		logStartupTiming("initialize:finalizeMenu " + elapsedMillis(initStart) + " ms");
 		// Do not force fonts for the menu bar/items; use platform Look & Feel defaults.
 		// if path to DB was provided, dispatch to DBViewer to open database
 //		  if (path != null) fireControlChange("DbViewer");		 
+	}
+
+	private JMenuItem makeMenuItem(String text) {
+		JMenuItem item = new JMenuItem(text);
+		item.setActionCommand(text);
+		item.addActionListener(this);
+		return item;
+	}
+
+	private void finalizeMenu(MenuManager menuMan) {
+		JMenuBar mb = menuMan.createMenu();
+		mainFrame.setJMenuBar(mb);
+		refreshQueryFileMenuEnabled();
+	}
+
+	private void addWindowAdapters() {
+		WindowAdapter myWindowAdapter = new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				shutdownAndExit();
+			}
+
+			@Override
+			public void windowDeactivated(WindowEvent e) {
+				refreshQueryFileMenuEnabled();
+			}
+		};
+		mainFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+		mainFrame.addWindowListener(myWindowAdapter);
+	}
+
+	private String safeTrim(String value) {
+		return value == null ? "" : value.trim();
+	}
+
+	private File promptForExecutable(String title) {
+		FileChooser chooser = FileChooserFactory.getFileChooser();
+		String lastDir = savedProperties != null ? savedProperties.getProperty("lastDirectory", ".") : ".";
+		File start = new File(lastDir);
+		File[] files = chooser.doFilePrompt(mainFrame, title, FileChooser.LOAD_DIALOG, start, null);
+		if (files != null && files.length > 0 && files[0] != null) {
+			File selected = files[0];
+			if (savedProperties != null && selected.getParent() != null) {
+				savedProperties.setProperty("lastDirectory", selected.getParent());
+				persistProperties();
+			}
+			return selected;
+		}
+		return null;
+	}
+
+	private void shutdownAndExit() {
+		if (!shuttingDown.compareAndSet(false, true)) {
+			return;
+		}
+		try {
+			if (mainFrame != null) {
+				savedProperties.setProperty("isMaximized",
+						Boolean.toString((mainFrame.getExtendedState() & JFrame.MAXIMIZED_BOTH) == JFrame.MAXIMIZED_BOTH));
+				if ((mainFrame.getExtendedState() & JFrame.MAXIMIZED_BOTH) != JFrame.MAXIMIZED_BOTH) {
+					savedProperties.setProperty("lastWidth", Integer.toString(mainFrame.getWidth()));
+					savedProperties.setProperty("lastHeight", Integer.toString(mainFrame.getHeight()));
+				}
+			}
+			persistProperties();
+		} finally {
+			try {
+				XMLDB.closeDatabase();
+			} catch (Exception ex) {
+				System.err.println("Error closing XML database during shutdown: " + ex);
+			}
+			if (mainFrame != null) {
+				mainFrame.dispose();
+			}
+			System.exit(0);
+		}
 	}
 
 	public JFrame getFrame() {
@@ -1299,156 +1428,84 @@ public class InterfaceMain implements ActionListener {
 	}
 
 	private void addMenuAdderMenuItems(MenuManager menuMan) {
-		/*
-		 * FileChooserDemo is being removed, but I will leave this here, This is how I
-		 * envision the menuitems to be added and hopefully all the listeners would be
-		 * set up correctly and we won't need to keep the pointer to the classes around
-		 * FileChooserDemo fcd = new FileChooserDemo(this); fcd.addMenuItems(menuMan);
-		 */
+		final long menuAdderStart = System.nanoTime();
 		dbView = new DbViewer();
+		logStartupTiming("addMenuAdder:new DbViewer " + elapsedMillis(menuAdderStart) + " ms");
 		dbView.addMenuItems(menuMan);
-		final MenuAdder inputView = new InputViewer();
-		inputView.addMenuItems(menuMan);
-		final MenuAdder PPView = new PPViewer();
-		PPView.addMenuItems(menuMan);
-		// Dan: Commented this out
-		// final MenuAdder DMView = new DMViewer();
-		// DMView.addMenuItems(menuMan);
+		logStartupTiming("addMenuAdder:DbViewer.addMenuItems " + elapsedMillis(menuAdderStart) + " ms");
+		addLazyMenuItem(menuMan, TOOLS_MENU_POS, TOOLS_SUBMENU2_POS, new JMenuItem("XML file"), LAZY_OPEN_INPUT_VIEWER, 0);
+		addLazyMenuItem(menuMan, TOOLS_MENU_POS, TOOLS_SUBMENU2_POS, new JMenuItem("Preprocessor file"), LAZY_OPEN_PP_VIEWER, 20);
+		logStartupTiming("addMenuAdder:add lazy open-file items " + elapsedMillis(menuAdderStart) + " ms");
 		final MenuAdder recentFilesList = RecentFilesList.getInstance();
+		logStartupTiming("addMenuAdder:RecentFilesList.getInstance " + elapsedMillis(menuAdderStart) + " ms");
 		recentFilesList.addMenuItems(menuMan);
+		logStartupTiming("addMenuAdder:RecentFilesList.addMenuItems " + elapsedMillis(menuAdderStart) + " ms");
 		final MenuAdder aboutDialog = new AboutDialog();
+		logStartupTiming("addMenuAdder:new AboutDialog " + elapsedMillis(menuAdderStart) + " ms");
 		aboutDialog.addMenuItems(menuMan);
-
-		// Create the Configuration editor and allow it to add its menu items to the
-		// menu system.
-		final MenuAdder confEditor = new ConfigurationEditor();
-		confEditor.addMenuItems(menuMan);
+		logStartupTiming("addMenuAdder:AboutDialog.addMenuItems " + elapsedMillis(menuAdderStart) + " ms");
+		addLazyMenuItem(menuMan, TOOLS_MENU_POS, null, new JMenuItem("Configuration..."), LAZY_OPEN_CONFIGURATION_EDITOR, 19);
+		logStartupTiming("addMenuAdder:add lazy configuration item " + elapsedMillis(menuAdderStart) + " ms");
 
 		menuAdders = new ArrayList<MenuAdder>(6);
 		menuAdders.add(dbView);
-		menuAdders.add(inputView);
-		menuAdders.add(PPView);
 		// menuAdders.add(DMView);
 		menuAdders.add(recentFilesList);
 		menuAdders.add(aboutDialog);
-		menuAdders.add(confEditor);
+		logStartupTiming("addMenuAdder:complete " + elapsedMillis(menuAdderStart) + " ms");
 	}
 
-	private void finalizeMenu(MenuManager menuMan) {
-		JMenuBar mb = menuMan.createMenu();
-		// Keep system Look & Feel defaults for fonts/colors.
-		mainFrame.setJMenuBar(mb);
-	}
-
-	private void addWindowAdapters() {
-		// Add adapter to catch window events.
-		WindowAdapter myWindowAdapter = new WindowAdapter() {
-			public void windowStateChanged(WindowEvent e) {
-				savedProperties.setProperty("isMaximized",
-						String.valueOf((e.getNewState() & JFrame.MAXIMIZED_BOTH) != 0));
-			}
-
-			public void windowClosing(WindowEvent e) {
-				shutdownAndExit();
-			}
-
-			public void windowClosed(WindowEvent e) {
-				shutdownAndExit();
-			}
-		};
-		mainFrame.addWindowListener(myWindowAdapter);
-		mainFrame.addWindowStateListener(myWindowAdapter);
-
-		mainFrame.getGlassPane().addMouseListener(new MouseAdapter() {
-		});
-		mainFrame.getGlassPane().setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-	}
-
-	/**
-	 * Perform an orderly shutdown quickly and only once.
-	 * <p>
-	 * Key goals:
-	 * <ul>
-	 * <li>Don't block the EDT waiting for query threads.</li>
-	 * <li>Trigger DbViewer cleanup via Control change so it can cancel queries and
-	 * close XMLDB.</li>
-	 * <li>Persist properties once.</li>
-	 * </ul>
-	 */
-	private void shutdownAndExit() {
-		if (!shuttingDown.compareAndSet(false, true)) {
+	private void addLazyMenuItem(MenuManager menuMan, int topLevelPos, Integer subMenuPos, JMenuItem menuItem,
+			String actionCommand, int itemPos) {
+		menuItem.setActionCommand(actionCommand);
+		menuItem.addActionListener(this);
+		MenuManager target = menuMan.getSubMenuManager(topLevelPos);
+		if (target == null) {
 			return;
 		}
-
-		// Capture window size before we dispose.
-		try {
-			if (!Boolean.parseBoolean(savedProperties.getProperty("isMaximized"))) {
-				savedProperties.setProperty("lastWidth", String.valueOf(mainFrame.getWidth()));
-				savedProperties.setProperty("lastHeight", String.valueOf(mainFrame.getHeight()));
+		if (subMenuPos != null) {
+			MenuManager nested = target.getSubMenuManager(subMenuPos);
+			if (nested != null) {
+				target = nested;
 			}
-		} catch (Exception ex) {
-			// ignore
 		}
-
-		// Kick the UI back to a neutral control so DbViewer sees an oldValue of "DbViewer"
-		// and runs its close logic.
-		try {
-			fireControlChange("ModelInterface");
-		} catch (Exception ex) {
-			// ignore
-		}
-
-		// Persist properties once.
-		try {
-			persistProperties();
-		} catch (Exception ex) {
-			ex.printStackTrace();
-		}
-
-		// Dispose the frame now so the UI closes immediately.
-		try {
-			mainFrame.dispose();
-		} catch (Exception ex) {
-			// ignore
-		}
-
-		// Exit shortly after to allow async cleanup threads (query cancellation / XMLDB close)
-		// to run without freezing the UI.
-		new Thread(() -> {
-			try {
-				Thread.sleep(300);
-			} catch (InterruptedException ie) {
-				// ignore
-			}
-			System.exit(0);
-		}, "ModelInterface-Exit").start();
+		target.addMenuItem(menuItem, itemPos);
 	}
 
-	/** Create a simple menu item wired to this ActionListener. */
-	private JMenuItem makeMenuItem(String title) {
-		JMenuItem item = new JMenuItem(title);
-		item.addActionListener(this);
-		return item;
-	}
-
-	private static String safeTrim(String s) {
-		return s == null ? "" : s.trim();
-	}
-
-	/** Prompt user to choose an executable (used by Preferences). */
-	private File promptForExecutable(String title) {
-		FileChooser fc = FileChooserFactory.getFileChooser();
-		File[] res = fc.doFilePrompt(mainFrame, title, FileChooser.LOAD_DIALOG,
-				new File(getProperties().getProperty("lastDirectory", ".")), null);
-		if (res != null && res.length > 0) {
-			try {
-				savedProperties.setProperty("lastDirectory", res[0].getParent());
-			} catch (Exception ex) {
-				// ignore
+	private MenuAdder ensureInputView() {
+		if (inputView == null) {
+			final long start = System.nanoTime();
+			inputView = new InputViewer();
+			if (menuAdders != null) {
+				menuAdders.add(inputView);
 			}
-			return res[0];
+			System.out.println("[startup] lazy init InputViewer in " + elapsedMillis(start) + " ms");
 		}
-		return null;
+		return inputView;
+	}
+
+	private MenuAdder ensurePPView() {
+		if (ppView == null) {
+			final long start = System.nanoTime();
+			ppView = new PPViewer();
+			if (menuAdders != null) {
+				menuAdders.add(ppView);
+			}
+			System.out.println("[startup] lazy init PPViewer in " + elapsedMillis(start) + " ms");
+		}
+		return ppView;
+	}
+
+	private MenuAdder ensureConfigurationEditor() {
+		if (confEditor == null) {
+			final long start = System.nanoTime();
+			confEditor = new ConfigurationEditor();
+			if (menuAdders != null) {
+				menuAdders.add(confEditor);
+			}
+			System.out.println("[startup] lazy init ConfigurationEditor in " + elapsedMillis(start) + " ms");
+		}
+		return confEditor;
 	}
 
 	@Override
@@ -1458,6 +1515,19 @@ public class InterfaceMain implements ActionListener {
 		// Minimal routing: keep existing behavior elsewhere in file; the menu items
 		// created via makeMenuItem rely on this.
 		switch (cmd) {
+		case LAZY_OPEN_INPUT_VIEWER:
+			((ActionListener) ensureInputView()).actionPerformed(
+					new ActionEvent(e.getSource(), e.getID(), "XML file", e.getWhen(), e.getModifiers()));
+			break;
+		case LAZY_OPEN_PP_VIEWER:
+			((ActionListener) ensurePPView()).actionPerformed(
+					new ActionEvent(e.getSource(), e.getID(), "Preprocessor file", e.getWhen(), e.getModifiers()));
+			break;
+		case LAZY_OPEN_CONFIGURATION_EDITOR:
+			ConfigurationEditor editor = (ConfigurationEditor) ensureConfigurationEditor();
+			editor.setVisible(true);
+			editor.toFront();
+			break;
 		case "Quit":
 			shutdownAndExit();
 			break;
