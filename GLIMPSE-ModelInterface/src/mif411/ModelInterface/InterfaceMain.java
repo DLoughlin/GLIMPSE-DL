@@ -71,6 +71,8 @@ import javax.swing.UIManager;
 import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
+import javax.swing.JProgressBar;
+import javax.swing.SwingConstants;
 
 import org.basex.query.QueryException;
 import org.basex.query.QueryProcessor;
@@ -109,6 +111,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 public class InterfaceMain implements ActionListener {
+	private static final int STARTUP_MESSAGE_LINGER_MS = 200;
+	private static javax.swing.Timer pendingStartupDbViewerTimer;
 	// Restore missing shutdown guard for orderly exit.
 	private final java.util.concurrent.atomic.AtomicBoolean shuttingDown = new java.util.concurrent.atomic.AtomicBoolean(false);
 	private static final String LAZY_OPEN_INPUT_VIEWER = "LazyOpen:InputViewer";
@@ -316,6 +320,9 @@ public class InterfaceMain implements ActionListener {
 	private JPanel rootContent;
 	// Guard to avoid re-entrant contentPane handling
 	private boolean suppressContentPaneListener = false;
+	private JPanel startupLoadingView;
+	private JLabel startupLoadingLabel;
+	private JProgressBar startupLoadingBar;
 
 	// Status bar widgets.
 	private JLabel activeDbStatusLabel;
@@ -825,13 +832,29 @@ public class InterfaceMain implements ActionListener {
 		main.initialize();
 		logStartupTiming("initialize() finished in " + elapsedMillis(createGuiStart) + " ms");
 		main.initStatusBar();
-		// main.pack();
-		main.mainFrame.setVisible(false);
+		main.showStartupLoadingView(path != null ? "Starting ModelInterface..." : "Starting Model Interface... waiting for database selection.");
+		cancelPendingStartupDbViewerTimer();
 		if (path != null) {
-			main.fireControlChange("DbViewer");
-
+			final javax.swing.Timer startupDelayTimer = new javax.swing.Timer(STARTUP_MESSAGE_LINGER_MS,
+					new ActionListener() {
+						@Override
+						public void actionPerformed(ActionEvent e) {
+							pendingStartupDbViewerTimer = null;
+							main.fireControlChange("DbViewer");
+						}
+					});
+			startupDelayTimer.setRepeats(false);
+			pendingStartupDbViewerTimer = startupDelayTimer;
+			startupDelayTimer.start();
 		}
 		logStartupTiming("createGUI total " + elapsedMillis(createGuiStart) + " ms");
+	}
+
+	private static void cancelPendingStartupDbViewerTimer() {
+		if (pendingStartupDbViewerTimer != null) {
+			pendingStartupDbViewerTimer.stop();
+			pendingStartupDbViewerTimer = null;
+		}
 	}
 
 	private void initStatusBar() {
@@ -933,6 +956,116 @@ public class InterfaceMain implements ActionListener {
 			}
 		});
 
+	}
+
+	private JPanel createStartupLoadingView() {
+		JPanel panel = new JPanel(new java.awt.GridBagLayout());
+		panel.setOpaque(true);
+		panel.setBackground(UNIFIED_BG);
+
+		JPanel content = new JPanel();
+		content.setOpaque(true);
+		content.setBackground(UNIFIED_PANEL_BG);
+		content.setLayout(new javax.swing.BoxLayout(content, javax.swing.BoxLayout.Y_AXIS));
+		content.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createCompoundBorder(
+						BorderFactory.createLineBorder(new Color(220, 224, 234), 1, true),
+						BorderFactory.createEmptyBorder(22, 28, 22, 28)),
+				BorderFactory.createEmptyBorder(0, 0, 0, 0)));
+
+		startupLoadingLabel = new JLabel("Loading...", SwingConstants.CENTER);
+		startupLoadingLabel.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
+		startupLoadingLabel.setForeground(new Color(70, 76, 96));
+		startupLoadingLabel.setFont(startupLoadingLabel.getFont().deriveFont(java.awt.Font.BOLD, 19f));
+		startupLoadingLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+
+		startupLoadingBar = new JProgressBar();
+		startupLoadingBar.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
+		startupLoadingBar.setIndeterminate(true);
+		startupLoadingBar.setStringPainted(false);
+		startupLoadingBar.setBorderPainted(false);
+		startupLoadingBar.setBackground(new Color(236, 239, 247));
+		startupLoadingBar.setForeground(new Color(116, 138, 196));
+		startupLoadingBar.setPreferredSize(new java.awt.Dimension(240, 14));
+		startupLoadingBar.setMaximumSize(new java.awt.Dimension(240, 14));
+
+		content.add(startupLoadingLabel);
+		content.add(startupLoadingBar);
+		panel.add(content);
+		return panel;
+	}
+
+	private JPanel getStartupLoadingView() {
+		if (startupLoadingView == null) {
+			startupLoadingView = createStartupLoadingView();
+		}
+		return startupLoadingView;
+	}
+
+	public void updateStartupLoadingMessage(final String message) {
+		if (message == null || message.trim().isEmpty()) {
+			return;
+		}
+		final Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				getStartupLoadingView();
+				startupLoadingLabel.setText(message);
+				if (mainFrame != null && mainFrame.isVisible()) {
+					startupLoadingLabel.repaint();
+				}
+			}
+		};
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			r.run();
+		} else {
+			javax.swing.SwingUtilities.invokeLater(r);
+		}
+	}
+
+	public void showStartupLoadingView(final String message) {
+		final Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				ensureStatusBarInstalled();
+				if (message != null && !message.trim().isEmpty()) {
+					getStartupLoadingView();
+					startupLoadingLabel.setText(message);
+				}
+				setMainView(getStartupLoadingView());
+				if (mainFrame != null) {
+					mainFrame.setLocationRelativeTo(null);
+					mainFrame.setVisible(true);
+					mainFrame.getGlassPane().setVisible(false);
+					rootContent.paintImmediately(rootContent.getBounds());
+				}
+			}
+		};
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			r.run();
+		} else {
+			javax.swing.SwingUtilities.invokeLater(r);
+		}
+	}
+
+	public void hideStartupLoadingView() {
+		final Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				if (startupLoadingLabel != null) {
+					startupLoadingLabel.setText("Loading...");
+				}
+				if (startupLoadingBar != null) {
+					startupLoadingBar.setIndeterminate(false);
+					startupLoadingBar.setIndeterminate(true);
+				}
+			}
+		};
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			r.run();
+		} else {
+			javax.swing.SwingUtilities.invokeLater(r);
+		}
 	}
 
 	/**
@@ -1620,7 +1753,7 @@ public class InterfaceMain implements ActionListener {
 				File preset_reg32_shapefile = new File(dir, "mapGCAMReg32_from_rmap.shp");
 				if (preset_reg32_shapefile.exists()) {
 					gcamReg32ShapeFileLocation = preset_reg32_shapefile.getAbsolutePath();
-				} else {
+					} else {
 					InterfaceMain.enableMapping = false;
 				}
 				File preset_reg32US52_shapefile = new File(dir, "mapGCAMReg32US52_from_rmap.shp");
@@ -2018,6 +2151,7 @@ public class InterfaceMain implements ActionListener {
 	public JMenuItem getBatchMenu() { return batchMenu; }
 
 	public void fireControlChange(String newValue) {
+		cancelPendingStartupDbViewerTimer();
 		if (newValue.equals(oldControl)) { oldControl += "Same"; }
 		fireProperty("Control", oldControl, newValue);
 	 oldControl = newValue;
