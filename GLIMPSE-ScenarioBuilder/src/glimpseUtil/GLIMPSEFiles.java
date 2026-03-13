@@ -35,6 +35,8 @@
 */
 package glimpseUtil;
 
+import gui.Client;
+
 import java.awt.Desktop;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -988,25 +990,30 @@ public class GLIMPSEFiles {
      * Load required files into memory.
      */
     public void loadFiles() {
+        final int totalRequiredFiles = 4;
         try {
+            Client.setStartupRequiredFileStatus(vars.getXmlHeaderFilename(), 1, totalRequiredFiles);
             glimpseXMLHeadersFileContent = getStringArrayFromFile(vars.getXmlHeaderFilename(), COMMENT_CHAR);
         } catch (Exception e) {
             System.out.println("\nError opening files needed by GLIMPSE.");
             System.out.println("Exception " + e);
         }
         try {
+            Client.setStartupRequiredFileStatus(vars.getTchBndListFilename(), 2, totalRequiredFiles);
             glimpseTechBoundFileContent = getStringArrayFromFile(vars.getTchBndListFilename(), COMMENT_CHAR);
         } catch (Exception e) {
             System.out.println("Error opening files needed by GLIMPSE.");
             System.out.println("Exception " + e);
         }
         try {
+            Client.setStartupRequiredFileStatus(vars.getConfigurationTemplateFilename(), 3, totalRequiredFiles);
             gCamConfigurationTemplateFileContent = getStringArrayFromFile(vars.getConfigurationTemplateFilename(), COMMENT_CHAR);
         } catch (Exception e) {
             System.out.println("Error opening files needed by GLIMPSE.");
             System.out.println("Exception " + e);
         }
         try {
+            Client.setStartupRequiredFileStatus(vars.getMonetaryConversionsFilename(), 4, totalRequiredFiles);
             setMonetaryConversionsFileContent(getStringArrayFromFile(vars.getMonetaryConversionsFilename(), COMMENT_CHAR));
         } catch (Exception e) {
             System.out.println("Error opening files needed by GLIMPSE.");

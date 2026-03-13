@@ -114,6 +114,8 @@ public class Client extends Application {
 	// version
 	private static final String VERSION = "GLIMPSE-CE ScenarioBuilder";
 	private static final String STATUS_BAR_BASE_STYLE = " -fx-padding: 6 10 6 10; -fx-border-color: #e0e0e0 transparent transparent transparent; -fx-border-width: 1 0 0 0;";
+	private static final String STATUS_BAR_DEFAULT_TEXT_STYLE = "-fx-text-fill: black;";
+	private static final String STATUS_BAR_ALERT_TEXT_STYLE = "-fx-text-fill: red;";
 	private static final double STATUS_BAR_OPERATION_PROGRESS_WIDTH = 120.0;
 	private static final double STATUS_BAR_OPERATION_PROGRESS_HEIGHT = 12.0;
 	
@@ -221,8 +223,10 @@ public class Client extends Application {
     private static volatile boolean startupBusyState = true;
     /** Cached post-startup status message. */
     private static volatile String deferredStatusBarText;
-    /** Allows the lightweight startup dialog to stay dismissed for the rest of the session once the user closes it. */
-    private static volatile boolean startupDialogDismissed = false;
+    /** Last startup message emitted to stdout so repeated progress updates do not spam logs. */
+    private static volatile String lastStartupStatusLogged = "";
+    /** True once the main ScenarioBuilder window has been shown. */
+    private static volatile boolean mainWindowDisplayed = false;
     /** Initial library loads that must finish before steady-state resource text is restored. */
     private static volatile boolean initialScenarioLoadPending = true;
     private static volatile boolean initialComponentLoadPending = true;
@@ -318,7 +322,6 @@ public class Client extends Application {
 
         // Set up the main window with menu and content (this calls primaryStage.show())
         setMainWindow(combineAllElementsIntoOnePane(), createMenuBar());
-        hideStartupDialog();
 
         // Set up execution threads for GCAM and post-processor
         setupExecutionThreads();
@@ -462,7 +465,7 @@ public class Client extends Application {
      */
     private void setMainWindow(GridPane mainGridPane, MenuBar menuBar) {
         // Compose the root layout
-        sb.setStyle(buildStatusBarStyle("-fx-text-fill: black;"));
+        sb.setStyle(buildStatusBarStyleForText("", null));
         configureStatusBarRightItems();
         final StackPane centerStack = new StackPane();
         centerStack.getChildren().add(mainGridPane);
@@ -492,6 +495,7 @@ public class Client extends Application {
         primaryStage.setMinWidth(MIN_WINDOW_WIDTH);
         primaryStage.setWidth(MIN_WINDOW_WIDTH);
         primaryStage.show();
+        mainWindowDisplayed = true;
         utils.setModalDialogsReadyAndFlushWarnings();
 
         // Optionally show splash screen on startup
@@ -540,7 +544,7 @@ public class Client extends Application {
                     try {
                         setStartupStatus(STARTUP_COMPONENT_MESSAGE, -1, true);
                         if (Client.getPaneComponentLibrary() != null) {
-                            Client.getPaneComponentLibrary().refreshComponentLibraryTable();
+                            Client.getPaneComponentLibrary().refreshComponentLibraryTableForStartup();
                         }
                     } catch (Throwable ignored) {
                     }
@@ -583,9 +587,32 @@ public class Client extends Application {
         }
     }
 
+    public static void setStartupRequiredFileStatus(String filename) {
+        setStartupRequiredFileStatus(filename, -1, -1);
+    }
+
+    public static void setStartupRequiredFileStatus(String filename, int currentFileIndex, int totalFiles) {
+        String safeFilename = (filename == null) ? "" : filename.trim();
+        if (safeFilename.isEmpty()) {
+            setStartupStatus(STARTUP_FILES_MESSAGE, -1, true);
+            return;
+        }
+        String displayName = new File(safeFilename).getName();
+        if (displayName == null || displayName.trim().isEmpty()) {
+            displayName = safeFilename;
+        }
+        String progressSuffix = "";
+        if (currentFileIndex > 0 && totalFiles > 0) {
+            progressSuffix = " (" + currentFileIndex + "/" + totalFiles + ")";
+        }
+        setStartupStatus("Loading required files... " + displayName + progressSuffix, -1, true);
+    }
+
     private void applyStartupStatus(String text, double progress, boolean busy) {
         String safeText = (text == null || text.trim().isEmpty()) ? STARTUP_READY_MESSAGE : text.trim();
+        logStartupStatusToStdout(safeText, busy);
         sb.setText(safeText);
+        sb.setStyle(buildStatusBarStyleForText(safeText, null));
         if (startupOverlayLabel != null) {
             startupOverlayLabel.setText(safeText);
         }
@@ -596,7 +623,6 @@ public class Client extends Application {
                 startupOverlayIndicator.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
             }
         }
-        updateStartupDialogStatus(safeText, progress, busy);
         boolean showOverlay = busy && !STARTUP_READY_MESSAGE.equalsIgnoreCase(safeText);
         startupOverlayVisible.set(showOverlay);
         if (startupOverlayBox != null) {
@@ -606,6 +632,19 @@ public class Client extends Application {
         if (!busy && shouldApplyDeferredStatusAfter(safeText)) {
             applyDeferredStatusBarTextIfReady();
         }
+    }
+
+    private void logStartupStatusToStdout(String text, boolean busy) {
+        if (mainWindowDisplayed) {
+            return;
+        }
+        String safeText = (text == null || text.trim().isEmpty()) ? STARTUP_READY_MESSAGE : text.trim();
+        String normalized = (busy ? "BUSY|" : "IDLE|") + safeText;
+        if (normalized.equals(lastStartupStatusLogged)) {
+            return;
+        }
+        lastStartupStatusLogged = normalized;
+        System.out.println("[startup-status] " + safeText);
     }
 
     private boolean shouldApplyDeferredStatusAfter(String text) {
@@ -640,7 +679,7 @@ public class Client extends Application {
         if (safeText.isEmpty()) {
             return;
         }
-        deferredStatusBarText = safeText + "\n" + ((style == null || style.trim().isEmpty()) ? "-fx-text-fill: black;" : style.trim());
+        deferredStatusBarText = safeText + "\n" + ((style == null || style.trim().isEmpty()) ? "" : style.trim());
         applyDeferredStatusBarTextIfReady();
     }
 
@@ -655,8 +694,10 @@ public class Client extends Application {
         }
         Runnable update = () -> {
             String[] parts = pending.split("\\n", 2);
-            inst.sb.setText(parts[0]);
-            inst.sb.setStyle(inst.buildStatusBarStyle(parts.length > 1 ? parts[1] : "-fx-text-fill: black;"));
+            String pendingText = parts[0];
+            String pendingStyle = parts.length > 1 ? parts[1] : null;
+            inst.sb.setText(pendingText);
+            inst.sb.setStyle(inst.buildStatusBarStyleForText(pendingText, pendingStyle));
         };
         if (Platform.isFxApplicationThread()) {
             update.run();
@@ -685,134 +726,6 @@ public class Client extends Application {
         overlay.setMaxWidth(420);
         overlay.setStyle("-fx-background-color: rgba(255,255,255,0.94); -fx-background-radius: 8; -fx-padding: 10 14 10 14; -fx-border-color: rgba(0,0,0,0.15); -fx-border-radius: 8;");
         return overlay;
-    }
-
-    private void ensureStartupDialog() {
-        if (startupDialogStage != null) {
-            return;
-        }
-        startupDialogStage = new Stage(StageStyle.UTILITY);
-        startupDialogStage.setTitle(STARTUP_DIALOG_TITLE);
-        startupDialogStage.initModality(Modality.NONE);
-        startupDialogStage.setResizable(false);
-        startupDialogStage.setAlwaysOnTop(true);
-        try {
-            final String iconFile = "file:" + vars.getGlimpseResourceDir() + File.separator + "GLIMPSE_icon_large.png";
-            Image stageIcon = new Image(iconFile);
-            if (!stageIcon.isError()) {
-                startupDialogStage.getIcons().add(stageIcon);
-            }
-        } catch (Exception ignored) {}
-        if (primaryStage != null) {
-            startupDialogStage.initOwner(primaryStage);
-        }
-
-        Label heading = new Label(STARTUP_DIALOG_HEADING);
-        heading.setStyle("-fx-font-weight: bold;");
-        HBox headerRow = new HBox(10);
-        headerRow.setAlignment(Pos.CENTER_LEFT);
-        ImageView startupIconView = createStartupDialogIconView();
-        if (startupIconView != null) {
-            headerRow.getChildren().add(startupIconView);
-        }
-        headerRow.getChildren().add(heading);
-
-        startupDialogStatusLabel = new Label(STARTUP_READY_MESSAGE);
-        startupDialogStatusLabel.setWrapText(true);
-        startupDialogStatusLabel.setMinWidth(280);
-        startupDialogStatusLabel.setPrefWidth(320);
-        startupDialogStatusLabel.setMaxWidth(360);
-
-        startupDialogIndicator = new ProgressIndicator();
-        startupDialogIndicator.setMaxSize(22, 22);
-        startupDialogIndicator.setPrefSize(22, 22);
-        startupDialogIndicator.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
-
-        HBox statusRow = new HBox(10, startupDialogIndicator, startupDialogStatusLabel);
-        statusRow.setAlignment(Pos.CENTER_LEFT);
-
-        Button dismissButton = new Button("Dismiss");
-        dismissButton.setDefaultButton(false);
-        dismissButton.setCancelButton(true);
-        dismissButton.setOnAction(event -> {
-            startupDialogDismissed = true;
-            hideStartupDialog();
-        });
-
-        HBox buttonRow = new HBox(dismissButton);
-        buttonRow.setAlignment(Pos.CENTER_RIGHT);
-
-        VBox root = new VBox(10, headerRow, statusRow, new Separator(), buttonRow);
-        root.setPadding(new Insets(12));
-        root.setStyle("-fx-background-color: white;");
-
-        Scene dialogScene = new Scene(root);
-        startupDialogStage.setScene(dialogScene);
-        startupDialogStage.sizeToScene();
-        startupDialogStage.setOnCloseRequest(event -> startupDialogDismissed = true);
-        startupDialogStage.setOnHidden(event -> {
-            if (!startupBusyState) {
-                startupDialogDismissed = false;
-            }
-        });
-    }
-
-    private ImageView createStartupDialogIconView() {
-        try {
-            final String iconFile = "file:" + vars.getGlimpseResourceDir() + File.separator + "GLIMPSE_icon_large.png";
-            Image image = new Image(iconFile);
-            if (image.isError()) {
-                return null;
-            }
-            ImageView imageView = new ImageView(image);
-            imageView.setFitWidth(STARTUP_DIALOG_ICON_SIZE);
-            imageView.setFitHeight(STARTUP_DIALOG_ICON_SIZE);
-            imageView.setPreserveRatio(true);
-            imageView.setSmooth(true);
-            return imageView;
-        } catch (Exception ignored) {}
-        return null;
-    }
-
-    private void updateStartupDialogStatus(String text, double progress, boolean busy) {
-        if (startupDialogDismissed && busy) {
-            return;
-        }
-        ensureStartupDialog();
-        if (startupDialogStatusLabel != null) {
-            startupDialogStatusLabel.setText(text);
-        }
-        if (startupDialogIndicator != null) {
-            if (progress >= 0.0 && progress <= 1.0) {
-                startupDialogIndicator.setProgress(progress);
-            } else {
-                startupDialogIndicator.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
-            }
-        }
-        if (!busy) {
-            hideStartupDialog();
-            return;
-        }
-        if (startupDialogDismissed) {
-            return;
-        }
-        showStartupDialog();
-    }
-
-    private void showStartupDialog() {
-        if (startupDialogStage == null || startupDialogDismissed) {
-            return;
-        }
-        if (!startupDialogStage.isShowing()) {
-            startupDialogStage.show();
-        }
-        startupDialogStage.toFront();
-    }
-
-    private void hideStartupDialog() {
-        if (startupDialogStage != null && startupDialogStage.isShowing()) {
-            startupDialogStage.hide();
-        }
     }
 
     /**
@@ -1114,9 +1027,6 @@ public class Client extends Application {
     private Label startupOverlayLabel;
     private ProgressIndicator startupOverlayIndicator;
     private VBox startupOverlayBox;
-    private Stage startupDialogStage;
-    private Label startupDialogStatusLabel;
-    private ProgressIndicator startupDialogIndicator;
 
     private static void setFileDependentUiEnabled(boolean enabled) {
         if (!Platform.isFxApplicationThread()) {
@@ -1140,6 +1050,16 @@ public class Client extends Application {
             normalizedExtraStyle = normalizedExtraStyle + ";";
         }
         return styles.getBackgroundStyle() + STATUS_BAR_BASE_STYLE + (normalizedExtraStyle.isEmpty() ? "" : " " + normalizedExtraStyle);
+    }
+
+    private String buildStatusBarStyleForText(String text, String extraStyle) {
+        String normalizedText = text == null ? "" : text.trim();
+        String normalizedExtraStyle = extraStyle == null ? "" : extraStyle.trim();
+        String textColorStyle = normalizedText.endsWith("!!!") ? STATUS_BAR_ALERT_TEXT_STYLE : STATUS_BAR_DEFAULT_TEXT_STYLE;
+        if (normalizedExtraStyle.isEmpty()) {
+            return buildStatusBarStyle(textColorStyle);
+        }
+        return buildStatusBarStyle(textColorStyle + " " + normalizedExtraStyle);
     }
 
     public static void beginScenarioOperationProgress() {

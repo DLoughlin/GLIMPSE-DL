@@ -36,9 +36,11 @@ package gui;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
@@ -78,6 +80,7 @@ import javafx.stage.Stage;
 /** Manages the scenario library pane, including scenario actions, GCAM runs, and status refresh. */
 public class PaneScenarioLibrary extends ScenarioBuilder {
     private static final Duration LIVE_STATUS_REFRESH_INTERVAL = Duration.ofSeconds(3);
+    private static final String STOPPED_LOG_MARKER = "GLIMPSE scenario status: Stopped";
     private static final String[] EXE_LOG_ARTIFACT_FILENAMES = {
             "main_log.txt",
             "main_error.txt",
@@ -204,7 +207,6 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             startupTime = (new Date()).getTime();
         }
         System.out.println("time now=" + (new SimpleDateFormat("MM/dd/yyyy HH:mm:ss")).format(startupTime));
-        refreshScenarioStatusAsync(false);
     }
 
     PaneScenarioLibrary() {}
@@ -492,17 +494,23 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private void handleShowRunQueue() {
         List<String> queuedRuns = runController.getQueuedRuns();
         List<String> completedRuns = runController.getCompletedRuns();
-        if (queuedRuns.isEmpty() && completedRuns.isEmpty()) {
+        String runningScenarioName = runController.getCurrentScenarioName();
+        if (queuedRuns.isEmpty() && completedRuns.isEmpty()
+                && (runningScenarioName == null || runningScenarioName.trim().isEmpty())) {
             utils.warningMessage("No queued runs this session.");
             return;
         }
 
         try {
             QueueWindow.show(Client.primaryStage, () -> new QueueWindow.QueueData(
+                    runningScenarioName,
                     new ArrayList<>(queuedRuns),
                     new ArrayList<>(completedRuns)));
         } catch (Exception e) {
-            ArrayList<String> txtArray = ScenarioLibraryReportHelper.createSimpleQueueReport(queuedRuns, completedRuns);
+            ArrayList<String> txtArray = ScenarioLibraryReportHelper.createSimpleQueueReport(
+                    runningScenarioName,
+                    queuedRuns,
+                    completedRuns);
             utils.displayArrayList(txtArray, "Run Queue");
         }
     }
@@ -724,9 +732,15 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
                         @Override
                         public void onRunFinished(String finishedScenarioName, ProcessResult result) {
-                            finalizeScenarioRunArtifacts(finishedScenarioName);
+                            PaneScenarioLibrary.this.finalizeScenarioRunArtifacts(finishedScenarioName);
                             if (result != null && (result.getExitCode() != 0 || result.isTimedOut())) {
-                                markScenarioStoppedDnF(finishedScenarioName);
+                                if (finishedScenarioName != null
+                                        && finishedScenarioName.equals(runController.getStopRequestedScenarioName())) {
+                                    persistStoppedStatusMarker(finishedScenarioName);
+                                    markScenarioStopped(finishedScenarioName);
+                                } else {
+                                    markScenarioDnF(finishedScenarioName);
+                                }
                             }
                             Platform.runLater(() -> {
                                 try {
@@ -1104,18 +1118,27 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             return;
         }
         runController.replaceQueuedRuns(refreshResult.getQueuedRuns());
-        for (String completedScenario : refreshResult.getCompletedRunsToAdd()) {
-            if (completedScenario != null && !completedScenario.trim().isEmpty()) {
-                runController.addCompletedRun(completedScenario);
-            }
-        }
     }
 
     private void markScenarioStoppedDnF(String scenarioName) {
-        if (scenarioName == null || scenarioName.trim().isEmpty()) {
+        markScenarioStopped(scenarioName);
+    }
+
+    private void markScenarioStopped(String scenarioName) {
+        updateScenarioTerminalStatus(scenarioName, ScenarioStatusService.STATUS_STOPPED);
+    }
+
+    private void markScenarioDnF(String scenarioName) {
+        updateScenarioTerminalStatus(scenarioName, ScenarioStatusService.STATUS_DNF);
+    }
+
+    private void updateScenarioTerminalStatus(String scenarioName, String statusText) {
+        if (scenarioName == null || scenarioName.trim().isEmpty() || statusText == null || statusText.trim().isEmpty()) {
             return;
         }
-        runController.markScenarioStopped(scenarioName);
+        if (ScenarioStatusService.STATUS_STOPPED.equals(statusText)) {
+            runController.markScenarioStopped(scenarioName);
+        }
         Platform.runLater(() -> {
             try {
                 for (ScenarioRow row : ScenarioTable.listOfScenarioRuns) {
@@ -1126,57 +1149,69 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                         DateFormat format2 = new SimpleDateFormat("yyyy-MM-dd: HH:mm", Locale.ENGLISH);
                         row.setCompletedDate(format2.format(new Date()));
                     }
-                    row.setStatus("DNF");
+                    row.setStatus(statusText);
                     break;
                 }
             } catch (Exception ignored) {}
         });
     }
 
-    private void finalizeScenarioRunArtifacts(String scenarioName) {
-        String normalizedScenario = scenarioName == null ? "" : scenarioName.trim();
-        if (normalizedScenario.isEmpty()) {
+    private void persistStoppedStatusMarker(String scenarioName) {
+        if (scenarioName == null || scenarioName.trim().isEmpty()) {
             return;
         }
         try {
-            Path scenarioDir = Paths.get(vars.getScenarioDir(), normalizedScenario);
-            if (!Files.isDirectory(scenarioDir)) {
+            Path mainLogPath = ScenarioLibraryPathHelper.scenarioMainLogPath(vars.getScenarioDir(), scenarioName);
+            if (mainLogPath == null) {
                 return;
             }
-            Path exeLogDir = Paths.get(vars.getgCamExecutableDir(), "logs");
-            if (!Files.isDirectory(exeLogDir)) {
+            Files.createDirectories(mainLogPath.getParent());
+            String existing = Files.exists(mainLogPath)
+                    ? new String(Files.readAllBytes(mainLogPath), StandardCharsets.UTF_8)
+                    : "";
+            if (existing.contains(STOPPED_LOG_MARKER)) {
                 return;
             }
-
-            String activeScenarioInExeLog = "";
-            Path exeMainLog = exeLogDir.resolve("main_log.txt");
-            if (Files.isRegularFile(exeMainLog)) {
-                try {
-                    activeScenarioInExeLog = utils.getRunningScenario(exeMainLog.toFile());
-                } catch (Exception ignored) {}
+            StringBuilder markerText = new StringBuilder();
+            if (!existing.isEmpty() && !existing.endsWith(System.lineSeparator())) {
+                markerText.append(System.lineSeparator());
             }
+            markerText.append(STOPPED_LOG_MARKER).append(System.lineSeparator());
+            Files.write(
+                    mainLogPath,
+                    markerText.toString().getBytes(StandardCharsets.UTF_8),
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.APPEND);
+        } catch (Exception ex) {
+            System.out.println("Problem writing stopped marker for scenario " + scenarioName + ": " + ex);
+        }
+    }
 
-            if (!activeScenarioInExeLog.isEmpty() && !normalizedScenario.equals(activeScenarioInExeLog)) {
-                return;
-            }
-
+    private void finalizeScenarioRunArtifacts(String scenarioName) {
+        if (scenarioName == null || scenarioName.trim().isEmpty()) {
+            return;
+        }
+        try {
+            Path scenarioDirPath = Paths.get(vars.getScenarioDir(), scenarioName);
+            Files.createDirectories(scenarioDirPath);
+            Path exeLogsDir = Paths.get(vars.getgCamExecutableDir(), "logs");
             for (String artifactName : EXE_LOG_ARTIFACT_FILENAMES) {
                 if (artifactName == null || artifactName.trim().isEmpty()) {
                     continue;
                 }
-                Path source = exeLogDir.resolve(artifactName);
-                if (!Files.isRegularFile(source)) {
+                Path sourcePath = exeLogsDir.resolve(artifactName);
+                if (!Files.exists(sourcePath)) {
                     continue;
                 }
-                Path destination = scenarioDir.resolve(artifactName);
+                Path targetPath = scenarioDirPath.resolve(artifactName);
                 try {
-                    files.moveFile(source, destination);
-                } catch (Exception ex) {
-                    System.out.println("Problem moving run artifact " + artifactName + " for scenario " + normalizedScenario + ": " + ex);
+                    Files.copy(sourcePath, targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                } catch (Exception copyEx) {
+                    System.out.println("Problem copying run artifact " + artifactName + " for scenario " + scenarioName + ": " + copyEx);
                 }
             }
         } catch (Exception ex) {
-            System.out.println("Problem finalizing scenario run artifacts for " + normalizedScenario + ": " + ex);
+            System.out.println("Problem finalizing run artifacts for scenario " + scenarioName + ": " + ex);
         }
     }
 

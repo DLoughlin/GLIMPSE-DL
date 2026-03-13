@@ -127,7 +127,6 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 			if (ComponentLibraryTable.getTableComponents() != null) {
 				ComponentLibraryTable.getTableComponents().setPlaceholder(utils.createLabel(LOADING_COMPONENTS_MESSAGE));
 			}
-			refreshComponentLibraryTableAsync(false);
 		} catch (Exception exception) {
 			utils.warningMessage(ERROR_LOADING_COMPONENTS);
 			System.out.println("Error loading scenario component files from:");
@@ -239,6 +238,10 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 
 	public void refreshComponentLibraryTable() {
 		refreshComponentLibraryTableAsync(true);
+	}
+
+	public void refreshComponentLibraryTableForStartup() {
+		refreshComponentLibraryTableAsync(false);
 	}
 
 	private void refreshComponentLibraryTableAsync(boolean userInitiated) {

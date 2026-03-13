@@ -143,31 +143,31 @@
 
 /* Diff dialog styling */
 .diff-table .table-row-cell.diff-row-insert {
-    -fx-background-color: #dff3e4;
+    -fx-background-color: #e4f4e7;
     -fx-background-insets: 0;
 }
 
 .diff-table .table-row-cell.diff-row-delete {
-    -fx-background-color: #fde3e6;
+    -fx-background-color: #fbe7ea;
     -fx-background-insets: 0;
 }
 
 .diff-table .table-row-cell.diff-row-change {
-    -fx-background-color: #fff1cc;
+    -fx-background-color: #fff4d8;
     -fx-background-insets: 0;
 }
 
 .diff-table .table-row-cell.diff-row-different:hover,
 .diff-table .table-row-cell.diff-row-insert:hover {
-    -fx-background-color: #cdebd4;
+    -fx-background-color: #d8eedc;
 }
 
 .diff-table .table-row-cell.diff-row-delete:hover {
-    -fx-background-color: #fac9cf;
+    -fx-background-color: #f6d9de;
 }
 
 .diff-table .table-row-cell.diff-row-change:hover {
-    -fx-background-color: #ffe39a;
+    -fx-background-color: #ffebbf;
 }
 
 .diff-table .table-row-cell:selected.diff-row-insert,
@@ -180,21 +180,14 @@
 .diff-table .table-cell.diff-cell {
     -fx-border-color: transparent #eceff1 transparent transparent;
     -fx-padding: 3 8 3 8;
+    -fx-background-insets: 0;
 }
 
-.diff-table .table-cell.diff-insert {
-    -fx-background-color: linear-gradient(to right, #66bb6a 0, #66bb6a 4, #bfe5c4 4, #bfe5c4 100%);
-    -fx-text-fill: #0f4d1f;
-}
-
-.diff-table .table-cell.diff-delete {
-    -fx-background-color: linear-gradient(to right, #ef5350 0, #ef5350 4, #f7c4cb 4, #f7c4cb 100%);
-    -fx-text-fill: #8e1720;
-}
-
+.diff-table .table-cell.diff-insert,
+.diff-table .table-cell.diff-delete,
 .diff-table .table-cell.diff-change {
-    -fx-background-color: linear-gradient(to right, #ffb300 0, #ffb300 4, #ffe08a 4, #ffe08a 100%);
-    -fx-text-fill: #6b4f00;
+    -fx-background-color: transparent;
+    -fx-text-fill: inherit;
 }
 
 .diff-table .table-cell.diff-empty-side {

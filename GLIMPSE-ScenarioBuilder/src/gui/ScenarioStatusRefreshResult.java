@@ -8,15 +8,13 @@ final class ScenarioStatusRefreshResult {
     private final boolean noScenarios;
     private final String runningScenario;
     private final List<String> queuedRuns;
-    private final List<String> completedRunsToAdd;
 
     ScenarioStatusRefreshResult(List<ScenarioStatusSnapshot> snapshots, boolean noScenarios, String runningScenario,
-            List<String> queuedRuns, List<String> completedRunsToAdd) {
+            List<String> queuedRuns) {
         this.snapshots = snapshots == null ? new ArrayList<>() : new ArrayList<>(snapshots);
         this.noScenarios = noScenarios;
         this.runningScenario = runningScenario == null ? "" : runningScenario;
         this.queuedRuns = queuedRuns == null ? new ArrayList<>() : new ArrayList<>(queuedRuns);
-        this.completedRunsToAdd = completedRunsToAdd == null ? new ArrayList<>() : new ArrayList<>(completedRunsToAdd);
     }
 
     List<ScenarioStatusSnapshot> getSnapshots() {
@@ -33,9 +31,5 @@ final class ScenarioStatusRefreshResult {
 
     List<String> getQueuedRuns() {
         return new ArrayList<>(queuedRuns);
-    }
-
-    List<String> getCompletedRunsToAdd() {
-        return new ArrayList<>(completedRunsToAdd);
     }
 }

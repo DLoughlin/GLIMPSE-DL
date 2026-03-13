@@ -1,11 +1,17 @@
 package gui;
 
 import java.io.File;
+import java.io.RandomAccessFile;
+import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEUtils;
@@ -15,6 +21,7 @@ final class ScenarioStatusService {
     static final String STATUS_IN_QUEUE = "In queue";
     static final String STATUS_SUCCESS = "Success";
     static final String STATUS_DNF = "DNF";
+    static final String STATUS_STOPPED = "Stopped";
     static final String STATUS_UNSOLVED = "Unsolved mkts";
     static final String STATUS_RUNNING = "Running";
     static final String STATUS_LOST_HANDLE = "Lost handle";
@@ -22,6 +29,17 @@ final class ScenarioStatusService {
     static final String STATUS_WRITING = "Writing";
 
     private static final long LOST_HANDLE_GRACE_MS = 30_000L;
+    private static final int LOG_TAIL_BYTES = 128 * 1024;
+    private static final String CONFIG_FILE_PREFIX = "Configuration file:";
+    private static final String RUNTIME_PREFIX = "Data Readin, Model Run & Write Time:";
+    private static final String UNSOLVED_PREFIX = "The following model periods did not solve:";
+    private static final String ERROR_PREFIX = "ERROR";
+    private static final String COMPONENTS_HEADER = "Components:";
+    private static final String METADATA_HEADER = "##################### Scenario Meta Data #####################";
+    private static final String METADATA_FOOTER = "###############################################################";
+    private static final String FILES_HEADER = "<Files>";
+    private static final String EXTERNALLY_CREATED_SCENARIO = "Externally-created scenario";
+    private static final String STOPPED_MARKER = "GLIMPSE scenario status: Stopped";
     private static final String[] STDOUT_SUCCESS_MARKERS = {
             "Model exiting successfully.",
             "Exiting successfully.",
@@ -33,6 +51,8 @@ final class ScenarioStatusService {
     private final GLIMPSEFiles files;
     private final GLIMPSEUtils utils;
     private final GcamPromptMonitor gcamPromptMonitor;
+    private final Map<String, CachedConfigMetadata> configMetadataCache = new HashMap<>();
+    private final Map<String, CachedLogAnalysis> logAnalysisCache = new HashMap<>();
 
     ScenarioStatusService(GLIMPSEVariables vars, GLIMPSEFiles files, GLIMPSEUtils utils) {
         this.vars = vars;
@@ -45,10 +65,11 @@ final class ScenarioStatusService {
         RefreshRequest safeRequest = request == null ? RefreshRequest.empty() : request;
         DateFormat format = new SimpleDateFormat("yyyy-MM-dd: HH:mm", Locale.ENGLISH);
         File currentMainLogFile = new File(ScenarioLibraryPathHelper.exeMainLogFile(vars.getgCamExecutableDir()));
-        String runningScenario = utils.getRunningScenario(currentMainLogFile);
+        LogAnalysis currentMainLogAnalysis = analyzeCurrentMainLogFile(currentMainLogFile, safeRequest);
+        String runningScenario = resolveRunningScenario(currentMainLogAnalysis, safeRequest);
         List<ScenarioStatusSnapshot> snapshots = new ArrayList<>();
         List<String> updatedQueue = new ArrayList<>(safeRequest.queuedRuns);
-        List<String> completedRunsToAdd = new ArrayList<>();
+        removeScenarioFromQueue(updatedQueue, runningScenario);
         boolean noScenarios = false;
 
         try {
@@ -60,10 +81,10 @@ final class ScenarioStatusService {
                     ScenarioStatusSnapshot snapshot = buildScenarioStatusSnapshot(
                             scenarioFolder,
                             currentMainLogFile,
+                            currentMainLogAnalysis,
                             runningScenario,
                             safeRequest,
                             updatedQueue,
-                            completedRunsToAdd,
                             format);
                     if (snapshot != null) {
                         snapshots.add(snapshot);
@@ -74,17 +95,12 @@ final class ScenarioStatusService {
             throw new IllegalStateException("Problem updating scenario table", ex);
         }
 
-        return new ScenarioStatusRefreshResult(snapshots, noScenarios, runningScenario, updatedQueue, completedRunsToAdd);
+        return new ScenarioStatusRefreshResult(snapshots, noScenarios, runningScenario, updatedQueue);
     }
 
     private ScenarioStatusSnapshot buildScenarioStatusSnapshot(File scenarioFolder, File currentMainLogFile,
-            String runningScenario, RefreshRequest request, List<String> queuedRuns, List<String> completedRunsToAdd,
+            LogAnalysis currentMainLogAnalysis, String runningScenario, RefreshRequest request, List<String> queuedRuns,
             DateFormat format) {
-        ArrayList<String> searchArray = new ArrayList<>();
-        searchArray.add("Model run completed.");
-        searchArray.add("Data Readin, Model Run & Write Time:");
-        searchArray.add("The following model periods did not solve:");
-
         long createdDate = 0L;
         long completedDate = 0L;
         String scenarioName = scenarioFolder.getName();
@@ -94,68 +110,77 @@ final class ScenarioStatusService {
             return null;
         }
 
-        String components = ScenarioLibraryReportHelper.getComponentsFromConfig(configFile);
+        String components = getComponentsFromConfigCached(configFile);
         String mainLogName = ScenarioLibraryPathHelper.scenarioMainLogFile(vars.getScenarioDir(), scenarioName);
         File mainLogFile = new File(mainLogName);
         boolean mainLogExists = mainLogFile.exists();
+        boolean activeScenario = scenarioName.equals(runningScenario);
+        boolean queuedScenario = queuedRuns.contains(scenarioName);
         String status = "";
         String runtime = "";
         String unsolved = "";
         createdDate = configFile.lastModified();
 
+        LogAnalysis scenarioLogAnalysis = mainLogExists ? analyzeLogFile(mainLogFile) : LogAnalysis.empty();
+        LogAnalysis scenarioStdoutAnalysis = analyzeScenarioStdoutFile(scenarioFolder);
         if (mainLogExists) {
             completedDate = mainLogFile.lastModified();
-            searchArray = files.getMatchingTextArrayInFile(mainLogName, searchArray);
-            if (!searchArray.get(0).isEmpty()) {
+            if (scenarioLogAnalysis.successMarkerFound) {
                 status = STATUS_SUCCESS;
+            } else if (scenarioLogAnalysis.stoppedMarkerFound) {
+                status = STATUS_STOPPED;
             } else {
                 status = STATUS_DNF;
-                String runningStatus = utils.getScenarioStatusFromMainLog(mainLogFile);
-                if (runningStatus.contains(",ERR")) {
-                    String errorStr = runningStatus.substring(runningStatus.indexOf(',') + 4);
+                if (scenarioLogAnalysis.statusText.contains(",ERR")) {
+                    String errorStr = scenarioLogAnalysis.statusText.substring(scenarioLogAnalysis.statusText.indexOf(',') + 4);
                     unsolved = errorStr;
-                }
-            }
-            for (int i = 0; i < queuedRuns.size(); i++) {
-                String queuedScenario = queuedRuns.get(i);
-                if (queuedScenario.equals(scenarioName)) {
-                    status = STATUS_IN_QUEUE;
-                    if (mainLogExists) {
-                        completedRunsToAdd.add(queuedScenario);
-                        queuedRuns.remove(i);
-                    }
-                    break;
                 }
             }
         }
 
-        if (!STATUS_SUCCESS.equals(status) && hasStdoutSuccessMarker(scenarioFolder)) {
+        if (!STATUS_SUCCESS.equals(status) && scenarioStdoutAnalysis.successMarkerFound) {
             status = STATUS_SUCCESS;
         }
-        if (!searchArray.get(1).isEmpty()) {
-            runtime = toRuntimeText(searchArray.get(1));
+        if (!scenarioLogAnalysis.runtimeLine.isEmpty()) {
+            runtime = toRuntimeText(scenarioLogAnalysis.runtimeLine);
+        } else if (!scenarioStdoutAnalysis.runtimeLine.isEmpty()) {
+            runtime = toRuntimeText(scenarioStdoutAnalysis.runtimeLine);
         }
-        if (!searchArray.get(2).isEmpty()) {
+        if (!scenarioLogAnalysis.unsolvedLine.isEmpty()) {
             try {
-                unsolved = searchArray.get(2).split(":")[1].trim();
+                unsolved = scenarioLogAnalysis.unsolvedLine.split(":", 2)[1].trim();
+                status = STATUS_UNSOLVED;
+            } catch (Exception e) {
+                unsolved = "";
+            }
+        } else if (!scenarioStdoutAnalysis.unsolvedLine.isEmpty()) {
+            try {
+                unsolved = scenarioStdoutAnalysis.unsolvedLine.split(":", 2)[1].trim();
                 status = STATUS_UNSOLVED;
             } catch (Exception e) {
                 unsolved = "";
             }
         }
 
+        if (queuedScenario && !activeScenario) {
+            status = STATUS_IN_QUEUE;
+            runtime = "";
+            unsolved = "";
+            completedDate = 0L;
+        }
+
         String createdDateStr = createdDate != 0L ? format.format(createdDate) : "";
         String completedDateStr = completedDate != 0L ? format.format(completedDate) : "";
-        if ((!STATUS_SUCCESS.equals(status)) && (!STATUS_UNSOLVED.equals(status)) && (!STATUS_DNF.equals(status))) {
-            if (scenarioName.equals(runningScenario)) {
+        if ((!STATUS_SUCCESS.equals(status)) && (!STATUS_UNSOLVED.equals(status)) && (!STATUS_DNF.equals(status)) && (!STATUS_STOPPED.equals(status))) {
+            if (activeScenario) {
                 status = STATUS_RUNNING;
                 long lastDate = currentMainLogFile.lastModified();
-                boolean isQueued = queuedRuns.contains(scenarioName);
+                boolean isQueued = queuedScenario;
                 if (!isQueued && (request.startupTime > 0) && (System.currentTimeMillis() - request.startupTime > LOST_HANDLE_GRACE_MS)
                         && lastDate < request.startupTime) {
                     status = STATUS_LOST_HANDLE;
                 } else {
-                    String runningStatus = utils.getScenarioStatusFromMainLog(currentMainLogFile);
+                    String runningStatus = resolveRunningStatusText(scenarioName, currentMainLogAnalysis, scenarioStdoutAnalysis, request);
                     String explicitRunState = getExplicitRunStateLabel(scenarioName, currentMainLogFile, runningStatus, request);
                     if (!explicitRunState.isEmpty()) {
                         status = explicitRunState;
@@ -171,17 +196,338 @@ final class ScenarioStatusService {
                         }
                     }
                 }
-            } else if (queuedRuns.contains(scenarioName)) {
+            } else if (queuedScenario) {
                 status = STATUS_IN_QUEUE;
             }
         }
+        if (!queuedScenario && !activeScenario
+                && (STATUS_SUCCESS.equals(status) || STATUS_UNSOLVED.equals(status)
+                        || STATUS_DNF.equals(status) || STATUS_STOPPED.equals(status))) {
+        }
+
         if ((status.isEmpty() || status.startsWith(STATUS_RUNNING) || STATUS_BLOCKED.equals(status)
                 || STATUS_WRITING.equals(status))
                 && scenarioName.equals(request.stopRequestedScenarioName) && !request.isScenarioActivelyRunning(scenarioName)) {
-            status = STATUS_DNF;
+            status = STATUS_STOPPED;
         }
 
         return new ScenarioStatusSnapshot(scenarioName, components, createdDateStr, completedDateStr, status, runtime, unsolved);
+    }
+
+    private String getComponentsFromConfigCached(File configFile) {
+        if (configFile == null) {
+            return "";
+        }
+        String cacheKey = configFile.getAbsolutePath();
+        long lastModified = configFile.lastModified();
+        long fileLength = configFile.length();
+        CachedConfigMetadata cached = configMetadataCache.get(cacheKey);
+        if (cached != null && cached.matches(lastModified, fileLength)) {
+            return cached.components;
+        }
+
+        String components = "";
+        boolean hasMetaData = false;
+        boolean startRecording = false;
+        int count = 0;
+        try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(configFile))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String trimmed = line.trim();
+                if (trimmed.equals(METADATA_HEADER)) {
+                    hasMetaData = true;
+                }
+                if (trimmed.equals(METADATA_FOOTER) || trimmed.equals(FILES_HEADER)) {
+                    break;
+                }
+                if (startRecording && !trimmed.isEmpty()) {
+                    if (count++ == 0) {
+                        components = trimmed;
+                    } else {
+                        components += " ; " + trimmed;
+                    }
+                }
+                if (trimmed.equals(COMPONENTS_HEADER)) {
+                    startRecording = true;
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Problem reading components from " + configFile.getName() + ": " + e);
+        }
+        if (!hasMetaData) {
+            components = EXTERNALLY_CREATED_SCENARIO;
+        }
+        configMetadataCache.put(cacheKey, new CachedConfigMetadata(lastModified, fileLength, components));
+        return components;
+    }
+
+    private boolean hasStdoutSuccessMarker(File scenarioFolder) {
+        if (scenarioFolder == null) {
+            return false;
+        }
+        try {
+            File stdoutFile = new File(scenarioFolder, "gcam_stdout.txt");
+            if (!stdoutFile.exists()) {
+                return false;
+            }
+            return analyzeLogFile(stdoutFile).stdoutSuccessFound;
+        } catch (Exception ignored) {}
+        return false;
+    }
+
+    private LogAnalysis analyzeScenarioStdoutFile(File scenarioFolder) {
+        if (scenarioFolder == null) {
+            return LogAnalysis.empty();
+        }
+        try {
+            File stdoutFile = new File(scenarioFolder, "gcam_stdout.txt");
+            if (!stdoutFile.exists()) {
+                return LogAnalysis.empty();
+            }
+            return analyzeLogFile(stdoutFile);
+        } catch (Exception ignored) {}
+        return LogAnalysis.empty();
+    }
+
+    private String resolveRunningScenario(LogAnalysis currentMainLogAnalysis, RefreshRequest request) {
+        String logScenario = currentMainLogAnalysis == null ? "" : safeTrim(currentMainLogAnalysis.runningScenario);
+        String currentScenario = request == null ? "" : safeTrim(request.currentGcamScenarioName);
+        if (!currentScenario.isEmpty() && request.isScenarioActivelyRunning(currentScenario)) {
+            return currentScenario;
+        }
+        return logScenario;
+    }
+
+    private void removeScenarioFromQueue(List<String> queuedRuns, String scenarioName) {
+        String normalizedScenario = safeTrim(scenarioName);
+        if (queuedRuns == null || normalizedScenario.isEmpty()) {
+            return;
+        }
+        queuedRuns.removeIf(normalizedScenario::equals);
+    }
+
+    private String resolveRunningStatusText(String scenarioName, LogAnalysis currentMainLogAnalysis,
+            LogAnalysis scenarioStdoutAnalysis, RefreshRequest request) {
+        String currentScenario = request == null ? "" : safeTrim(request.currentGcamScenarioName);
+        if (!safeTrim(scenarioName).equals(currentScenario)) {
+            return currentMainLogAnalysis == null ? "" : safeTrim(currentMainLogAnalysis.statusText);
+        }
+
+        Set<String> candidates = new HashSet<>();
+        String currentMainLogStatus = currentMainLogAnalysis == null ? "" : safeTrim(currentMainLogAnalysis.statusText);
+        if (!currentMainLogStatus.isEmpty()) {
+            candidates.add(currentMainLogStatus);
+        }
+        String scenarioStdoutStatus = scenarioStdoutAnalysis == null ? "" : safeTrim(scenarioStdoutAnalysis.statusText);
+        if (!scenarioStdoutStatus.isEmpty()) {
+            candidates.add(scenarioStdoutStatus);
+        }
+
+        for (String candidate : candidates) {
+            if (!candidate.isEmpty()) {
+                return candidate;
+            }
+        }
+        return "";
+    }
+
+    private LogAnalysis analyzeLogFile(File file) {
+        if (file == null || !file.exists()) {
+            return LogAnalysis.empty();
+        }
+        String cacheKey = file.getAbsolutePath();
+        long lastModified = file.lastModified();
+        long fileLength = file.length();
+        CachedLogAnalysis cached = logAnalysisCache.get(cacheKey);
+        if (cached != null && cached.matches(lastModified, fileLength)) {
+            return cached.analysis;
+        }
+
+        LogAnalysis analysis = analyzeLogFileUncached(file, fileLength);
+        logAnalysisCache.put(cacheKey, new CachedLogAnalysis(lastModified, fileLength, analysis));
+        return analysis;
+    }
+
+    private LogAnalysis analyzeCurrentMainLogFile(File currentMainLogFile, RefreshRequest request) {
+        if (currentMainLogFile == null || !currentMainLogFile.exists()) {
+            return LogAnalysis.empty();
+        }
+        if (request != null && request.currentGcamScenarioName != null && !request.currentGcamScenarioName.trim().isEmpty()) {
+            return analyzeLogFileUncached(currentMainLogFile, currentMainLogFile.length());
+        }
+        return analyzeLogFile(currentMainLogFile);
+    }
+
+    private LogAnalysis analyzeLogFileUncached(File file, long fileLength) {
+        String successLine = "";
+        String runtimeLine = "";
+        String unsolvedLine = "";
+        String errorLine = "";
+        String runningPeriod = "";
+        String runningScenario = "";
+        boolean stdoutSuccessFound = false;
+        boolean stoppedMarkerFound = false;
+
+        List<String> tailLines = readTailLines(file, LOG_TAIL_BYTES);
+        for (int i = tailLines.size() - 1; i >= 0; i--) {
+            String line = safeTrim(tailLines.get(i));
+            if (line.isEmpty()) {
+                continue;
+            }
+            if (!stoppedMarkerFound && line.contains(STOPPED_MARKER)) {
+                stoppedMarkerFound = true;
+            }
+            if (successLine.isEmpty() && containsAny(line, STDOUT_SUCCESS_MARKERS)) {
+                successLine = line;
+                stdoutSuccessFound = true;
+            }
+            if (runtimeLine.isEmpty() && line.contains(RUNTIME_PREFIX)) {
+                runtimeLine = line;
+            }
+            if (unsolvedLine.isEmpty() && line.contains(UNSOLVED_PREFIX)) {
+                unsolvedLine = line;
+            }
+            if (errorLine.isEmpty() && line.contains(ERROR_PREFIX)) {
+                errorLine = line;
+            }
+            if (runningScenario.isEmpty() && line.contains(CONFIG_FILE_PREFIX)) {
+                runningScenario = scenarioNameFromConfigLine(line);
+            }
+            if (runningPeriod.isEmpty()) {
+                String period = extractRunningPeriod(line);
+                if (!period.isEmpty()) {
+                    runningPeriod = period;
+                }
+            }
+            if (!runtimeLine.isEmpty() && !unsolvedLine.isEmpty() && !errorLine.isEmpty()
+                    && !runningScenario.isEmpty() && !runningPeriod.isEmpty() && !successLine.isEmpty() && stoppedMarkerFound) {
+                break;
+            }
+        }
+
+        boolean requiresFallback = (!successLine.isEmpty() || !runtimeLine.isEmpty() || !unsolvedLine.isEmpty()
+                || !errorLine.isEmpty() || !runningScenario.isEmpty() || !runningPeriod.isEmpty() || stoppedMarkerFound) ? false : fileLength > LOG_TAIL_BYTES;
+        if (requiresFallback) {
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(file))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String trimmed = safeTrim(line);
+                    if (trimmed.isEmpty()) {
+                        continue;
+                    }
+                    if (!stoppedMarkerFound && trimmed.contains(STOPPED_MARKER)) {
+                        stoppedMarkerFound = true;
+                    }
+                    if (runningScenario.isEmpty() && trimmed.contains(CONFIG_FILE_PREFIX)) {
+                        runningScenario = scenarioNameFromConfigLine(trimmed);
+                    }
+                    if (successLine.isEmpty() && containsAny(trimmed, STDOUT_SUCCESS_MARKERS)) {
+                        successLine = trimmed;
+                        stdoutSuccessFound = true;
+                    }
+                    if (runtimeLine.isEmpty() && trimmed.contains(RUNTIME_PREFIX)) {
+                        runtimeLine = trimmed;
+                    }
+                    if (unsolvedLine.isEmpty() && trimmed.contains(UNSOLVED_PREFIX)) {
+                        unsolvedLine = trimmed;
+                    }
+                    if (errorLine.isEmpty() && trimmed.contains(ERROR_PREFIX)) {
+                        errorLine = trimmed;
+                    }
+                    String period = extractRunningPeriod(trimmed);
+                    if (!period.isEmpty()) {
+                        runningPeriod = period;
+                    }
+                    if (!runtimeLine.isEmpty() && !unsolvedLine.isEmpty() && !errorLine.isEmpty()
+                            && !runningScenario.isEmpty() && !runningPeriod.isEmpty() && !successLine.isEmpty() && stoppedMarkerFound) {
+                        break;
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        String statusText = "";
+        if (!runningPeriod.isEmpty()) {
+            statusText = runningPeriod;
+        } else if (!unsolvedLine.isEmpty()) {
+            String msg = unsolvedLine.replace(UNSOLVED_PREFIX, "").trim();
+            statusText = "Unsolved,ERR " + msg;
+        } else if (!errorLine.isEmpty()) {
+            statusText = "ERROR,ERR " + errorLine.trim();
+        }
+        return new LogAnalysis(successLine, runtimeLine, unsolvedLine, statusText, runningScenario, stdoutSuccessFound, stoppedMarkerFound);
+    }
+
+    private List<String> readTailLines(File file, int tailBytes) {
+        ArrayList<String> lines = new ArrayList<>();
+        if (file == null || !file.exists()) {
+            return lines;
+        }
+        long start = 0L;
+        try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
+            long length = raf.length();
+            start = Math.max(0L, length - Math.max(1024, tailBytes));
+            raf.seek(start);
+            if (start > 0) {
+                raf.readLine();
+            }
+            byte[] bytes = new byte[(int) Math.max(0L, length - raf.getFilePointer())];
+            raf.readFully(bytes);
+            String text = new String(bytes, StandardCharsets.UTF_8);
+            for (String line : text.split("\\R")) {
+                String trimmed = safeTrim(line);
+                if (!trimmed.isEmpty()) {
+                    lines.add(trimmed);
+                }
+            }
+        } catch (Exception ignored) {}
+        return lines;
+    }
+
+    private String scenarioNameFromConfigLine(String configLine) {
+        if (configLine == null || !configLine.contains(CONFIG_FILE_PREFIX)) {
+            return "";
+        }
+        String path = configLine.replace(CONFIG_FILE_PREFIX, "").trim();
+        if (path.isEmpty()) {
+            return "";
+        }
+        String name = new File(path).getParent();
+        if (name == null) {
+            return "";
+        }
+        int separatorIndex = Math.max(name.lastIndexOf(File.separatorChar), name.lastIndexOf('/'));
+        return separatorIndex >= 0 ? name.substring(separatorIndex + 1) : name;
+    }
+
+    private String extractRunningPeriod(String line) {
+        if (line == null || line.isEmpty()) {
+            return "";
+        }
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(
+                "(?:^|[^A-Za-z])(period|final-calibration period|model period|solving period|time period)\\s*[:=]?\\s*(\\d{1,3})(?:[^0-9]|$)",
+                java.util.regex.Pattern.CASE_INSENSITIVE).matcher(line);
+        if (!matcher.find()) {
+            return "";
+        }
+        String period = matcher.group(2);
+        return period == null ? "" : period.trim();
+    }
+
+    private boolean containsAny(String line, String[] markers) {
+        if (line == null || markers == null) {
+            return false;
+        }
+        for (String marker : markers) {
+            if (marker != null && !marker.isEmpty() && line.contains(marker)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String safeTrim(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private String getExplicitRunStateLabel(String scenarioName, File currentMainLogFile, String runningStatus,
@@ -190,7 +536,7 @@ final class ScenarioStatusService {
             return "";
         }
         if (scenarioName.equals(request.stopRequestedScenarioName) && !request.isScenarioActivelyRunning(scenarioName)) {
-            return STATUS_DNF;
+            return STATUS_STOPPED;
         }
         if (request.currentGcamScenarioName == null || !scenarioName.equals(request.currentGcamScenarioName)) {
             return "";
@@ -208,31 +554,6 @@ final class ScenarioStatusService {
         return gcamPromptMonitor.isWritingResultsPhase(currentMainLogFile, runningStatus);
     }
 
-    private boolean hasStdoutSuccessMarker(File scenarioFolder) {
-        if (scenarioFolder == null) {
-            return false;
-        }
-        try {
-            File stdoutFile = new File(scenarioFolder, "gcam_stdout.txt");
-            if (!stdoutFile.exists()) {
-                return false;
-            }
-            ArrayList<String> lines = files.getStringArrayFromFile(stdoutFile.getAbsolutePath(), "#");
-            for (int i = lines.size() - 1; i >= 0; i--) {
-                String line = lines.get(i);
-                if (line == null) {
-                    continue;
-                }
-                for (String marker : STDOUT_SUCCESS_MARKERS) {
-                    if (line.contains(marker)) {
-                        return true;
-                    }
-                }
-            }
-        } catch (Exception ignored) {}
-        return false;
-    }
-
     private String toRuntimeText(String runtimeLine) {
         String runtime = "";
         try {
@@ -248,6 +569,65 @@ final class ScenarioStatusService {
             return hours + " hr " + minutes + " min ";
         } catch (Exception e) {
             return runtime;
+        }
+    }
+
+    private static final class CachedConfigMetadata {
+        final long lastModified;
+        final long fileLength;
+        final String components;
+
+        CachedConfigMetadata(long lastModified, long fileLength, String components) {
+            this.lastModified = lastModified;
+            this.fileLength = fileLength;
+            this.components = components == null ? "" : components;
+        }
+
+        boolean matches(long candidateLastModified, long candidateFileLength) {
+            return lastModified == candidateLastModified && fileLength == candidateFileLength;
+        }
+    }
+
+    private static final class CachedLogAnalysis {
+        final long lastModified;
+        final long fileLength;
+        final LogAnalysis analysis;
+
+        CachedLogAnalysis(long lastModified, long fileLength, LogAnalysis analysis) {
+            this.lastModified = lastModified;
+            this.fileLength = fileLength;
+            this.analysis = analysis == null ? LogAnalysis.empty() : analysis;
+        }
+
+        boolean matches(long candidateLastModified, long candidateFileLength) {
+            return lastModified == candidateLastModified && fileLength == candidateFileLength;
+        }
+    }
+
+    private static final class LogAnalysis {
+        final String successLine;
+        final String runtimeLine;
+        final String unsolvedLine;
+        final String statusText;
+        final String runningScenario;
+        final boolean stdoutSuccessFound;
+        final boolean successMarkerFound;
+        final boolean stoppedMarkerFound;
+
+        LogAnalysis(String successLine, String runtimeLine, String unsolvedLine, String statusText,
+                String runningScenario, boolean stdoutSuccessFound, boolean stoppedMarkerFound) {
+            this.successLine = successLine == null ? "" : successLine;
+            this.runtimeLine = runtimeLine == null ? "" : runtimeLine;
+            this.unsolvedLine = unsolvedLine == null ? "" : unsolvedLine;
+            this.statusText = statusText == null ? "" : statusText;
+            this.runningScenario = runningScenario == null ? "" : runningScenario;
+            this.stdoutSuccessFound = stdoutSuccessFound;
+            this.successMarkerFound = !this.successLine.isEmpty();
+            this.stoppedMarkerFound = stoppedMarkerFound;
+        }
+
+        static LogAnalysis empty() {
+            return new LogAnalysis("", "", "", "", "", false, false);
         }
     }
 

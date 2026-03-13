@@ -17,18 +17,34 @@ final class ScenarioLibraryReportHelper {
     private ScenarioLibraryReportHelper() {
     }
 
-    static ArrayList<String> createSimpleQueueReport(List<String> runsQueuedList, List<String> runsCompletedList) {
+    static ArrayList<String> createSimpleQueueReport(String runningScenarioName, List<String> runsQueuedList, List<String> runsCompletedList) {
         ArrayList<String> rtnArray = new ArrayList<>();
+        String runningName = safeText(runningScenarioName);
         rtnArray.add("Note: Includes only runs added to the queue since the start of this session.");
+        if (!runningName.isEmpty()) {
+            rtnArray.add("---");
+            rtnArray.add("Running:");
+            rtnArray.add(runningName);
+        }
         if (runsQueuedList != null && !runsQueuedList.isEmpty()) {
             rtnArray.add("---");
             rtnArray.add("In queue:");
-            rtnArray.addAll(runsQueuedList);
+            for (String queuedRun : runsQueuedList) {
+                if (safeText(queuedRun).equalsIgnoreCase(runningName)) {
+                    continue;
+                }
+                rtnArray.add(queuedRun);
+            }
         }
         if (runsCompletedList != null && !runsCompletedList.isEmpty()) {
             rtnArray.add("---");
             rtnArray.add("Completed:");
-            rtnArray.addAll(runsCompletedList);
+            for (String completedRun : runsCompletedList) {
+                if (safeText(completedRun).equalsIgnoreCase(runningName)) {
+                    continue;
+                }
+                rtnArray.add(completedRun);
+            }
         }
         return rtnArray;
     }

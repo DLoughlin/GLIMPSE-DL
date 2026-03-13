@@ -71,27 +71,69 @@ final class ScenarioLibraryViewStateHelper {
             }
 
             ObservableList<ScenarioRow> rows = ScenarioTable.listOfScenarioRuns;
-            rows.clear();
-            if (snapshots != null) {
-                for (ScenarioStatusSnapshot snapshot : snapshots) {
+            List<ScenarioStatusSnapshot> safeSnapshots = snapshots == null ? new ArrayList<>() : snapshots;
+            List<String> snapshotNames = new ArrayList<>();
+            for (ScenarioStatusSnapshot snapshot : safeSnapshots) {
+                if (snapshot != null && snapshot.scenarioName != null && !snapshot.scenarioName.trim().isEmpty()) {
+                    snapshotNames.add(snapshot.scenarioName.trim());
+                }
+            }
+
+            if (hasSameScenarioOrdering(rows, snapshotNames)) {
+                for (int i = 0; i < safeSnapshots.size(); i++) {
+                    ScenarioStatusSnapshot snapshot = safeSnapshots.get(i);
+                    if (snapshot == null) {
+                        continue;
+                    }
+                    ScenarioRow row = rows.get(i);
+                    applySnapshotToRow(row, snapshot);
+                }
+            } else {
+                List<ScenarioRow> rebuiltRows = new ArrayList<>();
+                for (ScenarioStatusSnapshot snapshot : safeSnapshots) {
+                    if (snapshot == null) {
+                        continue;
+                    }
                     ScenarioRow row = existingRowsByName.get(snapshot.scenarioName);
                     if (row == null) {
                         row = new ScenarioRow(snapshot.scenarioName);
                     }
-                    row.setComponents(snapshot.components);
-                    row.setCreatedDate(snapshot.createdDate);
-                    row.setCompletedDate(snapshot.completedDate);
-                    row.setStatus(snapshot.status);
-                    row.setRuntime(snapshot.runtime);
-                    row.setUnsolvedMarkets(snapshot.unsolved);
-                    rows.add(row);
+                    applySnapshotToRow(row, snapshot);
+                    rebuiltRows.add(row);
                 }
+                rows.setAll(rebuiltRows);
             }
 
             ScenarioTable.tableScenariosLibrary.setPlaceholder(
-                    utils.createLabel(noScenarios || snapshots == null || snapshots.isEmpty() ? noScenariosMessage : readyMessage));
+                    utils.createLabel(noScenarios || safeSnapshots.isEmpty() ? noScenariosMessage : readyMessage));
             restore(viewState, getCurrentSelectedScenarioNames());
         });
+    }
+
+    private void applySnapshotToRow(ScenarioRow row, ScenarioStatusSnapshot snapshot) {
+        if (row == null || snapshot == null) {
+            return;
+        }
+        row.setComponents(snapshot.components);
+        row.setCreatedDate(snapshot.createdDate);
+        row.setCompletedDate(snapshot.completedDate);
+        row.setStatus(snapshot.status);
+        row.setRuntime(snapshot.runtime);
+        row.setUnsolvedMarkets(snapshot.unsolved);
+    }
+
+    private boolean hasSameScenarioOrdering(List<ScenarioRow> rows, List<String> snapshotNames) {
+        if (rows == null || snapshotNames == null || rows.size() != snapshotNames.size()) {
+            return false;
+        }
+        for (int i = 0; i < rows.size(); i++) {
+            ScenarioRow row = rows.get(i);
+            String expected = snapshotNames.get(i);
+            if (!normalizeScenarioName(row).equals(expected)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     void preserveSelectionAndRefresh(Runnable updateAction) {
