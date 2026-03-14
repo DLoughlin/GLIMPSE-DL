@@ -112,6 +112,16 @@ import javax.swing.JPanel;
 
 public class InterfaceMain implements ActionListener {
 	private static final int STARTUP_MESSAGE_LINGER_MS = 200;
+	private static final int STARTUP_PROGRESS_MAX = 100;
+	private static final int STARTUP_TOTAL_STEPS = 5;
+	private static final String STARTUP_MESSAGE_WITH_DB = "Starting GLIMPSE...";
+	private static final String STARTUP_MESSAGE_WITHOUT_DB = "Starting GLIMPSE... waiting for database selection.";
+	private static final String STARTUP_MESSAGE_INITIALIZING = "Loading interface...";
+	private static final String STARTUP_MESSAGE_STATUS_BAR = "Preparing workspace...";
+	private static final String STARTUP_MESSAGE_DB_VIEW = "Preparing database view...";
+	private static final String STARTUP_MESSAGE_DB_PROMPT = "Waiting for database choice...";
+	private static final String STARTUP_MESSAGE_OPENING_DB = "Opening database...";
+	private static final String STARTUP_MESSAGE_READY = "Ready.";
 	private static javax.swing.Timer pendingStartupDbViewerTimer;
 	// Restore missing shutdown guard for orderly exit.
 	private final java.util.concurrent.atomic.AtomicBoolean shuttingDown = new java.util.concurrent.atomic.AtomicBoolean(false);
@@ -126,6 +136,13 @@ public class InterfaceMain implements ActionListener {
 	private static final Color UNIFIED_BTN_BG = new Color(230, 235, 245); // Button background
 	private static final Color UNIFIED_BTN_FG = new Color(30, 30, 60); // Button foreground
 	private static final Color UNIFIED_BORDER = new Color(200, 200, 220); // Border color
+
+	private JPanel startupLoadingView;
+	private JLabel startupLoadingLabel;
+	private JProgressBar startupLoadingBar;
+	private int startupStepsCompleted;
+	private int startupTotalSteps = STARTUP_TOTAL_STEPS;
+	private String startupDefaultMessage = STARTUP_MESSAGE_WITH_DB;
 
 	/**
 	 * Split a delimited list property (e.g., year lists) supporting either ';' or ','
@@ -320,9 +337,6 @@ public class InterfaceMain implements ActionListener {
 	private JPanel rootContent;
 	// Guard to avoid re-entrant contentPane handling
 	private boolean suppressContentPaneListener = false;
-	private JPanel startupLoadingView;
-	private JLabel startupLoadingLabel;
-	private JProgressBar startupLoadingBar;
 
 	// Status bar widgets.
 	private JLabel activeDbStatusLabel;
@@ -697,13 +711,13 @@ public class InterfaceMain implements ActionListener {
 								"The database '" + path + "' does not exist. Would you like to create it?",
 								"Create Database?", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
 						if (response == JOptionPane.NO_OPTION || response == JOptionPane.CLOSED_OPTION) {
-							// User chose not to create it, so we can just show the GUI without a DB
-							// or ask what to do next. For now, just show the GUI.
+							main.completeStartupStep(STARTUP_MESSAGE_READY);
 							showGUI();
 							return;
 						}
 						// If yes, doOpenDB will create it.
 					}
+					main.updateStartupLoadingMessage(STARTUP_MESSAGE_OPENING_DB);
 					DbViewer db = (DbViewer) main.dbView;
 					final long dbOpenStart = System.nanoTime();
 					try {
@@ -720,6 +734,7 @@ public class InterfaceMain implements ActionListener {
 							e.printStackTrace();
 						}
 					}
+					main.completeStartupStep(STARTUP_MESSAGE_READY);
 					File f = new File(path);
 					File[] files = new File[1];
 					files[0] = f;
@@ -727,29 +742,24 @@ public class InterfaceMain implements ActionListener {
 
 				}
 				else {
-					// if no path is specified, ask the user what to do
 					String[] options = { "Choose Database", "Open without Database", "Quit" };
 					int response = JOptionPane.showOptionDialog(main.mainFrame,
 							"No database specified. What would you like to do?", "Database not specified",
 							JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
 					switch (response) {
 					case 0:
-						// "Choose Database"
-						// This will trigger the file chooser and then the rest of the UI will be built
 						((ActionListener)main.dbView).actionPerformed(new ActionEvent(main.mainFrame, ActionEvent.ACTION_PERFORMED, "Open DB"));
 						break;
 					case 1:
-						// "Open without Database" - just show the GUI
 						break;
 					case 2:
-						// "Quit"
 						System.exit(0);
 						break;
 					default:
-						// User closed dialog, so quit
 						System.exit(0);
 						break;
 					}
+					main.completeStartupStep(STARTUP_MESSAGE_READY);
 				}
 				showGUI();
 				logStartup("main window shown");
@@ -794,6 +804,7 @@ public class InterfaceMain implements ActionListener {
 		final long createGuiStart = System.nanoTime();
 		main = null;
 		main = new InterfaceMain();
+		main.resetStartupProgress(path != null ? STARTUP_MESSAGE_WITH_DB : STARTUP_MESSAGE_WITHOUT_DB);
 		main.mainFrame = new JFrame("Model Interface");
 		String image_str = Paths.get(".", "config", "results.png").toString();
 		main.mainFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(image_str));
@@ -830,9 +841,11 @@ public class InterfaceMain implements ActionListener {
 
 		main.mainFrame.setLayout(new BorderLayout());
 		main.initialize();
+		main.completeStartupStep(STARTUP_MESSAGE_INITIALIZING);
 		logStartupTiming("initialize() finished in " + elapsedMillis(createGuiStart) + " ms");
 		main.initStatusBar();
-		main.showStartupLoadingView(path != null ? "Starting ModelInterface..." : "Starting Model Interface... waiting for database selection.");
+		main.completeStartupStep(STARTUP_MESSAGE_STATUS_BAR);
+		main.showStartupLoadingView(path != null ? STARTUP_MESSAGE_WITH_DB : STARTUP_MESSAGE_WITHOUT_DB);
 		cancelPendingStartupDbViewerTimer();
 		if (path != null) {
 			final javax.swing.Timer startupDelayTimer = new javax.swing.Timer(STARTUP_MESSAGE_LINGER_MS,
@@ -840,12 +853,15 @@ public class InterfaceMain implements ActionListener {
 						@Override
 						public void actionPerformed(ActionEvent e) {
 							pendingStartupDbViewerTimer = null;
+							main.completeStartupStep(STARTUP_MESSAGE_DB_VIEW);
 							main.fireControlChange("DbViewer");
 						}
 					});
 			startupDelayTimer.setRepeats(false);
 			pendingStartupDbViewerTimer = startupDelayTimer;
 			startupDelayTimer.start();
+		} else {
+			main.completeStartupStep(STARTUP_MESSAGE_DB_PROMPT);
 		}
 		logStartupTiming("createGUI total " + elapsedMillis(createGuiStart) + " ms");
 	}
@@ -979,10 +995,12 @@ public class InterfaceMain implements ActionListener {
 		startupLoadingLabel.setFont(startupLoadingLabel.getFont().deriveFont(java.awt.Font.BOLD, 19f));
 		startupLoadingLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
 
-		startupLoadingBar = new JProgressBar();
+		startupLoadingBar = new JProgressBar(0, STARTUP_PROGRESS_MAX);
 		startupLoadingBar.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
-		startupLoadingBar.setIndeterminate(true);
-		startupLoadingBar.setStringPainted(false);
+		startupLoadingBar.setIndeterminate(false);
+		startupLoadingBar.setValue(0);
+		startupLoadingBar.setStringPainted(true);
+		startupLoadingBar.setString("0%");
 		startupLoadingBar.setBorderPainted(false);
 		startupLoadingBar.setBackground(new Color(236, 239, 247));
 		startupLoadingBar.setForeground(new Color(116, 138, 196));
@@ -991,6 +1009,7 @@ public class InterfaceMain implements ActionListener {
 
 		content.add(startupLoadingLabel);
 		content.add(startupLoadingBar);
+		applyStartupProgressState();
 		panel.add(content);
 		return panel;
 	}
@@ -1010,6 +1029,7 @@ public class InterfaceMain implements ActionListener {
 			@Override
 			public void run() {
 				getStartupLoadingView();
+				startupDefaultMessage = message;
 				startupLoadingLabel.setText(message);
 				if (mainFrame != null && mainFrame.isVisible()) {
 					startupLoadingLabel.repaint();
@@ -1028,10 +1048,12 @@ public class InterfaceMain implements ActionListener {
 			@Override
 			public void run() {
 				ensureStatusBarInstalled();
+				getStartupLoadingView();
 				if (message != null && !message.trim().isEmpty()) {
-					getStartupLoadingView();
+					startupDefaultMessage = message;
 					startupLoadingLabel.setText(message);
 				}
+				applyStartupProgressState();
 				setMainView(getStartupLoadingView());
 				if (mainFrame != null) {
 					mainFrame.setLocationRelativeTo(null);
@@ -1052,12 +1074,16 @@ public class InterfaceMain implements ActionListener {
 		final Runnable r = new Runnable() {
 			@Override
 			public void run() {
+				startupStepsCompleted = 0;
+				startupTotalSteps = STARTUP_TOTAL_STEPS;
+				startupDefaultMessage = STARTUP_MESSAGE_WITH_DB;
 				if (startupLoadingLabel != null) {
-					startupLoadingLabel.setText("Loading...");
+					startupLoadingLabel.setText(startupDefaultMessage);
 				}
 				if (startupLoadingBar != null) {
 					startupLoadingBar.setIndeterminate(false);
-					startupLoadingBar.setIndeterminate(true);
+					startupLoadingBar.setValue(0);
+					startupLoadingBar.setString("0%");
 				}
 			}
 		};
@@ -1065,6 +1091,64 @@ public class InterfaceMain implements ActionListener {
 			r.run();
 		} else {
 			javax.swing.SwingUtilities.invokeLater(r);
+		}
+	}
+
+	private void resetStartupProgress(final String initialMessage) {
+		final Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				startupTotalSteps = STARTUP_TOTAL_STEPS;
+				startupStepsCompleted = 0;
+				startupDefaultMessage = (initialMessage == null || initialMessage.trim().isEmpty()) ? STARTUP_MESSAGE_WITH_DB : initialMessage;
+				if (startupLoadingLabel != null) {
+					startupLoadingLabel.setText(startupDefaultMessage);
+				}
+				applyStartupProgressState();
+			}
+		};
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			r.run();
+		} else {
+			javax.swing.SwingUtilities.invokeLater(r);
+		}
+	}
+
+	private void completeStartupStep(final String message) {
+		final Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				startupStepsCompleted = Math.min(startupStepsCompleted + 1, Math.max(1, startupTotalSteps));
+				if (startupLoadingLabel != null) {
+					if (message != null && !message.trim().isEmpty()) {
+						startupLoadingLabel.setText(message);
+					} else {
+						startupLoadingLabel.setText(startupDefaultMessage);
+					}
+				}
+				applyStartupProgressState();
+			}
+		};
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			r.run();
+		} else {
+			javax.swing.SwingUtilities.invokeLater(r);
+		}
+	}
+
+	private void applyStartupProgressState() {
+		int totalSteps = Math.max(1, startupTotalSteps);
+		int completedSteps = Math.max(0, Math.min(startupStepsCompleted, totalSteps));
+		int progressValue = (int)Math.round((completedSteps * (double)STARTUP_PROGRESS_MAX) / totalSteps);
+		if (startupLoadingBar != null) {
+			startupLoadingBar.setIndeterminate(false);
+			startupLoadingBar.setMinimum(0);
+			startupLoadingBar.setMaximum(STARTUP_PROGRESS_MAX);
+			startupLoadingBar.setValue(progressValue);
+			startupLoadingBar.setString(progressValue + "%");
+		}
+		if (startupLoadingLabel != null && (startupLoadingLabel.getText() == null || startupLoadingLabel.getText().trim().isEmpty())) {
+			startupLoadingLabel.setText(startupDefaultMessage);
 		}
 	}
 
