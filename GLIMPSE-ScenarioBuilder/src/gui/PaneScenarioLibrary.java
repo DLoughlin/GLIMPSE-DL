@@ -79,7 +79,7 @@ import javafx.stage.Stage;
 
 /** Manages the scenario library pane, including scenario actions, GCAM runs, and status refresh. */
 public class PaneScenarioLibrary extends ScenarioBuilder {
-    private static final Duration LIVE_STATUS_REFRESH_INTERVAL = Duration.ofSeconds(3);
+    private static final Duration LIVE_STATUS_REFRESH_INTERVAL = Duration.ofSeconds(5);
     private static final String STOPPED_LOG_MARKER = "GLIMPSE scenario status: Stopped";
     private static final String[] EXE_LOG_ARTIFACT_FILENAMES = {
             "main_log.txt",
@@ -98,7 +98,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private static final String NO_SCENARIOS_MESSAGE = "No scenarios found.";
     private static final String READY_MESSAGE = "Ready";
     private static final String ERROR_LOADING_SCENARIOS_MESSAGE = "Problem loading scenario status.";
-
+    private static final String LIVE_RUNTIME_PREFIX = "> ";
     private static final String DIFF_LABEL = "Diff";
     private static final String DIFF_TOOLTIP = "Diff: Compare first two selected configurations";
     private static final String REFRESH_LABEL = "Refresh";
@@ -132,10 +132,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private static final String ARCHIVE_TOOLTIP = "Archive: Archive the selected scenarios";
     private static final String REPORT_LABEL = "Report";
     private static final String REPORT_TOOLTIP = "Report: Generate scenario execution report";
-
     private static final String XML_FILE_FILTER_LABEL = "XML files (*.xml)";
     private static final String XML_FILE_FILTER_EXT = "xml";
-
+ 
     // --- Selection state ---
     private static final class ScenarioLibrarySelectionState {
         final int selectedCount;
@@ -196,8 +195,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         createScenarioLibraryButtons();
         ensureLiveStatusRefreshTimeline();
 
-        ScenarioTable.tableScenariosLibrary.prefWidthProperty().bind(stage.widthProperty().multiply(1.0));
-        ScenarioTable.tableScenariosLibrary.prefHeightProperty().bind(stage.heightProperty().multiply(0.7));
+        ScenarioTable.tableScenariosLibrary.setMaxWidth(Double.MAX_VALUE);
+        ScenarioTable.tableScenariosLibrary.setMaxHeight(Double.MAX_VALUE);
+        HBox.setHgrow(ScenarioTable.tableScenariosLibrary, javafx.scene.layout.Priority.ALWAYS);
+        scenarioLibraryHBox.setFillHeight(true);
         scenarioLibraryHBox.getChildren().addAll(ScenarioTable.tableScenariosLibrary);
         if (ScenarioTable.tableScenariosLibrary != null) {
             ScenarioTable.tableScenariosLibrary.setPlaceholder(utils.createLabel(LOADING_SCENARIOS_MESSAGE));
@@ -262,7 +263,6 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private void bindScenarioLibraryButtonHandlers() {
         Client.buttonRefreshScenarioStatus.setOnAction(e -> {
             refreshScenarioStatusAsync(true);
-            handleSelectionPreservingTableRefresh(null);
         });
         Client.buttonConsole.setOnAction(e -> ConsoleManager.show());
         Client.buttonReport.setOnAction(e -> generateRunReport());
@@ -984,14 +984,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 }
                 Platform.runLater(() -> {
                     try {
-                        handleSelectionPreservingTableRefresh(() -> {
-                            for (ScenarioRow row : ScenarioTable.listOfScenarioRuns) {
-                                if (row != null && scenarioName.equals(row.getScenarioName())) {
-                                    row.setStatus("Success");
-                                    break;
-                                }
-                            }
-                        });
+                        updateScenarioRowInPlace(scenarioName, row -> row.setStatus("Success"));
                     } catch (Exception ignored) {}
                 });
                 return;
@@ -1027,8 +1020,39 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 pendingRefreshViewState,
                 NO_SCENARIOS_MESSAGE,
                 READY_MESSAGE);
+        applyLiveRuntimeForActiveScenario();
         pendingRefreshViewState = ScenarioLibraryViewStateHelper.RefreshViewState.empty();
         refreshScenarioActionButtons();
+    }
+
+    private void applyLiveRuntimeForActiveScenario() {
+        GcamRunController.ExecutionState executionState = runController.snapshot();
+        String scenarioName = executionState.currentScenarioName;
+        long runStartTimeMillis = executionState.currentRunStartTimeMillis;
+        if (!executionState.isScenarioActivelyRunning(scenarioName) || runStartTimeMillis <= 0L) {
+            return;
+        }
+        String liveRuntime = formatLiveRuntime(runStartTimeMillis, System.currentTimeMillis());
+        if (liveRuntime.isEmpty()) {
+            return;
+        }
+        updateScenarioRowInPlace(scenarioName, row -> {
+            String currentRuntime = row.getRuntime();
+            if (!liveRuntime.equals(currentRuntime)) {
+                row.setRuntime(liveRuntime);
+            }
+        });
+    }
+
+    private String formatLiveRuntime(long startTimeMillis, long currentTimeMillis) {
+        if (startTimeMillis <= 0L) {
+            return "";
+        }
+        long elapsedMillis = Math.max(0L, currentTimeMillis - startTimeMillis);
+        long totalMinutes = elapsedMillis / 60_000L;
+        long hours = totalMinutes / 60L;
+        long minutes = totalMinutes % 60L;
+        return LIVE_RUNTIME_PREFIX + hours + " hr " + minutes + " min";
     }
 
     public void clearAndRefreshScenarioTable() {
@@ -1350,5 +1374,30 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             viewStateHelper.preserveSelectionAndRefresh(updateAction);
             refreshScenarioActionButtons();
         });
+    }
+
+    private void updateScenarioRowInPlace(String scenarioName, java.util.function.Consumer<ScenarioRow> rowUpdate) {
+        if (scenarioName == null || scenarioName.trim().isEmpty() || rowUpdate == null) {
+            return;
+        }
+        Runnable applyUpdate = () -> {
+            try {
+                for (ScenarioRow row : ScenarioTable.listOfScenarioRuns) {
+                    if (row != null && scenarioName.equals(row.getScenarioName())) {
+                        rowUpdate.accept(row);
+                        break;
+                    }
+                }
+                if (ScenarioTable.tableScenariosLibrary != null) {
+                    ScenarioTable.tableScenariosLibrary.refresh();
+                }
+                refreshScenarioActionButtons();
+            } catch (Exception ignored) {}
+        };
+        if (Platform.isFxApplicationThread()) {
+            applyUpdate.run();
+            return;
+        }
+        Platform.runLater(applyUpdate);
     }
 }

@@ -209,9 +209,10 @@ class PaneCreateScenario extends ScenarioBuilder {
         setupButtons();
         buttonRow.getChildren().addAll(Client.buttonCreateScenarioConfigFile, utils.getSeparator(Orientation.VERTICAL, 2, false), Client.buttonMoveComponentUp, utils.getSeparator(Orientation.VERTICAL, 2, false), Client.buttonMoveComponentDown);
 
-        // Set up main layout and bind width to stage
+        // Set up main layout and let the parent GridPane apportion width.
         vBox.getChildren().addAll(nameRow, ComponentLibraryTable.getTableCreateScenario(), buttonRow);
-        vBox.prefWidthProperty().bind(stage.widthProperty().multiply(2.5 / 7.0));
+        vBox.setFillWidth(true);
+        vBox.setMaxWidth(Double.MAX_VALUE);
     }
 
     /**

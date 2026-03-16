@@ -93,7 +93,8 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 		initializeComponentLibraryTable();
 		setupEventHandlers();
 		mainVBox.getChildren().add(ComponentLibraryTable.getTableComponents());
-		mainVBox.prefWidthProperty().bind(Client.primaryStage.widthProperty().multiply(4.0 / 7.0));
+		mainVBox.setFillWidth(true);
+		mainVBox.setMaxWidth(Double.MAX_VALUE);
 	}
 
 	private void initializeFilterField() {
@@ -251,7 +252,7 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 		if (ComponentLibraryTable.getTableComponents() != null) {
 			ComponentLibraryTable.getTableComponents().setPlaceholder(utils.createLabel(LOADING_COMPONENTS_MESSAGE));
 		}
-		System.out.println("Loading scenario components...");
+		//System.out.println("Loading scenario components...");
 		Thread thread = new Thread(() -> {
 			try {
 				File folder = new File(vars.getScenarioComponentsDir());

@@ -52,6 +52,7 @@ final class GcamRunController {
         final String lastStoppedScenarioName;
         final List<String> queuedScenarioNames;
         final List<String> completedScenarioNames;
+        final long currentRunStartTimeMillis;
 
         ExecutionState(ProcessRunner.RunningProcess currentRun,
                 Future<ProcessResult> currentFuture,
@@ -63,7 +64,8 @@ final class GcamRunController {
                 ProcessRunner.StopResult lastStopResult,
                 String lastStoppedScenarioName,
                 List<String> queuedScenarioNames,
-                List<String> completedScenarioNames) {
+                List<String> completedScenarioNames,
+                long currentRunStartTimeMillis) {
             this.currentRun = currentRun;
             this.currentFuture = currentFuture;
             this.currentScenarioName = normalize(currentScenarioName);
@@ -75,6 +77,7 @@ final class GcamRunController {
             this.lastStoppedScenarioName = normalize(lastStoppedScenarioName);
             this.queuedScenarioNames = immutableCopy(queuedScenarioNames);
             this.completedScenarioNames = immutableCopy(completedScenarioNames);
+            this.currentRunStartTimeMillis = Math.max(0L, currentRunStartTimeMillis);
         }
 
         boolean hasActiveRun() {
@@ -109,6 +112,7 @@ final class GcamRunController {
     private volatile boolean databasePromptAwaitingReset;
     private volatile ProcessRunner.StopResult lastStopResult;
     private volatile String lastStoppedScenarioName;
+    private volatile long currentRunStartTimeMillis;
 
     ExecutionState snapshot() {
         synchronized (queuedScenarioNames) {
@@ -124,7 +128,8 @@ final class GcamRunController {
                         lastStopResult,
                         lastStoppedScenarioName,
                         queuedScenarioNames,
-                        completedScenarioNames);
+                        completedScenarioNames,
+                        currentRunStartTimeMillis);
             }
         }
     }
@@ -133,12 +138,14 @@ final class GcamRunController {
         this.currentRun = run;
         this.currentFuture = future;
         this.currentScenarioName = normalize(scenarioName);
+        this.currentRunStartTimeMillis = System.currentTimeMillis();
     }
 
     void clearCurrentExecution() {
         this.currentRun = null;
         this.currentFuture = null;
         this.currentScenarioName = "";
+        this.currentRunStartTimeMillis = 0L;
         this.activePromptLine = null;
         this.promptDialogActive = false;
         this.databasePromptAwaitingReset = false;
@@ -165,6 +172,7 @@ final class GcamRunController {
     private void markRunStarted(String scenarioName, ProcessRunner.RunningProcess run) {
         this.currentRun = run;
         this.currentScenarioName = normalize(scenarioName);
+        this.currentRunStartTimeMillis = System.currentTimeMillis();
         this.lastStopResult = null;
         this.activePromptLine = null;
         this.promptDialogActive = false;

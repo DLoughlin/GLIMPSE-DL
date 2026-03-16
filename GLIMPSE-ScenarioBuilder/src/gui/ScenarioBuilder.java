@@ -55,6 +55,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
@@ -238,6 +239,9 @@ public class ScenarioBuilder {
 		vBoxComponentLibrary = new VBox(6, labelComponentLibrary, paneObjects, Client.paneComponentLibrary.getvBox());
 		vBoxComponentLibrary.getStyleClass().add(STYLE_PANEL_CARD);
 		vBoxComponentLibrary.setStyle(styles.getStyle1());
+		vBoxComponentLibrary.setFillWidth(true);
+		vBoxComponentLibrary.setMaxWidth(Double.MAX_VALUE);
+		VBox.setVgrow(Client.paneComponentLibrary.getvBox(), Priority.ALWAYS);
 	}
 
 	/**
@@ -254,6 +258,9 @@ public class ScenarioBuilder {
 		vBoxCreateScenario = new VBox(6, labelScenarioName, Client.paneCreateScenario.getvBox());
 		vBoxCreateScenario.getStyleClass().add(STYLE_PANEL_CARD);
 		vBoxCreateScenario.setStyle(styles.getStyle1());
+		vBoxCreateScenario.setFillWidth(true);
+		vBoxCreateScenario.setMaxWidth(Double.MAX_VALUE);
+		VBox.setVgrow(Client.paneCreateScenario.getvBox(), Priority.ALWAYS);
 	}
 
 	/**
@@ -331,11 +338,17 @@ public class ScenarioBuilder {
 		);
 
 		VBox content = new VBox(4, buttonHBox, Client.paneScenarioLibrary.gethBox());
+		content.setFillWidth(true);
+		content.setMaxWidth(Double.MAX_VALUE);
+		VBox.setVgrow(Client.paneScenarioLibrary.gethBox(), Priority.ALWAYS);
 
 		vBoxRun = new VBox(6, labelScenarioLibrary, content);
 		vBoxRun.getStyleClass().add(STYLE_PANEL_CARD);
 		// Don't use legacy style1 here: it adds the blue border around the whole Scenario Library pane.
 		vBoxRun.setStyle("");
+		vBoxRun.setFillWidth(true);
+		vBoxRun.setMaxWidth(Double.MAX_VALUE);
+		VBox.setVgrow(content, Priority.ALWAYS);
 	}
 
 	/**

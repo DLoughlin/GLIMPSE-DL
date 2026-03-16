@@ -111,9 +111,22 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 public class InterfaceMain implements ActionListener {
+	private enum StatusBarProgressMode {
+		NONE,
+		QUERY,
+		SHUTDOWN
+	}
+
+	private enum LoadingViewMode {
+		STARTUP,
+		SHUTDOWN
+	}
+
 	private static final int STARTUP_MESSAGE_LINGER_MS = 200;
 	private static final int STARTUP_PROGRESS_MAX = 100;
 	private static final int STARTUP_TOTAL_STEPS = 5;
+	private static final int SHUTDOWN_TOTAL_STEPS = 4;
+	private static final int SHUTDOWN_STEP_LINGER_MS = 120;
 	private static final String STARTUP_MESSAGE_WITH_DB = "Starting GLIMPSE...";
 	private static final String STARTUP_MESSAGE_WITHOUT_DB = "Starting GLIMPSE... waiting for database selection.";
 	private static final String STARTUP_MESSAGE_INITIALIZING = "Loading interface...";
@@ -122,6 +135,11 @@ public class InterfaceMain implements ActionListener {
 	private static final String STARTUP_MESSAGE_DB_PROMPT = "Waiting for database choice...";
 	private static final String STARTUP_MESSAGE_OPENING_DB = "Opening database...";
 	private static final String STARTUP_MESSAGE_READY = "Ready.";
+	private static final String SHUTDOWN_MESSAGE_STARTING = "Shutting down...";
+	private static final String SHUTDOWN_MESSAGE_SAVING_WINDOW = "Shutting down... saving window state.";
+	private static final String SHUTDOWN_MESSAGE_SAVING_SETTINGS = "Shutting down... saving settings.";
+	private static final String SHUTDOWN_MESSAGE_CLOSING_DB = "Shutting down... closing database.";
+	private static final String SHUTDOWN_MESSAGE_EXITING = "Shutting down... closing application.";
 	private static javax.swing.Timer pendingStartupDbViewerTimer;
 	// Restore missing shutdown guard for orderly exit.
 	private final java.util.concurrent.atomic.AtomicBoolean shuttingDown = new java.util.concurrent.atomic.AtomicBoolean(false);
@@ -143,6 +161,10 @@ public class InterfaceMain implements ActionListener {
 	private int startupStepsCompleted;
 	private int startupTotalSteps = STARTUP_TOTAL_STEPS;
 	private String startupDefaultMessage = STARTUP_MESSAGE_WITH_DB;
+	private int shutdownStepsCompleted;
+	private int shutdownTotalSteps = SHUTDOWN_TOTAL_STEPS;
+	private String shutdownDefaultMessage = SHUTDOWN_MESSAGE_STARTING;
+	private LoadingViewMode loadingViewMode = LoadingViewMode.STARTUP;
 
 	/**
 	 * Split a delimited list property (e.g., year lists) supporting either ';' or ','
@@ -342,6 +364,7 @@ public class InterfaceMain implements ActionListener {
 	private JLabel activeDbStatusLabel;
 	private JLabel queryProgressLabel;
 	private javax.swing.JProgressBar queryProgressBar;
+	private StatusBarProgressMode statusBarProgressMode = StatusBarProgressMode.NONE;
 
 	/**
 	 * Main function, creates a new thread for the gui and runs it.
@@ -838,8 +861,11 @@ public class InterfaceMain implements ActionListener {
 			}
 		}
 		main.mainFrame.setSize(Integer.parseInt(lastWidth), Integer.parseInt(lastHeight));
-
 		main.mainFrame.setLayout(new BorderLayout());
+		main.mainFrame.setLocationRelativeTo(null);
+		main.mainFrame.setVisible(true);
+		main.showStartupLoadingView(path != null ? STARTUP_MESSAGE_WITH_DB : STARTUP_MESSAGE_WITHOUT_DB);
+
 		main.initialize();
 		main.completeStartupStep(STARTUP_MESSAGE_INITIALIZING);
 		logStartupTiming("initialize() finished in " + elapsedMillis(createGuiStart) + " ms");
@@ -1004,12 +1030,12 @@ public class InterfaceMain implements ActionListener {
 		startupLoadingBar.setBorderPainted(false);
 		startupLoadingBar.setBackground(new Color(236, 239, 247));
 		startupLoadingBar.setForeground(new Color(116, 138, 196));
-		startupLoadingBar.setPreferredSize(new java.awt.Dimension(240, 14));
-		startupLoadingBar.setMaximumSize(new java.awt.Dimension(240, 14));
+		startupLoadingBar.setPreferredSize(new java.awt.Dimension(240, 24));
+		startupLoadingBar.setMaximumSize(new java.awt.Dimension(240, 24));
 
 		content.add(startupLoadingLabel);
 		content.add(startupLoadingBar);
-		applyStartupProgressState();
+		applyCurrentLoadingProgressState();
 		panel.add(content);
 		return panel;
 	}
@@ -1019,6 +1045,65 @@ public class InterfaceMain implements ActionListener {
 			startupLoadingView = createStartupLoadingView();
 		}
 		return startupLoadingView;
+	}
+
+	private void showShutdownLoadingView(final String message) {
+		final Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				ensureStatusBarInstalled();
+				loadingViewMode = LoadingViewMode.SHUTDOWN;
+				getStartupLoadingView();
+				if (message != null && !message.trim().isEmpty()) {
+					shutdownDefaultMessage = message;
+					startupLoadingLabel.setText(message);
+				}
+				applyCurrentLoadingProgressState();
+				setMainView(getStartupLoadingView());
+				if (mainFrame != null) {
+					mainFrame.getGlassPane().setVisible(false);
+					if (mainFrame.getJMenuBar() != null) {
+						mainFrame.getJMenuBar().setVisible(false);
+					}
+					if (statusBar != null) {
+						statusBar.setVisible(false);
+					}
+					mainFrame.setVisible(true);
+					rootContent.revalidate();
+					rootContent.repaint();
+					java.awt.Component center = ((BorderLayout) rootContent.getLayout()).getLayoutComponent(BorderLayout.CENTER);
+					if (center != null) {
+						center.repaint();
+						if (center instanceof javax.swing.JComponent) {
+							((javax.swing.JComponent) center).paintImmediately(((javax.swing.JComponent) center).getBounds());
+						}
+					}
+					rootContent.paintImmediately(rootContent.getBounds());
+				}
+			}
+		};
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			r.run();
+		} else {
+			try {
+				javax.swing.SwingUtilities.invokeAndWait(r);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			} catch (java.lang.reflect.InvocationTargetException e) {
+				System.err.println("Failed to show shutdown loading view: " + e);
+			}
+		}
+	}
+
+	private void allowShutdownProgressPaint() {
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			return;
+		}
+		try {
+			Thread.sleep(SHUTDOWN_STEP_LINGER_MS);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
 	}
 
 	public void updateStartupLoadingMessage(final String message) {
@@ -1048,12 +1133,13 @@ public class InterfaceMain implements ActionListener {
 			@Override
 			public void run() {
 				ensureStatusBarInstalled();
+				loadingViewMode = LoadingViewMode.STARTUP;
 				getStartupLoadingView();
 				if (message != null && !message.trim().isEmpty()) {
 					startupDefaultMessage = message;
 					startupLoadingLabel.setText(message);
 				}
-				applyStartupProgressState();
+				applyCurrentLoadingProgressState();
 				setMainView(getStartupLoadingView());
 				if (mainFrame != null) {
 					mainFrame.setLocationRelativeTo(null);
@@ -1077,6 +1163,10 @@ public class InterfaceMain implements ActionListener {
 				startupStepsCompleted = 0;
 				startupTotalSteps = STARTUP_TOTAL_STEPS;
 				startupDefaultMessage = STARTUP_MESSAGE_WITH_DB;
+				shutdownStepsCompleted = 0;
+				shutdownTotalSteps = SHUTDOWN_TOTAL_STEPS;
+				shutdownDefaultMessage = SHUTDOWN_MESSAGE_STARTING;
+				loadingViewMode = LoadingViewMode.STARTUP;
 				if (startupLoadingLabel != null) {
 					startupLoadingLabel.setText(startupDefaultMessage);
 				}
@@ -1152,6 +1242,31 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
+	private void applyShutdownProgressState() {
+		int totalSteps = Math.max(1, shutdownTotalSteps);
+		int completedSteps = Math.max(0, Math.min(shutdownStepsCompleted, totalSteps));
+		int progressValue = (int)Math.round((completedSteps * (double)STARTUP_PROGRESS_MAX) / totalSteps);
+		if (startupLoadingBar != null) {
+			startupLoadingBar.setIndeterminate(false);
+			startupLoadingBar.setMinimum(0);
+			startupLoadingBar.setMaximum(STARTUP_PROGRESS_MAX);
+			startupLoadingBar.setValue(progressValue);
+			startupLoadingBar.setString(progressValue + "%");
+		}
+		if (startupLoadingLabel != null) {
+			startupLoadingLabel.setText((shutdownDefaultMessage == null || shutdownDefaultMessage.trim().isEmpty())
+					? SHUTDOWN_MESSAGE_STARTING : shutdownDefaultMessage);
+		}
+	}
+
+	private void applyCurrentLoadingProgressState() {
+		if (loadingViewMode == LoadingViewMode.SHUTDOWN) {
+			applyShutdownProgressState();
+		} else {
+			applyStartupProgressState();
+		}
+	}
+
 	/**
 	 * Ensure the status bar is present even if another view replaced the frame content pane.
 	 */
@@ -1194,18 +1309,86 @@ public class InterfaceMain implements ActionListener {
 		if (queryProgressBar == null || queryProgressLabel == null) {
 			return;
 		}
+		if (statusBarProgressMode == StatusBarProgressMode.SHUTDOWN) {
+			return;
+		}
+		statusBarProgressMode = StatusBarProgressMode.NONE;
 		queryProgressBar.setValue(0);
 		queryProgressBar.setVisible(false);
 		queryProgressLabel.setText("");
 		queryProgressLabel.setVisible(false);
 	}
 
-	/**
-	 * Update the status bar query progress UI.
-	 *
-	 * @param completed number completed
-	 * @param total total number of queries
-	 */
+	private void resetShutdownProgressUI() {
+		if (queryProgressBar == null || queryProgressLabel == null) {
+			return;
+		}
+		if (statusBarProgressMode != StatusBarProgressMode.SHUTDOWN) {
+			return;
+		}
+		statusBarProgressMode = StatusBarProgressMode.NONE;
+		queryProgressBar.setValue(0);
+		queryProgressBar.setVisible(false);
+		queryProgressLabel.setText("");
+		queryProgressLabel.setVisible(false);
+	}
+
+	private void updateShutdownProgressStatus(final int completed, final int total, final String message) {
+		ensureStatusBarInstalled();
+		if (queryProgressBar == null || queryProgressLabel == null) {
+			return;
+		}
+		final Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				statusBarProgressMode = StatusBarProgressMode.SHUTDOWN;
+				shutdownTotalSteps = Math.max(1, total);
+				shutdownStepsCompleted = Math.max(0, Math.min(completed, shutdownTotalSteps));
+				int percent = (int) Math.round((shutdownStepsCompleted * 100.0) / shutdownTotalSteps);
+				String displayMessage = (message == null || message.trim().isEmpty()) ? SHUTDOWN_MESSAGE_STARTING : message;
+				shutdownDefaultMessage = displayMessage;
+				queryProgressBar.setVisible(true);
+				queryProgressLabel.setVisible(true);
+				queryProgressBar.setMinimum(0);
+				queryProgressBar.setMaximum(100);
+				queryProgressBar.setValue(percent);
+				queryProgressLabel.setText(displayMessage);
+				if (loadingViewMode == LoadingViewMode.SHUTDOWN) {
+					applyShutdownProgressState();
+				}
+				if (mainFrame != null) {
+					if (mainFrame.getJMenuBar() != null) {
+						mainFrame.getJMenuBar().repaint();
+					}
+					java.awt.Component center = rootContent == null ? null
+							: ((BorderLayout) rootContent.getLayout()).getLayoutComponent(BorderLayout.CENTER);
+					if (center != null) {
+						center.revalidate();
+						center.repaint();
+						if (center instanceof javax.swing.JComponent) {
+							((javax.swing.JComponent) center).paintImmediately(((javax.swing.JComponent) center).getBounds());
+						}
+					}
+					rootContent.paintImmediately(rootContent.getBounds());
+				}
+			}
+		};
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			r.run();
+		} else {
+			try {
+				javax.swing.SwingUtilities.invokeAndWait(r);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return;
+			} catch (java.lang.reflect.InvocationTargetException e) {
+				System.err.println("Failed to update shutdown progress status: " + e);
+				return;
+			}
+			allowShutdownProgressPaint();
+		}
+	}
+
 	public void updateQueryProgressStatus(final int completed, final int total) {
 		ensureStatusBarInstalled();
 		if (queryProgressBar == null || queryProgressLabel == null) {
@@ -1214,10 +1397,14 @@ public class InterfaceMain implements ActionListener {
 		final Runnable r = new Runnable() {
 			@Override
 			public void run() {
+				if (statusBarProgressMode == StatusBarProgressMode.SHUTDOWN) {
+					return;
+				}
 				if (total <= 1) {
 					resetQueryProgressUI();
 					return;
 				}
+				statusBarProgressMode = StatusBarProgressMode.QUERY;
 				queryProgressBar.setVisible(true);
 				queryProgressLabel.setVisible(true);
 				int safeCompleted = Math.max(0, Math.min(completed, total));
@@ -1454,8 +1641,20 @@ public class InterfaceMain implements ActionListener {
 		if (!shuttingDown.compareAndSet(false, true)) {
 			return;
 		}
+		cancelPendingStartupDbViewerTimer();
+		try {
+			fireControlChange("ModelInterfaceShutdown");
+		} catch (Exception ex) {
+			System.err.println("Error clearing active view during shutdown: " + ex);
+		}
+		shutdownStepsCompleted = 0;
+		shutdownTotalSteps = SHUTDOWN_TOTAL_STEPS;
+		shutdownDefaultMessage = SHUTDOWN_MESSAGE_STARTING;
+		showShutdownLoadingView(SHUTDOWN_MESSAGE_STARTING);
+		updateShutdownProgressStatus(0, SHUTDOWN_TOTAL_STEPS, SHUTDOWN_MESSAGE_STARTING);
 		try {
 			if (mainFrame != null) {
+				updateShutdownProgressStatus(1, SHUTDOWN_TOTAL_STEPS, SHUTDOWN_MESSAGE_SAVING_WINDOW);
 				savedProperties.setProperty("isMaximized",
 						Boolean.toString((mainFrame.getExtendedState() & JFrame.MAXIMIZED_BOTH) == JFrame.MAXIMIZED_BOTH));
 				if ((mainFrame.getExtendedState() & JFrame.MAXIMIZED_BOTH) != JFrame.MAXIMIZED_BOTH) {
@@ -1463,17 +1662,22 @@ public class InterfaceMain implements ActionListener {
 					savedProperties.setProperty("lastHeight", Integer.toString(mainFrame.getHeight()));
 				}
 			}
+			updateShutdownProgressStatus(2, SHUTDOWN_TOTAL_STEPS, SHUTDOWN_MESSAGE_SAVING_SETTINGS);
 			persistProperties();
 		} finally {
 			try {
+				updateShutdownProgressStatus(3, SHUTDOWN_TOTAL_STEPS, SHUTDOWN_MESSAGE_CLOSING_DB);
 				XMLDB.closeDatabase();
 			} catch (Exception ex) {
 				System.err.println("Error closing XML database during shutdown: " + ex);
+			} finally {
+				updateShutdownProgressStatus(4, SHUTDOWN_TOTAL_STEPS, SHUTDOWN_MESSAGE_EXITING);
+				if (mainFrame != null) {
+					mainFrame.dispose();
+				}
+				resetShutdownProgressUI();
+				System.exit(0);
 			}
-			if (mainFrame != null) {
-				mainFrame.dispose();
-			}
-			System.exit(0);
 		}
 	}
 

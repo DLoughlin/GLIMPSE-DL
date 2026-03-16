@@ -24,6 +24,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -86,6 +87,10 @@ final class ConsoleManager {
     private static final long BUFFER_FLUSH_MILLIS = 20;
     private static final int BUFFER_FLUSH_MAX_ITEMS_PER_PULSE = 800;
     private static final int BUFFER_FORCE_FLUSH_CHAR_THRESHOLD = 64 * 1024;
+    private static final int MAX_VISIBLE_CHARS_PER_CONSOLE = 400_000;
+    private static final int TRIM_TO_VISIBLE_CHARS = 300_000;
+    private static final boolean REDUCED_LIVE_GCAM_OUTPUT = true;
+    private static final int GCAM_REDUCED_LIVE_SUMMARY_THRESHOLD = 120;
 
     private static final String BASE_CONSOLE_STYLE =
             "-fx-control-inner-background: white;"
@@ -109,6 +114,7 @@ final class ConsoleManager {
     });
     private static final ConcurrentHashMap<StreamSource, BufferedAppender> BUFFERED = new ConcurrentHashMap<>();
     private static volatile ScheduledFuture<?> flushTask;
+    private static final AtomicBoolean uiFlushScheduled = new AtomicBoolean(false);
 
     private ConsoleManager() {}
 
@@ -147,14 +153,13 @@ final class ConsoleManager {
         app.enqueue(kind, line);
         ensureFlushTaskScheduled();
 
-        if (effectiveSource(source) == StreamSource.GCAM_STDOUT
-                || app.getApproxCharsQueued() >= BUFFER_FORCE_FLUSH_CHAR_THRESHOLD) {
-            Platform.runLater(() -> flushBufferedToUi(false));
+        if (app.getApproxCharsQueued() >= BUFFER_FORCE_FLUSH_CHAR_THRESHOLD) {
+            requestUiFlush(false);
         }
     }
 
     static void flushBuffered() {
-        Platform.runLater(() -> flushBufferedToUi(true));
+        requestUiFlush(true);
     }
 
     static void clear(StreamSource source) {
@@ -190,7 +195,27 @@ final class ConsoleManager {
 
         area.appendText(normalized + System.lineSeparator());
         applyAreaStyle(area, kind);
+        trimVisibleConsoleText(area);
         autoScrollToBottom(area);
+    }
+
+    private static void appendChunkToUi(StreamSource source, MessageKind kind, String text, boolean scrollToBottom) {
+        ensureModelCreated();
+        if (stage == null) {
+            createStage();
+        }
+
+        TextArea area = areaFor(source);
+        if (area == null || text == null || text.isEmpty()) {
+            return;
+        }
+
+        area.appendText(text);
+        applyAreaStyle(area, kind);
+        trimVisibleConsoleText(area);
+        if (scrollToBottom) {
+            autoScrollToBottom(area);
+        }
     }
 
     private static void ensureModelCreated() {
@@ -441,12 +466,10 @@ final class ConsoleManager {
         if (area == null) {
             return;
         }
-        Platform.runLater(() -> {
-            try {
-                area.positionCaret(area.getLength());
-                area.setScrollTop(Double.MAX_VALUE);
-            } catch (Exception ignored) {}
-        });
+        try {
+            area.positionCaret(area.getLength());
+            area.setScrollTop(Double.MAX_VALUE);
+        } catch (Exception ignored) {}
     }
 
     private static void clearArea(TextArea area) {
@@ -499,9 +522,34 @@ final class ConsoleManager {
                 }
             }
             if (anyQueued) {
-                Platform.runLater(() -> flushBufferedToUi(false));
+                requestUiFlush(false);
             }
         }, BUFFER_FLUSH_MILLIS, BUFFER_FLUSH_MILLIS, TimeUnit.MILLISECONDS);
+    }
+
+    private static void requestUiFlush(boolean drainAll) {
+        if (!uiFlushScheduled.compareAndSet(false, true)) {
+            return;
+        }
+        Platform.runLater(() -> {
+            try {
+                flushBufferedToUi(drainAll);
+            } finally {
+                uiFlushScheduled.set(false);
+                if (!drainAll && hasQueuedBufferedOutput()) {
+                    requestUiFlush(false);
+                }
+            }
+        });
+    }
+
+    private static boolean hasQueuedBufferedOutput() {
+        for (BufferedAppender a : BUFFERED.values()) {
+            if (a != null && !a.queue.isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void flushBufferedToUi(boolean drainAll) {
@@ -597,10 +645,28 @@ final class ConsoleManager {
         return effective == StreamSource.GLIMPSE_STDOUT;
     }
 
+    private static void trimVisibleConsoleText(TextArea area) {
+        if (area == null) {
+            return;
+        }
+        try {
+            String text = area.getText();
+            if (text == null || text.length() <= MAX_VISIBLE_CHARS_PER_CONSOLE) {
+                return;
+            }
+            int targetStart = Math.max(0, text.length() - TRIM_TO_VISIBLE_CHARS);
+            int newline = text.indexOf('\n', targetStart);
+            int trimStart = newline >= 0 ? newline + 1 : targetStart;
+            String trimmed = text.substring(trimStart);
+            area.setText(trimmed);
+        } catch (Exception ignored) {}
+    }
+
     private static final class BufferedAppender {
         private final StreamSource source;
         private final ConcurrentLinkedQueue<BufferedItem> queue = new ConcurrentLinkedQueue<>();
         private volatile int approxCharsQueued = 0;
+        private int reducedLiveSkippedLines = 0;
 
         private BufferedAppender(StreamSource source) {
             this.source = source;
@@ -617,13 +683,67 @@ final class ConsoleManager {
             }
             int drained = 0;
             BufferedItem it;
+            MessageKind chunkKind = null;
+            StringBuilder chunk = new StringBuilder();
             while (drained < maxItems && (it = queue.poll()) != null) {
                 drained++;
-                appendLineToUi(source, it.kind, it.line);
+                String normalized = normalizeConsoleLine(it.line);
+                if (normalized.isEmpty() && isGlimpseSource(source)) {
+                    continue;
+                }
+                if (shouldReduceLiveOutput(it, normalized)) {
+                    reducedLiveSkippedLines++;
+                    continue;
+                }
+                if (reducedLiveSkippedLines > 0) {
+                    String summary = buildReducedLiveSummary();
+                    if (!summary.isEmpty()) {
+                        if (chunkKind != null && chunkKind != MessageKind.GLIMPSE_INFO && chunk.length() > 0) {
+                            appendChunkToUi(source, chunkKind, chunk.toString(), false);
+                            chunk.setLength(0);
+                        }
+                        chunkKind = MessageKind.GLIMPSE_INFO;
+                        chunk.append(summary).append(System.lineSeparator());
+                    }
+                    reducedLiveSkippedLines = 0;
+                }
+                if (chunkKind != null && chunkKind != it.kind && chunk.length() > 0) {
+                    appendChunkToUi(source, chunkKind, chunk.toString(), false);
+                    chunk.setLength(0);
+                }
+                chunkKind = it.kind;
+                chunk.append(normalized).append(System.lineSeparator());
+            }
+            if (chunk.length() > 0) {
+                appendChunkToUi(source, chunkKind, chunk.toString(), true);
             }
             if (queue.isEmpty()) {
+                if (reducedLiveSkippedLines > 0) {
+                    appendChunkToUi(source, MessageKind.GLIMPSE_INFO, buildReducedLiveSummary() + System.lineSeparator(), true);
+                    reducedLiveSkippedLines = 0;
+                }
                 approxCharsQueued = 0;
             }
+        }
+
+        private boolean shouldReduceLiveOutput(BufferedItem item, String normalizedLine) {
+            if (!REDUCED_LIVE_GCAM_OUTPUT || source != StreamSource.GCAM_STDOUT) {
+                return false;
+            }
+            if (item == null || item.kind != MessageKind.MODEL_STDOUT) {
+                return false;
+            }
+            if (normalizedLine == null || normalizedLine.isEmpty()) {
+                return false;
+            }
+            return reducedLiveSkippedLines < GCAM_REDUCED_LIVE_SUMMARY_THRESHOLD;
+        }
+
+        private String buildReducedLiveSummary() {
+            if (reducedLiveSkippedLines <= 0) {
+                return "";
+            }
+            return "[GLIMPSE] Suppressed " + reducedLiveSkippedLines + " GCAM console lines to keep the UI responsive. Full output still exists in log files.";
         }
 
         void clearPending() {
