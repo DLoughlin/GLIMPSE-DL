@@ -90,7 +90,15 @@ final class ConsoleManager {
     private static final int MAX_VISIBLE_CHARS_PER_CONSOLE = 400_000;
     private static final int TRIM_TO_VISIBLE_CHARS = 300_000;
     private static final boolean REDUCED_LIVE_GCAM_OUTPUT = true;
-    private static final int GCAM_REDUCED_LIVE_SUMMARY_THRESHOLD = 120;
+    private static final String GCAM_COMPLETION_MARKER = "Model run completed.";
+    private static final String[] GCAM_STDOUT_PREFIX_FILTERS = {
+            "Config",
+            "Parsi",
+            "XML ",
+            "Starting new",
+            "Period",
+            "Error"
+    };
 
     private static final String BASE_CONSOLE_STYLE =
             "-fx-control-inner-background: white;"
@@ -666,7 +674,7 @@ final class ConsoleManager {
         private final StreamSource source;
         private final ConcurrentLinkedQueue<BufferedItem> queue = new ConcurrentLinkedQueue<>();
         private volatile int approxCharsQueued = 0;
-        private int reducedLiveSkippedLines = 0;
+        private boolean includeAllFutureGcamStdout = false;
 
         private BufferedAppender(StreamSource source) {
             this.source = source;
@@ -692,20 +700,7 @@ final class ConsoleManager {
                     continue;
                 }
                 if (shouldReduceLiveOutput(it, normalized)) {
-                    reducedLiveSkippedLines++;
                     continue;
-                }
-                if (reducedLiveSkippedLines > 0) {
-                    String summary = buildReducedLiveSummary();
-                    if (!summary.isEmpty()) {
-                        if (chunkKind != null && chunkKind != MessageKind.GLIMPSE_INFO && chunk.length() > 0) {
-                            appendChunkToUi(source, chunkKind, chunk.toString(), false);
-                            chunk.setLength(0);
-                        }
-                        chunkKind = MessageKind.GLIMPSE_INFO;
-                        chunk.append(summary).append(System.lineSeparator());
-                    }
-                    reducedLiveSkippedLines = 0;
                 }
                 if (chunkKind != null && chunkKind != it.kind && chunk.length() > 0) {
                     appendChunkToUi(source, chunkKind, chunk.toString(), false);
@@ -718,10 +713,6 @@ final class ConsoleManager {
                 appendChunkToUi(source, chunkKind, chunk.toString(), true);
             }
             if (queue.isEmpty()) {
-                if (reducedLiveSkippedLines > 0) {
-                    appendChunkToUi(source, MessageKind.GLIMPSE_INFO, buildReducedLiveSummary() + System.lineSeparator(), true);
-                    reducedLiveSkippedLines = 0;
-                }
                 approxCharsQueued = 0;
             }
         }
@@ -733,17 +724,27 @@ final class ConsoleManager {
             if (item == null || item.kind != MessageKind.MODEL_STDOUT) {
                 return false;
             }
-            if (normalizedLine == null || normalizedLine.isEmpty()) {
-                return false;
-            }
-            return reducedLiveSkippedLines < GCAM_REDUCED_LIVE_SUMMARY_THRESHOLD;
+            return !shouldKeepGcamStdoutLine(normalizedLine);
         }
 
-        private String buildReducedLiveSummary() {
-            if (reducedLiveSkippedLines <= 0) {
-                return "";
+        private boolean shouldKeepGcamStdoutLine(String normalizedLine) {
+            if (normalizedLine == null) {
+                return false;
             }
-            return "[GLIMPSE] Suppressed " + reducedLiveSkippedLines + " GCAM console lines to keep the UI responsive. Full output still exists in log files.";
+            String trimmed = normalizedLine.trim();
+            if (trimmed.isEmpty()) {
+                return false;
+            }
+            if (includeAllFutureGcamStdout || trimmed.contains(GCAM_COMPLETION_MARKER)) {
+                includeAllFutureGcamStdout = true;
+                return true;
+            }
+            for (String prefix : GCAM_STDOUT_PREFIX_FILTERS) {
+                if (trimmed.startsWith(prefix)) {
+                    return true;
+                }
+            }
+            return trimmed.contains("iterations");
         }
 
         void clearPending() {
@@ -751,6 +752,7 @@ final class ConsoleManager {
                 // drain
             }
             approxCharsQueued = 0;
+            includeAllFutureGcamStdout = false;
         }
 
         int getApproxCharsQueued() {
