@@ -9,7 +9,7 @@ import java.util.List;
  * Contract:
  * - Splits on whitespace outside of quotes.
  * - Supports double quotes (") and single quotes (') to group tokens.
- * - Supports backslash escaping (\\) for quotes and backslash itself.
+ * - Supports backslash escaping for quotes only (\' and \"). Backslash before any other character is treated literally.
  * - Keeps behavior close to a typical shell tokenizer, but it intentionally stays small and dependency-free.
  */
 public final class CommandLineTokenizer {
@@ -36,10 +36,11 @@ public final class CommandLineTokenizer {
 
             if (c == '\\') {
                 char next = (i + 1) < s.length() ? s.charAt(i + 1) : '\0';
-                if (next == '\\' || next == '"' || next == '\'') {
+                if (next == '"' || next == '\'') {
                     current.append(next);
                     i++;
                 } else {
+                    // Not escaping a quote — treat the backslash literally (preserves \\UNC paths, etc.)
                     current.append(c);
                 }
                 continue;
