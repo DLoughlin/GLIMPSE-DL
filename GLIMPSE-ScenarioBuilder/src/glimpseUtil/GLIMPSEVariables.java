@@ -1958,7 +1958,7 @@ public class GLIMPSEVariables {
                 int loc_of_equals = line.indexOf("=");
                 if (loc_of_equals > 0) {
                     String s1 = line.substring(0, loc_of_equals - 1).trim();
-                    line.substring(loc_of_equals + 1).trim();
+                    String s2 = line.substring(loc_of_equals + 1).trim();
                     String val = this.get(s1);
                     if (val != null) {
                         //System.out.println("s1:"+s1+":"+s2+":"+val+":");
