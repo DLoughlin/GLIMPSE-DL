@@ -399,7 +399,7 @@ public class PPViewer implements ActionListener, MenuAdder, BatchRunner
   private void runPreprocess()
   {
     Handler fHand, cHand;
-    String dSource, rSource, dOutput;
+    String dOutput;
     
     //***init logger classes for PP
     Logger log = Logger.getLogger("Preprocess");
@@ -424,8 +424,7 @@ public class PPViewer implements ActionListener, MenuAdder, BatchRunner
     }
     //***done initing PP logger
     
-    dSource = currFile.getName();
-    rSource = "inputR.xml";
+    currFile.getName();
     dOutput = fileNameField.getText();
     if(dOutput == null)
     {

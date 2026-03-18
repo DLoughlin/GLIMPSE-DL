@@ -429,7 +429,6 @@ public class QueryResultsPanel extends JPanel {
 			return;
 		}
 		ArrayList<UnitConversionInstance> possibleConversions=null;
-		UnitConversionInstance uci=null;
 		int num_rows = table.getRowCount();
 		int num_cols = table.getColumnCount();
 		Double tableVal=null;
@@ -439,8 +438,6 @@ public class QueryResultsPanel extends JPanel {
 		for (int i = 0; i < table.getColumnCount(); i++) {
            headerLookup.put(tm.getColumnName(i),i);
         }
-		String headerComp=null;
-		String valComp=null;
 		//get all the unique units in this table
 		HashSet<String> uniqueUnits=new HashSet<String>();
 		for(int i=0;i<num_rows;i++) {
@@ -747,12 +744,12 @@ public class QueryResultsPanel extends JPanel {
 	}
 
 	public String[][] getUnits(QueryGenerator qg, JTable table) {
-		int last_col = table.getColumnCount() - 1;
+		table.getColumnCount();
 		int num_rows = table.getRowCount();
 		String[][] units = new String[num_rows][2];
 
 		if (qg != null) {
-			String item0 = qg.getAxis2Name();
+			qg.getAxis2Name();
 			for (int i = 0; i < num_rows; i++) {
 				units[i][0] = qg.getAxis2Name();
 				String u = (String) table.getValueAt(i, table.getColumnCount() - 1);
@@ -902,7 +899,7 @@ public class QueryResultsPanel extends JPanel {
 
 			boolean isnum = false;
 			try {
-				double d = Double.parseDouble(temp);
+				Double.parseDouble(temp);
 				isnum = true;
 			} catch (Exception e) {
 				isnum = false;
@@ -924,7 +921,7 @@ public class QueryResultsPanel extends JPanel {
 			if ((!temp.equals("scenario")) && (!temp.equals("region"))) {
 				boolean isnum = false;
 				try {
-					double d = Double.parseDouble(temp);
+					Double.parseDouble(temp);
 					isnum = true;
 				} catch (Exception e) {
 					isnum = false;

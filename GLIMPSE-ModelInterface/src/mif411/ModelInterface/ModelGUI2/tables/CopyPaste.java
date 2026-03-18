@@ -66,19 +66,6 @@ public class CopyPaste implements ActionListener{
 	  myJTable.registerKeyboardAction(this,"Copy",copy,JComponent.WHEN_FOCUSED);
 	  myJTable.registerKeyboardAction(this,"Paste",paste,JComponent.WHEN_FOCUSED);
 	  clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-	  //YD edits,"Copy" and "Paste" are removed from "Edit" dropdown menu
-	  //Do we still need "copyMenu" and "pasteMenu" here?  Commented lines 63-67 out first
-	  //final JMenuItem copyMenu = InterfaceMain.getInstance().getCopyMenu();
-	  //final JMenuItem pasteMenu = InterfaceMain.getInstance().getPasteMenu();
-	  //copyMenu.addActionListener(this);
-	  //copyMenu.setEnabled(true);
-	  //pasteMenu.addActionListener(this);
-	  // need to make this false if it is db
-	  // only way i can think of right now
-	  // is to check the xmlDB
-	  //TODO: figure out how to do this
-	  //pasteMenu.setEnabled(ModelInterface.ModelGUI2.DbViewer.xmlDB == null);
-	  final CopyPaste thisCP = this;
 	  InterfaceMain.getInstance().getFrame().addPropertyChangeListener(new PropertyChangeListener() {
 		  public void propertyChange(PropertyChangeEvent e) {
 			  if(e.getPropertyName().equals("Control")) {
@@ -240,9 +227,9 @@ public class CopyPaste implements ActionListener{
 	 */
    	public boolean areOfTheSameType( String oldStr, String newStr ){
    		try{
-   			double oldDouble = Double.parseDouble(oldStr); //old is a double
+   			Double.parseDouble(oldStr);
    			try{
-   				double newDouble = Double.parseDouble(newStr); //new is also an double :)
+   				Double.parseDouble(newStr);
    				return true;
    			}catch(NumberFormatException nfe2){ // double, not double :(
    				return false;

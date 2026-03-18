@@ -551,7 +551,7 @@ public class TabTechAvailable extends PolicyTab implements Runnable {
             TreeView<String> tree = this.paneForCountryStateTree.getTree();
             String[] listOfSelectedLeaves = utils.getAllSelectedRegions(tree);
             listOfSelectedLeaves = utils.removeUSADuplicate(listOfSelectedLeaves);
-            String states = utils.returnAppendedString(listOfSelectedLeaves);
+            utils.returnAppendedString(listOfSelectedLeaves);
 
             filenameSuggestion = getFilenameSuggestion();
 

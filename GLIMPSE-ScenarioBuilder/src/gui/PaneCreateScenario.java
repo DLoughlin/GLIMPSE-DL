@@ -52,6 +52,8 @@ import glimpseElement.ScenarioRow;
 import glimpseElement.ScenarioTable;
 import glimpseUtil.CSVToXMLMain;
 
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Orientation;
@@ -63,6 +65,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
@@ -107,8 +110,6 @@ import javafx.stage.Stage;
 class PaneCreateScenario extends ScenarioBuilder {
     // UI Constants
     private static final String LABEL_NAME = "Name:";
-    private static final String LABEL_COMPONENTS = "Components: ";
-    private static final String LABEL_CREATE_SCENARIO = "Create Scenario";
     private static final String TOOLTIP_SCENARIO_NAME = "Enter name of scenario being constructed";
     private static final String BUTTON_CREATE = "Create";
     private static final String BUTTON_ICON_CREATE = "create";
@@ -116,7 +117,6 @@ class PaneCreateScenario extends ScenarioBuilder {
     private static final String BUTTON_MOVE_DOWN = "Move selected item down in list";
     private static final String BUTTON_ICON_UP = "move_up";
     private static final String BUTTON_ICON_DOWN = "move_down";
-    private static final String BUTTON_ICON_ADD = "add2";
     private static final String WARNING_INVALID_NAME = "Please specify a name for the scenario. The name should not include any of these special characters: [! @#$%&*()+=|<>?{}[]~]\\//";
     private static final String DIALOG_TITLE_CREATE = "Creating Scenario";
     private static final int DIALOG_HEIGHT = 550;
@@ -132,6 +132,9 @@ class PaneCreateScenario extends ScenarioBuilder {
     private static final String ERROR_HEADER_NOT_FOUND = "Could not find header in header file";
     private static final String ERROR_UNSUPPORTED_COMPONENT = "Only CSV-type and XML-list-type scenario components are currently supported.";
     private static final String ERROR_PROCESS_COMPONENT = "Unable to process scenario component ";
+    private static final double DIALOG_PROGRESS_BAR_WIDTH = DIALOG_WIDTH - 50.0;
+    private static final double DIALOG_PROGRESS_BAR_MARGIN = 50.0;
+    private static final String CREATE_IN_PROGRESS_TEXT = "Creating...";
 
     // ComboBox options
     //private static final String[] DEFAULT_STOP_YEARS = {"2020", "2025", "2030", "2035", "2040", "2045", "2050", "2055", "2060", "2065", "2070", "2075", "2080", "2085", "2090", "2095", "2100"};
@@ -147,6 +150,32 @@ class PaneCreateScenario extends ScenarioBuilder {
     private Label labelName;
     private HBox nameRow;
     private HBox buttonRow;
+
+    private static final class ScenarioDialogResult {
+        private final String metadata;
+        private final boolean confirmed;
+
+        private ScenarioDialogResult(String metadata, boolean confirmed) {
+            this.metadata = metadata;
+            this.confirmed = confirmed;
+        }
+
+        static ScenarioDialogResult cancelled() {
+            return new ScenarioDialogResult(null, false);
+        }
+
+        static ScenarioDialogResult confirmed(String metadata) {
+            return new ScenarioDialogResult(metadata, true);
+        }
+
+        boolean isConfirmed() {
+            return confirmed && metadata != null;
+        }
+
+        String getMetadata() {
+            return metadata;
+        }
+    }
 
     /**
      * Constructs the scenario creation pane and initializes all UI components.
@@ -180,9 +209,10 @@ class PaneCreateScenario extends ScenarioBuilder {
         setupButtons();
         buttonRow.getChildren().addAll(Client.buttonCreateScenarioConfigFile, utils.getSeparator(Orientation.VERTICAL, 2, false), Client.buttonMoveComponentUp, utils.getSeparator(Orientation.VERTICAL, 2, false), Client.buttonMoveComponentDown);
 
-        // Set up main layout and bind width to stage
+        // Set up main layout and let the parent GridPane apportion width.
         vBox.getChildren().addAll(nameRow, ComponentLibraryTable.getTableCreateScenario(), buttonRow);
-        vBox.prefWidthProperty().bind(stage.widthProperty().multiply(2.5 / 7.0));
+        vBox.setFillWidth(true);
+        vBox.setMaxWidth(Double.MAX_VALUE);
     }
 
     /**
@@ -266,21 +296,21 @@ class PaneCreateScenario extends ScenarioBuilder {
         // Validate scenario name
         if ((scenName.length() < 1) || (fixName)) {
             utils.warningMessage(WARNING_INVALID_NAME);
-        } else {
-            // Copy component list
-            ObservableList<ComponentRow> copy1 = FXCollections.observableArrayList();
-            ObservableList<ComponentRow> copy2 = FXCollections.observableArrayList();
-            for (ComponentRow i : ComponentLibraryTable.getListOfFilesCreateScenario()) {
-                copy1.add(i);
-                copy2.add(i);
-            }
-            try {
-                // Process scenario
-                processScenario(scenName, copy1, copy2, scenName, scenName, b);
-            } catch (Exception e1) {
-                e1.printStackTrace();
-                utils.exitOnException();
-            }
+            return;
+        }
+        // Copy component list
+        ObservableList<ComponentRow> copy1 = FXCollections.observableArrayList();
+        ObservableList<ComponentRow> copy2 = FXCollections.observableArrayList();
+        for (ComponentRow i : ComponentLibraryTable.getListOfFilesCreateScenario()) {
+            copy1.add(i);
+            copy2.add(i);
+        }
+        try {
+            // Process scenario
+            processScenario(scenName, copy1, copy2, scenName, scenName, b);
+        } catch (Exception e1) {
+            e1.printStackTrace();
+            utils.exitOnException();
         }
     }
 
@@ -299,23 +329,31 @@ class PaneCreateScenario extends ScenarioBuilder {
     @SuppressWarnings("static-access")
     protected void processScenario(String scenName, ObservableList<ComponentRow> list, ObservableList<ComponentRow> list1,
                                    String runName, String scenarioName, boolean execute) throws IOException {
-        String message = "";
-
+        boolean overwritingScenario = checkInList(scenName, ScenarioTable.tableScenariosLibrary);
+ 
         // Check if scenario already exists and prompt for overwrite
-        if (checkInList(scenName, ScenarioTable.tableScenariosLibrary)) {
+        if (overwritingScenario) {
             String s = SCENARIO_OVERWRITE_PROMPT + scenName + "?";
             boolean overwrite = utils.confirmAction(s);
             if (!overwrite) {
                 return;
             }
         }
-
+ 
         // Create scenario dialog and collect metadata
-        message = createScenarioDialog(scenarioName);
-        if (message == null) return;
+        ScenarioDialogResult dialogResult = createScenarioDialog(scenName, list, list1, runName, scenarioName, execute, overwritingScenario);
+        if (dialogResult == null || !dialogResult.isConfirmed()) {
+            return;
+        }
+    }
 
+    @SuppressWarnings("static-access")
+    private void createScenarioFiles(String scenName, ObservableList<ComponentRow> list, ObservableList<ComponentRow> list1,
+                                     String runName, String scenarioName, boolean execute, boolean overwritingScenario,
+                                     String message) throws IOException {
         // Delete old log and XML files if scenario is being overwritten
-        if (checkInList(scenName, ScenarioTable.tableScenariosLibrary)) {
+        if (overwritingScenario) {
+            clearScenarioRunResultFields(scenName);
             String mainLogFile = vars.getScenarioDir() + File.separator + scenName + File.separator + "main_log.txt";
             files.deleteFile(mainLogFile);
         }
@@ -357,7 +395,6 @@ class PaneCreateScenario extends ScenarioBuilder {
         files.copyFile(templateConfigFileAddress, savedConfigFileAddress);
         utils.insertLinesIntoFile(savedConfigFileAddress, newDescription, 2);
         Document xmlDoc = XMLModifier.openXmlDocument(savedConfigFileAddress);
-        Date now = null;
         Path gcamexepath = Paths.get(vars.getgCamExecutableDir());
 
         // Process each component in the list
@@ -519,40 +556,33 @@ class PaneCreateScenario extends ScenarioBuilder {
     }
 
     /**
-     * Creates the scenario dialog and returns the scenario meta data as a string.
+     * Creates the scenario dialog and manages scenario creation from the OK action.
      * Presents a dialog for the user to enter scenario metadata, select options, and add comments.
      * Handles database size warnings, debug and processor options, and files to save.
      *
      * @param scenName Scenario name to display in the dialog
-     * @return Scenario meta data string, or null if cancelled
+     * @return Scenario dialog result indicating whether creation completed successfully
      */
-    public String createScenarioDialog(String scenName) {
-    	
-    	// Determine default years and debug regions based on allowable policy years and GCAM version
-    	String[] default_years = null;// = DEFAULT_STOP_YEARS;
-    	String[] default_debug_regions = null;// = vars.isGcamUSA() ? DEFAULT_DEBUG_REGIONS_USA : DEFAULT_DEBUG_REGIONS_GLOBAL;
-    	
-    	//TODO: make this code work with subregions for regions other than USA
+    private ScenarioDialogResult createScenarioDialog(String scenName, ObservableList<ComponentRow> list, ObservableList<ComponentRow> list1,
+                                                      String runName, String scenarioNameValue, boolean execute, boolean overwritingScenario) {
+    	String[] default_years = null;
+    	String[] default_debug_regions = null;
     	if (vars.getAllowablePolicyYears() != null && vars.getAllowablePolicyYears().size() > 0) {
 			default_years = utils.createStringArrayFromListOfIntegers(vars.getAllowablePolicyYears());
 		}
     	List<String> tempList = new ArrayList<>();
-    	
-    	if (vars.isGcamUSA()) {
-    		if (vars.getSubRegionList() != null && vars.getSubRegionList().size() > 0) {
-				tempList.addAll(vars.getSubRegionList());
-			} 
-    	}
+    	if (vars.isGcamUSA() && vars.getSubRegionList() != null && vars.getSubRegionList().size() > 0) {
+			tempList.addAll(vars.getSubRegionList());
+		}
     	if (vars.getRegionList() != null && vars.getRegionList().size() > 0) {
     		tempList.addAll(vars.getRegionList());
     	}
     	if (tempList.size() > 0) {
     		default_debug_regions = tempList.toArray(new String[0]);
-		} 
-    	
-        // Create labels and controls for dialog
+		}
+
         Label scenarioNameLabel = new Label("Scenario name:");
-        Label scenarioName = new Label(scenName);
+        Label scenarioName = new Label(scenarioNameValue);
         Label stopYearLabel = new Label("Final model year:");
         ComboBox<String> stopYearComboBox = new ComboBox<>();
         stopYearComboBox.getItems().addAll(default_years);
@@ -560,7 +590,6 @@ class PaneCreateScenario extends ScenarioBuilder {
         stopYearComboBox.setDisable(false);
         stopYearComboBox.setOnAction(e -> vars.setStopPeriod(utils.getPeriodForYear(stopYearComboBox.getSelectionModel().getSelectedItem())));
 
-        // Database info
         Label databaseNameLabel = new Label("Database:");
         String databaseName = vars.getgCamOutputDatabase();
         File databaseFolder = new File(databaseName);
@@ -570,13 +599,11 @@ class PaneCreateScenario extends ScenarioBuilder {
         String databaseNameShort = databaseName.substring(databaseName.lastIndexOf(File.separator) + 1);
         Label databaseNameAndSize = new Label(databaseNameShort + databaseSizeStr);
 
-        // Warn if database is too large
         if (databaseSize >= vars.getMaxDatabaseSizeGB()) {
             boolean b = utils.confirmAction(DATABASE_SIZE_WARNING);
-            if (!b) return null;
+            if (!b) return ScenarioDialogResult.cancelled();
         }
 
-        // Debug and processor options
         CheckBox createDebugCheckBox = new CheckBox("Create debug file?");
         boolean isChecked = false;
         String strIsChecked = vars.getDebugCreate().toLowerCase();
@@ -584,11 +611,7 @@ class PaneCreateScenario extends ScenarioBuilder {
         createDebugCheckBox.setSelected(isChecked);
 
         ComboBox<String> debugRegionComboBox = new ComboBox<>();
-        //if (vars.isGcamUSA()) {
-            debugRegionComboBox.getItems().addAll(default_debug_regions);
-        //} else {
-        //    debugRegionComboBox.getItems().addAll(DEFAULT_DEBUG_REGIONS_GLOBAL);
-        //}
+        debugRegionComboBox.getItems().addAll(default_debug_regions);
         debugRegionComboBox.getSelectionModel().select(vars.getDebugRegion());
         debugRegionComboBox.setDisable(false);
         debugRegionComboBox.setOnAction(e -> vars.setDebugRegion(debugRegionComboBox.getSelectionModel().getSelectedItem()));
@@ -598,7 +621,6 @@ class PaneCreateScenario extends ScenarioBuilder {
         if (b) isChecked = true;
         useAllAvailableProcessors.setSelected(isChecked);
 
-        // Files to save options
         Label filesToSaveLabel = new Label("Save files in scenario folder: (global setting)");
         CheckBox saveMainLogCheckBox = new CheckBox("Main log");
         saveMainLogCheckBox.setSelected(true);
@@ -617,21 +639,17 @@ class PaneCreateScenario extends ScenarioBuilder {
         if (filesToSave.contains("solver")) saveSolverLogCheckBox.setSelected(true);
         if (filesToSave.contains("calibration")) saveCalibrationLogCheckBox.setSelected(true);
 
-        // Comments area
         Label commentLabel = new Label("Comments:");
         TextArea textArea = new TextArea();
         textArea.setEditable(true);
-        // Allow the text area to grow with its container instead of using a fixed preferred size
         textArea.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         textArea.setMinHeight(0);
         GridPane.setVgrow(textArea, javafx.scene.layout.Priority.ALWAYS);
         GridPane.setHgrow(textArea, javafx.scene.layout.Priority.ALWAYS);
 
-        // Layout grid
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
-        // Use centralized horizontal padding for grids
         grid.setPadding(styles.getHorizontalPadding10());
         grid.add(scenarioNameLabel, 0, 0);
         grid.add(scenarioName, 1, 0);
@@ -650,78 +668,136 @@ class PaneCreateScenario extends ScenarioBuilder {
         grid.add(commentLabel, 0, 8, 2, 1);
         grid.add(textArea, 0, 9, 2, 1);
 
-        // Dialog stage and scene
         Stage stage = createDialogStage(DIALOG_TITLE_CREATE, DIALOG_WIDTH, DIALOG_HEIGHT);
         Scene scene = new Scene(new Group());
-
-        // Ensure dialog uses the same modern theme as the main app
         applyModernTheme(scene);
 
-        // Use centralized dialog button creation to match New Scenario Component Creator look-and-feel
-        // OK and Cancel buttons
         Button okButton = createDialogButton("OK");
         Button cancelButton = createDialogButton("Cancel");
+        ProgressBar progressBar = new ProgressBar();
+        progressBar.setProgress(0.0);
+        progressBar.setPrefWidth(DIALOG_PROGRESS_BAR_WIDTH);
+        progressBar.setMinWidth(0);
+        progressBar.setMaxWidth(Double.MAX_VALUE);
+        progressBar.setVisible(true);
+        progressBar.setManaged(true);
+        progressBar.setFocusTraversable(false);
+
+        final ScenarioDialogResult[] resultHolder = { ScenarioDialogResult.cancelled() };
+        final javafx.scene.Node[] disableWhileRunning = {
+                stopYearComboBox,
+                createDebugCheckBox,
+                debugRegionComboBox,
+                useAllAvailableProcessors,
+                saveCalibrationLogCheckBox,
+                saveSolverLogCheckBox,
+                saveDebugFileCheckBox,
+                textArea,
+                okButton,
+                cancelButton
+        };
+
         okButton.setOnAction(e -> {
-            String isSelected = "false";
-            if (createDebugCheckBox.isSelected()) isSelected = "true";
-            vars.setDebugCreate(isSelected);
-            isSelected = "false";
-            if (useAllAvailableProcessors.isSelected()) isSelected = "true";
-            vars.setUseAllAvailableProcessors(isSelected);
+            String metadata = buildScenarioDialogMetadata(
+                    scenarioName.getText(),
+                    databaseNameShort,
+                    debugRegionComboBox.getSelectionModel().getSelectedItem(),
+                    stopYearComboBox.getSelectionModel().getSelectedItem(),
+                    textArea.getText());
+            if (metadata == null) {
+                resultHolder[0] = ScenarioDialogResult.cancelled();
+                stage.close();
+                return;
+            }
+
+            String debugSelected = createDebugCheckBox.isSelected() ? "true" : "false";
+            vars.setDebugCreate(debugSelected);
+            String processorsSelected = useAllAvailableProcessors.isSelected() ? "true" : "false";
+            vars.setUseAllAvailableProcessors(processorsSelected);
             vars.setFilesToSave(adjustFilesToSave(saveCalibrationLogCheckBox.isSelected(), saveSolverLogCheckBox.isSelected(), saveDebugFileCheckBox.isSelected()));
-            stage.close();
+
+            for (javafx.scene.Node node : disableWhileRunning) {
+                node.setDisable(true);
+            }
+            okButton.setText(CREATE_IN_PROGRESS_TEXT);
+            progressBar.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
+
+            Task<Void> createTask = new Task<Void>() {
+                @Override
+                protected Void call() throws Exception {
+                    createScenarioFiles(scenName, list, list1, runName, scenarioName.getText(), execute, overwritingScenario, metadata);
+                    return null;
+                }
+            };
+
+            createTask.setOnSucceeded(evt -> {
+                resultHolder[0] = ScenarioDialogResult.confirmed(metadata);
+                stage.close();
+            });
+            createTask.setOnFailed(evt -> {
+                Throwable ex = createTask.getException();
+                if (ex != null) {
+                    ex.printStackTrace();
+                }
+                resultHolder[0] = ScenarioDialogResult.cancelled();
+                okButton.setText("OK");
+                progressBar.setProgress(0.0);
+                 for (javafx.scene.Node node : disableWhileRunning) {
+                    node.setDisable(false);
+                 }
+                 utils.exitOnException();
+            });
+
+            Thread worker = new Thread(createTask, "scenario-create-dialog-worker");
+            worker.setDaemon(true);
+            worker.start();
         });
         cancelButton.setOnAction(e -> {
             utils.clearTextArea(textArea);
+            resultHolder[0] = ScenarioDialogResult.cancelled();
             stage.close();
         });
 
-        // Layout root and button box
         VBox root = new VBox();
-        // Use centralized small padding for dialog roots
         root.setPadding(styles.getSmallPadding());
         root.setSpacing(5);
         root.setAlignment(Pos.TOP_LEFT);
-        String text = "";
-        textArea.setText(text);
+        textArea.setText("");
         VBox.setVgrow(grid, javafx.scene.layout.Priority.ALWAYS);
         VBox.setVgrow(textArea, javafx.scene.layout.Priority.ALWAYS);
+        HBox progressBox = new HBox();
+        progressBox.setAlignment(Pos.CENTER);
+        progressBox.setFillHeight(true);
+        progressBox.setPadding(new Insets(5, 0, 5, 0));
+        progressBar.prefWidthProperty().bind(root.widthProperty().subtract(DIALOG_PROGRESS_BAR_MARGIN));
+        progressBox.getChildren().add(progressBar);
         HBox buttonBox = new HBox();
-        // Use centralized button/small padding
         buttonBox.setPadding(styles.getSmallPadding());
         buttonBox.setSpacing(5);
         buttonBox.setAlignment(Pos.CENTER);
         buttonBox.getChildren().addAll(okButton, cancelButton);
-        root.getChildren().addAll(grid, buttonBox);
+        root.getChildren().addAll(grid, progressBox, buttonBox);
         scene.setRoot(root);
         stage.setScene(scene);
         stage.showAndWait();
 
-        // Prepare meta data string
-        if (textArea.getText() == null) {
-            text = null;
-        } else {
-            text = META_DATA_HEADER + vars.getEol();
-            text += "Scenario name: " + scenarioName.getText() + vars.getEol();
-            text += "Database: " + databaseNameShort + vars.getEol();
-            text += "Debug region: " + debugRegionComboBox.getSelectionModel().getSelectedItem() + vars.getEol();
-            text += "Stop year:" + stopYearComboBox.getSelectionModel().getSelectedItem() + vars.getEol();
-            text += "Comments:" + vars.getEol();
-            text += textArea.getText() + vars.getEol();
-        }
-        if (text != null) text = text.replaceAll(vars.getEol() + "" + vars.getEol(), vars.getEol());
-        return text;
+        return resultHolder[0];
     }
 
-    /**
-     * Adjusts the files to save string based on user selections in the dialog.
-     * Adds or removes calibration, solver, and debug log files as needed.
-     *
-     * @param saveCalibLog Save calibration log
-     * @param saveSolverLog Save solver log
-     * @param saveDebugFile Save debug file
-     * @return Updated files to save string
-     */
+    private String buildScenarioDialogMetadata(String scenarioName, String databaseNameShort, String debugRegion, String stopYear, String comments) {
+        if (comments == null) {
+            return null;
+        }
+        String text = META_DATA_HEADER + vars.getEol();
+        text += "Scenario name: " + scenarioName + vars.getEol();
+        text += "Database: " + databaseNameShort + vars.getEol();
+        text += "Debug region: " + debugRegion + vars.getEol();
+        text += "Stop year:" + stopYear + vars.getEol();
+        text += "Comments:" + vars.getEol();
+        text += comments + vars.getEol();
+        return text.replaceAll(vars.getEol() + "" + vars.getEol(), vars.getEol());
+    }
+
     private String adjustFilesToSave(boolean saveCalibLog, boolean saveSolverLog, boolean saveDebugFile) {
         List<String> filesToSave = utils.createArrayListFromString(vars.getFilesToSave(), ";");
         String foundCalib = null;
@@ -740,5 +816,33 @@ class PaneCreateScenario extends ScenarioBuilder {
         if ((saveSolverLog) && (foundSolver == null)) filesToSave.add(vars.getgCamExecutableDir() + File.separator + "logs" + File.separator + "solver_log.csv");
         if ((saveDebugFile) && (foundDebug == null)) filesToSave.add(vars.getgCamExecutableDir() + File.separator + "debug.xml");
         return utils.createStringFromArrayList(filesToSave, ";");
+    }
+
+    /**
+     * Clears the run-result fields for a scenario by resetting the matching table row.
+     * This is used when a scenario is recreated to clear stale run-result data.
+     *
+     * @param scenarioName The name of the scenario whose run-result fields should be cleared.
+     */
+    private void clearScenarioRunResultFields(String scenarioName) {
+        if (scenarioName == null || scenarioName.trim().isEmpty()) {
+            return;
+        }
+        if (ScenarioTable.listOfScenarioRuns == null) {
+            return;
+        }
+        ScenarioLibraryViewStateHelper viewStateHelper = new ScenarioLibraryViewStateHelper(utils);
+        viewStateHelper.preserveSelectionAndRefresh(() -> {
+            for (ScenarioRow row : ScenarioTable.listOfScenarioRuns) {
+                if (row == null || !scenarioName.equals(row.getScenarioName())) {
+                    continue;
+                }
+                row.setCompletedDate("");
+                row.setStatus("");
+                row.setUnsolvedMarkets("");
+                row.setRuntime("");
+                break;
+            }
+        });
     }
 }

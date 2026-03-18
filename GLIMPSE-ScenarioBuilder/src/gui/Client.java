@@ -44,8 +44,10 @@ import glimpseUtil.GLIMPSEStyles;
 import glimpseUtil.GLIMPSEVariables;
 import glimpseUtil.WindowsRuntimePreflight;
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import javafx.animation.FadeTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -56,7 +58,9 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.Separator;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.ColumnConstraints;
@@ -110,6 +114,12 @@ public class Client extends Application {
 
 	// version
 	private static final String VERSION = "GLIMPSE-CE ScenarioBuilder";
+	private static final String STATUS_BAR_BASE_STYLE = " -fx-padding: 6 10 6 10; -fx-border-color: #e0e0e0 transparent transparent transparent; -fx-border-width: 1 0 0 0;";
+	private static final String STATUS_BAR_DEFAULT_TEXT_STYLE = "-fx-text-fill: black;";
+	private static final String STATUS_BAR_ALERT_TEXT_STYLE = "-fx-text-fill: red;";
+	private static final double STATUS_BAR_OPERATION_PROGRESS_WIDTH = 120.0;
+	private static final double STATUS_BAR_OPERATION_PROGRESS_HEIGHT = 12.0;
+	private static final String RESOURCE_STATUS_PREFIX = "Resources...";
 	
     // region Constants
     private static final double MIN_WINDOW_HEIGHT = 850;
@@ -121,8 +131,24 @@ public class Client extends Application {
     private static final String SCENARIO_REFRESHED_MESSAGE = "Scenario status refreshed.";
     private static final String STARTUP_FILES_MESSAGE = "Loading required files...";
     private static final String STARTUP_UI_MESSAGE = "Building window layout...";
+    private static final String STARTUP_BUILDING_UI_MESSAGE = "Setting up ScenarioBuilder panels...";
+    private static final String STARTUP_WINDOW_READY_MESSAGE = "Configuring ScenarioBuilder window...";
+    private static final String STARTUP_POST_SHOW_MESSAGE = "Finalizing ScenarioBuilder startup...";
     private static final String STARTUP_SCENARIO_MESSAGE = "Loading scenario status...";
     private static final String STARTUP_COMPONENT_MESSAGE = "Loading scenario components...";
+    private static final String STARTUP_DIALOG_HEADING = "GLIMPSE startup:";
+    private static final double STARTUP_OVERLAY_MAX_WIDTH = 420.0;
+    private static final int STARTUP_TOTAL_STEPS = 5;
+    private static final int STARTUP_STEP_WINDOW_LAYOUT = 1;
+    private static final int STARTUP_STEP_UI_READY = 2;
+    private static final int STARTUP_STEP_FILES_READY = 3;
+    private static final int STARTUP_STEP_COMPONENTS_READY = 4;
+    private static final int STARTUP_STEP_SCENARIOS_READY = 5;
+    private static final double TOP_LEFT_PANEL_RATIO = 4.0;
+    private static final double TOP_RIGHT_PANEL_RATIO = 2.5;
+    private static final double TOP_PANEL_GAP = 4.0;
+    private static final double TOP_ROW_HEIGHT_RATIO = 45.0;
+    private static final double BOTTOM_ROW_HEIGHT_RATIO = 55.0;
     // endregion
 
     // region Static Fields
@@ -190,6 +216,13 @@ public class Client extends Application {
     private final GLIMPSEFiles files = GLIMPSEFiles.getInstance();
     private final glimpseUtil.GLIMPSEUtils utils = glimpseUtil.GLIMPSEUtils.getInstance();
     private final StatusBar sb = new StatusBar();
+    private final AtomicInteger activeScenarioOperationCount = new AtomicInteger(0);
+    private ProgressBar scenarioOperationProgressBar;
+    private ProgressBar startupOverlayProgressBar;
+    private Label startupOverlayPercentLabel;
+    private final AtomicBoolean startupOverlayVisible = new AtomicBoolean(false);
+    private Label startupOverlayLabel;
+    private VBox startupOverlayBox;
 
     /** Startup timing anchor (nanoseconds). */
     private static final long STARTUP_T0_NANOS = System.nanoTime();
@@ -210,6 +243,15 @@ public class Client extends Application {
     private static volatile boolean startupBusyState = true;
     /** Cached post-startup status message. */
     private static volatile String deferredStatusBarText;
+    /** Last startup message emitted to stdout so repeated progress updates do not spam logs. */
+    private static volatile String lastStartupStatusLogged = "";
+    /** True once the main ScenarioBuilder window has been shown. */
+    private static volatile boolean mainWindowDisplayed = false;
+    /** Initial library loads that must finish before steady-state resource text is restored. */
+    private static volatile boolean initialScenarioLoadPending = true;
+    private static volatile boolean initialComponentLoadPending = true;
+    private static volatile int startupStepsCompleted = 0;
+    private static volatile String lastStartupStatusText = STARTUP_UI_MESSAGE;
 
     /**
      * The entry point of the application. Sets up JavaFX and launches the GUI.
@@ -285,6 +327,7 @@ public class Client extends Application {
     public void start(Stage primaryStage) {
         final long t0 = System.nanoTime();
         System.out.println("Starting GLIMPSE Graphical User Interface...");
+
         Client.primaryStage = primaryStage;
 
         // Ensure threads are properly terminated on window close
@@ -294,27 +337,41 @@ public class Client extends Application {
             Platform.exit();
         });
 
-        setStartupStatus(STARTUP_UI_MESSAGE, -1, true);
+//        //testing to see if I can have this appear early
+//        primaryStage.setTitle(VERSION);
+//        primaryStage.setMinHeight(MIN_WINDOW_HEIGHT);
+//        primaryStage.setHeight(MIN_WINDOW_HEIGHT);
+//        primaryStage.setMinWidth(MIN_WINDOW_WIDTH);
+//        primaryStage.setWidth(MIN_WINDOW_WIDTH);
+//        primaryStage.centerOnScreen();
+//        primaryStage.show();
+                
+        advanceStartupStep(STARTUP_STEP_WINDOW_LAYOUT, STARTUP_BUILDING_UI_MESSAGE);
+        setStartupStatus(STARTUP_BUILDING_UI_MESSAGE, -1, true);
+        logStartupCheckpoint("ScenarioBuilder.build start", t0);
         getScenarioBuilder().build();
-
+        logStartupCheckpoint("ScenarioBuilder.build complete", t0);
+        advanceStartupStep(STARTUP_STEP_UI_READY, STARTUP_WINDOW_READY_MESSAGE);
         setFileDependentUiEnabled(false);
-        setStartupStatus(STARTUP_FILES_MESSAGE, -1, true);
-
-        // Set up the main window with menu and content (this calls primaryStage.show())
+        setStartupStatus(STARTUP_WINDOW_READY_MESSAGE, -1, true);
+        logStartupCheckpoint("Main window composition start", t0);
         setMainWindow(combineAllElementsIntoOnePane(), createMenuBar());
+        logStartupCheckpoint("Main window composition complete", t0);
+        primaryStage.show();
+        mainWindowDisplayed = true;
+        utils.setModalDialogsReadyAndFlushWarnings();
 
-        // Set up execution threads for GCAM and post-processor
-        setupExecutionThreads();
-
-        // Set application icon
-        final String iconFile = "file:" + vars.getGlimpseResourceDir() + File.separator + "GLIMPSE_icon_large.png";
-        primaryStage.getIcons().add(new Image(iconFile));
-
-        // Log time-to-window and schedule post-show work.
         Platform.runLater(() -> {
+            setStartupStatus(STARTUP_POST_SHOW_MESSAGE, -1, true);
+            logStartupCheckpoint("Post-show startup tasks begin", STARTUP_T0_NANOS);
+            setupExecutionThreads();
+
+            final String iconFile = "file:" + vars.getGlimpseResourceDir() + File.separator + "GLIMPSE_icon_large.png";
+            primaryStage.getIcons().add(new Image(iconFile));
+
             logStartupCheckpoint("Primary stage shown (first FX pulse after show)", STARTUP_T0_NANOS);
             WindowsRuntimePreflight.ensureMsvcRuntimeAvailableOrWarn(utils, "Startup");
-            setStartupStatus(STARTUP_SCENARIO_MESSAGE, -1, true);
+            setStartupStatus(STARTUP_FILES_MESSAGE, -1, true);
             startDeferredFileLoading();
         });
 
@@ -383,54 +440,72 @@ public class Client extends Application {
      */
     private GridPane combineAllElementsIntoOnePane() {
         final GridPane mainGridPane = new GridPane();
-		// No horizontal whitespace between the left pane, arrow buttons, and create-scenario pane.
-		mainGridPane.setHgap(0);
+        mainGridPane.setHgap(0);
 
-		// Layout columns so the arrow buttons stay centered between the left and right panes.
-		ColumnConstraints leftCol = new ColumnConstraints();
-		leftCol.setHgrow(Priority.ALWAYS);
-
-		ColumnConstraints arrowCol = new ColumnConstraints();
-		arrowCol.setHgrow(Priority.NEVER);
-		arrowCol.setFillWidth(true);
-		arrowCol.setHalignment(javafx.geometry.HPos.CENTER);
-
-		// Column 2 is intentionally empty (a spacer) so the right pane can be pushed further right.
-		ColumnConstraints spacerCol = new ColumnConstraints();
-		spacerCol.setHgrow(Priority.ALWAYS);
-		spacerCol.setMinWidth(0);
-
-		ColumnConstraints rightCol = new ColumnConstraints();
-		rightCol.setHgrow(Priority.ALWAYS);
-
-		mainGridPane.getColumnConstraints().setAll(leftCol, arrowCol, spacerCol, rightCol);
-
-        // Give the bottom (scenario library) row more vertical space so the divider sits lower.
         javafx.scene.layout.RowConstraints topRow = new javafx.scene.layout.RowConstraints();
         topRow.setVgrow(Priority.ALWAYS);
-        topRow.setPercentHeight(45);
+        topRow.setPercentHeight(TOP_ROW_HEIGHT_RATIO / (TOP_ROW_HEIGHT_RATIO + BOTTOM_ROW_HEIGHT_RATIO) * 100.0);
 
         javafx.scene.layout.RowConstraints bottomRow = new javafx.scene.layout.RowConstraints();
         bottomRow.setVgrow(Priority.ALWAYS);
-        bottomRow.setPercentHeight(55);
+        bottomRow.setPercentHeight(BOTTOM_ROW_HEIGHT_RATIO / (TOP_ROW_HEIGHT_RATIO + BOTTOM_ROW_HEIGHT_RATIO) * 100.0);
 
         mainGridPane.getRowConstraints().setAll(topRow, bottomRow);
 
-        // Add component library, button panel, and create scenario panel
-        mainGridPane.add(getScenarioBuilder().getvBoxComponentLibrary(), 0, 0);
+        VBox componentLibraryBox = getScenarioBuilder().getvBoxComponentLibrary();
         VBox arrowBox = getScenarioBuilder().getvBoxButton();
-        mainGridPane.add(arrowBox, 1, 0);
-		// Add an empty spacer at column 2 so the grid recognizes the 4-column layout.
-		Region spacer = new Region();
-		mainGridPane.add(spacer, 2, 0);
-        mainGridPane.add(getScenarioBuilder().getvBoxCreateScenario(), 3, 0);
+        VBox createScenarioBox = getScenarioBuilder().getvBoxCreateScenario();
+        VBox runBox = getScenarioBuilder().getvBoxRun();
 
-        // Add run panel at the bottom, spanning all columns
-        final HBox stack = new HBox(10);
-        stack.getChildren().addAll(getScenarioBuilder().getvBoxRun());
-        stack.prefWidthProperty().bind(primaryStage.widthProperty());
-        stack.setStyle(styles.getStyle1());
-        mainGridPane.add(stack, 0, 1, 4, 1);
+        // Set max sizes to allow proper resizing behavior
+        componentLibraryBox.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        createScenarioBox.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        runBox.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        
+        final HBox topRowBox = new HBox(TOP_PANEL_GAP, componentLibraryBox, arrowBox, createScenarioBox);
+        topRowBox.setFillHeight(true);
+        topRowBox.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        arrowBox.setMinWidth(Region.USE_PREF_SIZE);
+        arrowBox.setPrefWidth(Region.USE_COMPUTED_SIZE);
+        arrowBox.setMaxWidth(Region.USE_PREF_SIZE);
+        HBox.setHgrow(componentLibraryBox, Priority.NEVER);
+        HBox.setHgrow(createScenarioBox, Priority.NEVER);
+
+        final double ratioDenominator = TOP_LEFT_PANEL_RATIO + TOP_RIGHT_PANEL_RATIO;
+        componentLibraryBox.prefWidthProperty().bind(
+                javafx.beans.binding.Bindings.createDoubleBinding(
+                        () -> {
+                            double topWidth = topRowBox.getWidth();
+                            double arrowWidth = Math.max(arrowBox.getWidth(), arrowBox.prefWidth(-1));
+                            double availableWidth = Math.max(0.0, topWidth - arrowWidth - TOP_PANEL_GAP);
+                            return availableWidth * (TOP_LEFT_PANEL_RATIO / ratioDenominator);
+                        },
+                        topRowBox.widthProperty(),
+                        arrowBox.widthProperty(),
+                        arrowBox.prefWidthProperty()));
+        createScenarioBox.prefWidthProperty().bind(
+                javafx.beans.binding.Bindings.createDoubleBinding(
+                        () -> {
+                            double topWidth = topRowBox.getWidth();
+                            double arrowWidth = Math.max(arrowBox.getWidth(), arrowBox.prefWidth(-1));
+                            double availableWidth = Math.max(0.0, topWidth - arrowWidth - TOP_PANEL_GAP);
+                            return availableWidth * (TOP_RIGHT_PANEL_RATIO / ratioDenominator);
+                        },
+                        topRowBox.widthProperty(),
+                        arrowBox.widthProperty(),
+                        arrowBox.prefWidthProperty()));
+
+        final HBox bottomRowBox = new HBox(10, runBox);
+        bottomRowBox.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        HBox.setHgrow(runBox, Priority.ALWAYS);
+        bottomRowBox.setStyle(styles.getStyle1());
+
+        GridPane.setHgrow(topRowBox, Priority.ALWAYS);
+        GridPane.setVgrow(topRowBox, Priority.ALWAYS);
+        GridPane.setHgrow(bottomRowBox, Priority.ALWAYS);
+        GridPane.setVgrow(bottomRowBox, Priority.ALWAYS);
+        mainGridPane.add(topRowBox, 0, 0);
+        mainGridPane.add(bottomRowBox, 0, 1);
 
         return mainGridPane;
     }
@@ -445,27 +520,19 @@ public class Client extends Application {
      */
     private void setMainWindow(GridPane mainGridPane, MenuBar menuBar) {
         // Compose the root layout
-        sb.setStyle(styles.getBackgroundStyle() + " -fx-padding: 5; -fx-border-color: #B0B0B0; -fx-border-width: 1 0 0 0;");
+        sb.setStyle(buildStatusBarStyleForText("", null));
+        configureStatusBarRightItems();
         final StackPane centerStack = new StackPane();
         centerStack.getChildren().add(mainGridPane);
         startupOverlayBox = createStartupOverlay();
         centerStack.getChildren().add(startupOverlayBox);
-        StackPane.setAlignment(startupOverlayBox, Pos.TOP_LEFT);
-        StackPane.setMargin(startupOverlayBox, new Insets(12, 12, 0, 12));
+        StackPane.setAlignment(startupOverlayBox, Pos.CENTER);
+        VBox.setVgrow(centerStack, Priority.ALWAYS);
         final VBox root = new VBox(menuBar, centerStack, sb);
-        final Scene scene = new Scene(root, vars.DEFAULT_SCENARIO_BUILDER_WIDTH, vars.DEFAULT_SCENARIO_BUILDER_HEIGHT);
+        root.setFillWidth(true);
+        final Scene scene = new Scene(root, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT);
 
-        // Apply Modern CSS
-        try {
-            java.net.URL cssUrl = getClass().getResource("/resources/modern.css");
-            if (cssUrl != null) {
-                scene.getStylesheets().add(cssUrl.toExternalForm());
-            } else {
-                System.out.println("Could not find modern.css resource.");
-            }
-        } catch (Exception e) {
-            System.err.println("Error loading modern.css: " + e.getMessage());
-        }
+        applyModernCss(scene);
 
         primaryStage.setScene(scene);
         primaryStage.setTitle(VERSION);
@@ -473,10 +540,19 @@ public class Client extends Application {
         primaryStage.setHeight(MIN_WINDOW_HEIGHT);
         primaryStage.setMinWidth(MIN_WINDOW_WIDTH);
         primaryStage.setWidth(MIN_WINDOW_WIDTH);
-        primaryStage.show();
-        utils.setModalDialogsReadyAndFlushWarnings();
+        primaryStage.centerOnScreen();
 
-        // Optionally show splash screen on startup
+        applyStartupStatus(sb.getText(), calculateStartupProgress(), startupBusyState);
+        Platform.runLater(() -> {
+            try {
+                root.applyCss();
+                root.layout();
+                mainGridPane.requestLayout();
+                centerStack.requestLayout();
+            } catch (Exception ignored) {
+            }
+        });
+
         if (vars.getShowSplash()) {
             loadSplashScreen();
         }
@@ -486,7 +562,7 @@ public class Client extends Application {
      * Sets up the execution threads for GCAM and the model interface.
      * GCAM uses a single-threaded executor, while the model interface uses a multi-threaded executor.
      *
-     * Initializes and starts the execution queues for both GCAM and post-processing.
+     * Initializes and starts the execution queues for both GCAM and post-processor.
      */
     private void setupExecutionThreads() {
         // Starting separate execution queues for GCAM and post-processor.
@@ -512,17 +588,18 @@ public class Client extends Application {
         final Thread t = new Thread(() -> {
             final long t0 = System.nanoTime();
             try {
-                System.out.println("Loading GLIMPSE files (deferred)...");
+                //System.out.println("Loading GLIMPSE files (deferred)...");
                 setStartupStatus(STARTUP_FILES_MESSAGE, -1, true);
                 files.loadFiles();
                 filesLoaded = true;
+                advanceStartupStep(STARTUP_STEP_FILES_READY, STARTUP_COMPONENT_MESSAGE);
                 logStartupCheckpoint("files.loadFiles complete (deferred)", t0);
 
                 Platform.runLater(() -> {
                     try {
                         setStartupStatus(STARTUP_COMPONENT_MESSAGE, -1, true);
                         if (Client.getPaneComponentLibrary() != null) {
-                            Client.getPaneComponentLibrary().refreshComponentLibraryTable();
+                            Client.getPaneComponentLibrary().refreshComponentLibraryTableForStartup();
                         }
                     } catch (Throwable ignored) {
                     }
@@ -565,18 +642,43 @@ public class Client extends Application {
         }
     }
 
+    public static void setStartupRequiredFileStatus(String filename) {
+        setStartupRequiredFileStatus(filename, -1, -1);
+    }
+
+    public static void setStartupRequiredFileStatus(String filename, int currentFileIndex, int totalFiles) {
+        String safeFilename = (filename == null) ? "" : filename.trim();
+        if (safeFilename.isEmpty()) {
+            setStartupStatus(STARTUP_FILES_MESSAGE, -1, true);
+            return;
+        }
+        String displayName = new File(safeFilename).getName();
+        if (displayName == null || displayName.trim().isEmpty()) {
+            displayName = safeFilename;
+        }
+        String progressSuffix = "";
+        if (currentFileIndex > 0 && totalFiles > 0) {
+            progressSuffix = " (" + currentFileIndex + "/" + totalFiles + ")";
+        }
+        setStartupStatus("Loading required files... " + displayName + progressSuffix, -1, true);
+    }
+
     private void applyStartupStatus(String text, double progress, boolean busy) {
         String safeText = (text == null || text.trim().isEmpty()) ? STARTUP_READY_MESSAGE : text.trim();
+        lastStartupStatusText = safeText;
+        logStartupStatusToStdout(safeText, busy);
         sb.setText(safeText);
+        sb.setStyle(buildStatusBarStyleForText(safeText, null));
         if (startupOverlayLabel != null) {
             startupOverlayLabel.setText(safeText);
         }
-        if (startupOverlayIndicator != null) {
-            if (progress >= 0.0 && progress <= 1.0) {
-                startupOverlayIndicator.setProgress(progress);
-            } else {
-                startupOverlayIndicator.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
-            }
+        updateStartupStepForStatus(safeText);
+        double overlayProgress = normalizeStartupProgress(safeText, progress, busy);
+        if (startupOverlayProgressBar != null) {
+            startupOverlayProgressBar.setProgress(overlayProgress);
+        }
+        if (startupOverlayPercentLabel != null) {
+            startupOverlayPercentLabel.setText(formatStartupPercent(overlayProgress));
         }
         boolean showOverlay = busy && !STARTUP_READY_MESSAGE.equalsIgnoreCase(safeText);
         startupOverlayVisible.set(showOverlay);
@@ -589,6 +691,198 @@ public class Client extends Application {
         }
     }
 
+    public static void markInitialScenarioLoadComplete() {
+        initialScenarioLoadPending = false;
+        advanceStartupStep(STARTUP_STEP_SCENARIOS_READY, STARTUP_READY_MESSAGE);
+        applyDeferredStatusBarTextIfReady();
+    }
+
+    public static void markInitialComponentLoadComplete() {
+        initialComponentLoadPending = false;
+        advanceStartupStep(STARTUP_STEP_COMPONENTS_READY, STARTUP_SCENARIO_MESSAGE);
+        applyDeferredStatusBarTextIfReady();
+    }
+
+    // ...existing code...
+    private VBox createStartupOverlay() {
+        Label headingLabel = new Label(STARTUP_DIALOG_HEADING);
+        headingLabel.setStyle("-fx-font-size: 17px; -fx-font-weight: bold; -fx-text-fill: #465060;");
+        headingLabel.setWrapText(true);
+        headingLabel.setAlignment(Pos.CENTER);
+        headingLabel.setMaxWidth(Double.MAX_VALUE);
+
+        startupOverlayLabel = new Label("Starting...");
+        startupOverlayLabel.setWrapText(true);
+        startupOverlayLabel.setAlignment(Pos.CENTER);
+        startupOverlayLabel.setMaxWidth(Double.MAX_VALUE);
+        startupOverlayLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #465060;");
+
+        startupOverlayProgressBar = new ProgressBar(0.0);
+        startupOverlayProgressBar.setPrefWidth(240);
+        startupOverlayProgressBar.setMaxWidth(240);
+        startupOverlayProgressBar.setMinWidth(240);
+        startupOverlayProgressBar.setPrefHeight(18);
+        startupOverlayProgressBar.setFocusTraversable(false);
+        startupOverlayProgressBar.setStyle("-fx-accent: #748ac4;");
+
+        startupOverlayPercentLabel = new Label("0%");
+        startupOverlayPercentLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #465060;");
+        startupOverlayPercentLabel.setMinWidth(40);
+        startupOverlayPercentLabel.setAlignment(Pos.CENTER_RIGHT);
+
+        HBox progressRow = new HBox(12, startupOverlayProgressBar, startupOverlayPercentLabel);
+        progressRow.setAlignment(Pos.CENTER);
+
+        VBox overlay = new VBox(12, headingLabel, startupOverlayLabel, progressRow);
+        overlay.setAlignment(Pos.CENTER);
+        overlay.setMouseTransparent(true);
+        overlay.setManaged(false);
+        overlay.setVisible(false);
+        overlay.setMaxWidth(STARTUP_OVERLAY_MAX_WIDTH);
+        overlay.setPadding(new Insets(22, 28, 22, 28));
+        overlay.setStyle("-fx-background-color: rgba(255,255,255,0.97); -fx-background-radius: 12; -fx-border-color: rgba(220,224,234,0.95); -fx-border-radius: 12;");
+        applyStartupVisualState();
+        return overlay;
+    }
+
+    private static void advanceStartupStep(int stepNumber, String statusText) {
+        if (stepNumber > startupStepsCompleted) {
+            startupStepsCompleted = Math.min(stepNumber, STARTUP_TOTAL_STEPS);
+        }
+        if (statusText != null && !statusText.trim().isEmpty()) {
+            lastStartupStatusText = statusText.trim();
+        }
+        final Client inst = instanceForStatus;
+        if (inst == null) {
+            return;
+        }
+        Runnable update = inst::applyStartupVisualState;
+        if (Platform.isFxApplicationThread()) {
+            update.run();
+        } else {
+            Platform.runLater(update);
+        }
+    }
+
+    private void applyStartupVisualState() {
+        if (startupOverlayLabel != null) {
+            startupOverlayLabel.setText(lastStartupStatusText == null || lastStartupStatusText.trim().isEmpty() ? STARTUP_UI_MESSAGE : lastStartupStatusText.trim());
+        }
+        double progress = calculateStartupProgress();
+        if (startupOverlayProgressBar != null) {
+            startupOverlayProgressBar.setProgress(progress);
+        }
+        if (startupOverlayPercentLabel != null) {
+            startupOverlayPercentLabel.setText(formatStartupPercent(progress));
+        }
+    }
+
+    private double normalizeStartupProgress(String safeText, double progress, boolean busy) {
+        if (!busy) {
+            if (STARTUP_READY_MESSAGE.equalsIgnoreCase(safeText) || SCENARIO_REFRESHED_MESSAGE.equalsIgnoreCase(safeText)) {
+                startupStepsCompleted = STARTUP_TOTAL_STEPS;
+                return 1.0;
+            }
+            return calculateStartupProgress();
+        }
+        if (progress >= 0.0 && progress <= 1.0) {
+            return Math.max(progress, calculateStartupProgress());
+        }
+        return calculateStartupProgress();
+    }
+
+    private void updateStartupStepForStatus(String safeText) {
+        if (safeText == null) {
+            return;
+        }
+        if (STARTUP_BUILDING_UI_MESSAGE.equalsIgnoreCase(safeText)
+                || STARTUP_WINDOW_READY_MESSAGE.equalsIgnoreCase(safeText)
+                || STARTUP_POST_SHOW_MESSAGE.equalsIgnoreCase(safeText)
+                || safeText.startsWith(STARTUP_FILES_MESSAGE)) {
+            startupStepsCompleted = Math.max(startupStepsCompleted, STARTUP_STEP_UI_READY);
+        } else if (STARTUP_COMPONENT_MESSAGE.equalsIgnoreCase(safeText)) {
+            startupStepsCompleted = Math.max(startupStepsCompleted, STARTUP_STEP_FILES_READY);
+        } else if (STARTUP_SCENARIO_MESSAGE.equalsIgnoreCase(safeText)) {
+            startupStepsCompleted = Math.max(startupStepsCompleted, STARTUP_STEP_COMPONENTS_READY);
+        } else if (STARTUP_READY_MESSAGE.equalsIgnoreCase(safeText) || SCENARIO_REFRESHED_MESSAGE.equalsIgnoreCase(safeText)) {
+            startupStepsCompleted = STARTUP_TOTAL_STEPS;
+        }
+    }
+
+    private double calculateStartupProgress() {
+        return Math.max(0.0, Math.min(1.0, startupStepsCompleted / (double) STARTUP_TOTAL_STEPS));
+    }
+
+    private String formatStartupPercent(double progress) {
+        int percent = (int) Math.round(Math.max(0.0, Math.min(1.0, progress)) * 100.0);
+        return percent + "%";
+    }
+
+	public ScenarioBuilder getScenarioBuilder() {
+		return scenarioBuilder;
+	}
+
+    private static void setFileDependentUiEnabled(boolean enabled) {
+        if (!Platform.isFxApplicationThread()) {
+            Platform.runLater(() -> setFileDependentUiEnabled(enabled));
+            return;
+        }
+        if (Client.buttonNewComponent != null) {
+            Client.buttonNewComponent.setDisable(!enabled);
+        }
+        if (Client.buttonEditComponent != null) {
+            Client.buttonEditComponent.setDisable(!enabled);
+        }
+        if (Client.buttonRefreshComponents != null) {
+            Client.buttonRefreshComponents.setDisable(!enabled);
+        }
+    }
+
+    private String buildStatusBarStyle(String extraStyle) {
+        String normalizedExtraStyle = (extraStyle == null) ? "" : extraStyle.trim();
+        if (!normalizedExtraStyle.isEmpty() && !normalizedExtraStyle.endsWith(";")) {
+            normalizedExtraStyle = normalizedExtraStyle + ";";
+        }
+        return styles.getBackgroundStyle() + STATUS_BAR_BASE_STYLE + (normalizedExtraStyle.isEmpty() ? "" : " " + normalizedExtraStyle);
+    }
+
+    private String buildStatusBarStyleForText(String text, String extraStyle) {
+        String normalizedText = text == null ? "" : text.trim();
+        String normalizedExtraStyle = extraStyle == null ? "" : extraStyle.trim();
+        String textColorStyle = normalizedText.endsWith("!!!") ? STATUS_BAR_ALERT_TEXT_STYLE : STATUS_BAR_DEFAULT_TEXT_STYLE;
+        if (normalizedExtraStyle.isEmpty()) {
+            return buildStatusBarStyle(textColorStyle);
+        }
+        return buildStatusBarStyle(textColorStyle + " " + normalizedExtraStyle);
+    }
+
+    private boolean isRecurringResourceStatus(String text) {
+        if (text == null) {
+            return false;
+        }
+        return text.trim().startsWith(RESOURCE_STATUS_PREFIX);
+    }
+
+    private void logStartupStatusToStdout(String text, boolean busy) {
+        if (!busy && mainWindowDisplayed && shouldApplyDeferredStatusAfter(text)) {
+            return;
+        }
+        String safeText = (text == null || text.trim().isEmpty()) ? STARTUP_READY_MESSAGE : text.trim();
+        String normalized = (busy ? "BUSY|" : "IDLE|") + safeText;
+        if (normalized.equals(lastStartupStatusLogged)) {
+            return;
+        }
+        if (isRecurringResourceStatus(safeText)
+                && lastStartupStatusLogged != null
+                && (lastStartupStatusLogged.startsWith("BUSY|" + RESOURCE_STATUS_PREFIX)
+                        || lastStartupStatusLogged.startsWith("IDLE|" + RESOURCE_STATUS_PREFIX))) {
+            lastStartupStatusLogged = normalized;
+            return;
+        }
+        lastStartupStatusLogged = normalized;
+        System.out.println("[startup-status] " + safeText);
+    }
+
     private boolean shouldApplyDeferredStatusAfter(String text) {
         if (text == null) {
             return false;
@@ -598,21 +892,25 @@ public class Client extends Application {
                 || SCENARIO_REFRESHED_MESSAGE.equalsIgnoreCase(safeText);
     }
 
-    public static boolean isStartupBusy() {
-        return startupBusyState;
-    }
-
     public static void setDeferredStatusBarText(String text, String style) {
         final String safeText = (text == null) ? "" : text.trim();
         if (safeText.isEmpty()) {
             return;
         }
-        deferredStatusBarText = safeText + "\n" + ((style == null || style.trim().isEmpty()) ? "-fx-text-fill: black" : style.trim());
+        deferredStatusBarText = safeText + "\n" + ((style == null || style.trim().isEmpty()) ? "" : style.trim());
         applyDeferredStatusBarTextIfReady();
     }
 
+    private static boolean areInitialLibraryLoadsPending() {
+        return initialScenarioLoadPending || initialComponentLoadPending;
+    }
+
+    public static boolean isStartupBusy() {
+        return startupBusyState;
+    }
+
     private static void applyDeferredStatusBarTextIfReady() {
-        if (startupBusyState) {
+        if (startupBusyState || areInitialLibraryLoadsPending()) {
             return;
         }
         final Client inst = instanceForStatus;
@@ -622,8 +920,10 @@ public class Client extends Application {
         }
         Runnable update = () -> {
             String[] parts = pending.split("\\n", 2);
-            inst.sb.setText(parts[0]);
-            inst.sb.setStyle((parts.length > 1 ? parts[1] : "-fx-text-fill: black"));
+            String pendingText = parts[0];
+            String pendingStyle = parts.length > 1 ? parts[1] : null;
+            inst.sb.setText(pendingText);
+            inst.sb.setStyle(inst.buildStatusBarStyleForText(pendingText, pendingStyle));
         };
         if (Platform.isFxApplicationThread()) {
             update.run();
@@ -632,35 +932,19 @@ public class Client extends Application {
         }
     }
 
-    /**
-     * Creates the overlay that shows startup progress and messages.
-     *
-     * @return VBox the overlay container
-     */
-    private VBox createStartupOverlay() {
-        startupOverlayLabel = new Label("Starting...");
-        startupOverlayLabel.setWrapText(true);
-        startupOverlayIndicator = new ProgressIndicator();
-        startupOverlayIndicator.setMaxSize(28, 28);
-        startupOverlayIndicator.setPrefSize(28, 28);
-        HBox row = new HBox(10, startupOverlayIndicator, startupOverlayLabel);
-        row.setAlignment(Pos.CENTER_LEFT);
-        VBox overlay = new VBox(row);
-        overlay.setMouseTransparent(true);
-        overlay.setManaged(false);
-        overlay.setVisible(false);
-        overlay.setMaxWidth(420);
-        overlay.setStyle("-fx-background-color: rgba(255,255,255,0.94); -fx-background-radius: 8; -fx-padding: 10 14 10 14; -fx-border-color: rgba(0,0,0,0.15); -fx-border-radius: 8;");
-        return overlay;
+    private void applyModernCss(Scene scene) {
+        try {
+            java.net.URL cssUrl = getClass().getResource("/resources/modern.css");
+            if (cssUrl != null) {
+                scene.getStylesheets().add(cssUrl.toExternalForm());
+            } else {
+                System.out.println("Could not find modern.css resource.");
+            }
+        } catch (Exception e) {
+            System.err.println("Error loading modern.css: " + e.getMessage());
+        }
     }
 
-    /**
-     * Loads and displays the splash screen with fade-in and fade-out effects.
-     *
-     * Shows a splash image on startup if enabled in user options. Handles errors gracefully if the image is missing.
-     *
-     * @return true if splash screen loaded successfully, false otherwise
-     */
     private boolean loadSplashScreen() {
         try {
             final Stage splashStage = new Stage();
@@ -675,7 +959,6 @@ public class Client extends Application {
             splashStage.setOpacity(0.9);
 
             final GridPane pane = new GridPane();
-            // Use lowercase 'file:' for cross-platform compatibility
             final String imagePath = "file:" + vars.getGlimpseDir() + File.separator + "resources" + File.separator + "glimpse-splash.png";
             final Image image = new Image(imagePath);
 
@@ -689,24 +972,17 @@ public class Client extends Application {
             splashRoot.setStyle("-fx-background-color: transparent;");
             splashStage.show();
 
-            // Fade in effect
             final FadeTransition fadeIn = new FadeTransition(Duration.seconds(3), pane);
             fadeIn.setFromValue(0.1);
             fadeIn.setToValue(1);
 
-            // Fade out effect
             final FadeTransition fadeOut = new FadeTransition(Duration.seconds(3), pane);
             fadeOut.setFromValue(1);
             fadeOut.setToValue(0);
 
-            // After fade in, start fade out
             fadeIn.setOnFinished(e -> fadeOut.play());
-
-            // After fade out, hide the splash screen
             fadeOut.setOnFinished(e -> splashStage.hide());
-
             fadeIn.play();
-
         } catch (Exception ex) {
             System.err.println("An error occurred while loading the splash screen.");
             ex.printStackTrace();
@@ -714,7 +990,6 @@ public class Client extends Application {
         return true;
     }
 
-    /** Safely terminates/interrupts execution threads if they exist. */
     private static void safeShutdownExecutionThreads() {
         try {
             if (Client.gCAMExecutionThread != null) {
@@ -723,7 +998,6 @@ public class Client extends Application {
                         Client.gCAMExecutionThread.getStatusChecker().terminate();
                     }
                 } catch (Throwable ignored) {
-                    // Best-effort; continue shutdown.
                 }
                 try {
                     Client.gCAMExecutionThread.shutdownNow();
@@ -731,7 +1005,6 @@ public class Client extends Application {
                 }
             }
         } finally {
-            // Continue with model interface thread regardless.
             if (Client.modelInterfaceExecutionThread != null) {
                 try {
                     if (Client.modelInterfaceExecutionThread.getStatusChecker() != null) {
@@ -747,15 +1020,12 @@ public class Client extends Application {
         }
     }
 
-    /** Prints a consistent elapsed-time marker for startup profiling. */
     private static void logStartupCheckpoint(String label, long t0Nanos) {
-        // Only emit noisy startup timing info when debug mode is enabled.
         try {
             if (!GLIMPSEVariables.getInstance().getDebug()) {
                 return;
             }
         } catch (Throwable ignored) {
-            // If vars isn't initialized yet for some reason, default to no logging.
             return;
         }
 
@@ -765,216 +1035,103 @@ public class Client extends Application {
         System.out.println("[startup] " + label + " | +" + msSinceT0 + "ms | total=" + msSinceProcessStart + "ms");
     }
 
-    // region Getters for private static fields
-    /**
-     * Gets the primary application stage.
-     * @return Stage the primary stage
-     */
     public static Stage getPrimaryStage() { return primaryStage; }
-    /**
-     * Gets the options filename provided via command-line arguments.
-     * @return String the options filename
-     */
     public static String getOptionsFilename() { return optionsFilename; }
-    /**
-     * Gets the pane for creating scenarios.
-     * @return PaneCreateScenario the create scenario pane
-     */
     public static PaneCreateScenario getPaneCreateScenario() { return paneCreateScenario; }
-    /**
-     * Gets the pane for working scenarios.
-     * @return PaneScenarioLibrary the working scenarios pane
-     */
     public static PaneScenarioLibrary getPaneScenarioLibrary() { return paneScenarioLibrary; }
-    /**
-     * Gets the pane for candidate scenario components.
-     * @return PaneComponentLibrary the candidate components pane
-     */
     public static PaneComponentLibrary getPaneComponentLibrary() { return paneComponentLibrary; }
-    /**
-     * Gets the right arrow button.
-     * @return Button the right arrow button
-     */
     public static Button getButtonRightArrow() { return buttonRightArrow; }
-    /**
-     * Gets the left arrow button.
-     * @return Button the left arrow button
-     */
     public static Button getButtonLeftArrow() { return buttonLeftArrow; }
-    /**
-     * Gets the left double arrow button.
-     * @return Button the left double arrow button
-     */
     public static Button getButtonLeftDoubleArrow() { return buttonLeftDoubleArrow; }
-    /**
-     * Gets the edit scenario button.
-     * @return Button the edit scenario button
-     */
     public static Button getButtonEditScenario() { return buttonEditScenario; }
-    /**
-     * Gets the delete component button.
-     * @return Button the delete component button
-     */
     public static Button getButtonDeleteComponent() { return buttonDeleteComponent; }
-    /**
-     * Gets the refresh components button.
-     * @return Button the refresh components button
-     */
     public static Button getButtonRefreshComponents() { return buttonRefreshComponents; }
-    /**
-     * Gets the new component button.
-     * @return Button the new component button
-     */
     public static Button getButtonNewComponent() { return buttonNewComponent; }
-    /**
-     * Gets the edit component button.
-     * @return Button the edit component button
-     */
     public static Button getButtonEditComponent() { return buttonEditComponent; }
-    /**
-     * Gets the browse component library button.
-     * @return Button the browse component library button
-     */
     public static Button getButtonBrowseComponentLibrary() { return buttonBrowseComponentLibrary; }
-    /**
-     * Gets the move component up button.
-     * @return Button the move component up button
-     */
     public static Button getButtonMoveComponentUp() { return buttonMoveComponentUp; }
-    /**
-     * Gets the move component down button.
-     * @return Button the move component down button
-     */
     public static Button getButtonMoveComponentDown() { return buttonMoveComponentDown; }
-    /**
-     * Gets the create scenario config file button.
-     * @return Button the create scenario config file button
-     */
     public static Button getButtonCreateScenarioConfigFile() { return buttonCreateScenarioConfigFile; }
-    /**
-     * Gets the view config button.
-     * @return Button the view config button
-     */
     public static Button getButtonViewConfig() { return buttonViewConfig; }
-    /**
-     * Gets the view log button.
-     * @return Button the view log button
-     */
     public static Button getButtonViewLog() { return buttonViewLog; }
-    /**
-     * Gets the view exe log button.
-     * @return Button the view exe log button
-     */
     public static Button getButtonViewExeLog() { return buttonViewExeLog; }
-    /**
-     * Gets the view errors button.
-     * @return Button the view errors button
-     */
     public static Button getButtonViewErrors() { return buttonViewErrors; }
-    /**
-     * Gets the view exe errors button.
-     * @return Button the view exe errors button
-     */
     public static Button getButtonViewExeErrors() { return buttonViewExeErrors; }
-    /**
-     * Gets the browse scenario folder button.
-     * @return Button the browse scenario folder button
-     */
     public static Button getButtonBrowseScenarioFolder() { return buttonBrowseScenarioFolder; }
-    /**
-     * Gets the import scenario button.
-     * @return Button the import scenario button
-     */
     public static Button getButtonImportScenario() { return buttonImportScenario; }
-    /**
-     * Gets the diff files button.
-     * @return Button the diff files button
-     */
     public static Button getButtonDiffFiles() { return buttonDiffFiles; }
-    /**
-     * Gets the show run queue button.
-     * @return Button the show run queue button
-     */
     public static Button getButtonShowRunQueue() { return buttonShowRunQueue; }
-    /**
-     * Gets the refresh scenario status button.
-     * @return Button the refresh scenario status button
-     */
     public static Button getButtonRefreshScenarioStatus() { return buttonRefreshScenarioStatus; }
-    /**
-     * Gets the delete scenario button.
-     * @return Button the delete scenario button
-     */
     public static Button getButtonDeleteScenario() { return buttonDeleteScenario; }
-    /**
-     * Gets the run scenario button.
-     * @return Button the run scenario button
-     */
     public static Button getButtonRunScenario() { return buttonRunScenario; }
-    /**
-     * Gets the stop scenario button.
-     * @return Button the stop scenario button
-     */
     public static Button getButtonStopScenario() { return buttonStopScenario; }
-    /**
-     * Gets the results button.
-     * @return Button the results button
-     */
     public static Button getButtonResults() { return buttonResults; }
-    /**
-     * Gets the results for selected button.
-     * @return Button the results for selected button
-     */
     public static Button getButtonResultsForSelected() { return buttonResultsForSelected; }
-    /**
-     * Gets the archive scenario button.
-     * @return Button the archive scenario button
-     */
     public static Button getButtonArchiveScenario() { return buttonArchiveScenario; }
-    /**
-     * Gets the report button.
-     * @return Button the report button
-     */
     public static Button getButtonReport() { return buttonReport; }
-    /**
-     * Gets the examine scenario button.
-     * @return Button the examine scenario button
-     */
     public static Button getButtonExamineScenario() { return buttonExamineScenario; }
-    /**
-     * Gets the GCAM execution thread.
-     * @return ExecutionThread the GCAM execution thread
-     */
     public static ExecutionThread getgCAMExecutionThread() { return gCAMExecutionThread; }
-    /**
-     * Gets the model interface execution thread.
-     * @return ExecutionThread the model interface execution thread
-     */
     public static ExecutionThread getgCAMPPExecutionThread() { return modelInterfaceExecutionThread; }
-    // endregion
 
-	public ScenarioBuilder getScenarioBuilder() {
-		return scenarioBuilder;
-	}
-
-    private final AtomicBoolean startupOverlayVisible = new AtomicBoolean(false);
-    private Label startupOverlayLabel;
-    private ProgressIndicator startupOverlayIndicator;
-    private VBox startupOverlayBox;
-
-    private static void setFileDependentUiEnabled(boolean enabled) {
-        if (!Platform.isFxApplicationThread()) {
-            Platform.runLater(() -> setFileDependentUiEnabled(enabled));
+    public static void beginScenarioOperationProgress() {
+        final Client inst = instanceForStatus;
+        if (inst == null) {
             return;
         }
-        if (Client.buttonNewComponent != null) {
-            Client.buttonNewComponent.setDisable(!enabled);
+        Runnable update = inst::incrementScenarioOperationProgress;
+        if (Platform.isFxApplicationThread()) {
+            update.run();
+        } else {
+            Platform.runLater(update);
         }
-        if (Client.buttonEditComponent != null) {
-            Client.buttonEditComponent.setDisable(!enabled);
+    }
+
+    public static void endScenarioOperationProgress() {
+        final Client inst = instanceForStatus;
+        if (inst == null) {
+            return;
         }
-        if (Client.buttonRefreshComponents != null) {
-            Client.buttonRefreshComponents.setDisable(!enabled);
+        Runnable update = inst::decrementScenarioOperationProgress;
+        if (Platform.isFxApplicationThread()) {
+            update.run();
+        } else {
+            Platform.runLater(update);
+        }
+    }
+
+    private void configureStatusBarRightItems() {
+        if (scenarioOperationProgressBar != null) {
+            return;
+        }
+        scenarioOperationProgressBar = new ProgressBar();
+        scenarioOperationProgressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
+        scenarioOperationProgressBar.setPrefWidth(STATUS_BAR_OPERATION_PROGRESS_WIDTH);
+        scenarioOperationProgressBar.setMinWidth(STATUS_BAR_OPERATION_PROGRESS_WIDTH);
+        scenarioOperationProgressBar.setMaxWidth(STATUS_BAR_OPERATION_PROGRESS_WIDTH);
+        scenarioOperationProgressBar.setPrefHeight(STATUS_BAR_OPERATION_PROGRESS_HEIGHT);
+        scenarioOperationProgressBar.setMaxHeight(STATUS_BAR_OPERATION_PROGRESS_HEIGHT);
+        scenarioOperationProgressBar.setVisible(false);
+        scenarioOperationProgressBar.setManaged(false);
+        scenarioOperationProgressBar.setFocusTraversable(false);
+        sb.getRightItems().setAll(scenarioOperationProgressBar);
+    }
+
+    private void incrementScenarioOperationProgress() {
+        configureStatusBarRightItems();
+        if (activeScenarioOperationCount.incrementAndGet() > 0) {
+            scenarioOperationProgressBar.setVisible(true);
+            scenarioOperationProgressBar.setManaged(true);
+            scenarioOperationProgressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
+        }
+    }
+
+    private void decrementScenarioOperationProgress() {
+        configureStatusBarRightItems();
+        int remaining = activeScenarioOperationCount.decrementAndGet();
+        if (remaining <= 0) {
+            activeScenarioOperationCount.set(0);
+            scenarioOperationProgressBar.setVisible(false);
+            scenarioOperationProgressBar.setManaged(false);
         }
     }
 }

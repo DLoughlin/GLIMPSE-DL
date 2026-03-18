@@ -372,7 +372,7 @@ public abstract class BaseTableModel extends AbstractTableModel {
 	final JList list = new JList(items);
 	list.setSelectionMode(DefaultListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
     
-	JScrollPane scrollingList = new JScrollPane(list);
+	new JScrollPane(list);
     		
     final JFrame parentFrame = InterfaceMain.getInstance().getFrame();
     final JDialog filterDialog = new JDialog(parentFrame, tableTypeString + " for '" + ((DOMmodel.DOMNodeAdapter)itemsObjs[itemsObjs.length-1]).getNode().getNodeName() + "'. Please choose two headers:", true);
@@ -746,8 +746,6 @@ public abstract class BaseTableModel extends AbstractTableModel {
        private String[] getRemainingIdentifiers(JTable table) {
 
     	    String[] identifiers = new String[table.getColumnCount()];
-    	    int k = 0;
-
     	    for(int i = 0; i < table.getColumnCount(); i++) {
     	            identifiers[i] = table.getColumnName(i);
     	        

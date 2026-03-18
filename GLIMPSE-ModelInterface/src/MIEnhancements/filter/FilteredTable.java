@@ -333,8 +333,8 @@ public class FilteredTable {
         jb.addActionListener(e -> {
                 if (debug)
                     System.out.println("FilteredTable: mapping press: " + chartName + " " + Arrays.toString(unit) + " " + path + " " + doubleIndex + " " + jtable.getColumnCount() + "  " + jtable.getRowCount());
-                Map<String, Integer[]> metaMap = ModelInterfaceUtil.getMetaIndex2(jtable, doubleIndex);
-                HashMap<String, String> unitsMap = ModelInterfaceUtil.getUnitDataFromTableByLastNamedCol(jtable);
+                ModelInterfaceUtil.getMetaIndex2(jtable, doubleIndex);
+                ModelInterfaceUtil.getUnitDataFromTableByLastNamedCol(jtable);
                 boolean checkStates = checkContainAnyState(jtable);
                 boolean checkCountries = checkContainAnyCountryRegion(jtable);
                 boolean noRowSelected = jtable.getSelectionModel().isSelectionEmpty();
@@ -373,7 +373,7 @@ public class FilteredTable {
         jb.setToolTipText("Beta: Plot data to Sankey Diagram");
         jb.setFont(jb.getFont());
         jb.addActionListener(e -> {
-                boolean noRowSelected = jtable.getSelectionModel().isSelectionEmpty();
+                jtable.getSelectionModel().isSelectionEmpty();
                 boolean containOtherColumns = checkContainOtherColumns(jtable);
                 if (!containOtherColumns) {
                     JOptionPane.showMessageDialog(null, "the query results cannot generate a flow dataset.");

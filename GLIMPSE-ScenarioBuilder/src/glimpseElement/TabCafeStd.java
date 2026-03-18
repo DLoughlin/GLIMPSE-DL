@@ -94,7 +94,6 @@ public class TabCafeStd extends PolicyTab implements Runnable {
     private static final String LABEL_NAMES = "Names:";
     private static final String LABEL_SUBSECTOR = "Subsector:";
     private static final String LABEL_POPULATE = "Populate:";
-    private static final String LABEL_FINAL_VAL = "Final Val: ";
     private static final String LABEL_TECHS = "Tech(s): ";
     private static final String LABEL_UNITS = "Units:";
     private static final String[] SUBSECTOR_OPTIONS = {"Select One", "Car", "Large Car and Truck", "Light Truck", "Medium Truck", "Heavy Truck"};
@@ -108,11 +107,9 @@ public class TabCafeStd extends PolicyTab implements Runnable {
     private static final String HEADER_PART2 = "GLIMPSEPFStdActivate";
     private static final String INPUT_TABLE = "INPUT_TABLE";
     private static final String VARIABLE_ID = "Variable ID";
-    private static final String WARNING_UNITS = "Warning - Units do not match!";
     private static final String NO_MATCH = "No match";
     private static final String SELECT_ONE = "Select One";
     private static final String REG = "Reg";
-    private static final String POLICY_TYPE = "CAFE_--";
     private static final String MARKET_SUFFIX = "_Mkt";
 
     // === UI Components ===
@@ -597,11 +594,8 @@ public class TabCafeStd extends PolicyTab implements Runnable {
      */
     public void setUnitsLabel() {
         String s = getUnits();
-        String label;
         if (NO_MATCH.equals(s)) {
-            label = WARNING_UNITS;
         } else {
-            label = s;
         }
         // Optionally update a UI label here if needed
     }

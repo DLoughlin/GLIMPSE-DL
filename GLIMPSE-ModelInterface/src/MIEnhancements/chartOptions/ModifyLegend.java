@@ -84,7 +84,6 @@ public class ModifyLegend extends JDialog {
     private Chart chart;
     private Chart[] charts;
     private String[] legend;
-    private int id;
     private JFreeChart jfchart;
     private JTextField jtf;
     /**
@@ -93,7 +92,6 @@ public class ModifyLegend extends JDialog {
     public int eventApply;
     public JDialog cancelDialog;
     private JButton jbColor;
-    private JTextField jtfChanged;
     private String changeColLegend;
     private HashMap<String, JComboBox> patternLookup = new HashMap<>();
     private HashMap<String, JComboBox> strokeLookup = new HashMap<>();
@@ -113,7 +111,6 @@ public class ModifyLegend extends JDialog {
         if (charts == null)
             return;
         this.charts = charts;
-        this.id = id;
         this.chart = charts[id];
         cancelDialog = this;
         setLegendUI();
@@ -207,14 +204,12 @@ public class ModifyLegend extends JDialog {
             jb.addActionListener(mbl);
             gridbag.setConstraints(jb, c);
             jp.add(jb);
-            // Pattern combo box
-            int[] pattern = chart.getPattern();
+            chart.getPattern();
             JComboBox jcb = new JComboBox(iiList);
             patternLookup.put(legend[j].trim(), jcb);
             gridbag.setConstraints(jcb, c);
             jp.add(jcb);
-            // Stroke combo box
-            int[] ls = chart.getLineStrokes();
+            chart.getLineStrokes();
             jcb = new JComboBox(iiStrokeList);
             strokeLookup.put(legend[j].trim(), jcb);
             gridbag.setConstraints(jcb, c);
@@ -380,7 +375,6 @@ public class ModifyLegend extends JDialog {
             setFldValue(e);
             eventApply = Integer.valueOf(jtf.getToolTipText().trim());
             jbColor = jb;
-            jtfChanged = jtf;
         }
         public void removeUpdate(DocumentEvent e) {
             setFldValue(e);

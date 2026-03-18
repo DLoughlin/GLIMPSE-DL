@@ -65,7 +65,6 @@ public class FilterTreePaneYears {
     private static final boolean playWithLineStyle = false;
     private static final String lineStyle = "Horizontal";
     private JTree tree;
-    private boolean existSel = false;
     private JTable jtable;
     public JDialog dialog;
     private boolean debug = false;

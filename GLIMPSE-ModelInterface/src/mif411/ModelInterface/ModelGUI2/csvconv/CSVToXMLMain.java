@@ -215,7 +215,6 @@ public class CSVToXMLMain {
 				DataInputStream fin = new DataInputStream(fis);
 				BufferedReader stdInput = new BufferedReader(new InputStreamReader(fin));
 
-				int inputLine_no = 0;
 				inputLine = stdInput.readLine().trim(); // read one line of input
 
 				// Dan added to address issue of CSV-written files having lines ending in commas
@@ -290,7 +289,6 @@ public class CSVToXMLMain {
 
 					if ((inputLine = stdInput.readLine()) != null) {
 						inputLine.trim();
-						inputLine_no++;
 
 					}
 				}

@@ -386,7 +386,9 @@ public class Chart {
 				if (myLine.contains(":") && !myLine.contains("*")) {
 					String queryNameInFile = ((String) temp[i]).split(":")[0].trim();
 					if (queryNameInFile.equals(queryNameForChart)) {
-						String secondPart = ((String) temp[i]).split(":")[1].trim();
+						// Currently, lines with a matching query name and ':' but no '*'
+						// are not used to populate legend entries; skip further processing.
+						continue;
 					}
 				} else {
 					String firstPart = ((String) temp[i]).split("=")[0];

@@ -55,6 +55,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
@@ -238,6 +239,9 @@ public class ScenarioBuilder {
 		vBoxComponentLibrary = new VBox(6, labelComponentLibrary, paneObjects, Client.paneComponentLibrary.getvBox());
 		vBoxComponentLibrary.getStyleClass().add(STYLE_PANEL_CARD);
 		vBoxComponentLibrary.setStyle(styles.getStyle1());
+		vBoxComponentLibrary.setFillWidth(true);
+		vBoxComponentLibrary.setMaxWidth(Double.MAX_VALUE);
+		VBox.setVgrow(Client.paneComponentLibrary.getvBox(), Priority.ALWAYS);
 	}
 
 	/**
@@ -254,6 +258,9 @@ public class ScenarioBuilder {
 		vBoxCreateScenario = new VBox(6, labelScenarioName, Client.paneCreateScenario.getvBox());
 		vBoxCreateScenario.getStyleClass().add(STYLE_PANEL_CARD);
 		vBoxCreateScenario.setStyle(styles.getStyle1());
+		vBoxCreateScenario.setFillWidth(true);
+		vBoxCreateScenario.setMaxWidth(Double.MAX_VALUE);
+		VBox.setVgrow(Client.paneCreateScenario.getvBox(), Priority.ALWAYS);
 	}
 
 	/**
@@ -331,11 +338,17 @@ public class ScenarioBuilder {
 		);
 
 		VBox content = new VBox(4, buttonHBox, Client.paneScenarioLibrary.gethBox());
+		content.setFillWidth(true);
+		content.setMaxWidth(Double.MAX_VALUE);
+		VBox.setVgrow(Client.paneScenarioLibrary.gethBox(), Priority.ALWAYS);
 
 		vBoxRun = new VBox(6, labelScenarioLibrary, content);
 		vBoxRun.getStyleClass().add(STYLE_PANEL_CARD);
 		// Don't use legacy style1 here: it adds the blue border around the whole Scenario Library pane.
 		vBoxRun.setStyle("");
+		vBoxRun.setFillWidth(true);
+		vBoxRun.setMaxWidth(Double.MAX_VALUE);
+		VBox.setVgrow(content, Priority.ALWAYS);
 	}
 
 	/**
@@ -412,15 +425,23 @@ public class ScenarioBuilder {
 	 */
 	private void loadSelectedScenarioForEditing(ActionEvent event) {
 		ObservableList<ScenarioRow> selectedScenarios = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems();
-		if (selectedScenarios.size() != 1) {
+		if (selectedScenarios == null || selectedScenarios.size() != 1) {
 			return;
 		}
 
 		ScenarioRow selectedScenario = selectedScenarios.get(0);
-		String scenarioName = selectedScenario.getScenarioName().trim();
-		String components = selectedScenario.getComponents().trim();
+		if (selectedScenario == null) {
+			return;
+		}
 
-		if (components.startsWith(EXTERNALLY_CREATED_SCENARIO_PREFIX)) {
+		String scenarioName = getNormalizedScenarioName(selectedScenario);
+		if (scenarioName.isEmpty()) {
+			utils.showInformationDialog("Information", "Scenario not ready.", "The selected scenario is missing a scenario name. Please refresh the scenario library and try again.");
+			return;
+		}
+
+		String components = getNormalizedScenarioComponents(selectedScenario);
+		if (isExternallyCreatedScenario(components)) {
 			utils.showInformationDialog("Information", "Function not supported.", "Cannot modify scenario components in a scenario created outside of the ScenarioBuilder.");
 			return;
 		}
@@ -451,6 +472,32 @@ public class ScenarioBuilder {
 		}
 
 		setArrowAndButtonStatus();
+	}
+
+	private boolean isScenarioEditable(ScenarioRow scenarioRow) {
+		return !getNormalizedScenarioName(scenarioRow).isEmpty()
+			&& !getNormalizedScenarioComponents(scenarioRow).isEmpty()
+			&& !isExternallyCreatedScenario(getNormalizedScenarioComponents(scenarioRow));
+	}
+
+	private String getNormalizedScenarioName(ScenarioRow scenarioRow) {
+		if (scenarioRow == null) {
+			return "";
+		}
+		String scenarioName = scenarioRow.getScenarioName();
+		return scenarioName == null ? "" : scenarioName.trim();
+	}
+
+	private String getNormalizedScenarioComponents(ScenarioRow scenarioRow) {
+		if (scenarioRow == null) {
+			return "";
+		}
+		String components = scenarioRow.getComponents();
+		return components == null ? "" : components.trim();
+	}
+
+	private boolean isExternallyCreatedScenario(String components) {
+		return components != null && components.startsWith(EXTERNALLY_CREATED_SCENARIO_PREFIX);
 	}
 
 	/**
@@ -527,17 +574,18 @@ public class ScenarioBuilder {
 		int numSelectedScenarios = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems().size();
 		int numSelectedCreate = ComponentLibraryTable.getTableCreateScenario().getSelectionModel().getSelectedItems().size();
 		int numSelectedCandidate = ComponentLibraryTable.getTableComponents().getSelectionModel().getSelectedItems().size();
+		boolean hasScenariosSelected = numSelectedScenarios >= 1;
+		boolean hasSingleScenarioSelected = numSelectedScenarios == 1;
 
 		// Scenario Library buttons
-		boolean hasScenariosSelected = numSelectedScenarios >= 1;
 		Client.buttonBrowseScenarioFolder.setDisable(!hasScenariosSelected);
 		Client.buttonDeleteScenario.setDisable(!hasScenariosSelected);
-		Client.buttonViewConfig.setDisable(!hasScenariosSelected);
+		Client.buttonViewConfig.setDisable(false);
 		Client.buttonArchiveScenario.setDisable(!hasScenariosSelected);
 		Client.buttonViewLog.setDisable(!hasScenariosSelected);
 		Client.buttonViewErrors.setDisable(!hasScenariosSelected);
 		Client.buttonRunScenario.setDisable(!hasScenariosSelected);
-		Client.buttonEditScenario.setDisable(numSelectedScenarios != 1);
+		Client.buttonEditScenario.setDisable(!hasSingleScenarioSelected);
 		Client.buttonResultsForSelected.setDisable(numSelectedScenarios != 1);
 		Client.buttonDiffFiles.setDisable(numSelectedScenarios != 2);
 

@@ -58,8 +58,6 @@ import javafx.scene.control.SeparatorMenuItem;
  */
 public final class SetupMenuTools {
 
-    private static final long GIGABYTE = 1024L * 1024 * 1024;
-
     private final GLIMPSEVariables vars = GLIMPSEVariables.getInstance();
     private final GLIMPSEUtils utils = GLIMPSEUtils.getInstance();
     private final GLIMPSEFiles files = GLIMPSEFiles.getInstance();
@@ -70,8 +68,6 @@ public final class SetupMenuTools {
         // --- Main Tools ---
         menuTools.getItems().addAll(
             createMenuItem("Check Installation", () -> utils.displayString(vars.examineGLIMPSESetup(), "Analysis of GLIMPSE setup")),
-            createMenuItem("Check Current DB Size", this::checkDatabaseSize),
-            createMenuItem("Scenario Report", () -> Client.buttonReport.fire()),
             createMenuItem("Archive Scenario", () -> Client.buttonArchiveScenario.fire()),
             createMenuItem("Fix Lost Handle", () -> {
                 utils.fixLostHandle();
@@ -101,22 +97,6 @@ public final class SetupMenuTools {
         );
         
         menuTools.getItems().add(menuAdvanced);
-    }
-
-    private void checkDatabaseSize() {
-        File databaseFolder = new File(vars.getgCamOutputDatabase());
-        String shortName = databaseFolder.getName();
-        float sizeInGB = (float) files.getDirectorySize(databaseFolder.toPath()) / GIGABYTE;
-        
-        String message = String.format("Current size is %.2f GB.%s", sizeInGB, vars.getEol());
-        String recommendation = String.format("Max advisable size is %d GB.", vars.getMaxDatabaseSizeGB());
-
-        if (sizeInGB > vars.getMaxDatabaseSizeGB() * 0.75) {
-            message += "WARNING! " + recommendation + " Please see Users Guide on managing database size." + vars.getEol();
-        } else {
-            message += recommendation + vars.getEol();
-        }
-        utils.showInformationDialog("Check current DB size", "Current database: " + shortName, message);
     }
 
     private void cleanupSavedFilesAction() {

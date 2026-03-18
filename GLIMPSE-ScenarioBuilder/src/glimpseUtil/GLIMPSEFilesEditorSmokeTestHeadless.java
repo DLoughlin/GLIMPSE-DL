@@ -17,12 +17,26 @@ public final class GLIMPSEFilesEditorSmokeTestHeadless {
 		}
 	}
 
+	private static void printTokenization(String label, String command) {
+		java.util.List<String> tokens = CommandLineTokenizer.tokenize(command);
+		System.out.println(label + " command=" + command);
+		System.out.println(label + " tokens =" + tokens);
+		if (!tokens.isEmpty()) {
+			File token0 = new File(tokens.get(0));
+			System.out.println(label + " token0 =" + token0.getPath() + " exists=" + token0.exists() + " absolute=" + token0.getAbsolutePath());
+		}
+	}
+
 	public static void main(String[] args) throws Exception {
 		GLIMPSEVariables vars = GLIMPSEVariables.getInstance();
 		GLIMPSEFiles files = GLIMPSEFiles.getInstance();
 
 		// Inject headless utils.
 		files.init(new HeadlessUtils(), vars, null, null);
+
+		printTokenization("plain-notepad", "c:\\windows\\notepad.exe");
+		printTokenization("quoted-notepad", "\"c:\\windows\\notepad.exe\"");
+		printTokenization("notepad-plus-plus-style", "\"C:\\Program Files\\Notepad++\\notepad++.exe\" -multiInst");
 
 		// Force a bogus editor so we exercise the ProcessRunner-start failure path.
 		vars.setTextEditor("this_editor_does_not_exist_hopefully");

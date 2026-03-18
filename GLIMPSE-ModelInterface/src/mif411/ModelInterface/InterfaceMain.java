@@ -71,6 +71,8 @@ import javax.swing.UIManager;
 import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
+import javax.swing.JProgressBar;
+import javax.swing.SwingConstants;
 
 import org.basex.query.QueryException;
 import org.basex.query.QueryProcessor;
@@ -109,8 +111,42 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 public class InterfaceMain implements ActionListener {
+	private enum StatusBarProgressMode {
+		NONE,
+		QUERY,
+		SHUTDOWN
+	}
+
+	private enum LoadingViewMode {
+		STARTUP,
+		SHUTDOWN
+	}
+
+	private static final int STARTUP_MESSAGE_LINGER_MS = 200;
+	private static final int STARTUP_PROGRESS_MAX = 100;
+	private static final int STARTUP_TOTAL_STEPS = 5;
+	private static final int SHUTDOWN_TOTAL_STEPS = 4;
+	private static final int SHUTDOWN_STEP_LINGER_MS = 120;
+	private static final String STARTUP_MESSAGE_WITH_DB = "Starting GLIMPSE...";
+	private static final String STARTUP_MESSAGE_WITHOUT_DB = "Starting GLIMPSE... waiting for database selection.";
+	private static final String STARTUP_MESSAGE_INITIALIZING = "Loading interface...";
+	private static final String STARTUP_MESSAGE_STATUS_BAR = "Preparing workspace...";
+	private static final String STARTUP_MESSAGE_DB_VIEW = "Preparing database view...";
+	private static final String STARTUP_MESSAGE_DB_PROMPT = "Waiting for database choice...";
+	private static final String STARTUP_MESSAGE_OPENING_DB = "Opening database...";
+	private static final String STARTUP_MESSAGE_READY = "Ready.";
+	private static final String SHUTDOWN_MESSAGE_STARTING = "Shutting down...";
+	private static final String SHUTDOWN_MESSAGE_SAVING_WINDOW = "Shutting down... saving window state.";
+	private static final String SHUTDOWN_MESSAGE_SAVING_SETTINGS = "Shutting down... saving settings.";
+	private static final String SHUTDOWN_MESSAGE_CLOSING_DB = "Shutting down... closing database.";
+	private static final String SHUTDOWN_MESSAGE_EXITING = "Shutting down... closing application.";
+	private static javax.swing.Timer pendingStartupDbViewerTimer;
 	// Restore missing shutdown guard for orderly exit.
 	private final java.util.concurrent.atomic.AtomicBoolean shuttingDown = new java.util.concurrent.atomic.AtomicBoolean(false);
+	private static final String LAZY_OPEN_INPUT_VIEWER = "LazyOpen:InputViewer";
+	private static final String LAZY_OPEN_PP_VIEWER = "LazyOpen:PPViewer";
+	private static final String LAZY_OPEN_CONFIGURATION_EDITOR = "LazyOpen:ConfigurationEditor";
+	private static final long STARTUP_NANOS = System.nanoTime();
 
 	// Use platform Look & Feel defaults for fonts (do not force a unified size).
 	private static final Color UNIFIED_BG = new Color(245, 245, 250); // Soft background
@@ -118,6 +154,17 @@ public class InterfaceMain implements ActionListener {
 	private static final Color UNIFIED_BTN_BG = new Color(230, 235, 245); // Button background
 	private static final Color UNIFIED_BTN_FG = new Color(30, 30, 60); // Button foreground
 	private static final Color UNIFIED_BORDER = new Color(200, 200, 220); // Border color
+
+	private JPanel startupLoadingView;
+	private JLabel startupLoadingLabel;
+	private JProgressBar startupLoadingBar;
+	private int startupStepsCompleted;
+	private int startupTotalSteps = STARTUP_TOTAL_STEPS;
+	private String startupDefaultMessage = STARTUP_MESSAGE_WITH_DB;
+	private int shutdownStepsCompleted;
+	private int shutdownTotalSteps = SHUTDOWN_TOTAL_STEPS;
+	private String shutdownDefaultMessage = SHUTDOWN_MESSAGE_STARTING;
+	private LoadingViewMode loadingViewMode = LoadingViewMode.STARTUP;
 
 	/**
 	 * Split a delimited list property (e.g., year lists) supporting either ';' or ','
@@ -137,10 +184,35 @@ public class InterfaceMain implements ActionListener {
 		return trimmed.split("\\s*[;,]\\s*");
 	}
 
-	/**
-	 * Unique identifier used for serializing.
-	 */
-	private static final long serialVersionUID = -9137748180688015902L;
+	private static long elapsedMillis(long startNanos) {
+		return (System.nanoTime() - startNanos) / 1_000_000L;
+	}
+
+	private static final String STARTUP_TIMING_PROPERTY = "do_output_timings";
+	private static volatile boolean outputStartupTimings = false;
+
+	public static boolean shouldOutputStartupTimings() {
+		return outputStartupTimings;
+	}
+
+	public static void configureStartupTimingOutput(Properties props) {
+		String value = System.getProperty(STARTUP_TIMING_PROPERTY);
+		if (value == null && props != null) {
+			value = props.getProperty(STARTUP_TIMING_PROPERTY);
+		}
+		outputStartupTimings = value != null && Boolean.parseBoolean(value.trim());
+	}
+
+	public static void logStartupTiming(String message) {
+		if (!shouldOutputStartupTimings()) {
+			return;
+		}
+		System.out.println("[startup] " + message);
+	}
+
+	private static void logStartup(String stage) {
+		logStartupTiming(stage + " @ " + elapsedMillis(STARTUP_NANOS) + " ms");
+	}
 
 	public static final int FILE_MENU_POS = 0;
 	public static final int EDIT_MENU_POS = 1;
@@ -181,43 +253,28 @@ public class InterfaceMain implements ActionListener {
 	private static File propertiesFile;
 	private static String oldControl;
 	private static InterfaceMain main;
-	private JMenuItem newMenu;
 	private JMenuItem saveMenu;
 	private JMenuItem saveAsMenu;
 	private JMenuItem quitMenu;
-	private JMenuItem copyMenu;
-	private JMenuItem pasteMenu;
 	private JMenuItem undoMenu;
 	private JMenuItem redoMenu;
 	private JMenuItem batchMenu;
-	private JMenuItem toolsCSVMenu; // YD added
-	private JMenuItem toolsUnitMenu; // YD added
-	private JMenuItem editRegionsMenu; // Added: Edit Regions menu item
 	private JMenuItem selectQueryMenu;
 	private JMenuItem editQueryFileMenu; // Open current query file in XML editor
 
-	// New Config menu items
-	private JMenuItem selectQueryFileMenu;
-	private JMenuItem selectUnitsFileMenu;
-	private JMenuItem selectRegionsFileMenu;
-	private JMenuItem selectMapResourceFolderMenu;
-
-	private JMenuItem editQuerySubMenu; // YD added
 	private JMenuItem toggleAutoGraphicsMenu;
-	private JMenu advancedSubMenu1;// YD added
-	private JMenu advancedSubMenu2;// YD added
 	private Properties savedProperties;
 	private UndoManager undoManager;
 
 	// New: Help menu primary item
 	private JMenuItem helpItem;
 
-	// New: Edit -> Query File menu item (enabled only when a query file is set)
-	private JMenuItem queryTreeFileMenu;
-
 	private MenuAdder dbView = null;
 
 	private List<MenuAdder> menuAdders;
+	private MenuAdder inputView = null;
+	private MenuAdder ppView = null;
+	private MenuAdder confEditor = null;
 	static String path = null;
 	static String queryFilename = null;
 
@@ -307,6 +364,7 @@ public class InterfaceMain implements ActionListener {
 	private JLabel activeDbStatusLabel;
 	private JLabel queryProgressLabel;
 	private javax.swing.JProgressBar queryProgressBar;
+	private StatusBarProgressMode statusBarProgressMode = StatusBarProgressMode.NONE;
 
 	/**
 	 * Main function, creates a new thread for the gui and runs it.
@@ -344,6 +402,7 @@ public class InterfaceMain implements ActionListener {
 				ioe.printStackTrace();
 			}
 		}
+		configureStartupTimingOutput(bootProps);
 
 		Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
 			public void uncaughtException(Thread t, Throwable e) {
@@ -654,6 +713,7 @@ public class InterfaceMain implements ActionListener {
 		} catch (IOException ioe) {
 			ioe.printStackTrace();
 		}
+		logStartup("boot properties resolved");
 
 		try {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
@@ -664,7 +724,9 @@ public class InterfaceMain implements ActionListener {
 
 		javax.swing.SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
+				final long guiStart = System.nanoTime();
 				createGUI();
+				logStartupTiming("createGUI finished in " + elapsedMillis(guiStart) + " ms");
 				if (path != null) {
 					File dbFile = new File(path);
 					if (!dbFile.exists()) {
@@ -672,17 +734,20 @@ public class InterfaceMain implements ActionListener {
 								"The database '" + path + "' does not exist. Would you like to create it?",
 								"Create Database?", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
 						if (response == JOptionPane.NO_OPTION || response == JOptionPane.CLOSED_OPTION) {
-							// User chose not to create it, so we can just show the GUI without a DB
-							// or ask what to do next. For now, just show the GUI.
+							main.completeStartupStep(STARTUP_MESSAGE_READY);
 							showGUI();
 							return;
 						}
 						// If yes, doOpenDB will create it.
 					}
+					main.updateStartupLoadingMessage(STARTUP_MESSAGE_OPENING_DB);
 					DbViewer db = (DbViewer) main.dbView;
+					final long dbOpenStart = System.nanoTime();
 					try {
 						db.doOpenDB(dbFile, !dbFile.exists());
+						logStartupTiming("DbViewer.doOpenDB finished in " + elapsedMillis(dbOpenStart) + " ms");
 					} catch (Exception e) {
+						logStartupTiming("DbViewer.doOpenDB failed after " + elapsedMillis(dbOpenStart) + " ms");
 						// Suppress "Provider rsrc not installed" error which can happen with BaseX initialization in some environments
 						if (e instanceof java.nio.file.FileSystemNotFoundException && e.getMessage() != null && e.getMessage().contains("rsrc")) {
 							// do nothing
@@ -692,6 +757,7 @@ public class InterfaceMain implements ActionListener {
 							e.printStackTrace();
 						}
 					}
+					main.completeStartupStep(STARTUP_MESSAGE_READY);
 					File f = new File(path);
 					File[] files = new File[1];
 					files[0] = f;
@@ -699,31 +765,27 @@ public class InterfaceMain implements ActionListener {
 
 				}
 				else {
-					// if no path is specified, ask the user what to do
 					String[] options = { "Choose Database", "Open without Database", "Quit" };
 					int response = JOptionPane.showOptionDialog(main.mainFrame,
 							"No database specified. What would you like to do?", "Database not specified",
 							JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
 					switch (response) {
 					case 0:
-						// "Choose Database"
-						// This will trigger the file chooser and then the rest of the UI will be built
 						((ActionListener)main.dbView).actionPerformed(new ActionEvent(main.mainFrame, ActionEvent.ACTION_PERFORMED, "Open DB"));
 						break;
 					case 1:
-						// "Open without Database" - just show the GUI
 						break;
 					case 2:
-						// "Quit"
 						System.exit(0);
 						break;
 					default:
-						// User closed dialog, so quit
 						System.exit(0);
 						break;
 					}
+					main.completeStartupStep(STARTUP_MESSAGE_READY);
 				}
 				showGUI();
+				logStartup("main window shown");
 			}
 		});
 
@@ -762,8 +824,10 @@ public class InterfaceMain implements ActionListener {
 	 * Create a new instance of this class and makes it visible
 	 */
 	private static void createGUI() {
+		final long createGuiStart = System.nanoTime();
 		main = null;
 		main = new InterfaceMain();
+		main.resetStartupProgress(path != null ? STARTUP_MESSAGE_WITH_DB : STARTUP_MESSAGE_WITHOUT_DB);
 		main.mainFrame = new JFrame("Model Interface");
 		String image_str = Paths.get(".", "config", "results.png").toString();
 		main.mainFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(image_str));
@@ -797,15 +861,41 @@ public class InterfaceMain implements ActionListener {
 			}
 		}
 		main.mainFrame.setSize(Integer.parseInt(lastWidth), Integer.parseInt(lastHeight));
-
 		main.mainFrame.setLayout(new BorderLayout());
-		main.initialize();
-		main.initStatusBar();
-		// main.pack();
-		main.mainFrame.setVisible(false);
-		if (path != null) {
-			main.fireControlChange("DbViewer");
+		main.mainFrame.setLocationRelativeTo(null);
+		main.mainFrame.setVisible(true);
+		main.showStartupLoadingView(path != null ? STARTUP_MESSAGE_WITH_DB : STARTUP_MESSAGE_WITHOUT_DB);
 
+		main.initialize();
+		main.completeStartupStep(STARTUP_MESSAGE_INITIALIZING);
+		logStartupTiming("initialize() finished in " + elapsedMillis(createGuiStart) + " ms");
+		main.initStatusBar();
+		main.completeStartupStep(STARTUP_MESSAGE_STATUS_BAR);
+		main.showStartupLoadingView(path != null ? STARTUP_MESSAGE_WITH_DB : STARTUP_MESSAGE_WITHOUT_DB);
+		cancelPendingStartupDbViewerTimer();
+		if (path != null) {
+			final javax.swing.Timer startupDelayTimer = new javax.swing.Timer(STARTUP_MESSAGE_LINGER_MS,
+					new ActionListener() {
+						@Override
+						public void actionPerformed(ActionEvent e) {
+							pendingStartupDbViewerTimer = null;
+							main.completeStartupStep(STARTUP_MESSAGE_DB_VIEW);
+							main.fireControlChange("DbViewer");
+						}
+					});
+			startupDelayTimer.setRepeats(false);
+			pendingStartupDbViewerTimer = startupDelayTimer;
+			startupDelayTimer.start();
+		} else {
+			main.completeStartupStep(STARTUP_MESSAGE_DB_PROMPT);
+		}
+		logStartupTiming("createGUI total " + elapsedMillis(createGuiStart) + " ms");
+	}
+
+	private static void cancelPendingStartupDbViewerTimer() {
+		if (pendingStartupDbViewerTimer != null) {
+			pendingStartupDbViewerTimer.stop();
+			pendingStartupDbViewerTimer = null;
 		}
 	}
 
@@ -910,6 +1000,273 @@ public class InterfaceMain implements ActionListener {
 
 	}
 
+	private JPanel createStartupLoadingView() {
+		JPanel panel = new JPanel(new java.awt.GridBagLayout());
+		panel.setOpaque(true);
+		panel.setBackground(UNIFIED_BG);
+
+		JPanel content = new JPanel();
+		content.setOpaque(true);
+		content.setBackground(UNIFIED_PANEL_BG);
+		content.setLayout(new javax.swing.BoxLayout(content, javax.swing.BoxLayout.Y_AXIS));
+		content.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createCompoundBorder(
+						BorderFactory.createLineBorder(new Color(220, 224, 234), 1, true),
+						BorderFactory.createEmptyBorder(22, 28, 22, 28)),
+				BorderFactory.createEmptyBorder(0, 0, 0, 0)));
+
+		startupLoadingLabel = new JLabel("Loading...", SwingConstants.CENTER);
+		startupLoadingLabel.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
+		startupLoadingLabel.setForeground(new Color(70, 76, 96));
+		startupLoadingLabel.setFont(startupLoadingLabel.getFont().deriveFont(java.awt.Font.BOLD, 19f));
+		startupLoadingLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+
+		startupLoadingBar = new JProgressBar(0, STARTUP_PROGRESS_MAX);
+		startupLoadingBar.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
+		startupLoadingBar.setIndeterminate(false);
+		startupLoadingBar.setValue(0);
+		startupLoadingBar.setStringPainted(true);
+		startupLoadingBar.setString("0%");
+		startupLoadingBar.setBorderPainted(false);
+		startupLoadingBar.setBackground(new Color(236, 239, 247));
+		startupLoadingBar.setForeground(new Color(116, 138, 196));
+		startupLoadingBar.setPreferredSize(new java.awt.Dimension(240, 24));
+		startupLoadingBar.setMaximumSize(new java.awt.Dimension(240, 24));
+
+		content.add(startupLoadingLabel);
+		content.add(startupLoadingBar);
+		applyCurrentLoadingProgressState();
+		panel.add(content);
+		return panel;
+	}
+
+	private JPanel getStartupLoadingView() {
+		if (startupLoadingView == null) {
+			startupLoadingView = createStartupLoadingView();
+		}
+		return startupLoadingView;
+	}
+
+	private void showShutdownLoadingView(final String message) {
+		final Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				ensureStatusBarInstalled();
+				loadingViewMode = LoadingViewMode.SHUTDOWN;
+				getStartupLoadingView();
+				if (message != null && !message.trim().isEmpty()) {
+					shutdownDefaultMessage = message;
+					startupLoadingLabel.setText(message);
+				}
+				applyCurrentLoadingProgressState();
+				setMainView(getStartupLoadingView());
+				if (mainFrame != null) {
+					mainFrame.getGlassPane().setVisible(false);
+					if (mainFrame.getJMenuBar() != null) {
+						mainFrame.getJMenuBar().setVisible(false);
+					}
+					if (statusBar != null) {
+						statusBar.setVisible(false);
+					}
+					mainFrame.setVisible(true);
+					rootContent.revalidate();
+					rootContent.repaint();
+					java.awt.Component center = ((BorderLayout) rootContent.getLayout()).getLayoutComponent(BorderLayout.CENTER);
+					if (center != null) {
+						center.repaint();
+						if (center instanceof javax.swing.JComponent) {
+							((javax.swing.JComponent) center).paintImmediately(((javax.swing.JComponent) center).getBounds());
+						}
+					}
+					rootContent.paintImmediately(rootContent.getBounds());
+				}
+			}
+		};
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			r.run();
+		} else {
+			try {
+				javax.swing.SwingUtilities.invokeAndWait(r);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			} catch (java.lang.reflect.InvocationTargetException e) {
+				System.err.println("Failed to show shutdown loading view: " + e);
+			}
+		}
+	}
+
+	private void allowShutdownProgressPaint() {
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			return;
+		}
+		try {
+			Thread.sleep(SHUTDOWN_STEP_LINGER_MS);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
+	}
+
+	public void updateStartupLoadingMessage(final String message) {
+		if (message == null || message.trim().isEmpty()) {
+			return;
+		}
+		final Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				getStartupLoadingView();
+				startupDefaultMessage = message;
+				startupLoadingLabel.setText(message);
+				if (mainFrame != null && mainFrame.isVisible()) {
+					startupLoadingLabel.repaint();
+				}
+			}
+		};
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			r.run();
+		} else {
+			javax.swing.SwingUtilities.invokeLater(r);
+		}
+	}
+
+	public void showStartupLoadingView(final String message) {
+		final Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				ensureStatusBarInstalled();
+				loadingViewMode = LoadingViewMode.STARTUP;
+				getStartupLoadingView();
+				if (message != null && !message.trim().isEmpty()) {
+					startupDefaultMessage = message;
+					startupLoadingLabel.setText(message);
+				}
+				applyCurrentLoadingProgressState();
+				setMainView(getStartupLoadingView());
+				if (mainFrame != null) {
+					mainFrame.setLocationRelativeTo(null);
+					mainFrame.setVisible(true);
+					mainFrame.getGlassPane().setVisible(false);
+					rootContent.paintImmediately(rootContent.getBounds());
+				}
+			}
+		};
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			r.run();
+		} else {
+			javax.swing.SwingUtilities.invokeLater(r);
+		}
+	}
+
+	public void hideStartupLoadingView() {
+		final Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				startupStepsCompleted = 0;
+				startupTotalSteps = STARTUP_TOTAL_STEPS;
+				startupDefaultMessage = STARTUP_MESSAGE_WITH_DB;
+				shutdownStepsCompleted = 0;
+				shutdownTotalSteps = SHUTDOWN_TOTAL_STEPS;
+				shutdownDefaultMessage = SHUTDOWN_MESSAGE_STARTING;
+				loadingViewMode = LoadingViewMode.STARTUP;
+				if (startupLoadingLabel != null) {
+					startupLoadingLabel.setText(startupDefaultMessage);
+				}
+				if (startupLoadingBar != null) {
+					startupLoadingBar.setIndeterminate(false);
+					startupLoadingBar.setValue(0);
+					startupLoadingBar.setString("0%");
+				}
+			}
+		};
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			r.run();
+		} else {
+			javax.swing.SwingUtilities.invokeLater(r);
+		}
+	}
+
+	private void resetStartupProgress(final String initialMessage) {
+		final Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				startupTotalSteps = STARTUP_TOTAL_STEPS;
+				startupStepsCompleted = 0;
+				startupDefaultMessage = (initialMessage == null || initialMessage.trim().isEmpty()) ? STARTUP_MESSAGE_WITH_DB : initialMessage;
+				if (startupLoadingLabel != null) {
+					startupLoadingLabel.setText(startupDefaultMessage);
+				}
+				applyStartupProgressState();
+			}
+		};
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			r.run();
+		} else {
+			javax.swing.SwingUtilities.invokeLater(r);
+		}
+	}
+
+	private void completeStartupStep(final String message) {
+		final Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				startupStepsCompleted = Math.min(startupStepsCompleted + 1, Math.max(1, startupTotalSteps));
+				if (startupLoadingLabel != null) {
+					if (message != null && !message.trim().isEmpty()) {
+						startupLoadingLabel.setText(message);
+					} else {
+						startupLoadingLabel.setText(startupDefaultMessage);
+					}
+				}
+				applyStartupProgressState();
+			}
+		};
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			r.run();
+		} else {
+			javax.swing.SwingUtilities.invokeLater(r);
+		}
+	}
+
+	private void applyStartupProgressState() {
+		int totalSteps = Math.max(1, startupTotalSteps);
+		int completedSteps = Math.max(0, Math.min(startupStepsCompleted, totalSteps));
+		int progressValue = (int)Math.round((completedSteps * (double)STARTUP_PROGRESS_MAX) / totalSteps);
+		if (startupLoadingBar != null) {
+			startupLoadingBar.setIndeterminate(false);
+			startupLoadingBar.setMinimum(0);
+			startupLoadingBar.setMaximum(STARTUP_PROGRESS_MAX);
+			startupLoadingBar.setValue(progressValue);
+			startupLoadingBar.setString(progressValue + "%");
+		}
+		if (startupLoadingLabel != null && (startupLoadingLabel.getText() == null || startupLoadingLabel.getText().trim().isEmpty())) {
+			startupLoadingLabel.setText(startupDefaultMessage);
+		}
+	}
+
+	private void applyShutdownProgressState() {
+		int totalSteps = Math.max(1, shutdownTotalSteps);
+		int completedSteps = Math.max(0, Math.min(shutdownStepsCompleted, totalSteps));
+		int progressValue = (int)Math.round((completedSteps * (double)STARTUP_PROGRESS_MAX) / totalSteps);
+		if (startupLoadingBar != null) {
+			startupLoadingBar.setIndeterminate(false);
+			startupLoadingBar.setMinimum(0);
+			startupLoadingBar.setMaximum(STARTUP_PROGRESS_MAX);
+			startupLoadingBar.setValue(progressValue);
+			startupLoadingBar.setString(progressValue + "%");
+		}
+		if (startupLoadingLabel != null) {
+			startupLoadingLabel.setText((shutdownDefaultMessage == null || shutdownDefaultMessage.trim().isEmpty())
+					? SHUTDOWN_MESSAGE_STARTING : shutdownDefaultMessage);
+		}
+	}
+
+	private void applyCurrentLoadingProgressState() {
+		if (loadingViewMode == LoadingViewMode.SHUTDOWN) {
+			applyShutdownProgressState();
+		} else {
+			applyStartupProgressState();
+		}
+	}
+
 	/**
 	 * Ensure the status bar is present even if another view replaced the frame content pane.
 	 */
@@ -952,18 +1309,86 @@ public class InterfaceMain implements ActionListener {
 		if (queryProgressBar == null || queryProgressLabel == null) {
 			return;
 		}
+		if (statusBarProgressMode == StatusBarProgressMode.SHUTDOWN) {
+			return;
+		}
+		statusBarProgressMode = StatusBarProgressMode.NONE;
 		queryProgressBar.setValue(0);
 		queryProgressBar.setVisible(false);
 		queryProgressLabel.setText("");
 		queryProgressLabel.setVisible(false);
 	}
 
-	/**
-	 * Update the status bar query progress UI.
-	 *
-	 * @param completed number completed
-	 * @param total total number of queries
-	 */
+	private void resetShutdownProgressUI() {
+		if (queryProgressBar == null || queryProgressLabel == null) {
+			return;
+		}
+		if (statusBarProgressMode != StatusBarProgressMode.SHUTDOWN) {
+			return;
+		}
+		statusBarProgressMode = StatusBarProgressMode.NONE;
+		queryProgressBar.setValue(0);
+		queryProgressBar.setVisible(false);
+		queryProgressLabel.setText("");
+		queryProgressLabel.setVisible(false);
+	}
+
+	private void updateShutdownProgressStatus(final int completed, final int total, final String message) {
+		ensureStatusBarInstalled();
+		if (queryProgressBar == null || queryProgressLabel == null) {
+			return;
+		}
+		final Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				statusBarProgressMode = StatusBarProgressMode.SHUTDOWN;
+				shutdownTotalSteps = Math.max(1, total);
+				shutdownStepsCompleted = Math.max(0, Math.min(completed, shutdownTotalSteps));
+				int percent = (int) Math.round((shutdownStepsCompleted * 100.0) / shutdownTotalSteps);
+				String displayMessage = (message == null || message.trim().isEmpty()) ? SHUTDOWN_MESSAGE_STARTING : message;
+				shutdownDefaultMessage = displayMessage;
+				queryProgressBar.setVisible(true);
+				queryProgressLabel.setVisible(true);
+				queryProgressBar.setMinimum(0);
+				queryProgressBar.setMaximum(100);
+				queryProgressBar.setValue(percent);
+				queryProgressLabel.setText(displayMessage);
+				if (loadingViewMode == LoadingViewMode.SHUTDOWN) {
+					applyShutdownProgressState();
+				}
+				if (mainFrame != null) {
+					if (mainFrame.getJMenuBar() != null) {
+						mainFrame.getJMenuBar().repaint();
+					}
+					java.awt.Component center = rootContent == null ? null
+							: ((BorderLayout) rootContent.getLayout()).getLayoutComponent(BorderLayout.CENTER);
+					if (center != null) {
+						center.revalidate();
+						center.repaint();
+						if (center instanceof javax.swing.JComponent) {
+							((javax.swing.JComponent) center).paintImmediately(((javax.swing.JComponent) center).getBounds());
+						}
+					}
+					rootContent.paintImmediately(rootContent.getBounds());
+				}
+			}
+		};
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			r.run();
+		} else {
+			try {
+				javax.swing.SwingUtilities.invokeAndWait(r);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return;
+			} catch (java.lang.reflect.InvocationTargetException e) {
+				System.err.println("Failed to update shutdown progress status: " + e);
+				return;
+			}
+			allowShutdownProgressPaint();
+		}
+	}
+
 	public void updateQueryProgressStatus(final int completed, final int total) {
 		ensureStatusBarInstalled();
 		if (queryProgressBar == null || queryProgressLabel == null) {
@@ -972,10 +1397,14 @@ public class InterfaceMain implements ActionListener {
 		final Runnable r = new Runnable() {
 			@Override
 			public void run() {
+				if (statusBarProgressMode == StatusBarProgressMode.SHUTDOWN) {
+					return;
+				}
 				if (total <= 1) {
 					resetQueryProgressUI();
 					return;
 				}
+				statusBarProgressMode = StatusBarProgressMode.QUERY;
 				queryProgressBar.setVisible(true);
 				queryProgressLabel.setVisible(true);
 				int safeCompleted = Math.max(0, Math.min(completed, total));
@@ -1145,13 +1574,111 @@ public class InterfaceMain implements ActionListener {
 
 	private void initialize() {
 		MenuManager menuMan = new MenuManager(null);
+		final long initStart = System.nanoTime();
 		addWindowAdapters();
+		logStartupTiming("initialize:addWindowAdapters " + elapsedMillis(initStart) + " ms");
 		addMenuItems(menuMan);
+		logStartupTiming("initialize:addMenuItems " + elapsedMillis(initStart) + " ms");
 		addMenuAdderMenuItems(menuMan);
+		logStartupTiming("initialize:addMenuAdderMenuItems " + elapsedMillis(initStart) + " ms");
 		finalizeMenu(menuMan);
+		logStartupTiming("initialize:finalizeMenu " + elapsedMillis(initStart) + " ms");
 		// Do not force fonts for the menu bar/items; use platform Look & Feel defaults.
 		// if path to DB was provided, dispatch to DBViewer to open database
 //		  if (path != null) fireControlChange("DbViewer");		 
+	}
+
+	private JMenuItem makeMenuItem(String text) {
+		JMenuItem item = new JMenuItem(text);
+		item.setActionCommand(text);
+		item.addActionListener(this);
+		return item;
+	}
+
+	private void finalizeMenu(MenuManager menuMan) {
+		JMenuBar mb = menuMan.createMenu();
+		mainFrame.setJMenuBar(mb);
+		refreshQueryFileMenuEnabled();
+	}
+
+	private void addWindowAdapters() {
+		WindowAdapter myWindowAdapter = new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				shutdownAndExit();
+			}
+
+			@Override
+			public void windowDeactivated(WindowEvent e) {
+				refreshQueryFileMenuEnabled();
+			}
+		};
+		mainFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+		mainFrame.addWindowListener(myWindowAdapter);
+	}
+
+	private String safeTrim(String value) {
+		return value == null ? "" : value.trim();
+	}
+
+	private File promptForExecutable(String title) {
+		FileChooser chooser = FileChooserFactory.getFileChooser();
+		String lastDir = savedProperties != null ? savedProperties.getProperty("lastDirectory", ".") : ".";
+		File start = new File(lastDir);
+		File[] files = chooser.doFilePrompt(mainFrame, title, FileChooser.LOAD_DIALOG, start, null);
+		if (files != null && files.length > 0 && files[0] != null) {
+			File selected = files[0];
+			if (savedProperties != null && selected.getParent() != null) {
+				savedProperties.setProperty("lastDirectory", selected.getParent());
+				persistProperties();
+			}
+			return selected;
+		}
+		return null;
+	}
+
+	private void shutdownAndExit() {
+		if (!shuttingDown.compareAndSet(false, true)) {
+			return;
+		}
+		cancelPendingStartupDbViewerTimer();
+		try {
+			fireControlChange("ModelInterfaceShutdown");
+		} catch (Exception ex) {
+			System.err.println("Error clearing active view during shutdown: " + ex);
+		}
+		shutdownStepsCompleted = 0;
+		shutdownTotalSteps = SHUTDOWN_TOTAL_STEPS;
+		shutdownDefaultMessage = SHUTDOWN_MESSAGE_STARTING;
+		showShutdownLoadingView(SHUTDOWN_MESSAGE_STARTING);
+		updateShutdownProgressStatus(0, SHUTDOWN_TOTAL_STEPS, SHUTDOWN_MESSAGE_STARTING);
+		try {
+			if (mainFrame != null) {
+				updateShutdownProgressStatus(1, SHUTDOWN_TOTAL_STEPS, SHUTDOWN_MESSAGE_SAVING_WINDOW);
+				savedProperties.setProperty("isMaximized",
+						Boolean.toString((mainFrame.getExtendedState() & JFrame.MAXIMIZED_BOTH) == JFrame.MAXIMIZED_BOTH));
+				if ((mainFrame.getExtendedState() & JFrame.MAXIMIZED_BOTH) != JFrame.MAXIMIZED_BOTH) {
+					savedProperties.setProperty("lastWidth", Integer.toString(mainFrame.getWidth()));
+					savedProperties.setProperty("lastHeight", Integer.toString(mainFrame.getHeight()));
+				}
+			}
+			updateShutdownProgressStatus(2, SHUTDOWN_TOTAL_STEPS, SHUTDOWN_MESSAGE_SAVING_SETTINGS);
+			persistProperties();
+		} finally {
+			try {
+				updateShutdownProgressStatus(3, SHUTDOWN_TOTAL_STEPS, SHUTDOWN_MESSAGE_CLOSING_DB);
+				XMLDB.closeDatabase();
+			} catch (Exception ex) {
+				System.err.println("Error closing XML database during shutdown: " + ex);
+			} finally {
+				updateShutdownProgressStatus(4, SHUTDOWN_TOTAL_STEPS, SHUTDOWN_MESSAGE_EXITING);
+				if (mainFrame != null) {
+					mainFrame.dispose();
+				}
+				resetShutdownProgressUI();
+				System.exit(0);
+			}
+		}
 	}
 
 	public JFrame getFrame() {
@@ -1322,156 +1849,84 @@ public class InterfaceMain implements ActionListener {
 	}
 
 	private void addMenuAdderMenuItems(MenuManager menuMan) {
-		/*
-		 * FileChooserDemo is being removed, but I will leave this here, This is how I
-		 * envision the menuitems to be added and hopefully all the listeners would be
-		 * set up correctly and we won't need to keep the pointer to the classes around
-		 * FileChooserDemo fcd = new FileChooserDemo(this); fcd.addMenuItems(menuMan);
-		 */
+		final long menuAdderStart = System.nanoTime();
 		dbView = new DbViewer();
+		logStartupTiming("addMenuAdder:new DbViewer " + elapsedMillis(menuAdderStart) + " ms");
 		dbView.addMenuItems(menuMan);
-		final MenuAdder inputView = new InputViewer();
-		inputView.addMenuItems(menuMan);
-		final MenuAdder PPView = new PPViewer();
-		PPView.addMenuItems(menuMan);
-		// Dan: Commented this out
-		// final MenuAdder DMView = new DMViewer();
-		// DMView.addMenuItems(menuMan);
+		logStartupTiming("addMenuAdder:DbViewer.addMenuItems " + elapsedMillis(menuAdderStart) + " ms");
+		addLazyMenuItem(menuMan, TOOLS_MENU_POS, TOOLS_SUBMENU2_POS, new JMenuItem("XML file"), LAZY_OPEN_INPUT_VIEWER, 0);
+		addLazyMenuItem(menuMan, TOOLS_MENU_POS, TOOLS_SUBMENU2_POS, new JMenuItem("Preprocessor file"), LAZY_OPEN_PP_VIEWER, 20);
+		logStartupTiming("addMenuAdder:add lazy open-file items " + elapsedMillis(menuAdderStart) + " ms");
 		final MenuAdder recentFilesList = RecentFilesList.getInstance();
+		logStartupTiming("addMenuAdder:RecentFilesList.getInstance " + elapsedMillis(menuAdderStart) + " ms");
 		recentFilesList.addMenuItems(menuMan);
+		logStartupTiming("addMenuAdder:RecentFilesList.addMenuItems " + elapsedMillis(menuAdderStart) + " ms");
 		final MenuAdder aboutDialog = new AboutDialog();
+		logStartupTiming("addMenuAdder:new AboutDialog " + elapsedMillis(menuAdderStart) + " ms");
 		aboutDialog.addMenuItems(menuMan);
-
-		// Create the Configuration editor and allow it to add its menu items to the
-		// menu system.
-		final MenuAdder confEditor = new ConfigurationEditor();
-		confEditor.addMenuItems(menuMan);
+		logStartupTiming("addMenuAdder:AboutDialog.addMenuItems " + elapsedMillis(menuAdderStart) + " ms");
+		addLazyMenuItem(menuMan, TOOLS_MENU_POS, null, new JMenuItem("Configuration..."), LAZY_OPEN_CONFIGURATION_EDITOR, 19);
+		logStartupTiming("addMenuAdder:add lazy configuration item " + elapsedMillis(menuAdderStart) + " ms");
 
 		menuAdders = new ArrayList<MenuAdder>(6);
 		menuAdders.add(dbView);
-		menuAdders.add(inputView);
-		menuAdders.add(PPView);
 		// menuAdders.add(DMView);
 		menuAdders.add(recentFilesList);
 		menuAdders.add(aboutDialog);
-		menuAdders.add(confEditor);
+		logStartupTiming("addMenuAdder:complete " + elapsedMillis(menuAdderStart) + " ms");
 	}
 
-	private void finalizeMenu(MenuManager menuMan) {
-		JMenuBar mb = menuMan.createMenu();
-		// Keep system Look & Feel defaults for fonts/colors.
-		mainFrame.setJMenuBar(mb);
-	}
-
-	private void addWindowAdapters() {
-		// Add adapter to catch window events.
-		WindowAdapter myWindowAdapter = new WindowAdapter() {
-			public void windowStateChanged(WindowEvent e) {
-				savedProperties.setProperty("isMaximized",
-						String.valueOf((e.getNewState() & JFrame.MAXIMIZED_BOTH) != 0));
-			}
-
-			public void windowClosing(WindowEvent e) {
-				shutdownAndExit();
-			}
-
-			public void windowClosed(WindowEvent e) {
-				shutdownAndExit();
-			}
-		};
-		mainFrame.addWindowListener(myWindowAdapter);
-		mainFrame.addWindowStateListener(myWindowAdapter);
-
-		mainFrame.getGlassPane().addMouseListener(new MouseAdapter() {
-		});
-		mainFrame.getGlassPane().setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-	}
-
-	/**
-	 * Perform an orderly shutdown quickly and only once.
-	 * <p>
-	 * Key goals:
-	 * <ul>
-	 * <li>Don't block the EDT waiting for query threads.</li>
-	 * <li>Trigger DbViewer cleanup via Control change so it can cancel queries and
-	 * close XMLDB.</li>
-	 * <li>Persist properties once.</li>
-	 * </ul>
-	 */
-	private void shutdownAndExit() {
-		if (!shuttingDown.compareAndSet(false, true)) {
+	private void addLazyMenuItem(MenuManager menuMan, int topLevelPos, Integer subMenuPos, JMenuItem menuItem,
+			String actionCommand, int itemPos) {
+		menuItem.setActionCommand(actionCommand);
+		menuItem.addActionListener(this);
+		MenuManager target = menuMan.getSubMenuManager(topLevelPos);
+		if (target == null) {
 			return;
 		}
-
-		// Capture window size before we dispose.
-		try {
-			if (!Boolean.parseBoolean(savedProperties.getProperty("isMaximized"))) {
-				savedProperties.setProperty("lastWidth", String.valueOf(mainFrame.getWidth()));
-				savedProperties.setProperty("lastHeight", String.valueOf(mainFrame.getHeight()));
+		if (subMenuPos != null) {
+			MenuManager nested = target.getSubMenuManager(subMenuPos);
+			if (nested != null) {
+				target = nested;
 			}
-		} catch (Exception ex) {
-			// ignore
 		}
-
-		// Kick the UI back to a neutral control so DbViewer sees an oldValue of "DbViewer"
-		// and runs its close logic.
-		try {
-			fireControlChange("ModelInterface");
-		} catch (Exception ex) {
-			// ignore
-		}
-
-		// Persist properties once.
-		try {
-			persistProperties();
-		} catch (Exception ex) {
-			ex.printStackTrace();
-		}
-
-		// Dispose the frame now so the UI closes immediately.
-		try {
-			mainFrame.dispose();
-		} catch (Exception ex) {
-			// ignore
-		}
-
-		// Exit shortly after to allow async cleanup threads (query cancellation / XMLDB close)
-		// to run without freezing the UI.
-		new Thread(() -> {
-			try {
-				Thread.sleep(300);
-			} catch (InterruptedException ie) {
-				// ignore
-			}
-			System.exit(0);
-		}, "ModelInterface-Exit").start();
+		target.addMenuItem(menuItem, itemPos);
 	}
 
-	/** Create a simple menu item wired to this ActionListener. */
-	private JMenuItem makeMenuItem(String title) {
-		JMenuItem item = new JMenuItem(title);
-		item.addActionListener(this);
-		return item;
-	}
-
-	private static String safeTrim(String s) {
-		return s == null ? "" : s.trim();
-	}
-
-	/** Prompt user to choose an executable (used by Preferences). */
-	private File promptForExecutable(String title) {
-		FileChooser fc = FileChooserFactory.getFileChooser();
-		File[] res = fc.doFilePrompt(mainFrame, title, FileChooser.LOAD_DIALOG,
-				new File(getProperties().getProperty("lastDirectory", ".")), null);
-		if (res != null && res.length > 0) {
-			try {
-				savedProperties.setProperty("lastDirectory", res[0].getParent());
-			} catch (Exception ex) {
-				// ignore
+	private MenuAdder ensureInputView() {
+		if (inputView == null) {
+			final long start = System.nanoTime();
+			inputView = new InputViewer();
+			if (menuAdders != null) {
+				menuAdders.add(inputView);
 			}
-			return res[0];
+			System.out.println("[startup] lazy init InputViewer in " + elapsedMillis(start) + " ms");
 		}
-		return null;
+		return inputView;
+	}
+
+	private MenuAdder ensurePPView() {
+		if (ppView == null) {
+			final long start = System.nanoTime();
+			ppView = new PPViewer();
+			if (menuAdders != null) {
+				menuAdders.add(ppView);
+			}
+			System.out.println("[startup] lazy init PPViewer in " + elapsedMillis(start) + " ms");
+		}
+		return ppView;
+	}
+
+	private MenuAdder ensureConfigurationEditor() {
+		if (confEditor == null) {
+			final long start = System.nanoTime();
+			confEditor = new ConfigurationEditor();
+			if (menuAdders != null) {
+				menuAdders.add(confEditor);
+			}
+			System.out.println("[startup] lazy init ConfigurationEditor in " + elapsedMillis(start) + " ms");
+		}
+		return confEditor;
 	}
 
 	@Override
@@ -1481,6 +1936,19 @@ public class InterfaceMain implements ActionListener {
 		// Minimal routing: keep existing behavior elsewhere in file; the menu items
 		// created via makeMenuItem rely on this.
 		switch (cmd) {
+		case LAZY_OPEN_INPUT_VIEWER:
+			((ActionListener) ensureInputView()).actionPerformed(
+					new ActionEvent(e.getSource(), e.getID(), "XML file", e.getWhen(), e.getModifiers()));
+			break;
+		case LAZY_OPEN_PP_VIEWER:
+			((ActionListener) ensurePPView()).actionPerformed(
+					new ActionEvent(e.getSource(), e.getID(), "Preprocessor file", e.getWhen(), e.getModifiers()));
+			break;
+		case LAZY_OPEN_CONFIGURATION_EDITOR:
+			ConfigurationEditor editor = (ConfigurationEditor) ensureConfigurationEditor();
+			editor.setVisible(true);
+			editor.toFront();
+			break;
 		case "Quit":
 			shutdownAndExit();
 			break;
@@ -1573,7 +2041,7 @@ public class InterfaceMain implements ActionListener {
 				File preset_reg32_shapefile = new File(dir, "mapGCAMReg32_from_rmap.shp");
 				if (preset_reg32_shapefile.exists()) {
 					gcamReg32ShapeFileLocation = preset_reg32_shapefile.getAbsolutePath();
-				} else {
+					} else {
 					InterfaceMain.enableMapping = false;
 				}
 				File preset_reg32US52_shapefile = new File(dir, "mapGCAMReg32US52_from_rmap.shp");
@@ -1619,10 +2087,6 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
-	// Preferences dialog implementation
-	private javax.swing.JLabel unitsFileLabel;
-	private javax.swing.JLabel regionsFileLabel;
-	private javax.swing.JLabel mapResourceFolderLabel;
 	private javax.swing.JTextField xmlEditorField;
 	private javax.swing.JTextField csvEditorField;
 	private javax.swing.JTextField txtEditorField;
@@ -1975,6 +2439,7 @@ public class InterfaceMain implements ActionListener {
 	public JMenuItem getBatchMenu() { return batchMenu; }
 
 	public void fireControlChange(String newValue) {
+		cancelPendingStartupDbViewerTimer();
 		if (newValue.equals(oldControl)) { oldControl += "Same"; }
 		fireProperty("Control", oldControl, newValue);
 	 oldControl = newValue;

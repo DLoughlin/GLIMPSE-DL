@@ -109,7 +109,6 @@ public class TabMarketShare extends PolicyTab implements Runnable {
     // === Constants for Metadata ===
     private static final String METADATA_HEADER = "########## Scenario Component Metadata ##########";
     private static final String METADATA_FOOTER = "#################################################";
-    private static final String METADATA_SCENARIO_TYPE = "#Scenario component type: Market Share";
     private static final String METADATA_TYPE = "#Type: ";
     private static final String METADATA_SUBSET = "#Subset: ";
     private static final String METADATA_SUPERSET = "#Superset: ";
@@ -889,7 +888,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 
 		String treatment = comboBoxTreatment.getValue().toLowerCase().trim();
 		String[] listOfSelectedLeaves = utils.removeUSADuplicate(utils.getAllSelectedRegions(tree));
-		String states = utils.returnAppendedString(listOfSelectedLeaves);
+		utils.returnAppendedString(listOfSelectedLeaves);
 		
 		ObservableList<String> subset_list = checkComboBoxSubset.getCheckModel().getCheckedItems();
 		ObservableList<String> superset_list = checkComboBoxSuperset.getCheckModel().getCheckedItems();
@@ -936,15 +935,12 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 					+ (listOfSelectedLeaves.length - 1));
 
 			for (int t : years) {
-				String use_this_market_name = market_name;
 				String use_this_policy_name = policy_name;
 
 				if (treatment.equals("each selected region") && listOfSelectedLeaves.length >= 2) {
-					use_this_market_name = state + "_" + market_name;
 					use_this_policy_name = state + "_" + policy_name;
 				}
 				if (applied_to.equals("sales")) {
-					use_this_market_name += "-" + t;
 					use_this_policy_name += "-" + t;
 				}
 
@@ -1027,20 +1023,13 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 			String state = listOfSelectedLeaves[s];
 			System.out.println("Creating part 2 of 3 of csv file for " + state + " : " + s + " of "
 					+ (listOfSelectedLeaves.length - 1));
-			int year_int = -1;
-			
 			for (int t : years) {
-				year_int++;
-				
-				String use_this_market_name = market_name;
 				String use_this_policy_name = policy_name;
 				
 				if (treatment.equals("each selected region") && listOfSelectedLeaves.length >= 2) {
-					use_this_market_name = state + "_" + market_name;
 					use_this_policy_name = state + "_" + policy_name;
 				}
 				if (applied_to.equals("sales")) {
-					use_this_market_name += "-" + t;
 					use_this_policy_name += "-" + t;
 				}
 

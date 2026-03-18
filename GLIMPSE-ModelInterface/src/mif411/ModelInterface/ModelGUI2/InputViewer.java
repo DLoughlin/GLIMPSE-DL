@@ -311,15 +311,7 @@ public class InputViewer implements ActionListener, TableModelListener, MenuAdde
 	}
 
 	public void addMenuItems(InterfaceMain.MenuManager menuMan) {
-        final JFrame parentFrame = InterfaceMain.getInstance().getFrame();
-        // TODO: these menuItems need to be re-arranged to be under "Advanced" >> "Open Files",YD edits
-        // YD commented lines 268-278 out
-		//JMenuItem menuItem = new JMenuItem("XML file");
-		//menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_2,
-		//		ActionEvent.ALT_MASK));
-		//menuItem.addActionListener(this);
-		//menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).
-		//	getSubMenuManager(InterfaceMain.FILE_OPEN_SUBMENU_POS).addMenuItem(menuItem, 10);
+        InterfaceMain.getInstance().getFrame();
 
 		//menuItem = new JMenuItem("CSV file");
 		//menuItem.addActionListener(this);

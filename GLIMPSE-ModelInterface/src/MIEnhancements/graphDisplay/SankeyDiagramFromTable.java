@@ -291,20 +291,31 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
         sankeyLabelPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
         int regionIdx = FilteredTable.getColumnByName(jtable, "region");
         ArrayList<String> yearList = FilteredTable.getYearListFromTableData(jtable);
+        if (yearList.isEmpty() || regionIdx < 0) {
+            sankeyPanel.add(sankeyLabelPanel);
+            return sankeyPanel;
+        }
         int firstYearIdx = FilteredTable.getColumnByName(jtable, yearList.get(0));
         int totalNodes = firstYearIdx - regionIdx - 1;
-        int gapWidth = (int) Math.round(4 * myPlot.getNodeWidth() / totalNodes);
-        if (totalNodes == 3) {
-            gapWidth = (int) Math.round(2 * myPlot.getNodeWidth() / totalNodes);
-        } else if (totalNodes >= 4) {
-            gapWidth = (int) Math.round(myPlot.getNodeWidth() / totalNodes);
+        if (totalNodes <= 0) {
+            sankeyPanel.add(sankeyLabelPanel);
+            return sankeyPanel;
         }
+        int labelWidth = (int) Math.round(4 * myPlot.getNodeWidth() / totalNodes);
+        if (totalNodes == 3) {
+            labelWidth = (int) Math.round(2 * myPlot.getNodeWidth() / totalNodes);
+        } else if (totalNodes >= 4) {
+            labelWidth = (int) Math.round(myPlot.getNodeWidth() / totalNodes);
+        }
+        labelWidth = Math.max(labelWidth, 80);
         for (int i = 0; i < totalNodes; i++) {
             String nextNode = jtable.getColumnName(firstYearIdx - i - 1);
             JTextField nextNodeFromColumn = new JTextField(nextNode);
             nextNodeFromColumn.setFont(new Font("Arial", Font.BOLD, 16));
-            nextNodeFromColumn.setSize(new Dimension((int) myPlot.getNodeWidth() / 2, 100));
+            nextNodeFromColumn.setPreferredSize(new Dimension(labelWidth, 30));
+            nextNodeFromColumn.setMaximumSize(new Dimension(labelWidth, 30));
             nextNodeFromColumn.setHorizontalAlignment(JTextField.CENTER);
+            nextNodeFromColumn.setEditable(false);
             nextNodeFromColumn.setBackground(Color.GRAY);
             sankeyLabelPanel.add(nextNodeFromColumn);
         }
@@ -358,7 +369,7 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
      */
     private void setLegendColorFromBundle() {
         Object[] temp = getLegendInfoFromProperties(bundlePath);
-        if (temp.length == 0) return;
+        if (temp == null || temp.length == 0) return;
         String queryNameForChart = '"' + chartName + '"';
         barLegendItems = barPlot.getLegendItems();
         String[] legends = new String[barLegendItems.getItemCount()];
@@ -414,7 +425,7 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
      */
     private void setFlowPlotColorFromBundle() {
         Object[] temp = getLegendInfoFromProperties(bundlePath);
-        if (temp.length == 0) return;
+        if (temp == null || temp.length == 0 || mySet == null || myPlot == null) return;
         String queryNameForChart = '"' + chartName + '"';
         String[] tempStr = readLegendItemsFromProperties();
         String[] queryStr = readQueryInfoFromProperties();
@@ -465,6 +476,7 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
      */
     private String[] readLegendItemsFromProperties() {
         Object[] temp = getLegendInfoFromProperties(bundlePath);
+        if (temp == null) return new String[0];
         String[] tempStr = new String[temp.length];
         for (int i = 0; i < temp.length; i++) {
             String myLine = (String) temp[i];
@@ -489,6 +501,7 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
      */
     private String[] readQueryInfoFromProperties() {
         Object[] temp = getLegendInfoFromProperties(bundlePath);
+        if (temp == null) return new String[0];
         String[] queryStr = new String[temp.length];
         for (int i = 0; i < temp.length; i++) {
             String myLine = (String) temp[i];
@@ -514,7 +527,10 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
      */
     private Object[] getLegendInfoFromProperties(String path) {
         LineNumberReader lineReader = null;
-        Object[] temp = null;
+        Object[] temp = new Object[0];
+        if (path == null || path.trim().isEmpty()) {
+            return temp;
+        }
         try {
             DataInputStream dis = FileUtil.initInFile(path);
             lineReader = new LineNumberReader(new InputStreamReader(dis));
@@ -592,19 +608,31 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
         int regionIdx = FilteredTable.getColumnByName(jtable, "region");
         int scenarioIdx = FilteredTable.getColumnByName(jtable, "scenario");
         ArrayList<String> yearList = FilteredTable.getYearListFromTableData(jtable);
+        if (yearList.isEmpty() || regionIdx < 0 || scenarioIdx < 0 || yearStr == null) {
+            return new DefaultFlowDataset();
+        }
         int firstYearIdx = FilteredTable.getColumnByName(jtable, yearList.get(0));
         int yearIdx = FilteredTable.getColumnByName(jtable, yearStr);
+        if (firstYearIdx < 0 || yearIdx < 0) {
+            return new DefaultFlowDataset();
+        }
         DefaultFlowDataset dataset = new DefaultFlowDataset();
         int curStage = 0;
         for (int row = 0; row < jtable.getRowCount(); row++) {
             curStage = 0;
-            boolean scenario2Keep = ((String) jtable.getValueAt(row, scenarioIdx)).equals(scenarioStr);
-            boolean region2Keep = ((String) jtable.getValueAt(row, regionIdx)).equals(regionStr);
+            boolean scenario2Keep = String.valueOf(jtable.getValueAt(row, scenarioIdx)).equals(scenarioStr);
+            boolean region2Keep = String.valueOf(jtable.getValueAt(row, regionIdx)).equals(regionStr);
             if (scenario2Keep && region2Keep) {
+                String flowValue = String.valueOf(jtable.getValueAt(row, yearIdx));
+                double flowRate;
+                try {
+                    flowRate = Double.parseDouble(flowValue);
+                } catch (NumberFormatException e) {
+                    continue;
+                }
                 for (int j = firstYearIdx - 1; j > regionIdx + 1; j--) {
-                    String fromSource = (String) jtable.getValueAt(row, j);
-                    String toDes = (String) jtable.getValueAt(row, j - 1);
-                    double flowRate = Double.parseDouble((String) jtable.getValueAt(row, yearIdx));
+                    String fromSource = String.valueOf(jtable.getValueAt(row, j));
+                    String toDes = String.valueOf(jtable.getValueAt(row, j - 1));
                     if (flowRate != 0) {
                         dataset.setFlow(curStage, fromSource, toDes, flowRate);
                     }
@@ -627,15 +655,22 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
         int yearIdx = FilteredTable.getColumnByName(jtable, yearStr);
         int scenarioIdx = FilteredTable.getColumnByName(jtable, "scenario");
         int regionIdx = FilteredTable.getColumnByName(jtable, "region");
+        if (yearIdx < 0 || scenarioIdx < 0 || regionIdx < 0 || regionIdx + 1 >= jtable.getColumnCount()) {
+            return new DefaultCategoryDataset();
+        }
         String colName = jtable.getColumnName(regionIdx + 1);
         DefaultCategoryDataset myDataset = new DefaultCategoryDataset();
         for (int row = 0; row < jtable.getRowCount(); row++) {
-            boolean scenario2Keep = ((String) jtable.getValueAt(row, scenarioIdx)).equals(scenarioStr);
-            boolean region2Keep = ((String) jtable.getValueAt(row, regionIdx)).equals(regionStr);
+            boolean scenario2Keep = String.valueOf(jtable.getValueAt(row, scenarioIdx)).equals(scenarioStr);
+            boolean region2Keep = String.valueOf(jtable.getValueAt(row, regionIdx)).equals(regionStr);
             if (scenario2Keep && region2Keep) {
-                String myStr = (String) jtable.getValueAt(row, regionIdx + 1);
-                double myNum = Double.parseDouble((String) jtable.getValueAt(row, yearIdx));
-                myDataset.addValue(myNum, myStr, colName);
+                String myStr = String.valueOf(jtable.getValueAt(row, regionIdx + 1));
+                try {
+                    double myNum = Double.parseDouble(String.valueOf(jtable.getValueAt(row, yearIdx)));
+                    myDataset.addValue(myNum, myStr, colName);
+                } catch (NumberFormatException e) {
+                    if (debug) System.out.println("Skipping non-numeric bar value: " + jtable.getValueAt(row, yearIdx));
+                }
             }
         }
         return myDataset;

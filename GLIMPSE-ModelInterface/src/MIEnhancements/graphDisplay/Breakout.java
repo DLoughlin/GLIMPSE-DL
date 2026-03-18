@@ -59,10 +59,8 @@ public class Breakout extends JDialog {
 	private Chart[] transChart;
 	private static final boolean DEBUG = false;
     private Chart[] chart;
-    private int w;
     private int gridWidth;
     private boolean sameScale;
-    private JSplitPane sp;
     private JPanel jp;
 	private OptionsArea optionsArea;
 
@@ -79,10 +77,8 @@ public class Breakout extends JDialog {
 	public Breakout(Chart[] chart, int w, int gridWidth, boolean sameScale, JSplitPane sp, boolean isBreakout) {
 		super(InterfaceMain.getInstance().getFrame());
 		this.chart = chart;
-		this.w = w;
 		this.gridWidth = gridWidth;
 		this.sameScale = sameScale;
-		this.sp = sp;
 		this.jp = new JPanel(new BorderLayout());
 
 		if (isBreakout) {

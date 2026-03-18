@@ -85,6 +85,21 @@ public class XMLDB {
      */
 	private static XMLDB xmldbInstance = null;
 
+	private static String buildOpenFailureMessage(String dbPath, String operation, Throwable cause) {
+		StringBuilder message = new StringBuilder("Could not ").append(operation).append(" DB");
+		if (dbPath != null && !dbPath.trim().isEmpty()) {
+			message.append(" '").append(dbPath).append("'");
+		}
+		if (cause != null) {
+			message.append(": ").append(cause.getClass().getSimpleName());
+			String causeMessage = cause.getMessage();
+			if (causeMessage != null && !causeMessage.trim().isEmpty()) {
+				message.append(": ").append(causeMessage.trim());
+			}
+		}
+		return message.toString();
+	}
+
     /**
      * The database context need to run commands on the DB.
      */
@@ -222,16 +237,12 @@ public class XMLDB {
 	 */
 	private XMLDB(String db) throws Exception {
         wasContextAdopted = false;
-		if(!openDB(db, false)) {
-			throw new Exception ("Could not open DB");
-		}
+		openDB(db, false);
     }
 
 	private XMLDB(String db, boolean create) throws Exception {
 		wasContextAdopted = false;
-		if (!openDB(db, create)) {
-			throw new Exception("Could not open DB");
-		}
+		openDB(db, create);
 	}
 	
 	/**
@@ -323,10 +334,9 @@ public class XMLDB {
         	try {
                new Open(contName).execute(context);
         	} catch (Exception e) {
-        		//show a message
-        	 System.out.println("Cannot open database: "+contName);
-        	 System.out.println("  error: "+e);
-        	 return false;
+        		System.out.println("Cannot open database: "+contName);
+        		System.out.println("  error: "+e);
+        		throw new Exception(buildOpenFailureMessage(dbPath, "open", e), e);
         		
         	}
         } else {
@@ -339,13 +349,13 @@ public class XMLDB {
 					if (ans == JOptionPane.YES_OPTION) {
 						new CreateDB(contName).execute(context);
 					} else {
-						return false;
+						throw new Exception("Database open cancelled after existing BaseX files were not found.");
 					}
 				}
         	} catch (Exception e) {
         		System.out.println("Cannot create database: "+contName);
-        	 System.out.println("  error: "+e); 
-        	 return false;
+        		System.out.println("  error: "+e); 
+        		throw new Exception(buildOpenFailureMessage(dbPath, create ? "create" : "initialize", e), e);
         	}
         }
         return true;

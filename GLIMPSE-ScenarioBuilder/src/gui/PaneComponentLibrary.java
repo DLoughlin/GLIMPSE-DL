@@ -93,7 +93,8 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 		initializeComponentLibraryTable();
 		setupEventHandlers();
 		mainVBox.getChildren().add(ComponentLibraryTable.getTableComponents());
-		mainVBox.prefWidthProperty().bind(Client.primaryStage.widthProperty().multiply(4.0 / 7.0));
+		mainVBox.setFillWidth(true);
+		mainVBox.setMaxWidth(Double.MAX_VALUE);
 	}
 
 	private void initializeFilterField() {
@@ -127,7 +128,6 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 			if (ComponentLibraryTable.getTableComponents() != null) {
 				ComponentLibraryTable.getTableComponents().setPlaceholder(utils.createLabel(LOADING_COMPONENTS_MESSAGE));
 			}
-			refreshComponentLibraryTableAsync(false);
 		} catch (Exception exception) {
 			utils.warningMessage(ERROR_LOADING_COMPONENTS);
 			System.out.println("Error loading scenario component files from:");
@@ -241,6 +241,10 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 		refreshComponentLibraryTableAsync(true);
 	}
 
+	public void refreshComponentLibraryTableForStartup() {
+		refreshComponentLibraryTableAsync(false);
+	}
+
 	private void refreshComponentLibraryTableAsync(boolean userInitiated) {
 		if (!componentRefreshInProgress.compareAndSet(false, true)) {
 			return;
@@ -248,7 +252,7 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 		if (ComponentLibraryTable.getTableComponents() != null) {
 			ComponentLibraryTable.getTableComponents().setPlaceholder(utils.createLabel(LOADING_COMPONENTS_MESSAGE));
 		}
-		Client.setStartupStatus("Loading scenario components...", -1, false);
+		//System.out.println("Loading scenario components...");
 		Thread thread = new Thread(() -> {
 			try {
 				File folder = new File(vars.getScenarioComponentsDir());
@@ -266,7 +270,9 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 					if (ComponentLibraryTable.getTableComponents() != null && fileArr.length == 0) {
 						ComponentLibraryTable.getTableComponents().setPlaceholder(utils.createLabel(NO_COMPONENTS_MESSAGE));
 					}
-					Client.setStartupStatus(userInitiated ? "Component library refreshed." : "Scenario components loaded.", -1, false);
+					if (!userInitiated) {
+						Client.markInitialComponentLoadComplete();
+					}
 				});
 			} catch (Exception exception) {
 				javafx.application.Platform.runLater(() -> {
@@ -277,7 +283,10 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 					if (ComponentLibraryTable.getTableComponents() != null) {
 						ComponentLibraryTable.getTableComponents().setPlaceholder(utils.createLabel(ERROR_LOADING_COMPONENTS));
 					}
-					Client.setStartupStatus("Problem loading scenario components.", -1, false);
+					System.out.println("Problem loading scenario components.");
+					if (!userInitiated) {
+						Client.markInitialComponentLoadComplete();
+					}
 				});
 			} finally {
 				componentRefreshInProgress.set(false);

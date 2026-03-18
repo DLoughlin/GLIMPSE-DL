@@ -1025,7 +1025,7 @@ public class GLIMPSEUtils {
 		long now = d.getTime();
 		int diff_sec = (int) Math.floor((now - orig_date) / 1000.);
 		String temp="" + diff_sec;
-		String rtn_str = temp.substring(temp.length() - 6);
+		temp.substring(temp.length() - 6);
 
 		return "" + diff_sec;
 	}
@@ -2044,7 +2044,7 @@ public class GLIMPSEUtils {
 		int init_year = start_year;
 		double val = 0.0;
 		int year = 0;
-		returnMatrix = new double[2][num_periods];
+	 returnMatrix = new double[2][num_periods];
 
 		if (isPercent) {
 			initial_value /= 100.0;
@@ -2333,7 +2333,6 @@ public class GLIMPSEUtils {
 		formatter.setGroupingUsed(false);
 		double min_dmd = 0.0001;
 		double min_red = 0.01;
-		int maj_smallmkt_fails = 0;
 		int total_fails = 0, minor_fails = 0, min_smallmkt_fails = 0, major_fails = 0, moderate_fails = 0;
 		String scenarioLabel = (scenario == null || scenario.trim().isEmpty()) ? "exe/main_log.txt" : scenario;
 		ArrayList<String> report = new ArrayList<>();
@@ -2357,14 +2356,14 @@ public class GLIMPSEUtils {
 					if (tokens.length > 12) {
 						double red = Double.parseDouble(tokens[7].trim());
 						double dmd = Double.parseDouble(tokens[9].trim());
-						String mkt = tokens[12].trim();
+						tokens[12].trim();
 						total_fails++;
 						if (red > min_red) {
 							if (red > min_red * 5.0) {
 								classification = "MAJOR";
 								major_fails++;
-								if (dmd <= min_dmd)
-									maj_smallmkt_fails++;
+								if (dmd <= min_dmd) {
+								}
 							} else {
 								classification = "MODERATE";
 								moderate_fails++;
@@ -2613,10 +2612,10 @@ public class GLIMPSEUtils {
 		}
 		Path dest = scenarioDir.resolve("main_log.txt");
 		try {
-			Files.copy(exeMainLog.toPath(), dest, StandardCopyOption.REPLACE_EXISTING);
-			showInformationDialog("Notice", "Fix Lost Handle", "Copied executable main_log.txt to scenario: " + scenarioName);
+			Files.move(exeMainLog.toPath(), dest, StandardCopyOption.REPLACE_EXISTING);
+			showInformationDialog("Notice", "Fix Lost Handle", "Moved executable main_log.txt to scenario: " + scenarioName);
 		} catch (Exception e) {
-			warningMessage("Problem copying main_log.txt: " + e.getMessage());
+			warningMessage("Problem moving main_log.txt: " + e.getMessage());
 		}
 	}
 
@@ -2671,15 +2670,12 @@ public class GLIMPSEUtils {
 			}
 
 			String dbFreePct = (maxDbSize > 0f) ? String.format("%,.0f", (1.0f - (databaseSize / maxDbSize)) * 100.0f) : "n/a";
-			status = "  Resources... " + "CPU: " + String.format("%,.0f", cpuLoad * 100.0f) + "% | " + "RAM: "
-					+ String.format("%,.0f", physicalMemorySize) + "GB Free:"
-					+ String.format("%,.0f", physicalMemorySize > 0f ? physicalMemoryFree / physicalMemorySize * 100.0f : 0.0f)
-					+ "%" + warningRAM + " | " + "HD: " + String.format("%,.0f", freeSpace) + "GB Free:"
-					+ String.format("%,.0f", totalSpace > 0f ? freeSpace / totalSpace * 100.0f : 0.0f) + "%" + warningDisk
-					+ " | " + "Swap: " + String.format("%,.0f", swapSpaceSize) + "GB Free:"
-					+ String.format("%,.0f", swapSpaceSize > 0f ? freeSwapSpace / swapSpaceSize * 100.0f : 0.0f) + "%"
-					+ warningSwap + " | " + "DB: " + (databaseShortName.isEmpty() ? "(not set)" : databaseShortName) + " "
-					+ String.format("%,.1f", databaseSize) + "GB Free:" + dbFreePct + "%" + warningDb;
+			status = "  Resources... " 
+					+ "CPU: " + String.format("%,.0f", cpuLoad * 100.0f) + "% | " 
+					+ "RAM: " + String.format("%,.0f", physicalMemorySize) + "GB Free:" + String.format("%,.0f", physicalMemorySize > 0f ? physicalMemoryFree / physicalMemorySize * 100.0f : 0.0f)+ "%" + warningRAM + " | " 
+					+ "HD: " + String.format("%,.0f", totalSpace) + "GB Free:" + String.format("%,.0f", totalSpace > 0f ? freeSpace / totalSpace * 100.0f : 0.0f) + "%" + warningDisk+ " | " 
+					+ "Swap: " + String.format("%,.0f", swapSpaceSize) + "GB Free:" + String.format("%,.0f", swapSpaceSize > 0f ? freeSwapSpace / swapSpaceSize * 100.0f : 0.0f) + "%" + warningSwap + " | " 
+					+ "DB: " + (databaseShortName.isEmpty() ? "(not set)" : databaseShortName) + " " + String.format("%,.1f", databaseSize) + "GB Free:" + dbFreePct + "%" + warningDb;
 		} catch (Exception e) {
 			status = "";
 		}

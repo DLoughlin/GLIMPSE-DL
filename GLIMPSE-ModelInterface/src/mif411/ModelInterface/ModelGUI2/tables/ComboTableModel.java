@@ -327,10 +327,8 @@ public class ComboTableModel extends BaseTableModel {
 					// populationSGMRate@year=1985
 					StringTokenizer innerSt = new StringTokenizer(allNodeInfo, "@", false);
 					if (innerSt.countTokens() != 2) {
-						System.out.println("BIG PROBLEM, COUNT TOKENS ISN'T 2!!!!!!!!!!: " + allNodeInfo);
-						System.out.println("lineToParse: " + lineToParse);
-						System.out.println("allNodeInfo: " + allNodeInfo);
-						// return;
+						System.err.println("Skipping malformed combo table path segment: " + allNodeInfo + " (path=" + lineToParse + ")");
+						continue;
 					} else {
 						String firstHalf = innerSt.nextToken(); // populationSGMRate
 						if (leftHeaderVector == null) {

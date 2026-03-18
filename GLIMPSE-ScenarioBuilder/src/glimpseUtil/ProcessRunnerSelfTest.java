@@ -30,6 +30,19 @@ public class ProcessRunnerSelfTest {
         assertTrue(tokens.get(4).equals("--name"), "token4 mismatch: " + tokens);
         assertTrue(tokens.get(5).equals("hello world"), "token5 mismatch: " + tokens);
         assertTrue(tokens.get(6).equals("--flag"), "token6 mismatch: " + tokens);
+
+        java.util.List<String> plainWindowsPath = CommandLineTokenizer.tokenize("c:\\windows\\notepad.exe");
+        assertTrue(plainWindowsPath.size() == 1, "plainWindowsPath token count mismatch: " + plainWindowsPath);
+        assertTrue(plainWindowsPath.get(0).equals("c:\\windows\\notepad.exe"), "plainWindowsPath mismatch: " + plainWindowsPath);
+
+        java.util.List<String> quotedWindowsPath = CommandLineTokenizer.tokenize("\"c:\\windows\\notepad.exe\"");
+        assertTrue(quotedWindowsPath.size() == 1, "quotedWindowsPath token count mismatch: " + quotedWindowsPath);
+        assertTrue(quotedWindowsPath.get(0).equals("c:\\windows\\notepad.exe"), "quotedWindowsPath mismatch: " + quotedWindowsPath);
+
+        java.util.List<String> editorWithArgs = CommandLineTokenizer.tokenize("\"C:\\Program Files\\Notepad++\\notepad++.exe\" -multiInst");
+        assertTrue(editorWithArgs.size() == 2, "editorWithArgs token count mismatch: " + editorWithArgs);
+        assertTrue(editorWithArgs.get(0).equals("C:\\Program Files\\Notepad++\\notepad++.exe"), "editorWithArgs executable mismatch: " + editorWithArgs);
+        assertTrue(editorWithArgs.get(1).equals("-multiInst"), "editorWithArgs arg mismatch: " + editorWithArgs);
     }
 
     private static void testInteractiveSendLine() throws Exception {

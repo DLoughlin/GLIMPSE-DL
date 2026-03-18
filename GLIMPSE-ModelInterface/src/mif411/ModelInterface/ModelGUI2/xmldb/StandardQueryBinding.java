@@ -36,11 +36,9 @@ import ModelInterface.ModelGUI2.ScenarioListItem;
 
 public class StandardQueryBinding implements QueryBinding {
 	private String baseQuery;
-	private String collection;
 	private List<String> functions;
 	public StandardQueryBinding(String baseQuery, List<String> functions, String collection) {
 		this.baseQuery = baseQuery;
-		this.collection = collection;
 		this.functions = functions;
 	}
 	public String bindToQuery(Object[] scenarios, Object[] regions) {

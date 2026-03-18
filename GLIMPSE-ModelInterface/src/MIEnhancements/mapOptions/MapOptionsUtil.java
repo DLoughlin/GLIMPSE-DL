@@ -343,7 +343,7 @@ public class MapOptionsUtil {
      */
     public static HashMap<String, Double> getTableDataForStateOrCountry(JTable jtable, String yearCol, String scenarioStr) {
         HashMap<String, Double> dataForState = new HashMap<>();
-        List<String> regionsInTable = getUniqueRegionsInTable(jtable);
+        getUniqueRegionsInTable(jtable);
         int regionIdx = FilteredTable.getColumnByName(jtable, "region");
         int yearIdx = FilteredTable.getColumnByName(jtable, yearCol);
         List<String> scenarioList = getScenarioListFromTableData(jtable);

@@ -357,7 +357,7 @@ public class MultiTableModel extends BaseTableModel{
                     }
                     j++;
                 }
-                CopyPaste copyPaste = new CopyPaste( jTable );
+                new CopyPaste( jTable );
                 JScrollPane tV = new JScrollPane(jTable, ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER,
                         ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
                 JComponent tableView = tV;

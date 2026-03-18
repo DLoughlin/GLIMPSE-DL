@@ -94,11 +94,6 @@ public class BatchWindow {
 
 
 
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = -1481157258336281895L;
-
 	final File outputFile;
 	final Vector<Object[]> toRunScns; 
 	final Vector<String> allRegions; 

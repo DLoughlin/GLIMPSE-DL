@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
@@ -93,7 +94,7 @@ public class QueueWindow {
      * @param completedLines session completed list
      */
     public static void show(Stage owner, List<String> queuedLines, List<String> completedLines) {
-        show(owner, () -> new QueueData(queuedLines, completedLines));
+        show(owner, () -> new QueueData(null, queuedLines, completedLines));
     }
 
     /**
@@ -299,7 +300,7 @@ public class QueueWindow {
                 refreshData(null, null);
                 return;
             }
-            refreshData(data.queuedLines, data.completedLines);
+            refreshData(data.runningScenarioName, data.queuedLines, data.completedLines);
         } catch (Exception ignored) {}
     }
 
@@ -324,12 +325,16 @@ public class QueueWindow {
         } catch (Exception ignored) {}
     }
 
+    public static void refreshData(List<String> queuedLines, List<String> completedLines) {
+        refreshData(null, queuedLines, completedLines);
+    }
+
     /**
      * Refresh the underlying table rows.
      */
-    public static void refreshData(List<String> queuedLines, List<String> completedLines) {
+    public static void refreshData(String runningScenarioName, List<String> queuedLines, List<String> completedLines) {
         if (!Platform.isFxApplicationThread()) {
-            Platform.runLater(() -> refreshData(queuedLines, completedLines));
+            Platform.runLater(() -> refreshData(runningScenarioName, queuedLines, completedLines));
             return;
         }
         if (table == null) {
@@ -338,40 +343,14 @@ public class QueueWindow {
 
         masterData.clear();
 
-        // Best-effort: infer the currently running scenario.
-        //  1) Prefer the live execution thread if it can infer a scenario name from the current job label.
-        //  2) Fallback to the active GCAM main_log.txt (Configuration file: ...).
-        String runningScenarioName = "";
-        try {
-            if (Client.gCAMExecutionThread != null) {
-                runningScenarioName = Client.gCAMExecutionThread.getCurrentRunningScenarioNameBestEffort();
-            }
-        } catch (Throwable ignored) {
-            runningScenarioName = "";
-        }
-        if (runningScenarioName == null || runningScenarioName.trim().isEmpty()) {
-            runningScenarioName = getRunningScenarioNameBestEffort();
-        }
-        final String runningScenarioNameLower = safeLower(runningScenarioName);
+        Map<String, QueueRow> rowsByScenario = new LinkedHashMap<>();
+        addQueueRows(rowsByScenario, queuedLines, "Queued");
+        addQueueRows(rowsByScenario, completedLines, "Completed");
+        promoteRunningScenario(rowsByScenario, runningScenarioName);
 
-        if (queuedLines != null) {
-            for (String line : queuedLines) {
-                if (line == null || line.trim().isEmpty()) continue;
-                QueueRow row = QueueRow.from(false, line);
-                if (!runningScenarioNameLower.isEmpty() && safeLower(row.scenario).equals(runningScenarioNameLower)) {
-                    row = row.withStatus("Running");
-                }
-                row = row.withLastStateChange(getAndUpdateLastStateChange(row.scenario, row.status));
-                masterData.add(row);
-            }
-        }
-        if (completedLines != null) {
-            for (String line : completedLines) {
-                if (line == null || line.trim().isEmpty()) continue;
-                QueueRow row = QueueRow.from(true, line);
-                row = row.withLastStateChange(getAndUpdateLastStateChange(row.scenario, row.status));
-                masterData.add(row);
-            }
+        for (QueueRow row : rowsByScenario.values()) {
+            QueueRow stampedRow = row.withLastStateChange(getAndUpdateLastStateChange(row.scenario, row.status));
+            masterData.add(stampedRow);
         }
 
         applyFilter();
@@ -386,8 +365,82 @@ public class QueueWindow {
         }
 
         String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-        statusLabel.setText("Queued: " + queuedCount + "   Completed: " + completedCount + "   Running: " + runningCount + "   (Last updated: " + ts + ")");
+        statusLabel.setText("Running: " + runningCount + "   Queued: " + queuedCount + "   Completed: " + completedCount + "   (as of " + ts + ")");
         updateStatusLabelAutoRefreshDecoration();
+    }
+
+    private static void addQueueRows(Map<String, QueueRow> rowsByScenario, List<String> lines, String status) {
+        if (rowsByScenario == null || lines == null || lines.isEmpty()) {
+            return;
+        }
+        for (String line : lines) {
+            if (line == null || line.trim().isEmpty()) {
+                continue;
+            }
+            QueueRow candidate = QueueRow.from(status, line);
+            mergeQueueRow(rowsByScenario, candidate);
+        }
+    }
+
+    private static void promoteRunningScenario(Map<String, QueueRow> rowsByScenario, String runningScenarioName) {
+        if (rowsByScenario == null) {
+            return;
+        }
+        String normalizedRunning = safeName(runningScenarioName);
+        if (normalizedRunning.isEmpty()) {
+            return;
+        }
+        QueueRow existing = findByScenarioName(rowsByScenario, normalizedRunning);
+        if (existing != null) {
+            mergeQueueRow(rowsByScenario, existing.withStatus("Running"));
+            return;
+        }
+        mergeQueueRow(rowsByScenario, new QueueRow(normalizedRunning, "Running", ""));
+    }
+
+    private static void mergeQueueRow(Map<String, QueueRow> rowsByScenario, QueueRow candidate) {
+        if (rowsByScenario == null || candidate == null || safeName(candidate.scenario).isEmpty()) {
+            return;
+        }
+        QueueRow existing = findByScenarioName(rowsByScenario, candidate.scenario);
+        if (existing == null) {
+            rowsByScenario.put(safeName(candidate.scenario), candidate.withScenario(safeName(candidate.scenario)));
+            return;
+        }
+        String mergedStatus = higherPriorityStatus(existing.status, candidate.status);
+        rowsByScenario.put(safeName(existing.scenario), existing.withStatus(mergedStatus).withScenario(safeName(existing.scenario)));
+    }
+
+    private static QueueRow findByScenarioName(Map<String, QueueRow> rowsByScenario, String scenarioName) {
+        if (rowsByScenario == null) {
+            return null;
+        }
+        String key = safeName(scenarioName);
+        if (key.isEmpty()) {
+            return null;
+        }
+        QueueRow direct = rowsByScenario.get(key);
+        if (direct != null) {
+            return direct;
+        }
+        String keyLower = safeLower(key);
+        for (Map.Entry<String, QueueRow> entry : rowsByScenario.entrySet()) {
+            if (safeLower(entry.getKey()).equals(keyLower)) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
+    private static String higherPriorityStatus(String first, String second) {
+        return statusPriority(second) > statusPriority(first) ? second : first;
+    }
+
+    private static int statusPriority(String status) {
+        if ("Running".equals(status)) return 3;
+        if ("Queued".equals(status)) return 2;
+        if ("Completed".equals(status)) return 1;
+        return 0;
     }
 
     /**
@@ -431,47 +484,6 @@ public class QueueWindow {
         return stamp.lastChange == null ? "" : stamp.lastChange.format(STATE_CHANGE_FORMATTER);
     }
 
-    /**
-     * Best-effort running scenario detection, without requiring a PaneScenarioLibrary instance.
-     * Reads the first "Configuration file:" line in <gcamExeDir>/logs/main_log.txt and returns its parent folder name.
-     */
-    private static String getRunningScenarioNameBestEffort() {
-        try {
-            // vars is a singleton in this codebase; if not available, fall back gracefully.
-            String exeDir;
-            try {
-                exeDir = glimpseUtil.GLIMPSEVariables.getInstance().getgCamExecutableDir();
-            } catch (Throwable t) {
-                exeDir = null;
-            }
-            if (exeDir == null || exeDir.trim().isEmpty()) {
-                return "";
-            }
-
-            File mainLog = new File(exeDir + File.separator + "logs" + File.separator + "main_log.txt");
-            if (!mainLog.exists()) {
-                return "";
-            }
-
-            try (Scanner sc = new Scanner(mainLog)) {
-                while (sc.hasNextLine()) {
-                    String line = sc.nextLine();
-                    if (line == null) continue;
-                    line = line.trim();
-                    if (line.startsWith("Configuration file:")) {
-                        String p = line.substring(line.indexOf(':') + 1).trim();
-                        File f = new File(p);
-                        if (f.exists() && f.getParentFile() != null) {
-                            return f.getParentFile().getName();
-                        }
-                        return "";
-                    }
-                }
-            }
-        } catch (Exception ignored) {}
-        return "";
-    }
-
     private static void applyFilter() {
         if (table == null) return;
 
@@ -505,6 +517,10 @@ public class QueueWindow {
         return s == null ? "" : s.toLowerCase();
     }
 
+    private static String safeName(String s) {
+        return s == null ? "" : s.trim();
+    }
+
     private static class QueueRow {
         final String scenario;
         final String status;
@@ -520,6 +536,10 @@ public class QueueWindow {
             return new QueueRow(this.scenario, newStatus, this.lastStateChange);
         }
 
+        QueueRow withScenario(String newScenario) {
+            return new QueueRow(newScenario, this.status, this.lastStateChange);
+        }
+
         QueueRow withLastStateChange(String newLastStateChange) {
             return new QueueRow(this.scenario, this.status, newLastStateChange);
         }
@@ -528,6 +548,10 @@ public class QueueWindow {
             String scenario = guessScenarioName(line);
             String status = completed ? "Completed" : "Queued";
             return new QueueRow(scenario, status, "");
+        }
+
+        static QueueRow from(String status, String line) {
+            return new QueueRow(guessScenarioName(line), status == null ? "" : status, "");
         }
 
         private static String guessScenarioName(String line) {
@@ -587,10 +611,16 @@ public class QueueWindow {
      * Simple carrier for queue data (session queued/completed lists).
      */
     public static class QueueData {
+        public final String runningScenarioName;
         public final List<String> queuedLines;
         public final List<String> completedLines;
 
         public QueueData(List<String> queuedLines, List<String> completedLines) {
+            this(null, queuedLines, completedLines);
+        }
+
+        public QueueData(String runningScenarioName, List<String> queuedLines, List<String> completedLines) {
+            this.runningScenarioName = runningScenarioName;
             this.queuedLines = queuedLines;
             this.completedLines = completedLines;
         }

@@ -68,9 +68,6 @@ public class ThumbnailUtilNew {
 	private static final Font THUMBNAIL_TITLE_FONT = new Font("Arial", Font.BOLD, 12);
 	private static final Font THUMBNAIL_SUBTITLE_FONT = new Font("Arial", Font.BOLD, 11);
 	private static final String CATEGORY_LINE_CHART = "chart.CategoryLineChart";
-	private static final String XY_CHART = "XY";
-	private static final String CATEGORY_CHART = "Category";
-	private static final String LEGEND_TITLE_CLASS = "org.jfree.chart.title.LegendTitle";
 	private static final String NO_DATA_HTML_STYLE = "<style type='text/css'> p{font-family: Verdana;font-size:10;font-weight: plan;}</style>";
 
 	// --- Chart Creation ---
@@ -478,8 +475,6 @@ public class ThumbnailUtilNew {
 	 * @return JPanel containing chart thumbnails
 	 */
 	public static JPanel setChartPane(Chart[] chart, int w, int gridWidth, boolean sameScale, boolean transpose) {
-		// Create grid layout for chart thumbnails
-		int padding = SCROLL_BAR_WIDTH / 4;
 		GridLayout gl = new GridLayout(0, gridWidth);
 		gl.setHgap(0);
 		gl.setVgap(0);

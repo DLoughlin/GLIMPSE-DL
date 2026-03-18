@@ -82,8 +82,6 @@ import mapOptions.MapOptionsUtil;
  * Uses GeoTools for map rendering and Swing for UI.
  */
 public class StateMapPanel extends JFrame implements ComponentListener {
-    // Debug flag
-    private boolean debug = false;
     // Chart name for display
     private String chartName;
     // Main frame
@@ -888,7 +886,7 @@ public class StateMapPanel extends JFrame implements ComponentListener {
             return map;
         }
         try {
-            ArrayList<String> yearColInTable = MapOptionsUtil.getYearListFromTableData(jtable);
+            MapOptionsUtil.getYearListFromTableData(jtable);
             dataForState = MapOptionsUtil.getTableDataForStateOrCountry(jtable, (String) yearListMenu.getSelectedItem(), (String) scenarioListMenu.getSelectedItem());
         } catch (Exception e) {
             e.printStackTrace();

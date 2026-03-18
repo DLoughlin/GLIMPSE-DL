@@ -84,7 +84,6 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	private static final String LABEL_APPLIED_TO = "Applied To: ";
 	private static final String LABEL_TREATMENT = "Treatment: ";
 	private static final String LABEL_UNITS = "Units: ";
-	private static final String LABEL_FINAL_VAL = "Final Val: ";
 	private static final String LABEL_POPULATE = "Populate:";
 	private static final String SELECT_ONE = "Select One";
 	private static final String SELECT_ONE_OR_MORE = "Select One or More";
@@ -591,7 +590,6 @@ public class TabTechBound extends PolicyTab implements Runnable {
 		StringBuilder nonNestedBuffer = new StringBuilder();
 
 		boolean isTransportation = false;
-		boolean isMultiSubsector = false;
 		String prev_subsector = "";
 		double loadFactor = 1.0;
 		String sector = "";
@@ -611,7 +609,6 @@ public class TabTechBound extends PolicyTab implements Runnable {
 				prev_subsector = subsector;
 			} else if (!subsector.equals(prev_subsector)) {
 				prev_subsector = subsector;
-				isMultiSubsector = true;
 			}
 
 			if (sector.toLowerCase().startsWith("trn")) {
@@ -629,10 +626,8 @@ public class TabTechBound extends PolicyTab implements Runnable {
 			for (String state : listOfSelectedLeaves) {
 
 				String use_this_policy_name = policy_name;
-				String use_this_market_name = market_name;
 				if (treatment.equals("each selected region") && listOfSelectedLeaves.length >= 2) {
 					use_this_policy_name = state + "_" + policy_name;
-					use_this_market_name = state + "_" + market_name;
 				}
 
 				state = state.trim();

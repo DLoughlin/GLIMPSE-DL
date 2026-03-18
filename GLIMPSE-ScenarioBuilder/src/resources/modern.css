@@ -80,7 +80,8 @@
 
 /* Status Bar */
 .status-bar {
-    -fx-background-color: #e0e0e0;
+    -fx-background-color: #ffffff;
+    -fx-background-insets: 0;
     -fx-padding: 5;
 }
 
@@ -138,6 +139,81 @@
 .table-view .scroll-bar:horizontal .thumb,
 .table-view .scroll-bar:vertical .thumb {
     -fx-background-color: #bdbdbd;
+}
+
+/* Diff dialog styling */
+.diff-table .table-row-cell.diff-row-insert {
+    -fx-background-color: #e4f4e7;
+    -fx-background-insets: 0;
+}
+
+.diff-table .table-row-cell.diff-row-delete {
+    -fx-background-color: #fbe7ea;
+    -fx-background-insets: 0;
+}
+
+.diff-table .table-row-cell.diff-row-change {
+    -fx-background-color: #fff4d8;
+    -fx-background-insets: 0;
+}
+
+.diff-table .table-row-cell.diff-row-different:hover,
+.diff-table .table-row-cell.diff-row-insert:hover {
+    -fx-background-color: #d8eedc;
+}
+
+.diff-table .table-row-cell.diff-row-delete:hover {
+    -fx-background-color: #f6d9de;
+}
+
+.diff-table .table-row-cell.diff-row-change:hover {
+    -fx-background-color: #ffebbf;
+}
+
+.diff-table .table-row-cell:selected.diff-row-insert,
+.diff-table .table-row-cell:selected.diff-row-delete,
+.diff-table .table-row-cell:selected.diff-row-change,
+.diff-table .table-row-cell:selected.diff-row-different {
+    -fx-background-color: #d7e9ff;
+}
+
+.diff-table .table-cell.diff-cell {
+    -fx-border-color: transparent #eceff1 transparent transparent;
+    -fx-padding: 3 8 3 8;
+    -fx-background-insets: 0;
+}
+
+.diff-table .table-cell.diff-insert,
+.diff-table .table-cell.diff-delete,
+.diff-table .table-cell.diff-change {
+    -fx-background-color: transparent;
+    -fx-text-fill: inherit;
+}
+
+.diff-table .table-cell.diff-empty-side {
+    -fx-background-color: #f1f3f4;
+    -fx-text-fill: #8b949e;
+}
+
+.diff-table .table-cell.diff-line-no {
+    -fx-font-size: 11px;
+    -fx-text-fill: #607d8b;
+}
+
+.diff-table .table-row-cell:selected .table-cell.diff-insert,
+.diff-table .table-row-cell:selected .table-cell.diff-delete,
+.diff-table .table-row-cell:selected .table-cell.diff-change,
+.diff-table .table-row-cell:selected .table-cell.diff-empty-side,
+.diff-table .table-row-cell:selected .table-cell.diff-line-no {
+    -fx-background-color: transparent;
+}
+
+.diff-table .table-cell.diff-insert .label,
+.diff-table .table-cell.diff-delete .label,
+.diff-table .table-cell.diff-change .label,
+.diff-table .table-cell.diff-empty-side .label,
+.diff-table .table-cell.diff-line-no .label {
+    -fx-text-fill: inherit;
 }
 
 /* Tab Pane */

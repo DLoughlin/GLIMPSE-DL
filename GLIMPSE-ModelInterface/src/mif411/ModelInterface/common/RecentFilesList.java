@@ -59,6 +59,14 @@ import ModelInterface.MenuAdder;
  * @author Pralit Patel 
  */
 public class RecentFilesList implements MenuAdder {
+	private static long elapsedMillis(long startNanos) {
+		return (System.nanoTime() - startNanos) / 1_000_000L;
+	}
+
+	private static void logStartup(String stage, long startNanos) {
+		InterfaceMain.logStartupTiming("RecentFilesList:" + stage + " " + elapsedMillis(startNanos) + " ms");
+	}
+
 	/**
 	 * Private instance of this class.
 	 */
@@ -86,6 +94,7 @@ public class RecentFilesList implements MenuAdder {
 	 * Private constructor.
 	 */
 	private RecentFilesList() {
+		final long initStart = System.nanoTime();
 		InterfaceMain.getInstance().getFrame().addPropertyChangeListener(new PropertyChangeListener() {
 			public void propertyChange(PropertyChangeEvent evt) {
 				if(evt.getPropertyName().equals("Control") 
@@ -94,6 +103,7 @@ public class RecentFilesList implements MenuAdder {
 				}
 			}
 		});
+		logStartup("constructor:listener registered", initStart);
 		// setup Clear Menu behavior
 		clearMenuItem.addActionListener(new ActionListener() {
 			@Override
@@ -103,6 +113,7 @@ public class RecentFilesList implements MenuAdder {
 		});
 		// mnemonic for submenu
 		recentFilesMenu.setMnemonic(java.awt.event.KeyEvent.VK_D);
+		logStartup("constructor:complete", initStart);
 	}
 
 	/**
@@ -114,6 +125,7 @@ public class RecentFilesList implements MenuAdder {
 	}
 
 	public void addMenuItems(MenuManager menuMan) {
+		final long menuStart = System.nanoTime();
 		// now is the time create the MenuItems for each recent file.
 		Properties prop = InterfaceMain.getInstance().getProperties();
 		recentFilesLength = 5;
@@ -125,6 +137,7 @@ public class RecentFilesList implements MenuAdder {
 			System.out.println("Could not parse length of recent files list: " + recentFilesLength + " , setting to "+recentFilesLength);
 			
 		}
+		logStartup("addMenuItems:properties", menuStart);
 
 		// should I add these through the menu manager?
 		recentFilesMenu.removeAll();
@@ -156,6 +169,7 @@ public class RecentFilesList implements MenuAdder {
 
 			recentFilesMenu.add(new RecentFile(files, targetSplit[0], targetSplit[1]));
 		}
+		logStartup("addMenuItems:entries built", menuStart);
 
 		// add Clear Menu with separator at the end
 		if(recentFilesMenu.getItemCount() > 0) {
@@ -165,6 +179,7 @@ public class RecentFilesList implements MenuAdder {
 
 		menuMan.getSubMenuManager(InterfaceMain.FILE_MENU_POS).
 			addMenuItem(recentFilesMenu, InterfaceMain.FILE_OPEN_SUBMENU_POS);
+		logStartup("addMenuItems:complete", menuStart);
 	}
 
 	/**

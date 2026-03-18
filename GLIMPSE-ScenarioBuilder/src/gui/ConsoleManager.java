@@ -24,6 +24,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -32,21 +33,16 @@ import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.ToolBar;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.ScrollPane.ScrollBarPolicy;
-import javafx.scene.paint.Color;
-import javafx.scene.text.Text;
-import javafx.scene.text.TextFlow;
-import javafx.scene.layout.Background;
-import javafx.scene.layout.BackgroundFill;
-import javafx.scene.layout.CornerRadii;
-import javafx.geometry.Insets;
 
 /**
  * Small tabbed console window used to view stdout/stderr from external processes.
@@ -87,25 +83,52 @@ final class ConsoleManager {
         STDERR
     }
 
-    private static Stage stage;
-
-    private static ScrollPane glimpseStdoutScroll;
-    // GLIMPSE stderr UI was removed (stderr is routed to GLIMPSE stdout).
-    // private static ScrollPane glimpseStderrScroll;
-    private static ScrollPane gcamStdoutScroll;
-    private static ScrollPane modelInterfaceScroll;
-
-    private static TextFlow glimpseStdoutFlow;
-    // private static TextFlow glimpseStderrFlow;
-    private static TextFlow gcamStdoutFlow;
-    private static TextFlow modelInterfaceFlow;
-
     private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final long BUFFER_FLUSH_MILLIS = 20;
+    private static final int BUFFER_FLUSH_MAX_ITEMS_PER_PULSE = 800;
+    private static final int BUFFER_FORCE_FLUSH_CHAR_THRESHOLD = 64 * 1024;
+    private static final int MAX_VISIBLE_CHARS_PER_CONSOLE = 400_000;
+    private static final int TRIM_TO_VISIBLE_CHARS = 300_000;
+    private static final boolean REDUCED_LIVE_GCAM_OUTPUT = true;
+    private static final String GCAM_COMPLETION_MARKER = "Model run completed.";
+    private static final String[] GCAM_STDOUT_PREFIX_FILTERS = {
+            "Config",
+            "Parsi",
+            "XML ",
+            "Starting new",
+            "Period",
+            "Error"
+    };
+
+    private static final String BASE_CONSOLE_STYLE =
+            "-fx-control-inner-background: white;"
+          + "-fx-font-family: 'Consolas', 'Courier New', monospace';"
+          + "-fx-highlight-fill: derive(-fx-focus-color, 60%);"
+          + "-fx-highlight-text-fill: -fx-text-inner-color;";
+    private static final String STYLE_INFO = BASE_CONSOLE_STYLE + "-fx-text-fill: darkblue;";
+    private static final String STYLE_STDERR = BASE_CONSOLE_STYLE + "-fx-text-fill: firebrick;";
+    private static final String STYLE_STDOUT = BASE_CONSOLE_STYLE + "-fx-text-fill: black;";
+
+    private static Stage stage;
+    private static TabPane tabPane;
+    private static TextArea glimpseStdoutArea;
+    private static TextArea gcamStdoutArea;
+    private static TextArea modelInterfaceArea;
+
+    private static final ScheduledExecutorService BUFFER_SCHEDULER = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "ConsoleManager-BufferedFlush");
+        t.setDaemon(true);
+        return t;
+    });
+    private static final ConcurrentHashMap<StreamSource, BufferedAppender> BUFFERED = new ConcurrentHashMap<>();
+    private static volatile ScheduledFuture<?> flushTask;
+    private static final AtomicBoolean uiFlushScheduled = new AtomicBoolean(false);
 
     private ConsoleManager() {}
 
     static void show() {
         Platform.runLater(() -> {
+            ensureModelCreated();
             if (stage == null) {
                 createStage();
             }
@@ -122,55 +145,7 @@ final class ConsoleManager {
         if (line == null) {
             return;
         }
-        Platform.runLater(() -> {
-            ensureModelCreated();
-            if (stage == null) {
-                createStage();
-            }
-
-            TextFlow flow;
-            ScrollPane scroll;
-            switch (source) {
-            case GLIMPSE_STDERR:
-                // GLIMPSE stderr tab was removed; route to stdout.
-                flow = glimpseStdoutFlow;
-                scroll = glimpseStdoutScroll;
-                break;
-            case GLIMPSE_STDOUT:
-                flow = glimpseStdoutFlow;
-                scroll = glimpseStdoutScroll;
-                break;
-            case MODEL_INTERFACE:
-                flow = modelInterfaceFlow;
-                scroll = modelInterfaceScroll;
-                break;
-            case GCAM_STDERR:
-                // GCAM stderr tab was removed; route to stdout.
-                flow = gcamStdoutFlow;
-                scroll = gcamStdoutScroll;
-                break;
-            case GCAM_STDOUT:
-            default:
-                flow = gcamStdoutFlow;
-                scroll = gcamStdoutScroll;
-                break;
-            }
-            if (flow == null) {
-                return;
-            }
-
-            String normalized = normalizeConsoleLine(line);
-            if (normalized.isEmpty() && isGlimpseSource(source)) {
-                return;
-            }
-            String out = normalized + System.lineSeparator();
-
-            Text t = new Text(out);
-            t.setFill(colorFor(kind));
-            flow.getChildren().add(t);
-
-            autoScrollToBottom(scroll);
-        });
+        Platform.runLater(() -> appendLineToUi(effectiveSource(source), kind, line));
     }
 
     static void appendHeader(StreamSource source, String header) {
@@ -178,165 +153,188 @@ final class ConsoleManager {
         appendLine(source, MessageKind.GLIMPSE_INFO, msg);
     }
 
-    private static MessageKind defaultKindFor(StreamSource source) {
-        if (source == null) {
-            return MessageKind.GLIMPSE_INFO;
-        }
-        switch (source) {
-        case GCAM_STDOUT:
-            return MessageKind.MODEL_STDOUT;
-        case GCAM_STDERR:
-            return MessageKind.STDERR;
-        case GLIMPSE_STDERR:
-            return MessageKind.STDERR;
-        case MODEL_INTERFACE:
-        case GLIMPSE_STDOUT:
-        default:
-            return MessageKind.GLIMPSE_INFO;
-        }
-    }
-
-    private static Color colorFor(MessageKind kind) {
-        if (kind == null) {
-            return Color.BLACK;
-        }
-        switch (kind) {
-        case STDERR:
-            return Color.FIREBRICK;
-        case GLIMPSE_INFO:
-            // Dark-ish blue for GLIMPSE-originated messages.
-            return Color.DARKBLUE;
-        case MODEL_STDOUT:
-        default:
-            return Color.BLACK;
-        }
-    }
-
-    private static void autoScrollToBottom(ScrollPane scroll) {
-        if (scroll == null) {
+    static void appendLineBuffered(StreamSource source, MessageKind kind, String line) {
+        if (line == null) {
             return;
         }
-        // Defer until after layout so scroll bounds update.
+        BufferedAppender app = buffered(source);
+        app.enqueue(kind, line);
+        ensureFlushTaskScheduled();
+
+        if (app.getApproxCharsQueued() >= BUFFER_FORCE_FLUSH_CHAR_THRESHOLD) {
+            requestUiFlush(false);
+        }
+    }
+
+    static void flushBuffered() {
+        requestUiFlush(true);
+    }
+
+    static void clear(StreamSource source) {
+        try {
+            buffered(source).clearPending();
+        } catch (Exception ignored) {}
+
         Platform.runLater(() -> {
-            try {
-                scroll.setVvalue(1.0);
-            } catch (Exception ignored) {}
+            ensureModelCreated();
+            TextArea area = areaFor(source);
+            if (area != null) {
+                area.clear();
+                applyAreaStyle(area, MessageKind.MODEL_STDOUT);
+            }
         });
     }
 
-    /** Ensure TextFlow models exist even if the Stage hasn't been created yet. Must be called on FX thread. */
-    private static void ensureModelCreated() {
-        if (glimpseStdoutFlow == null) {
-            glimpseStdoutFlow = createConsoleTextFlow();
+    private static void appendLineToUi(StreamSource source, MessageKind kind, String line) {
+        ensureModelCreated();
+        if (stage == null) {
+            createStage();
         }
-        if (gcamStdoutFlow == null) {
-            gcamStdoutFlow = createConsoleTextFlow();
+
+        TextArea area = areaFor(source);
+        if (area == null) {
+            return;
         }
-        if (modelInterfaceFlow == null) {
-            modelInterfaceFlow = createConsoleTextFlow();
+
+        String normalized = normalizeConsoleLine(line);
+        if (normalized.isEmpty() && isGlimpseSource(source)) {
+            return;
+        }
+
+        area.appendText(normalized + System.lineSeparator());
+        applyAreaStyle(area, kind);
+        trimVisibleConsoleText(area);
+        autoScrollToBottom(area);
+    }
+
+    private static void appendChunkToUi(StreamSource source, MessageKind kind, String text, boolean scrollToBottom) {
+        ensureModelCreated();
+        if (stage == null) {
+            createStage();
+        }
+
+        TextArea area = areaFor(source);
+        if (area == null || text == null || text.isEmpty()) {
+            return;
+        }
+
+        area.appendText(text);
+        applyAreaStyle(area, kind);
+        trimVisibleConsoleText(area);
+        if (scrollToBottom) {
+            autoScrollToBottom(area);
         }
     }
 
+    private static void ensureModelCreated() {
+        if (glimpseStdoutArea == null) {
+            glimpseStdoutArea = createConsoleTextArea();
+        }
+        if (gcamStdoutArea == null) {
+            gcamStdoutArea = createConsoleTextArea();
+        }
+        if (modelInterfaceArea == null) {
+            modelInterfaceArea = createConsoleTextArea();
+        }
+    }
+
+    private static TextArea createConsoleTextArea() {
+        TextArea area = new TextArea();
+        area.setEditable(false);
+        area.setWrapText(false);
+        area.setFocusTraversable(true);
+        area.setContextMenu(createConsoleContextMenu(area));
+        applyAreaStyle(area, MessageKind.MODEL_STDOUT);
+        area.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
+            if (event.isControlDown() && event.getCode() == KeyCode.C) {
+                area.copy();
+                event.consume();
+            }
+        });
+        return area;
+    }
+
+    private static ContextMenu createConsoleContextMenu(TextArea area) {
+        MenuItem copy = new MenuItem("Copy");
+        copy.setOnAction(e -> area.copy());
+
+        MenuItem selectAll = new MenuItem("Select All");
+        selectAll.setOnAction(e -> area.selectAll());
+
+        MenuItem clear = new MenuItem("Clear");
+        clear.setOnAction(e -> clearArea(area));
+
+        ContextMenu menu = new ContextMenu(copy, selectAll, clear);
+        menu.setOnShowing(e -> {
+            copy.setDisable(area.getSelectedText() == null || area.getSelectedText().isEmpty());
+            selectAll.setDisable(area.getText() == null || area.getText().isEmpty());
+            clear.setDisable(area.getText() == null || area.getText().isEmpty());
+        });
+        return menu;
+    }
+
     private static void createStage() {
-        // Ensure model exists before wiring it into the view.
         ensureModelCreated();
 
         stage = new Stage();
         stage.setTitle("GLIMPSE Console");
 
-        glimpseStdoutScroll = createConsoleScrollPane(glimpseStdoutFlow);
-        gcamStdoutScroll = createConsoleScrollPane(gcamStdoutFlow);
-        modelInterfaceScroll = createConsoleScrollPane(modelInterfaceFlow);
-
-        TabPane tabPane = new TabPane();
-        Tab t0 = new Tab("GLIMPSE", glimpseStdoutScroll);
-        t0.setClosable(false);
-        Tab t1 = new Tab("GCAM", gcamStdoutScroll);
-        t1.setClosable(false);
-        Tab t2 = new Tab("ModelInterface", modelInterfaceScroll);
-        t2.setClosable(false);
-        tabPane.getTabs().addAll(t0, t1, t2);
+        tabPane = new TabPane();
+        tabPane.getTabs().add(createTab("GLIMPSE", glimpseStdoutArea));
+        tabPane.getTabs().add(createTab("GCAM", gcamStdoutArea));
+        tabPane.getTabs().add(createTab("ModelInterface", modelInterfaceArea));
 
         Button clearActive = new Button("Clear");
         clearActive.setOnAction(e -> {
-            Tab selected = tabPane.getSelectionModel().getSelectedItem();
-            if (selected != null) {
-                Object content = selected.getContent();
-                TextFlow flow = extractFlow(content);
-                if (flow != null) {
-                    flow.getChildren().clear();
-                }
+            TextArea area = selectedArea();
+            if (area != null) {
+                clearArea(area);
             }
         });
 
         Button saveAs = new Button("Save As...");
-        saveAs.setOnAction(e -> saveSelectedTabToFile(tabPane));
+        saveAs.setOnAction(e -> saveSelectedTabToFile());
 
         Button zipAll = new Button("Zip");
-        zipAll.setOnAction(e -> zipAllTabsToFile(tabPane));
+        zipAll.setOnAction(e -> zipAllTabsToFile());
 
         BorderPane root = new BorderPane();
         root.setTop(new ToolBar(clearActive, saveAs, zipAll));
         root.setCenter(tabPane);
 
         Scene scene = new Scene(root, 700, 525);
-        // Apply the shared app theme for consistent styling with the main window.
         ScenarioBuilder.applyModernTheme(scene);
         stage.setScene(scene);
     }
 
-    private static TextFlow createConsoleTextFlow() {
-        TextFlow tf = new TextFlow();
-        // Keep text readable and wrapping like a console.
-        tf.setLineSpacing(0.0);
-
-        // 4px internal padding so text doesn't touch the edges.
-        tf.setPadding(new Insets(4, 4, 4, 4));
-
-        // Ensure padding area stays white.
-        try {
-            tf.setBackground(new Background(new BackgroundFill(Color.WHITE, CornerRadii.EMPTY, Insets.EMPTY)));
-        } catch (Exception ignored) {}
-
-        return tf;
+    private static Tab createTab(String title, TextArea area) {
+        Tab tab = new Tab(title, area);
+        tab.setClosable(false);
+        return tab;
     }
 
-    private static ScrollPane createConsoleScrollPane(TextFlow flow) {
-        ScrollPane sp = new ScrollPane(flow);
-        // Allow content to size naturally so scrollbars appear as needed.
-        sp.setFitToWidth(false);
-        sp.setFitToHeight(false);
-        sp.setHbarPolicy(ScrollBarPolicy.AS_NEEDED);
-        sp.setVbarPolicy(ScrollBarPolicy.AS_NEEDED);
-
-        // Keep viewport background white (matches padding/background).
-        try {
-            sp.setStyle("-fx-background: white; -fx-background-color: white;");
-        } catch (Exception ignored) {}
-
-        return sp;
-    }
-
-    private static TextFlow extractFlow(Object tabContent) {
-        if (tabContent instanceof ScrollPane) {
-            Object c = ((ScrollPane) tabContent).getContent();
-            if (c instanceof TextFlow) {
-                return (TextFlow) c;
-            }
-        }
-        return null;
-    }
-
-    private static void saveSelectedTabToFile(TabPane tabPane) {
+    private static TextArea selectedArea() {
         Tab selected = (tabPane == null) ? null : tabPane.getSelectionModel().getSelectedItem();
-        TextFlow flow = (selected == null) ? null : extractFlow(selected.getContent());
-        if (selected == null || flow == null) {
+        return selected == null ? null : areaFromTab(selected);
+    }
+
+    private static TextArea areaFromTab(Tab tab) {
+        if (tab == null) {
+            return null;
+        }
+        Object content = tab.getContent();
+        return content instanceof TextArea ? (TextArea) content : null;
+    }
+
+    private static void saveSelectedTabToFile() {
+        Tab selected = (tabPane == null) ? null : tabPane.getSelectionModel().getSelectedItem();
+        TextArea area = selectedArea();
+        if (selected == null || area == null) {
             showAlert(Alert.AlertType.INFORMATION, "Save As", null, "No console tab is selected.");
             return;
         }
 
         String tabName = selected.getText();
-
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Save " + tabName);
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Text files (*.txt)", "*.txt"));
@@ -354,16 +352,14 @@ final class ConsoleManager {
 
         File outFile = chooser.showSaveDialog(stage);
         if (outFile == null) {
-            return; // user cancelled
+            return;
         }
-
-        // Ensure .txt extension if user omitted it.
         if (!outFile.getName().toLowerCase().endsWith(".txt")) {
             outFile = new File(outFile.getParentFile(), outFile.getName() + ".txt");
         }
 
         try {
-            Files.write(outFile.toPath(), getFlowText(flow).getBytes(StandardCharsets.UTF_8));
+            Files.write(outFile.toPath(), area.getText().getBytes(StandardCharsets.UTF_8));
             appendHeader(StreamSource.GLIMPSE_STDOUT, "Saved '" + tabName + "' to: " + outFile.getAbsolutePath());
         } catch (IOException ex) {
             showAlert(Alert.AlertType.ERROR, "Save As", "Failed to write file:", ex.getMessage());
@@ -371,20 +367,7 @@ final class ConsoleManager {
         }
     }
 
-    private static String getFlowText(TextFlow flow) {
-        if (flow == null || flow.getChildren() == null || flow.getChildren().isEmpty()) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder(Math.max(256, flow.getChildren().size() * 32));
-        flow.getChildren().forEach(n -> {
-            if (n instanceof Text) {
-                sb.append(((Text) n).getText());
-            }
-        });
-        return sb.toString();
-    }
-
-    private static void zipAllTabsToFile(TabPane tabPane) {
+    private static void zipAllTabsToFile() {
         if (tabPane == null || tabPane.getTabs() == null || tabPane.getTabs().isEmpty()) {
             showAlert(Alert.AlertType.INFORMATION, "Zip Logs", null, "There are no console tabs to zip.");
             return;
@@ -399,12 +382,11 @@ final class ConsoleManager {
             chooser.setInitialDirectory(initialDir);
         }
 
-        String suggested = "all-logs-" + LocalDate.now().toString() + ".zip"; // YYYY-MM-DD
-        chooser.setInitialFileName(suggested);
+        chooser.setInitialFileName("all-logs-" + LocalDate.now().toString() + ".zip");
 
         File outFile = chooser.showSaveDialog(stage);
         if (outFile == null) {
-            return; // user cancelled
+            return;
         }
         if (!outFile.getName().toLowerCase().endsWith(".zip")) {
             outFile = new File(outFile.getParentFile(), outFile.getName() + ".zip");
@@ -417,7 +399,6 @@ final class ConsoleManager {
 
             try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(outFile)))) {
                 zos.setLevel(9);
-
                 Set<String> usedEntryNames = new HashSet<>();
 
                 for (Tab t : tabPane.getTabs()) {
@@ -433,16 +414,16 @@ final class ConsoleManager {
                         entryBase = "console";
                     }
 
-                    String entryName = entryBase + ".txt";
-                    entryName = ensureUniqueEntryName(entryName, usedEntryNames);
-
-                    TextFlow flow = extractFlow(t.getContent());
-                    String text = (flow != null) ? getFlowText(flow) : "";
+                    String entryName = ensureUniqueEntryName(entryBase + ".txt", usedEntryNames);
+                    String text = "";
+                    TextArea area = areaFromTab(t);
+                    if (area != null) {
+                        text = area.getText();
+                    }
 
                     ZipEntry entry = new ZipEntry(entryName);
                     zos.putNextEntry(entry);
-                    byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
-                    zos.write(bytes);
+                    zos.write(text.getBytes(StandardCharsets.UTF_8));
                     zos.closeEntry();
                 }
             }
@@ -454,11 +435,145 @@ final class ConsoleManager {
         }
     }
 
+    private static MessageKind defaultKindFor(StreamSource source) {
+        if (source == null) {
+            return MessageKind.GLIMPSE_INFO;
+        }
+        switch (source) {
+        case GCAM_STDOUT:
+            return MessageKind.MODEL_STDOUT;
+        case GCAM_STDERR:
+        case GLIMPSE_STDERR:
+            return MessageKind.STDERR;
+        case MODEL_INTERFACE:
+        case GLIMPSE_STDOUT:
+        default:
+            return MessageKind.GLIMPSE_INFO;
+        }
+    }
+
+    private static void applyAreaStyle(TextArea area, MessageKind kind) {
+        if (area == null) {
+            return;
+        }
+        switch (kind == null ? MessageKind.MODEL_STDOUT : kind) {
+        case STDERR:
+            area.setStyle(STYLE_STDERR);
+            break;
+        case GLIMPSE_INFO:
+            area.setStyle(STYLE_INFO);
+            break;
+        case MODEL_STDOUT:
+        default:
+            area.setStyle(STYLE_STDOUT);
+            break;
+        }
+    }
+
+    private static void autoScrollToBottom(TextArea area) {
+        if (area == null) {
+            return;
+        }
+        try {
+            area.positionCaret(area.getLength());
+            area.setScrollTop(Double.MAX_VALUE);
+        } catch (Exception ignored) {}
+    }
+
+    private static void clearArea(TextArea area) {
+        if (area == null) {
+            return;
+        }
+        area.clear();
+        applyAreaStyle(area, MessageKind.MODEL_STDOUT);
+    }
+
+    private static StreamSource effectiveSource(StreamSource source) {
+        if (source == null) {
+            return StreamSource.GLIMPSE_STDOUT;
+        }
+        if (source == StreamSource.GLIMPSE_STDERR) {
+            return StreamSource.GLIMPSE_STDOUT;
+        }
+        if (source == StreamSource.GCAM_STDERR) {
+            return StreamSource.GCAM_STDOUT;
+        }
+        return source;
+    }
+
+    private static TextArea areaFor(StreamSource source) {
+        switch (effectiveSource(source)) {
+        case MODEL_INTERFACE:
+            return modelInterfaceArea;
+        case GCAM_STDOUT:
+            return gcamStdoutArea;
+        case GLIMPSE_STDOUT:
+        default:
+            return glimpseStdoutArea;
+        }
+    }
+
+    private static BufferedAppender buffered(StreamSource source) {
+        return BUFFERED.computeIfAbsent(effectiveSource(source), BufferedAppender::new);
+    }
+
+    private static synchronized void ensureFlushTaskScheduled() {
+        if (flushTask != null && !flushTask.isDone()) {
+            return;
+        }
+        flushTask = BUFFER_SCHEDULER.scheduleAtFixedRate(() -> {
+            boolean anyQueued = false;
+            for (BufferedAppender a : BUFFERED.values()) {
+                if (a != null && !a.queue.isEmpty()) {
+                    anyQueued = true;
+                    break;
+                }
+            }
+            if (anyQueued) {
+                requestUiFlush(false);
+            }
+        }, BUFFER_FLUSH_MILLIS, BUFFER_FLUSH_MILLIS, TimeUnit.MILLISECONDS);
+    }
+
+    private static void requestUiFlush(boolean drainAll) {
+        if (!uiFlushScheduled.compareAndSet(false, true)) {
+            return;
+        }
+        Platform.runLater(() -> {
+            try {
+                flushBufferedToUi(drainAll);
+            } finally {
+                uiFlushScheduled.set(false);
+                if (!drainAll && hasQueuedBufferedOutput()) {
+                    requestUiFlush(false);
+                }
+            }
+        });
+    }
+
+    private static boolean hasQueuedBufferedOutput() {
+        for (BufferedAppender a : BUFFERED.values()) {
+            if (a != null && !a.queue.isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void flushBufferedToUi(boolean drainAll) {
+        ensureModelCreated();
+        int maxItems = drainAll ? Integer.MAX_VALUE : BUFFER_FLUSH_MAX_ITEMS_PER_PULSE;
+        for (BufferedAppender a : BUFFERED.values()) {
+            if (a != null) {
+                a.drainToUi(maxItems);
+            }
+        }
+    }
+
     private static String ensureUniqueEntryName(String entryName, Set<String> usedEntryNames) {
         if (usedEntryNames.add(entryName)) {
             return entryName;
         }
-
         String base = entryName;
         String ext = "";
         int dot = entryName.lastIndexOf('.');
@@ -466,7 +581,6 @@ final class ConsoleManager {
             base = entryName.substring(0, dot);
             ext = entryName.substring(dot);
         }
-
         int i = 2;
         while (true) {
             String candidate = base + "-" + i + ext;
@@ -477,7 +591,6 @@ final class ConsoleManager {
         }
     }
 
-    /** Default directory for console exports: <GLIMPSE>/GLIMPSE-Data/logs (if available). */
     private static File getDefaultLogsDirectory() {
         try {
             String glimpseDir = GLIMPSEVariables.getInstance().getGlimpseDir();
@@ -486,7 +599,6 @@ final class ConsoleManager {
             }
             return new File(glimpseDir, "GLIMPSE-Data" + File.separator + "logs");
         } catch (Throwable t) {
-            // Be resilient if vars aren't initialized yet.
             return null;
         }
     }
@@ -495,14 +607,12 @@ final class ConsoleManager {
         if (raw == null) {
             return "console.txt";
         }
-        // Windows-illegal: < > : " / \ | ? * plus control chars.
         String s = raw.replaceAll("[\\\\/:*?\"<>|]", "_");
         s = s.replaceAll("[\\p{Cntrl}]", "");
         s = s.trim();
         if (s.isEmpty()) {
             s = "console";
         }
-        // Keep it reasonably short for Windows path limits.
         if (s.length() > 80) {
             s = s.substring(0, 80).trim();
         }
@@ -518,289 +628,8 @@ final class ConsoleManager {
             alert.initOwner(stage);
             alert.showAndWait();
         } catch (Throwable t) {
-            // Last resort: avoid crashing if JavaFX alerts aren't available.
             System.err.println(title + ": " + (content == null ? "" : content));
         }
-    }
-
-    /**
-     * Buffered console flushing for high-volume output (notably GCAM stdout).
-     *
-     * Why this exists:
-     * - Scheduling Platform.runLater per line can backlog the FX queue and make output appear to "update late".
-     * - We batch lines off-thread and flush them onto the FX thread periodically.
-     */
-    private static final class BufferedAppender {
-        private final StreamSource source;
-        private final ConcurrentLinkedQueue<BufferedItem> queue = new ConcurrentLinkedQueue<>();
-        private volatile int approxCharsQueued = 0;
-
-        private BufferedAppender(StreamSource source) {
-            this.source = source;
-        }
-
-        void enqueue(MessageKind kind, String line) {
-            if (line == null) {
-                return;
-            }
-            // Queue the raw line; newline is added on flush to keep consistent behaviour.
-            queue.add(new BufferedItem(kind, line));
-            approxCharsQueued += Math.min(4096, line.length() + 1);
-        }
-
-        void drainToUi(int maxItems) {
-            // Must be called on FX thread.
-            if (maxItems <= 0) {
-                maxItems = Integer.MAX_VALUE;
-            }
-
-            ensureModelCreated();
-            if (stage == null) {
-                createStage();
-            }
-
-            TextFlow flow;
-            ScrollPane scroll;
-            switch (source) {
-            case GLIMPSE_STDERR:
-            case GLIMPSE_STDOUT:
-                flow = glimpseStdoutFlow;
-                scroll = glimpseStdoutScroll;
-                break;
-            case MODEL_INTERFACE:
-                flow = modelInterfaceFlow;
-                scroll = modelInterfaceScroll;
-                break;
-            case GCAM_STDERR:
-            case GCAM_STDOUT:
-            default:
-                flow = gcamStdoutFlow;
-                scroll = gcamStdoutScroll;
-                break;
-            }
-
-            if (flow == null) {
-                // Drain anyway to keep memory bounded.
-                int drained = 0;
-                BufferedItem it;
-                while (drained < maxItems && (it = queue.poll()) != null) {
-                    drained++;
-                }
-                approxCharsQueued = 0;
-                return;
-            }
-
-            // Batch queued lines by MessageKind so we create far fewer JavaFX Text nodes.
-            int drained = 0;
-            BufferedItem it;
-            StringBuilder sbStdout = null;
-            StringBuilder sbInfo = null;
-            StringBuilder sbErr = null;
-
-            while (drained < maxItems && (it = queue.poll()) != null) {
-                drained++;
-
-                String normalized = normalizeConsoleLine(it.line);
-                if (normalized.isEmpty() && isGlimpseSource(source)) {
-                    continue;
-                }
-                String out = normalized + System.lineSeparator();
-
-                switch (it.kind) {
-                case STDERR:
-                    if (sbErr == null) sbErr = new StringBuilder(Math.min(4096, out.length() * 4));
-                    sbErr.append(out);
-                    break;
-                case GLIMPSE_INFO:
-                    if (sbInfo == null) sbInfo = new StringBuilder(Math.min(4096, out.length() * 4));
-                    sbInfo.append(out);
-                    break;
-                case MODEL_STDOUT:
-                default:
-                    if (sbStdout == null) sbStdout = new StringBuilder(Math.min(4096, out.length() * 4));
-                    sbStdout.append(out);
-                    break;
-                }
-            }
-
-            // Append in a stable order so output looks consistent.
-            if (sbStdout != null && sbStdout.length() > 0) {
-                Text t = new Text(sbStdout.toString());
-                t.setFill(colorFor(MessageKind.MODEL_STDOUT));
-                flow.getChildren().add(t);
-            }
-            if (sbInfo != null && sbInfo.length() > 0) {
-                Text t = new Text(sbInfo.toString());
-                t.setFill(colorFor(MessageKind.GLIMPSE_INFO));
-                flow.getChildren().add(t);
-            }
-            if (sbErr != null && sbErr.length() > 0) {
-                Text t = new Text(sbErr.toString());
-                t.setFill(colorFor(MessageKind.STDERR));
-                flow.getChildren().add(t);
-            }
-
-            // Reset the approximate size occasionally. This is not exact but good enough for throttling.
-            if (queue.isEmpty()) {
-                approxCharsQueued = 0;
-            }
-
-            autoScrollToBottom(scroll);
-        }
-
-        void clearPending() {
-            while (queue.poll() != null) {
-                // drain
-            }
-            approxCharsQueued = 0;
-        }
-
-        int getApproxCharsQueued() {
-            return approxCharsQueued;
-        }
-    }
-
-    private static final class BufferedItem {
-        private final MessageKind kind;
-        private final String line;
-
-        private BufferedItem(MessageKind kind, String line) {
-            this.kind = (kind == null) ? MessageKind.GLIMPSE_INFO : kind;
-            this.line = (line == null) ? "" : line;
-        }
-    }
-
-    // Config: keep these conservative so UI remains snappy.
-    // Lower flush interval so GCAM output feels closer to real time.
-    private static final long BUFFER_FLUSH_MILLIS = 20;
-    // Keep per-pulse work bounded.
-    private static final int BUFFER_FLUSH_MAX_ITEMS_PER_PULSE = 800;
-    private static final int BUFFER_FORCE_FLUSH_CHAR_THRESHOLD = 64 * 1024;
-
-    private static final ScheduledExecutorService BUFFER_SCHEDULER = Executors.newSingleThreadScheduledExecutor(r -> {
-        Thread t = new Thread(r, "ConsoleManager-BufferedFlush");
-        t.setDaemon(true);
-        return t;
-    });
-
-    private static final ConcurrentHashMap<StreamSource, BufferedAppender> BUFFERED = new ConcurrentHashMap<>();
-    private static volatile ScheduledFuture<?> flushTask;
-
-    private static BufferedAppender buffered(StreamSource source) {
-        StreamSource effective = source;
-        if (effective == null) {
-            effective = StreamSource.GLIMPSE_STDOUT;
-        }
-        // Route deprecated stderr sources to their stdout tab, consistent with appendLine().
-        if (effective == StreamSource.GLIMPSE_STDERR) {
-            effective = StreamSource.GLIMPSE_STDOUT;
-        } else if (effective == StreamSource.GCAM_STDERR) {
-            effective = StreamSource.GCAM_STDOUT;
-        }
-        return BUFFERED.computeIfAbsent(effective, BufferedAppender::new);
-    }
-
-    private static synchronized void ensureFlushTaskScheduled() {
-        if (flushTask != null && !flushTask.isDone()) {
-            return;
-        }
-        flushTask = BUFFER_SCHEDULER.scheduleAtFixedRate(() -> {
-            // Only schedule a UI flush if there is something queued.
-            boolean anyQueued = false;
-            for (BufferedAppender a : BUFFERED.values()) {
-                if (a != null && !a.queue.isEmpty()) {
-                    anyQueued = true;
-                    break;
-                }
-            }
-            if (!anyQueued) {
-                return;
-            }
-            Platform.runLater(() -> flushBufferedToUi(false));
-        }, BUFFER_FLUSH_MILLIS, BUFFER_FLUSH_MILLIS, TimeUnit.MILLISECONDS);
-    }
-
-    /**
-     * Buffered append intended for very chatty streams.
-     *
-     * This does not call Platform.runLater per line. Instead it batches and flushes to the UI periodically.
-     */
-    static void appendLineBuffered(StreamSource source, MessageKind kind, String line) {
-        if (line == null) {
-            return;
-        }
-        BufferedAppender app = buffered(source);
-        app.enqueue(kind, line);
-        ensureFlushTaskScheduled();
-
-        // GCAM emits steady progress lines every few seconds; make them appear promptly.
-        // This is best-effort: the periodic flush still exists, but this reduces "big batch" updates
-        // when the FX thread is otherwise idle.
-        if (source == StreamSource.GCAM_STDOUT) {
-            Platform.runLater(() -> flushBufferedToUi(false));
-            return;
-        }
-
-        // Safety valve: if we get a huge burst, trigger a sooner UI flush.
-        if (app.getApproxCharsQueued() >= BUFFER_FORCE_FLUSH_CHAR_THRESHOLD) {
-            // Best-effort: schedule a one-off flush soon. If FX is busy, periodic flush will still catch up.
-            Platform.runLater(() -> flushBufferedToUi(false));
-        }
-    }
-
-    /** Forces any buffered text to be appended to the UI now (best-effort). */
-    static void flushBuffered() {
-        Platform.runLater(() -> flushBufferedToUi(true));
-    }
-
-    /** Must be called on FX thread. */
-    private static void flushBufferedToUi(boolean drainAll) {
-        ensureModelCreated();
-        int maxItems = drainAll ? Integer.MAX_VALUE : BUFFER_FLUSH_MAX_ITEMS_PER_PULSE;
-        for (BufferedAppender a : BUFFERED.values()) {
-            if (a == null) {
-                continue;
-            }
-            // If not draining all, split pulses across different streams fairly.
-            a.drainToUi(maxItems);
-        }
-    }
-
-    /** Clears the text for the given console stream (best-effort). */
-    static void clear(StreamSource source) {
-        // Flush pending buffered content first so it doesn't reappear right after clear().
-        try {
-            BufferedAppender app = buffered(source);
-            app.clearPending();
-        } catch (Exception ignored) {}
-
-        Platform.runLater(() -> {
-            // Create model buffers even if the window hasn't been opened yet.
-            ensureModelCreated();
-
-            TextFlow flow = null;
-            switch (source) {
-            case GLIMPSE_STDERR:
-                flow = glimpseStdoutFlow;
-                break;
-            case GLIMPSE_STDOUT:
-                flow = glimpseStdoutFlow;
-                break;
-            case MODEL_INTERFACE:
-                flow = modelInterfaceFlow;
-                break;
-            case GCAM_STDERR:
-                flow = gcamStdoutFlow;
-                break;
-            case GCAM_STDOUT:
-            default:
-                flow = gcamStdoutFlow;
-                break;
-            }
-            if (flow != null) {
-                flow.getChildren().clear();
-            }
-        });
     }
 
     private static String normalizeConsoleLine(String line) {
@@ -820,6 +649,124 @@ final class ConsoleManager {
     }
 
     private static boolean isGlimpseSource(StreamSource source) {
-        return source == StreamSource.GLIMPSE_STDOUT || source == StreamSource.GLIMPSE_STDERR;
+        StreamSource effective = effectiveSource(source);
+        return effective == StreamSource.GLIMPSE_STDOUT;
+    }
+
+    private static void trimVisibleConsoleText(TextArea area) {
+        if (area == null) {
+            return;
+        }
+        try {
+            String text = area.getText();
+            if (text == null || text.length() <= MAX_VISIBLE_CHARS_PER_CONSOLE) {
+                return;
+            }
+            int targetStart = Math.max(0, text.length() - TRIM_TO_VISIBLE_CHARS);
+            int newline = text.indexOf('\n', targetStart);
+            int trimStart = newline >= 0 ? newline + 1 : targetStart;
+            String trimmed = text.substring(trimStart);
+            area.setText(trimmed);
+        } catch (Exception ignored) {}
+    }
+
+    private static final class BufferedAppender {
+        private final StreamSource source;
+        private final ConcurrentLinkedQueue<BufferedItem> queue = new ConcurrentLinkedQueue<>();
+        private volatile int approxCharsQueued = 0;
+        private boolean includeAllFutureGcamStdout = false;
+
+        private BufferedAppender(StreamSource source) {
+            this.source = source;
+        }
+
+        void enqueue(MessageKind kind, String line) {
+            queue.add(new BufferedItem(kind, line));
+            approxCharsQueued += Math.min(4096, line == null ? 1 : line.length() + 1);
+        }
+
+        void drainToUi(int maxItems) {
+            if (maxItems <= 0) {
+                maxItems = Integer.MAX_VALUE;
+            }
+            int drained = 0;
+            BufferedItem it;
+            MessageKind chunkKind = null;
+            StringBuilder chunk = new StringBuilder();
+            while (drained < maxItems && (it = queue.poll()) != null) {
+                drained++;
+                String normalized = normalizeConsoleLine(it.line);
+                if (normalized.isEmpty() && isGlimpseSource(source)) {
+                    continue;
+                }
+                if (shouldReduceLiveOutput(it, normalized)) {
+                    continue;
+                }
+                if (chunkKind != null && chunkKind != it.kind && chunk.length() > 0) {
+                    appendChunkToUi(source, chunkKind, chunk.toString(), false);
+                    chunk.setLength(0);
+                }
+                chunkKind = it.kind;
+                chunk.append(normalized).append(System.lineSeparator());
+            }
+            if (chunk.length() > 0) {
+                appendChunkToUi(source, chunkKind, chunk.toString(), true);
+            }
+            if (queue.isEmpty()) {
+                approxCharsQueued = 0;
+            }
+        }
+
+        private boolean shouldReduceLiveOutput(BufferedItem item, String normalizedLine) {
+            if (!REDUCED_LIVE_GCAM_OUTPUT || source != StreamSource.GCAM_STDOUT) {
+                return false;
+            }
+            if (item == null || item.kind != MessageKind.MODEL_STDOUT) {
+                return false;
+            }
+            return !shouldKeepGcamStdoutLine(normalizedLine);
+        }
+
+        private boolean shouldKeepGcamStdoutLine(String normalizedLine) {
+            if (normalizedLine == null) {
+                return false;
+            }
+            String trimmed = normalizedLine.trim();
+            if (trimmed.isEmpty()) {
+                return false;
+            }
+            if (includeAllFutureGcamStdout || trimmed.contains(GCAM_COMPLETION_MARKER)) {
+                includeAllFutureGcamStdout = true;
+                return true;
+            }
+            for (String prefix : GCAM_STDOUT_PREFIX_FILTERS) {
+                if (trimmed.startsWith(prefix)) {
+                    return true;
+                }
+            }
+            return trimmed.contains("iterations");
+        }
+
+        void clearPending() {
+            while (queue.poll() != null) {
+                // drain
+            }
+            approxCharsQueued = 0;
+            includeAllFutureGcamStdout = false;
+        }
+
+        int getApproxCharsQueued() {
+            return approxCharsQueued;
+        }
+    }
+
+    private static final class BufferedItem {
+        private final MessageKind kind;
+        private final String line;
+
+        private BufferedItem(MessageKind kind, String line) {
+            this.kind = (kind == null) ? MessageKind.GLIMPSE_INFO : kind;
+            this.line = (line == null) ? "" : line;
+        }
     }
 }

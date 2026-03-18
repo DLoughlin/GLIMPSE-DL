@@ -163,7 +163,7 @@ public class DiffResultsPanel extends QueryResultsPanel {
 			j++;
 		}
 
-		Properties props = main.getProperties();// @1
+		main.getProperties();
 		// for restore legend information
 		//String path = System.getProperty("user.dir") + "\\LegendBundle.properties";
 		String path=InterfaceMain.legendBundlesLoc;
@@ -308,7 +308,6 @@ public class DiffResultsPanel extends QueryResultsPanel {
 			return;
 		}
 		ArrayList<UnitConversionInstance> possibleConversions=null;
-		UnitConversionInstance uci=null;
 		int num_rows = table.getRowCount();
 		int num_cols = table.getColumnCount();
 		Double tableVal=null;
@@ -318,8 +317,6 @@ public class DiffResultsPanel extends QueryResultsPanel {
 		for (int i = 0; i < table.getColumnCount(); i++) {
            headerLookup.put(tm.getColumnName(i),i);
         }
-		String headerComp=null;
-		String valComp=null;
 		//get all the unique units in this table
 		HashSet<String> uniqueUnits=new HashSet<String>();
 		for(int i=0;i<num_rows;i++) {
@@ -534,7 +531,7 @@ public class DiffResultsPanel extends QueryResultsPanel {
 		ArrayList<String> headers = getHeaders(tm);
 
 		DefaultTableModel dtm = new DefaultTableModel();
-		Object[] obj = new Object[tm.getColumnCount()];
+		tm.getColumnCount();
 
 		for (int i = 0; i < tm.getColumnCount(); i++) {
 			dtm.addColumn(tm.getColumnName(i));
@@ -567,8 +564,6 @@ public class DiffResultsPanel extends QueryResultsPanel {
 
 						int match_base = -1;
 						int match_alt = -1;
-						int match_back = -1;
-
 						String uniqueval = uniquevals.get(u);
 						String base_key_string = base_scenario + "," + region + "," + uniqueval;
 						String alt_key_string = scenario + "," + region + "," + uniqueval;
@@ -847,7 +842,7 @@ public class DiffResultsPanel extends QueryResultsPanel {
 			if ((!temp.equals("scenario")) && (!temp.equals("region"))) {
 				boolean isnum = false;
 				try {
-					double d = Double.parseDouble(temp);
+					Double.parseDouble(temp);
 					isnum = true;
 				} catch (Exception e) {
 					isnum = false;
@@ -870,7 +865,7 @@ public class DiffResultsPanel extends QueryResultsPanel {
 			if ((!temp.equals("scenario")) && (!temp.equals("region"))) {
 				boolean isnum = false;
 				try {
-					double d = Double.parseDouble(temp);
+					Double.parseDouble(temp);
 					isnum = true;
 				} catch (Exception e) {
 					isnum = false;
