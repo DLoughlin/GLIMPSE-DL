@@ -173,6 +173,56 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	private JLabel loadingLabel;
 	private volatile boolean dbViewInitialized = false;
 	private javax.swing.SwingWorker<StartupData, Void> startupLoader;
+	private enum StartupLifecycleState {
+		IDLE,
+		PREPARING,
+		OPENING_DB,
+		LOADING_DATA,
+		BUILDING_UI,
+		READY,
+		FAILED,
+		SHUTTING_DOWN
+	}
+	private volatile StartupLifecycleState startupState = StartupLifecycleState.IDLE;
+	private volatile String lastControlOldValue = "(unset)";
+	private volatile String lastControlNewValue = "(unset)";
+
+	private boolean isStartupActive() {
+		return startupState == StartupLifecycleState.PREPARING
+				|| startupState == StartupLifecycleState.OPENING_DB
+				|| startupState == StartupLifecycleState.LOADING_DATA
+				|| startupState == StartupLifecycleState.BUILDING_UI;
+	}
+
+	private boolean isReadyForShutdownCleanup() {
+		return startupState == StartupLifecycleState.READY || dbViewInitialized;
+	}
+
+	private static String safeControlValue(Object value) {
+		return value == null ? "null" : String.valueOf(value);
+	}
+
+	private void updateLastControlTransition(Object oldValue, Object newValue) {
+		lastControlOldValue = safeControlValue(oldValue);
+		lastControlNewValue = safeControlValue(newValue);
+		InterfaceMain.logStartupTiming("DbViewer:control old=" + lastControlOldValue + " new=" + lastControlNewValue
+				+ " startupState=" + startupState + " dbViewInitialized=" + dbViewInitialized);
+	}
+
+	private void setStartupState(StartupLifecycleState newState) {
+		StartupLifecycleState previousState = startupState;
+		startupState = newState;
+		InterfaceMain.logStartupTiming("DbViewer:state " + previousState + " -> " + newState
+				+ " [control old=" + lastControlOldValue + ", new=" + lastControlNewValue
+				+ ", dbViewInitialized=" + dbViewInitialized + "]");
+	}
+
+	private void invalidateQueriesDocument(String reason) {
+		queriesDoc = null;
+		queries = null;
+		InterfaceMain.logStartupTiming("DbViewer:invalidateQueriesDocument reason=" + reason
+				+ " [control old=" + lastControlOldValue + ", new=" + lastControlNewValue + "]");
+	}
 
 	private static final class StartupData {
 		private final Vector<ScenarioListItem> scenarios;
@@ -262,6 +312,10 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			message.append(" at:\n").append(dbFile.getAbsolutePath());
 		}
 		Throwable root = unwrapFailure(failure);
+		if (XMLDB.isSuppressedBaseXResourceException(root)) {
+			message.append("\n\nDetails:\nThe database runtime could not resolve bundled BaseX resources in this launch environment.");
+			return message.toString();
+		}
 		String detail = formatThrowableSummary(root);
 		if (detail != null && !detail.trim().isEmpty()) {
 			message.append("\n\nDetails:\n").append(detail);
@@ -285,6 +339,9 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		if (root instanceof InterruptedException) {
 			Thread.currentThread().interrupt();
 			return "Database loading was interrupted before initialization completed.";
+		}
+		if (XMLDB.isSuppressedBaseXResourceException(root)) {
+			return "The database runtime could not resolve bundled BaseX resources in this launch environment.";
 		}
 		String prefix;
 		if (root instanceof IllegalStateException || root instanceof NullPointerException) {
@@ -327,24 +384,52 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		return queryFile == null ? "(none)" : queryFile.getAbsolutePath();
 	}
 
+	private File findDefaultStartupQueryFile() {
+		String[] candidates = new String[] {
+				"config" + File.separator + "Main_queries_GLIMPSE-8.2.xml",
+				"config" + File.separator + "Main_queries_GLIMPSE-7p0.xml",
+				"config" + File.separator + "Main_queries.xml",
+				"Main_queries.xml"
+		};
+		for (String candidate : candidates) {
+			File file = new File(candidate);
+			if (file.exists() && file.isFile()) {
+				return file.getAbsoluteFile();
+			}
+		}
+		return null;
+	}
+
 	private File resolveStartupQueryFile(Properties prop, JFrame parentFrame) {
+		if (prop == null) {
+			prop = new Properties();
+		}
 		String queryFileName = prop.getProperty("queryFile", null);
 		File queryFile = queryFileName != null && !queryFileName.trim().isEmpty() ? new File(queryFileName) : null;
 		if (queryFile == null) {
 			System.out.println("No query file specified in properties. Select query file via ModelInterface file menu.");
 		}
 		if (queryFile == null || !queryFile.exists()) {
-			FileChooser fc = FileChooserFactory.getFileChooser();
-			final FileFilter xmlFilter = new XMLFilter();
-			File[] xmlFiles = fc.doFilePrompt(parentFrame,
-					"Could not find query file.  Please select one.", FileChooser.LOAD_DIALOG,
-					new File(prop.getProperty("lastDirectory", ".")), xmlFilter);
-			if (xmlFiles == null || xmlFiles.length == 0 || xmlFiles[0] == null) {
-				queryFileName = "Main_queries.xml";
-				queryFile = new File(queryFileName);
+			File defaultQueryFile = findDefaultStartupQueryFile();
+			if (defaultQueryFile != null) {
+				queryFile = defaultQueryFile;
+				queryFileName = defaultQueryFile.getAbsolutePath();
+				System.out.println("Using default startup query file: " + queryFileName);
 			} else {
-				queryFile = xmlFiles[0];
-				queryFileName = queryFile.getAbsolutePath();
+				FileChooser fc = FileChooserFactory.getFileChooser();
+				final FileFilter xmlFilter = new XMLFilter();
+				File startDir = new File(prop.getProperty("lastDirectory", "."));
+				File[] xmlFiles = fc.doFilePrompt(parentFrame,
+						"Could not find query file. Please select one to continue startup.", FileChooser.LOAD_DIALOG,
+						startDir, xmlFilter);
+				if (xmlFiles != null && xmlFiles.length > 0 && xmlFiles[0] != null) {
+					queryFile = xmlFiles[0];
+					queryFileName = queryFile.getAbsolutePath();
+				}
+			}
+			if (queryFile == null) {
+				throw new IllegalStateException(
+						"No startup query file could be resolved. Configure 'queryFile' or place a default query file under 'config'.");
 			}
 			prop.setProperty("queryFile", queryFileName);
 		}
@@ -533,21 +618,34 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		parentFrame.addPropertyChangeListener(new PropertyChangeListener() {
 			public void propertyChange(PropertyChangeEvent evt) {
 				if (evt.getPropertyName().equals("Control")) {
+					updateLastControlTransition(evt.getOldValue(), evt.getNewValue());
 					if (evt.getOldValue().equals(controlStr) || evt.getOldValue().equals(controlStr + "Same")) {
-						// Don't block the EDT during shutdown; cancel queries quickly and close DB asynchronously.
-						shutdownQueriesAndCloseDatabaseAsync();
-						
-						if (queries.hasChanges() && InterfaceMain.getInstance().showConfirmDialog(
-								"The Queries have been modified.  Do you want to save them?", "Confirm Save Queries",
-								JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
-								JOptionPane.YES_OPTION) == JOptionPane.YES_OPTION) {
-							writeQueries();
+						if (DbViewer.this.isStartupActive()) {
+							if (startupLoader != null && !startupLoader.isDone()) {
+								startupLoader.cancel(true);
+							}
+							invalidateQueriesDocument("control-transition-aborted-startup");
+							setStartupState(StartupLifecycleState.FAILED);
 						}
-						Properties prop = main.getProperties();
-						prop.setProperty("scenarioRegionSplit",
-								String.valueOf(scenarioRegionSplit.getDividerLocation()));
-						prop.setProperty("queriesSplit", String.valueOf(queriesSplit.getDividerLocation()));
-						prop.setProperty("tableCreatorSplit", String.valueOf(tableCreatorSplit.getDividerLocation()));
+						if (DbViewer.this.isReadyForShutdownCleanup()) {
+							setStartupState(StartupLifecycleState.SHUTTING_DOWN);
+							// Don't block the EDT during shutdown; cancel queries quickly and close DB asynchronously.
+							shutdownQueriesAndCloseDatabaseAsync();
+							
+							if (queries != null && queries.hasChanges() && InterfaceMain.getInstance().showConfirmDialog(
+									"The Queries have been modified.  Do you want to save them?", "Confirm Save Queries",
+									JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
+									JOptionPane.YES_OPTION) == JOptionPane.YES_OPTION) {
+								writeQueries();
+							}
+							Properties prop = main.getProperties();
+							if (prop != null && scenarioRegionSplit != null && queriesSplit != null && tableCreatorSplit != null) {
+								prop.setProperty("scenarioRegionSplit",
+										String.valueOf(scenarioRegionSplit.getDividerLocation()));
+								prop.setProperty("queriesSplit", String.valueOf(queriesSplit.getDividerLocation()));
+								prop.setProperty("tableCreatorSplit", String.valueOf(tableCreatorSplit.getDividerLocation()));
+							}
+						}
 						main.getUndoManager().discardAllEdits();
 						main.refreshUndoRedo();
 						main.getSaveMenu().removeActionListener(thisViewer);
@@ -571,6 +669,11 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 						// XMLDB.closeDatabase() is handled by shutdownQueriesAndCloseDatabaseAsync
 					}
 					if (evt.getNewValue().equals(controlStr)) {
+						if (DbViewer.this.isStartupActive() || startupState == StartupLifecycleState.READY) {
+							InterfaceMain.logStartupTiming("DbViewer:ignoring duplicate control enter for " + controlStr);
+							return;
+						}
+						setStartupState(StartupLifecycleState.PREPARING);
 						Properties prop = main.getProperties();
 						File queryFile = resolveStartupQueryFile(prop, parentFrame);
 
@@ -605,12 +708,14 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 					}
 				} else if (evt.getPropertyName().equals("SelectQuery")) {
 					FileChooser fc = FileChooserFactory.getFileChooser();
-					File start = new File(main.getProperties().getProperty("queryFile",
-							main.getProperties().getProperty("lastDirectory", ".")));
+					Properties props = main.getProperties();
+					File start = new File(props.getProperty("queryFile",
+							props.getProperty("lastDirectory", ".")));
 					File[] files = fc.doFilePrompt(parentFrame, "Open Query File", FileChooser.LOAD_DIALOG, start,
 							new XMLFilter());
 					if (files != null && files.length > 0) {
 						File file = files[0];
+						invalidateQueriesDocument("select-query-file");
 						// update runtime and persist for next launch
 						String oldFile = main.getProperties().getProperty("queryFile");
 						main.setProperty("queryFile", file.getAbsolutePath());
@@ -637,19 +742,20 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 
 			DbViewer.selectedYears = new HashMap<>();
 			if (InterfaceMain.getInstance() != null) {
-				InterfaceMain.getInstance().getProperties();
 				Properties globalProperties = InterfaceMain.getInstance().getProperties();
-				Object rsp = globalProperties.get("selectedYearList");
-				if (rsp != null) {
-					String defaultYearStr = rsp.toString();
-					System.out.println("DbViewer375: Using selectedYearsStr from properties file: " + defaultYearStr);
+				if (globalProperties != null) {
+					Object rsp = globalProperties.get("selectedYearList");
+					if (rsp != null) {
+						String defaultYearStr = rsp.toString();
+						System.out.println("DbViewer375: Using selectedYearsStr from properties file: " + defaultYearStr);
 
-					String[] yearsArr = InterfaceMain.splitListProperty(defaultYearStr);
-					Arrays.sort(yearsArr);
-					DbViewer.selectedYears = new HashMap<>();
-					if (!(yearsArr.length == 1 && yearsArr[0].equals(""))) {
-						for (String year : yearsArr) {
-							DbViewer.selectedYears.put(year + "", year + "");
+						String[] yearsArr = InterfaceMain.splitListProperty(defaultYearStr);
+						Arrays.sort(yearsArr);
+						DbViewer.selectedYears = new HashMap<>();
+						if (!(yearsArr.length == 1 && yearsArr[0].equals(""))) {
+							for (String year : yearsArr) {
+								DbViewer.selectedYears.put(year + "", year + "");
+							}
 						}
 					}
 				}
@@ -700,17 +806,18 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		List<String> allYearsList = new ArrayList<String>();
 		if (InterfaceMain.getInstance() != null) {
 			Properties globalProperties = InterfaceMain.getInstance().getProperties();
+			if (globalProperties != null) {
+				String allYearStr = (String) globalProperties.get("allYearsList");
+				System.out.println("DbViewer421: Setting allYearStr from properties file: " + allYearStr);
 
-			String allYearStr = (String) globalProperties.get("allYearsList");
-			System.out.println("DbViewer421: Setting allYearStr from properties file: " + allYearStr);
-
-			if (allYearStr != null) {
-				String[] yearsArr = InterfaceMain.splitListProperty(allYearStr);
-				Arrays.sort(yearsArr);
-				allYearsList = new ArrayList<String>(yearsArr.length);
-				if (!(yearsArr.length == 1 && yearsArr[0].equals(""))) {
-					for (String year : yearsArr) {
-						allYearsList.add(year);
+				if (allYearStr != null) {
+					String[] yearsArr = InterfaceMain.splitListProperty(allYearStr);
+					Arrays.sort(yearsArr);
+					allYearsList = new ArrayList<String>(yearsArr.length);
+					if (!(yearsArr.length == 1 && yearsArr[0].equals(""))) {
+						for (String year : yearsArr) {
+							allYearsList.add(year);
+						}
 					}
 				}
 			}
@@ -1297,7 +1404,11 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		final long openStart = System.nanoTime();
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
-		main.getProperties().setProperty("lastDirectory", dbFile.getParent());
+		invalidateQueriesDocument("doOpenDB-begin");
+		setStartupState(StartupLifecycleState.OPENING_DB);
+		if (dbFile.getParent() != null) {
+			main.setProperty("lastDirectory", dbFile.getParent());
+		}
 		showLoadingShell();
 		updateStartupMessage(STARTUP_MESSAGE_OPENING_DB);
 		parentFrame.getGlassPane().setVisible(true);
@@ -1306,7 +1417,13 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			XMLDB.openDatabase(dbFile.getAbsolutePath(), create);
 			logStartup("doOpenDB:XMLDB.openDatabase", openStart);
 		} catch (Exception e) {
-			e.printStackTrace();
+			invalidateQueriesDocument("doOpenDB-open-failed");
+			setStartupState(StartupLifecycleState.FAILED);
+			if (XMLDB.isSuppressedBaseXResourceException(e)) {
+				System.err.println("Suppressing BaseX packaged-resource stack trace during DB open: " + e.getMessage());
+			} else {
+				e.printStackTrace();
+			}
 			parentFrame.getGlassPane().setVisible(false);
 			main.hideStartupLoadingView();
 			InterfaceMain.getInstance().showMessageDialog(buildOpenFailureMessage(e, dbFile), OPEN_DB_DIALOG_TITLE,
@@ -1322,6 +1439,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 
 		updateStartupMessage(STARTUP_MESSAGE_LOADING_SCENARIOS);
 		logStartup("doOpenDB:loadingShell", openStart);
+		setStartupState(StartupLifecycleState.LOADING_DATA);
 		startBackgroundInitialization(openStart, dbFile);
 	}
 
@@ -1347,9 +1465,14 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			protected void done() {
 				try {
 					if (isCancelled() || dbViewInitialized) {
+						if (isCancelled()) {
+							invalidateQueriesDocument("startupLoader-cancelled");
+						}
+						setStartupState(isCancelled() ? StartupLifecycleState.FAILED : startupState);
 						main.hideStartupLoadingView();
 						return;
 					}
+					setStartupState(StartupLifecycleState.BUILDING_UI);
 					updateStartupMessage(STARTUP_MESSAGE_BUILDING_LISTS);
 					StartupData data = validateStartupData(get());
 					createTableSelector(data);
@@ -1357,9 +1480,17 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 					parentFrame.setTitle("GLIMPSE-CE ModelInterface");
 					main.setProperty("paramPath", dbFile.getAbsolutePath());
 					main.updateActiveDatabaseStatus(dbFile.getAbsolutePath());
+					setStartupState(StartupLifecycleState.READY);
 					logStartup("doOpenDB:complete", openStart);
 				} catch (Exception e) {
-					e.printStackTrace();
+					invalidateQueriesDocument("startupLoader-done-failed");
+					setStartupState(StartupLifecycleState.FAILED);
+					Throwable root = unwrapFailure(e);
+					if (XMLDB.isSuppressedBaseXResourceException(root)) {
+						System.err.println("Suppressing BaseX packaged-resource stack trace during startup load: " + root.getMessage());
+					} else {
+						e.printStackTrace();
+					}
 					parentFrame.getGlassPane().setVisible(false);
 					main.hideStartupLoadingView();
 					InterfaceMain.getInstance().showMessageDialog(buildStartupFailureMessage(e),
@@ -1465,7 +1596,11 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 */
 	protected QueryTreeModel getQueries() {
 		validateQueriesDocument();
-		return new QueryTreeModel(queriesDoc.getDocumentElement());
+		try {
+			return new QueryTreeModel(queriesDoc.getDocumentElement());
+		} catch (RuntimeException rte) {
+			throw new IllegalStateException("Query definitions could not be converted into a query tree.", rte);
+		}
 	}
 
 	JTree queryList = null;
@@ -1502,15 +1637,15 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		updateStartupMessage(STARTUP_MESSAGE_BUILDING_TREE);
 		setupQueryTree();
 		logStartup("createTableSelector:queryTree", selectorStart);
+		updateStartupMessage(STARTUP_MESSAGE_LAYOUT);
+		setupSplitPanes();
+		logStartup("createTableSelector:splitPanes", selectorStart);
 		updateStartupMessage(STARTUP_MESSAGE_BUILDING_QUERY_PANEL);
 		setupQueryPanel();
 		logStartup("createTableSelector:queryPanel", selectorStart);
 		updateStartupMessage(STARTUP_MESSAGE_BUILDING_ACTIONS);
 		setupButtonPanel();
 		logStartup("createTableSelector:buttonPanel", selectorStart);
-		updateStartupMessage(STARTUP_MESSAGE_LAYOUT);
-		setupSplitPanes();
-		logStartup("createTableSelector:splitPanes", selectorStart);
 		installResultsTabCompletionTracking();
 		logStartup("createTableSelector:tabTracking", selectorStart);
 		setupPresetRegionDropdown();
@@ -1525,7 +1660,42 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		logStartup("createTableSelector:finalizeUI", selectorStart);
 	}
 
+	private void ensureSplitPanesInitialized() {
+		if (scenarioRegionSplit != null && queriesSplit != null && tableCreatorSplit != null) {
+			return;
+		}
+		Properties prop = InterfaceMain.getInstance().getProperties();
+		if (scenarioRegionSplit == null) {
+			scenarioRegionSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true);
+			scenarioRegionSplit.setResizeWeight(.5);
+		}
+		if (queriesSplit == null) {
+			queriesSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true);
+			queriesSplit.setResizeWeight(.5);
+		}
+		if (tableCreatorSplit == null) {
+			tableCreatorSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, false);
+		}
+		if (prop != null) {
+			String tempInt;
+			try {
+				if ((tempInt = prop.getProperty("scenarioRegionSplit")) != null) {
+					scenarioRegionSplit.setDividerLocation(Integer.valueOf(tempInt));
+				}
+				if ((tempInt = prop.getProperty("queriesSplit")) != null) {
+					queriesSplit.setDividerLocation(Integer.valueOf(tempInt));
+				}
+				if ((tempInt = prop.getProperty("tableCreatorSplit")) != null) {
+					tableCreatorSplit.setDividerLocation(Integer.valueOf(tempInt));
+				}
+			} catch (NumberFormatException nfe) {
+				System.out.println("Invalid split location preference: " + nfe);
+			}
+		}
+	}
+	
 	private void applyStartupData(StartupData data) {
+		validateStartupData(data);
 		scns = data.scenarios;
 		regions = data.regions;
 		queries = data.queries;
@@ -1555,14 +1725,19 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 * icons and tooltips.
 	 */
 	private void setupQueryTree() {
-		final Icon queryIcon = new ImageIcon(TabCloseIcon.class.getResource("icons/group-query.png"));
-		final Icon singleQueryIcon = new ImageIcon(TabCloseIcon.class.getResource("icons/single-query.png"));
+		if (queries == null) {
+			throw new IllegalStateException("Query tree model was not initialized before building the query tree.");
+		}
+		final Icon queryIcon = loadQueryTreeIcon("icons/group-query.png", "query group");
+		final Icon singleQueryIcon = loadQueryTreeIcon("icons/single-query.png", "single query");
 		queryList = new JTree(queries);
 		queryList.setTransferHandler(new QueryTransferHandler(queriesDoc, implls));
 		queryList.setDragEnabled(true);
 		queryList.getSelectionModel()
 				.setSelectionMode(javax.swing.tree.TreeSelectionModel.DISCONTIGUOUS_TREE_SELECTION);
-		queryList.setSelectionRow(0);
+		if (queryList.getRowCount() > 0) {
+			queryList.setSelectionRow(0);
+		}
 		for (int i = 0; i < queryList.getRowCount(); ++i) {
 			queryList.expandRow(i);
 		}
@@ -1592,6 +1767,9 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 * It loads the region list from a file and adds the components to the UI.
 	 */
 	private void setupPresetRegionDropdown() {
+		if (scenarioRegionSplit == null || !(scenarioRegionSplit.getRightComponent() instanceof JPanel)) {
+			return;
+		}
 		loadRegionListToDropdown();
 		JPanel presetRegionsPanel = new JPanel();
 		presetRegionsPanel.setLayout(new BoxLayout(presetRegionsPanel, BoxLayout.X_AXIS));
@@ -1639,6 +1817,9 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 * bar.
 	 */
 	private void setupButtonPanel() {
+		if (!(queriesSplit.getRightComponent() instanceof JPanel)) {
+			throw new IllegalStateException("Query panel was not initialized before building the button panel.");
+		}
 		JPanel queryPanel = (JPanel) queriesSplit.getRightComponent();
 		JPanel buttonPanel = new JPanel();
 		
@@ -1731,6 +1912,12 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 * queries, and the results tabs.
 	 */
 	private void setupSplitPanes() {
+		ensureSplitPanesInitialized();
+		JFrame currentParentFrame = parentFrame != null ? parentFrame : InterfaceMain.getInstance().getFrame();
+		if (currentParentFrame == null) {
+			throw new IllegalStateException("Main frame was not available while building split panes.");
+		}
+		parentFrame = currentParentFrame;
 		JPanel scenListPane = new JPanel();
 		scenListPane.setLayout(new BoxLayout(scenListPane, BoxLayout.Y_AXIS));
 		JLabel scenListLabel = new JLabel("Scenarios");
@@ -1799,11 +1986,11 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		tableCreatorSplit.setLeftComponent(queriesSplit);
 		tableCreatorSplit.setRightComponent(tablesTabs);
 
-		int frameWidth = parentFrame.getWidth();
+		int frameWidth = currentParentFrame.getWidth();
 		scenarioRegionSplit.setDividerLocation((int) (frameWidth * 0.2));
 		queriesSplit.setDividerLocation((int) (frameWidth * 0.5));
 
-		int frameHeight = parentFrame.getHeight();
+		int frameHeight = currentParentFrame.getHeight();
 		tableCreatorSplit.setDividerLocation((int) (frameHeight * 0.4));
 	}
 	
@@ -2360,8 +2547,14 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 * Selects preset regions in the region list based on the dropdown selection.
 	 */
 	public void selectPresetRegions() {
+		if (comboBoxPresetRegions == null || regionList == null) {
+			return;
+		}
 		boolean verbose = false;
 		String selection = (String) comboBoxPresetRegions.getSelectedItem();
+		if (selection == null) {
+			return;
+		}
 		int idx = comboBoxPresetRegions.getSelectedIndex();
 		if (verbose)
 			System.out.println("this is my selection: " + selection);
@@ -2609,6 +2802,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 * @param queryFile The query file to load.
 	 */
 	public void updateQueryTree(File queryFile) {
+		invalidateQueriesDocument("updateQueryTree");
 		queriesDoc = readQueries(queryFile);
 		if (queriesDoc != null) {
 			queries = getQueries();
@@ -3244,4 +3438,14 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		shutdownThread.setDaemon(true);
 		shutdownThread.start();
 	}
+
+	private Icon loadQueryTreeIcon(String resourcePath, String label) {
+		java.net.URL resource = TabCloseIcon.class.getResource(resourcePath);
+		if (resource == null) {
+			InterfaceMain.logStartupTiming("DbViewer:missing query tree icon " + resourcePath + " for " + label);
+			return javax.swing.UIManager.getIcon("Tree.leafIcon");
+		}
+		return new ImageIcon(resource);
+	}
 }
+

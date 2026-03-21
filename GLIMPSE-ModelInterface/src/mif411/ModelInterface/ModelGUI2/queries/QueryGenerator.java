@@ -149,6 +149,9 @@ public class QueryGenerator implements java.io.Serializable{
 		return myNode;
 	}
 	public QueryGenerator(Node queryIn) {
+		if (queryIn == null || queryIn.getNodeType() != Node.ELEMENT_NODE) {
+			throw new IllegalArgumentException("QueryGenerator requires a non-null element node.");
+		}
 		this.myNode=queryIn;
         showAttrMap = new TreeMap<String, List<String>>();
 		if(queryIn.getNodeName().equals(MarketQueryBuilder.xmlName)) {
@@ -186,9 +189,10 @@ public class QueryGenerator implements java.io.Serializable{
 		} else {
 			qb = null;
 		}
-		title = ((Element)queryIn).getAttribute("title");
-		if(qb == null) {
-			System.out.println("Didn't find builder for "+title+" query going to use defaults");
+		Element queryElement = (Element)queryIn;
+		title = queryElement.getAttribute("title");
+		if(title != null) {
+			title = title.trim();
 		}
 		NodeList nl = queryIn.getChildNodes();
 		for(int i = 0; i < nl.getLength(); ++i) {
@@ -776,9 +780,7 @@ public class QueryGenerator implements java.io.Serializable{
 	 * @return True if it is determined enough data had been gathered, false otherwise.
 	 */
 	public boolean isValid() {
-		// checking if qb is null may or may not be a good way to determine if this
-		// is valid..
-		return title != null && yearLevel != null && nodeLevel != null && var != null &&
+		return title != null && title.length() != 0 && yearLevel != null && nodeLevel != null && var != null &&
 			axis1Name != null && axis2Name != null;
 	}
 	public String toString() {
@@ -1314,12 +1316,28 @@ public class QueryGenerator implements java.io.Serializable{
 	 * @return A pair with the node name and attribute name for the axis.
 	 */
 	private DataPair<String, String> parseAxisLevel(String axisValue) {
-		int atPos = axisValue.indexOf('@');
+		if (axisValue == null) {
+			return null;
+		}
+		String trimmedAxisValue = axisValue.trim();
+		if (trimmedAxisValue.length() == 0) {
+			return null;
+		}
+		int atPos = trimmedAxisValue.indexOf('@');
 		if(atPos == -1) {
-			return new DataPair<String, String>(axisValue, null);
+			return new DataPair<String, String>(trimmedAxisValue, null);
 		} else {
-			return new DataPair<String, String>(axisValue.substring(0, atPos-1),
-					axisValue.substring(atPos+1, axisValue.length()-1));
+			int attrStart = trimmedAxisValue.lastIndexOf("[@");
+			int attrEnd = trimmedAxisValue.lastIndexOf(']');
+			if (attrStart <= 0 || attrEnd <= attrStart + 2) {
+				throw new IllegalArgumentException("Malformed axis level: " + axisValue);
+			}
+			String nodeName = trimmedAxisValue.substring(0, attrStart).trim();
+			String attrName = trimmedAxisValue.substring(attrStart + 2, attrEnd).trim();
+			if (nodeName.length() == 0 || attrName.length() == 0) {
+				throw new IllegalArgumentException("Malformed axis level: " + axisValue);
+			}
+			return new DataPair<String, String>(nodeName, attrName);
 		}
 	}
 
@@ -1489,7 +1507,7 @@ public class QueryGenerator implements java.io.Serializable{
 	 * @return A hashCode derived from the xPath and nodeLevel.
 	 */
 	public int getStorageHashCode() {
-		return xPath.hashCode() ^ nodeLevel.hashCode();
+		return (xPath != null ? xPath.hashCode() : 0) ^ (nodeLevel != null ? nodeLevel.hashCode() : 0);
 	}
 
 	/**

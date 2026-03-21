@@ -569,7 +569,7 @@ public class ManageDatabaseDialog extends JDialog {
                     deleteRecursive(dbDir);
                 }
                 
-                org.basex.core.Context tmpCtx = new org.basex.core.Context();
+                org.basex.core.Context tmpCtx = XMLDB.createBaseXContext();
                 final AtomicInteger num1 = new AtomicInteger(0);
                 boolean tmpCtxAdopted = false;
                 try {
@@ -603,7 +603,7 @@ public class ManageDatabaseDialog extends JDialog {
                     } catch (Exception adoptEx) {
                     	System.out.println("Rebuild: adopt tmpCtx open failed: " + adoptEx);
                         try {
-                            XMLDB.openDatabase(new org.basex.core.Context());
+                            XMLDB.openDatabase(XMLDB.createBaseXContext());
                             try {
                                 if (cont != null && XMLDB.getInstance() != null
                                         && XMLDB.getInstance().getContext() != null) {
@@ -612,7 +612,7 @@ public class ManageDatabaseDialog extends JDialog {
                                 }
                             } catch (Exception openEx2) {
                             	System.out.println(
-										"Rebuild: failed to set default collection via Open(): " + openEx2);
+									"Rebuild: failed to set default collection via Open(): " + openEx2);
                             }
                             System.out.println("Rebuild: database re-opened using fresh context");
                         } catch (Exception ex2) {

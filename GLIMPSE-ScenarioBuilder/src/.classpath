@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<classpath>
-	<classpathentry excluding="ModelInterface/|ModelInterface/common/|ModelInterface/ConfigurationEditor/actions/|ModelInterface/ConfigurationEditor/configurationeditor/|ModelInterface/ConfigurationEditor/guicomponents/|ModelInterface/ConfigurationEditor/guihelpers/|ModelInterface/ConfigurationEditor/utils/|ModelInterface/ModelGUI2/|ModelInterface/ModelGUI2/csvconv/|ModelInterface/ModelGUI2/icons/|ModelInterface/ModelGUI2/queries/|ModelInterface/ModelGUI2/tables/|ModelInterface/ModelGUI2/undo/|ModelInterface/ModelGUI2/xmldb/|ModelInterface/PPsource/|ModelInterface/PPsource/util/" kind="src" path=""/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="C:/Users/danlo/git/GLIMPSE-DL/GLIMPSE-ScenarioBuilder/libs/controlsfx-8.40.18.jar"/>
-	<classpathentry kind="lib" path="C:/Users/danlo/git/GLIMPSE-DL/GLIMPSE-ScenarioBuilder/libs/java-diff-utils-4.0.jar"/>
-	<classpathentry kind="output" path=""/>
-</classpath>

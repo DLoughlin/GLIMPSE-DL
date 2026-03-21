@@ -39,10 +39,29 @@ public class FavoriteQueriesManager {
 	 */
 	public void selectFavoriteQueries() {
 
+		if (queryList == null || queryList.getModel() == null) {
+			JOptionPane.showMessageDialog(null,
+					"Query tree is not ready yet. Please wait for startup to finish before applying favorites.",
+					"Favorite Queries", JOptionPane.INFORMATION_MESSAGE);
+			return;
+		}
 		ArrayList<String> favoriteQueryLines = new ArrayList<>();
 		ArrayList<TreePath> favoriteQueryPaths = new ArrayList<>();
 		ArrayList<String> favoriteQueryNames = new ArrayList<>();
 		String favoriteQueryFilename = InterfaceMain.favoriteQueriesFileLocation;
+		if (favoriteQueryFilename == null || favoriteQueryFilename.trim().isEmpty()) {
+			JOptionPane.showMessageDialog(null,
+					"No favorite queries file is configured. Please load or create one first.",
+					"Favorite Queries", JOptionPane.INFORMATION_MESSAGE);
+			return;
+		}
+		File favoritesFile = new File(favoriteQueryFilename);
+		if (!favoritesFile.exists()) {
+			JOptionPane.showMessageDialog(null,
+					"Favorite queries file was not found:\n" + favoriteQueryFilename,
+					"Favorite Queries", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
 		try {
 			favoriteQueryLines = getStringArrayFromFile(favoriteQueryFilename, "#");
 		} catch (Exception e) {
@@ -87,7 +106,9 @@ public class FavoriteQueriesManager {
 			// Scroll to last found favorite query
 			if (validRowsArray.length > 0) {
 				java.awt.Rectangle bounds = queryList.getRowBounds(validRowsArray[validRowsArray.length - 1]);
-				listScrollQueries.getVerticalScrollBar().setValue((int) bounds.getMinY());
+				if (bounds != null && listScrollQueries != null) {
+					listScrollQueries.getVerticalScrollBar().setValue((int) bounds.getMinY());
+				}
 			}
 		}
 		if (!notFound.isEmpty()) {
@@ -104,7 +125,7 @@ public class FavoriteQueriesManager {
 	 */
 	public void createFavoriteQueriesFile() {
 		TreePath[] selectedTreePath = queryList.getSelectionPaths();
-		if (selectedTreePath.length == 0) {
+		if (selectedTreePath == null || selectedTreePath.length == 0) {
 			JOptionPane.showMessageDialog(null, "Please select at least one query to save.");
 			return;
 		}
@@ -264,6 +285,9 @@ public class FavoriteQueriesManager {
 	 */
 	public ArrayList<String> getStringArrayFromFile(String filename, String commentChar) throws IOException {
 		ArrayList<String> arrayList = new ArrayList<String>();
+		if (filename == null || filename.trim().isEmpty()) {
+			throw new IOException("No filename provided.");
+		}
 
 		BufferedReader br = new BufferedReader(new FileReader(filename));
 		for (String line; (line = br.readLine()) != null;) {
@@ -287,8 +311,15 @@ public class FavoriteQueriesManager {
 	 * @return The TreePath corresponding to the line, or null if not found.
 	 */
 	private TreePath getTreePathForEachLine(JTree myTree, String myLine) {
+		if (myTree == null || myTree.getModel() == null || myLine == null || myLine.trim().isEmpty()) {
+			return null;
+		}
 		TreePath theFullPath = null;
 		String[] splitLine = myLine.split(">");
+		if (splitLine.length < 2) {
+			System.out.println("Skipping malformed favorite query path: " + myLine);
+			return null;
+		}
 		String[] splitLineForGroups = Arrays.copyOfRange(splitLine, 0, splitLine.length - 1);
 		String child_group_to_find = splitLine[splitLine.length - 2]; // get the last child group before the leaf
 		String group_to_find_trim = child_group_to_find.substring(1, child_group_to_find.length() - 1); // remove double

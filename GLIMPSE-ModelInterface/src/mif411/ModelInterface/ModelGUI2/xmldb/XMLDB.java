@@ -32,8 +32,11 @@ package ModelInterface.ModelGUI2.xmldb;
 import java.awt.BorderLayout;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystemNotFoundException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -100,6 +103,52 @@ public class XMLDB {
 		return message.toString();
 	}
 
+	public static boolean isSuppressedBaseXResourceException(Throwable failure) {
+		Throwable current = failure;
+		while (current != null) {
+			if (current instanceof FileSystemNotFoundException) {
+				String message = current.getMessage();
+				if (message != null && message.contains("rsrc")) {
+					return true;
+				}
+			}
+			current = current.getCause();
+		}
+		return false;
+	}
+
+	public static Context createBaseXContext() throws Exception {
+		PrintStream originalErr = System.err;
+		ByteArrayOutputStream errBuffer = new ByteArrayOutputStream();
+		PrintStream capturedErr = null;
+		try {
+			capturedErr = new PrintStream(errBuffer, true, StandardCharsets.UTF_8.name());
+			System.setErr(capturedErr);
+			return new Context();
+		} catch (Throwable ex) {
+			String capturedText = new String(errBuffer.toByteArray(), StandardCharsets.UTF_8);
+			if (isSuppressedBaseXResourceException(ex)) {
+				if (!capturedText.isEmpty() && !capturedText.contains("Provider \"rsrc\" not installed")) {
+					originalErr.print(capturedText);
+				}
+				originalErr.println("Suppressing BaseX packaged-resource stack trace during context creation.");
+				throw new Exception("BaseX packaged resources are not available in this launch environment.", ex);
+			}
+			if (!capturedText.isEmpty()) {
+				originalErr.print(capturedText);
+			}
+			if (ex instanceof Exception) {
+				throw (Exception) ex;
+			}
+			throw new Exception("Unexpected error creating BaseX context.", ex);
+		} finally {
+			System.setErr(originalErr);
+			if (capturedErr != null) {
+				capturedErr.close();
+			}
+		}
+	}
+
     /**
      * The database context need to run commands on the DB.
      */
@@ -156,9 +205,7 @@ public class XMLDB {
 		try {
 			xmldbInstance = new XMLDB(dbLocation);
 		} catch (FileSystemNotFoundException e) {
-			if (e.getMessage() != null && e.getMessage().contains("rsrc")) {
-				// Suppress "Provider rsrc not installed" error
-			} else {
+			if (!isSuppressedBaseXResourceException(e)) {
 				throw e;
 			}
 		}
@@ -172,9 +219,7 @@ public class XMLDB {
 		try {
 			xmldbInstance = new XMLDB(dbLocation, create);
 		} catch (FileSystemNotFoundException e) {
-			if (e.getMessage() != null && e.getMessage().contains("rsrc")) {
-				// Suppress "Provider rsrc not installed" error
-			} else {
+			if (!isSuppressedBaseXResourceException(e)) {
 				throw e;
 			}
 		}
@@ -198,9 +243,7 @@ public class XMLDB {
 			xmldbInstance = new XMLDB(contextIn);
 		} 
 		catch (FileSystemNotFoundException e) {
-			if (e.getMessage() != null && e.getMessage().contains("rsrc")) {
-				// Suppress "Provider rsrc not installed" error
-			} else {
+			if (!isSuppressedBaseXResourceException(e)) {
 				System.err.println("BaseX initialization issue. Likely OK. Continuing...");
 				throw e;
 			}
@@ -288,15 +331,9 @@ public class XMLDB {
         // and use it as the base path for finding all collections/containers
         System.setProperty("org.basex.DBPATH", path);
 
-        try {
-            context = new Context();
-        } catch (FileSystemNotFoundException ex) {
-            // Log once, or ignore entirely
-            System.err.println("BaseX resource path not resolvable; using defaults.");
-            context = new Context(); // second attempt will use fallback
-        }
+		context = createBaseXContext();
 
-        // Set some default behaviors such as no indexing etc
+		// Set some default behaviors such as no indexing etc
         // TODO: experiment with these
         context.options.set(MainOptions.ATTRINDEX, false);
         context.options.set(MainOptions.FTINDEX, false);
