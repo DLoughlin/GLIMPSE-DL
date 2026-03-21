@@ -406,6 +406,13 @@ public class InterfaceMain implements ActionListener {
 
 		Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
 			public void uncaughtException(Thread t, Throwable e) {
+				if (XMLDB.isSuppressedBaseXResourceException(e)) {
+					try {
+						System.err.println("Suppressing BaseX packaged-resource stack trace in uncaught handler"
+								+ (t == null ? "" : " for thread '" + t.getName() + "'"));
+					} catch (Throwable ignored) {}
+					return;
+				}
 				// IMPORTANT: Do not show any UI popup for uncaught exceptions.
 				// These can be noisy (and sometimes misleading) during mapping and other background work.
 				// Instead, always log to stderr so ScenarioBuilder / callers can capture it.
@@ -748,11 +755,8 @@ public class InterfaceMain implements ActionListener {
 						logStartupTiming("DbViewer.doOpenDB finished in " + elapsedMillis(dbOpenStart) + " ms");
 					} catch (Exception e) {
 						logStartupTiming("DbViewer.doOpenDB failed after " + elapsedMillis(dbOpenStart) + " ms");
-						// Suppress "Provider rsrc not installed" error which can happen with BaseX initialization in some environments
-						if (e instanceof java.nio.file.FileSystemNotFoundException && e.getMessage() != null && e.getMessage().contains("rsrc")) {
-							// do nothing
-						} else if (e.getCause() instanceof java.nio.file.FileSystemNotFoundException && e.getCause().getMessage() != null && e.getCause().getMessage().contains("rsrc")) {
-							// do nothing
+						if (ModelInterface.ModelGUI2.xmldb.XMLDB.isSuppressedBaseXResourceException(e)) {
+							System.err.println("Suppressing BaseX packaged-resource stack trace during initial DB open: " + e.getMessage());
 						} else {
 							e.printStackTrace();
 						}
@@ -2441,6 +2445,7 @@ public class InterfaceMain implements ActionListener {
 	public void fireControlChange(String newValue) {
 		cancelPendingStartupDbViewerTimer();
 		if (newValue.equals(oldControl)) { oldControl += "Same"; }
+		logStartupTiming("InterfaceMain:control old=" + oldControl + " new=" + newValue);
 		fireProperty("Control", oldControl, newValue);
 	 oldControl = newValue;
 	}
@@ -2744,3 +2749,4 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 }
+

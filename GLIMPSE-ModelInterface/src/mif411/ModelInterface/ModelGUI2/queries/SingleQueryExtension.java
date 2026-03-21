@@ -379,6 +379,9 @@ public class SingleQueryExtension implements TreeSelectionListener, ListSelectio
 			return;
 		}
 		final JTree tree = (JTree)e.getSource();
+		if (!(tree.getModel() instanceof QueryTreeModel)) {
+			return;
+		}
 		final QueryTreeModel qt = (QueryTreeModel)tree.getModel();
 		boolean wasSelected = isSelected;
 		TreePath parentPath = shouldSelect(e);
@@ -421,9 +424,9 @@ public class SingleQueryExtension implements TreeSelectionListener, ListSelectio
 			}
 			if(parentPath == null) {
 				System.out.println("Trouble: wasn't able to find parent in old selection");
-				// about to get some null pointer action so lets just give doDisable a try, 
-				// if that has not been set we have no other choices
-				doDisable.run();
+				if (doDisable != null) {
+					doDisable.run();
+				}
 				return;
 			}
 			if(parentPath.getLastPathComponent() instanceof SingleQueryValue) {
@@ -475,6 +478,9 @@ public class SingleQueryExtension implements TreeSelectionListener, ListSelectio
 	 * @param parentPath The path to where we will show the currValues
 	 */
 	private void showList(final QueryTreeModel qt, final TreePath parentPath, final JTree tree) {
+		if (qt == null || parentPath == null || tree == null) {
+			return;
+		}
 		// let the gather thread know it needs to stop if it still active
 		setGatherThread(null);
 
@@ -505,8 +511,10 @@ public class SingleQueryExtension implements TreeSelectionListener, ListSelectio
 		// and already update the list with real values
 		if(gatherThread == null || gatherThread.isAlive()) {
 			qt.showSingleQuery(this, parentPath);
-			tree.makeVisible(parentPath.pathByAddingChild(getSingleQueryValueAt(
+			if (getNumValues() > 0) {
+				tree.makeVisible(parentPath.pathByAddingChild(getSingleQueryValueAt(
 							(int)(getNumValues()/2))));
+			}
 		}
 	}
 
@@ -517,6 +525,9 @@ public class SingleQueryExtension implements TreeSelectionListener, ListSelectio
 	 * @param parentPath The path which will need to collapse it's children.
 	 */
 	private void hideList(QueryTreeModel qt, TreePath parentPath) {
+		if (qt == null || parentPath == null) {
+			return;
+		}
 		qt.hideSingleQuery(this, parentPath);
 	}
 
@@ -556,8 +567,12 @@ public class SingleQueryExtension implements TreeSelectionListener, ListSelectio
        private void resetCache() {
 	       singleLevelCache.clear();
 	       if(isSelected && isEnabled) {
-		       doDisable.run();
-		       doEnable.run();
+			if (doDisable != null) {
+				doDisable.run();
+			}
+			if (doEnable != null) {
+				doEnable.run();
+			}
 	       }
        }
 
@@ -587,8 +602,9 @@ public class SingleQueryExtension implements TreeSelectionListener, ListSelectio
 	 * @return The requested Single query value.
 	 */
 	public SingleQueryValue getSingleQueryValueAt(int pos) {
-		// could check if currValues is null, but that would
-		// be a NullPointerException anyway
+		if (currValues == null || pos < 0 || pos >= currValues.size()) {
+			throw new IndexOutOfBoundsException("Single query value index out of range: " + pos);
+		}
 		return currValues.get(pos);
 	}
 
@@ -598,7 +614,7 @@ public class SingleQueryExtension implements TreeSelectionListener, ListSelectio
 	 * @return The index in currValues.
 	 */
        public int getIndexOfValue(SingleQueryValue value) {
-	       return currValues.indexOf(value);
+	       return currValues == null ? -1 : currValues.indexOf(value);
        }
 
        /**
