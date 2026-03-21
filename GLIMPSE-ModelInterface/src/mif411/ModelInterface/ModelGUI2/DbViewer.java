@@ -620,17 +620,24 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 				if (evt.getPropertyName().equals("Control")) {
 					updateLastControlTransition(evt.getOldValue(), evt.getNewValue());
 					if (evt.getOldValue().equals(controlStr) || evt.getOldValue().equals(controlStr + "Same")) {
+						boolean shutdownTriggered = false;
 						if (DbViewer.this.isStartupActive()) {
 							if (startupLoader != null && !startupLoader.isDone()) {
 								startupLoader.cancel(true);
 							}
 							invalidateQueriesDocument("control-transition-aborted-startup");
 							setStartupState(StartupLifecycleState.FAILED);
+							// Even if startup never reached READY, the DB may have been opened;
+							// ensure we initiate an asynchronous shutdown so resources are released.
+							shutdownQueriesAndCloseDatabaseAsync();
+							shutdownTriggered = true;
 						}
 						if (DbViewer.this.isReadyForShutdownCleanup()) {
 							setStartupState(StartupLifecycleState.SHUTTING_DOWN);
 							// Don't block the EDT during shutdown; cancel queries quickly and close DB asynchronously.
-							shutdownQueriesAndCloseDatabaseAsync();
+							if (!shutdownTriggered) {
+								shutdownQueriesAndCloseDatabaseAsync();
+							}
 							
 							if (queries != null && queries.hasChanges() && InterfaceMain.getInstance().showConfirmDialog(
 									"The Queries have been modified.  Do you want to save them?", "Confirm Save Queries",
