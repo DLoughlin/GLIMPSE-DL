@@ -180,6 +180,7 @@ public class GLIMPSEUtils {
 		files = f;
 		transportUtils = new UtilsTransport(v, f, this);
 		UtilsDialogs.getInstance().init(s);
+		UtilsErrors.getInstance().init(v, s, f, this);
 	}
 
 
@@ -1436,51 +1437,11 @@ public class GLIMPSEUtils {
 	}
 
 	public void displayArrayList(ArrayList<String> arrayListArg, String title) {
-		Platform.runLater(() -> displayArrayList(arrayListArg, title, false));
+		UtilsErrors.getInstance().displayArrayList(arrayListArg, title);
 	}
 
 	public void displayArrayList(ArrayList<String> arrayListArg, String title, boolean doWrap) {
-		if (styles == null)
-			return;
-		final String finalTitle = title;
-		Runnable displayTask = () -> {
-			BorderPane border = new BorderPane();
-			String usedTitle = finalTitle == null ? LABEL_DISPLAY : finalTitle;
-			Stage stage = new Stage();
-			stage.setTitle(usedTitle);
-			stage.setWidth(900);
-			stage.setHeight(800);
-			stage.setResizable(true);
-			TextArea textArea = new TextArea();
-			textArea.setEditable(false);
-			// Use flexible sizing so the display dialog can resize naturally
-			textArea.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-			textArea.setMinHeight(0);
-			textArea.setWrapText(doWrap);
-			Button closeButton = createButton(LABEL_CLOSE, styles.getBigButtonWidth(), null);
-			closeButton.setOnAction(e -> stage.close());
-			StringBuilder text = new StringBuilder();
-			if (arrayListArg != null) {
-				for (String str : arrayListArg) {
-					if (str.indexOf(vars.getEol()) < 0)
-						text.append(str).append(vars.getEol());
-					else
-						text.append(str);
-				}
-				textArea.setText(text.toString());
-				HBox buttonBox = new HBox();
-				buttonBox.setPadding(new Insets(4, 4, 4, 4));
-				buttonBox.setSpacing(5);
-				buttonBox.setAlignment(Pos.CENTER);
-				buttonBox.getChildren().addAll(closeButton);
-				border.setCenter(textArea);
-				border.setBottom(buttonBox);
-				Scene scene = new Scene(border);
-				stage.setScene(scene);
-				stage.show();
-			}
-		};
-		displayTask.run();
+		UtilsErrors.getInstance().displayArrayList(arrayListArg, title, doWrap);
 	}
 
 	// ====================== Some table code for generating a popup to show CSV
@@ -1660,147 +1621,7 @@ public class GLIMPSEUtils {
 	}
 
 	public void showPopupTableOfErrorReport(String title, ArrayList<String> csvData, int wd, int ht) {
-		if (styles == null)
-			return;
-		if (csvData == null || csvData.isEmpty()) {
-			showPopupTableOfCSVData(title, csvData, wd, ht);
-			return;
-		}
-		final String finalTitle = title;
-		Runnable popupTask = () -> {
-			String usedTitle = finalTitle == null ? LABEL_DISPLAY : finalTitle;
-			Stage stage = new Stage();
-			stage.setTitle(usedTitle);
-			stage.setWidth(wd);
-			stage.setHeight(ht);
-			BorderPane border = new BorderPane();
-			stage.setResizable(true);
-
-			Button closeButton = createButton(LABEL_CLOSE, styles.getBigButtonWidth(), null);
-			closeButton.setOnAction(e -> stage.close());
-
-			TableView<List<Object>> table = new TableView<>();
-			table.setEditable(false);
-			table.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-			table.setMinHeight(0);
-			UtilsTable.installCopyPasteHandler(table);
-			table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-
-			String[][] rawData = getDataMatrixFromArrayList(csvData);
-			int numCols = computeMaxRowLength(rawData);
-			String[] headerRow = rawData.length > 0 ? rawData[0] : new String[0];
-			int startRowIndex = rawData.length > 0 ? 1 : 0;
-			int classCol = findColumnIndex(headerRow, "Classification");
-
-			Class<?>[] types = new Class<?>[numCols];
-			for (int columnIndex = 0; columnIndex < numCols; columnIndex++) {
-				String[] column = extractColumn(rawData, columnIndex);
-				types[columnIndex] = deduceColumnType(column);
-				TableColumn<List<Object>, String> col = createColumn(types[columnIndex], columnIndex, getColumnHeader(rawData, columnIndex));
-				installErrorReportOverflowBehavior(table, col, columnIndex, numCols);
-				table.getColumns().add(col);
-			}
-
-			ObservableList<List<Object>> master = FXCollections.observableArrayList();
-			for (int rowIndex = startRowIndex; rowIndex < rawData.length; rowIndex++) {
-				List<Object> row = new ArrayList<>();
-				for (int columnIndex = 0; columnIndex < numCols; columnIndex++) {
-					row.add(getDataAsType(rawData[rowIndex], types[columnIndex], columnIndex));
-				}
-				master.add(row);
-			}
-
-			FilteredList<List<Object>> filtered = new FilteredList<>(master, row -> true);
-			table.setItems(filtered);
-
-			ChoiceBox<String> viewSelector = new ChoiceBox<>(FXCollections.observableArrayList(
-					"All lines",
-					"Major errors",
-					"Moderate errors",
-					"Minor errors"));
-			viewSelector.getSelectionModel().select(0);
-			viewSelector.setTooltip(new Tooltip("Choose which rows to display"));
-
-			viewSelector.getSelectionModel().selectedIndexProperty().addListener((obs, oldV, newV) -> {
-				int idx = newV == null ? 0 : newV.intValue();
-				filtered.setPredicate(row -> {
-					if (row == null)
-						return false;
-					if (idx == 0)
-						return true;
-					String classification = getCellString(row, classCol);
-					switch (idx) {
-					case 1:
-						return "major".equalsIgnoreCase(classification);
-					case 2:
-						return "moderate".equalsIgnoreCase(classification);
-					case 3:
-						return "minor".equalsIgnoreCase(classification);
-					default:
-						return true;
-					}
-				});
-				table.getSelectionModel().clearSelection();
-				if (!table.getItems().isEmpty()) {
-					table.scrollTo(0);
-				}
-			});
-
-			Button saveAsBtn = new Button("Save As...");
-			saveAsBtn.setTooltip(new Tooltip("Save the currently visible error report as CSV"));
-			saveAsBtn.setOnAction(ev -> {
-				try {
-					File initialDir = new File(vars.getGlimpseLogDir());
-					FileChooser.ExtensionFilter csvFilter = FileChooserPlus.createExtensionFilter("CSV files (*.csv)", "csv");
-					File chosen = FileChooserPlus.showSaveDialog(stage, "Save Error Report", initialDir, "error_report.csv", csvFilter);
-					if (chosen != null) {
-						ArrayList<String> exportRows = new ArrayList<>();
-						ArrayList<String> header = new ArrayList<>();
-						for (int col = 0; col < numCols; col++) {
-							header.add(sanitizeCsvField(getColumnHeader(rawData, col)));
-						}
-						exportRows.add(buildCsvRow(header, numCols));
-						for (List<Object> row : filtered) {
-							ArrayList<String> fields = new ArrayList<>();
-							for (int col = 0; col < numCols; col++) {
-								fields.add(sanitizeCsvField(getCellString(row, col)));
-							}
-							exportRows.add(buildCsvRow(fields, numCols));
-						}
-						files.saveFile(exportRows, chosen.getPath());
-						showInformationDialog("Information", "Export successful", "Saved report to: " + chosen.getPath());
-					}
-				} catch (Exception ex) {
-					showInformationDialog("Information", "Export failed", "Could not save report: " + ex.getMessage());
-				}
-			});
-
-			HBox controls = new HBox(10, new Label("View:"), viewSelector, saveAsBtn);
-			controls.setPadding(new Insets(6, 10, 6, 10));
-			controls.setAlignment(Pos.CENTER_LEFT);
-
-			HBox buttonBox = new HBox();
-			buttonBox.setPadding(new Insets(4, 4, 4, 4));
-			buttonBox.setSpacing(5);
-			buttonBox.setAlignment(Pos.CENTER);
-			buttonBox.getChildren().addAll(closeButton);
-
-			border.setTop(controls);
-			border.setCenter(table);
-			border.setBottom(buttonBox);
-
-			Scene scene = new Scene(border);
-			try {
-				java.net.URL cssUrl = GLIMPSEUtils.class.getResource("/resources/modern.css");
-				if (cssUrl != null) {
-					scene.getStylesheets().add(cssUrl.toExternalForm());
-				}
-			} catch (Exception ignored) {
-			}
-		 stage.setScene(scene);
-			stage.show();
-		};
-		popupTask.run();
+		UtilsErrors.getInstance().showPopupTableOfErrorReport(title, csvData, wd, ht);
 	}
 
 	private int findColumnIndex(String[] headerRow, String headerName) {
@@ -1836,13 +1657,13 @@ public class GLIMPSEUtils {
 				if (columnIndex < row.length) {
 					return Integer.valueOf(row[columnIndex]);
 				} else {
-					return new Integer(0);
+					return Integer.valueOf(0);
 				}
 			} else if (type == Double.class) {
 				if (columnIndex < row.length) {
-				 return Double.valueOf(row[columnIndex]);
+					return Double.valueOf(row[columnIndex]);
 				} else {
-					return new Double(0.0);
+					return Double.valueOf(0.0);
 				}
 			} else {
 				if (columnIndex < row.length) {
@@ -2022,8 +1843,8 @@ public class GLIMPSEUtils {
 		return returnMatrix;
 	}
 
-	public double[][] calculateValues(String type, boolean isPercent, int start_year, int end_year,
-			double initial_value, double growth, int period_length, double factor) {
+	public double[][] calculateValues(String type, boolean isPercent, int start_year, int end_year, double initial_value, double growth,
+			int period_length, double factor) {
 		double[][] array = calculateValues(type, isPercent, start_year, end_year, initial_value, growth, period_length);
 
 		for (int i = 0; i < array[0].length; i++) {
@@ -2033,8 +1854,8 @@ public class GLIMPSEUtils {
 		return array;
 	}
 
-	public double[][] calculateValues(String type, boolean isPercent, int start_year, int end_year,
-			double initial_value, double growth, int period_length) {
+	public double[][] calculateValues(String type, boolean isPercent, int start_year, int end_year, double initial_value, double growth,
+			int period_length) {
 
 		double[][] returnMatrix;
 
