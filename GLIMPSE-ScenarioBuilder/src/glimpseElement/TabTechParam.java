@@ -99,6 +99,7 @@ public class TabTechParam extends PolicyTab implements Runnable {
     private static final String LABEL_INPUT = "Input: ";
     private static final String LABEL_OUTPUT = "Output: ";
     private static final String LABEL_UNITS = "Units: ";
+    private static final String LABEL_MANUAL_YEAR_VALUE_PAIRS = "Year-Value Pairs:";
     
 
     // === Layout and UI Components ===
@@ -125,6 +126,7 @@ public class TabTechParam extends PolicyTab implements Runnable {
     private final Label labelTextFieldUnits = createLabel(LABEL_UNITS, LABEL_WIDTH);
     private final Label labelTextFieldUnits2 = createLabel("", LABEL_WIDTH);
     private final Label labelValue = createLabel(LABEL_VALUES);
+    private final Label labelManualYearValuePairs = createLabel(LABEL_MANUAL_YEAR_VALUE_PAIRS, LABEL_WIDTH);
 
     // === Data ===
     // Technology info array loaded from GLIMPSEVariables. Structure is assumed

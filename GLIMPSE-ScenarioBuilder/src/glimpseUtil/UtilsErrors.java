@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import gui.ScenarioBuilder;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -81,6 +82,7 @@ public final class UtilsErrors {
 			stage.setWidth(900);
 			stage.setHeight(800);
 			stage.setResizable(true);
+			stage.setAlwaysOnTop(true);
 			TextArea textArea = new TextArea();
 			textArea.setEditable(false);
 			textArea.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
@@ -105,6 +107,7 @@ public final class UtilsErrors {
 				border.setCenter(textArea);
 				border.setBottom(buttonBox);
 				Scene scene = new Scene(border);
+				ScenarioBuilder.applyModernTheme(scene);
 				stage.setScene(scene);
 				stage.show();
 			}

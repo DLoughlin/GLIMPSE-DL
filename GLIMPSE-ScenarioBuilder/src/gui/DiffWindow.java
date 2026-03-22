@@ -73,7 +73,7 @@ public class DiffWindow {
 
         Stage stage = new Stage();
         stage.initModality(Modality.NONE);
-        stage.setTitle("Diff: " + shortName(file1) + " \u001f " + shortName(file2));
+        stage.setTitle("Differences between configuration files");
 
         ObservableList<DiffLineRow> data = FXCollections.observableArrayList(rows);
 

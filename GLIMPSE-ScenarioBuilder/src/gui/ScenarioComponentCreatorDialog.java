@@ -137,8 +137,8 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 	private final Runnable afterSaveOrClose;
 
 	/** Last size used for this dialog in the current session. */
-	private static double lastDialogWidth = 1180;
-	private static double lastDialogHeight = 720;
+	private static double lastDialogWidth = 1190;
+	private static double lastDialogHeight = 750;
 
 	public ScenarioComponentCreatorDialog(Runnable afterSaveOrClose) {
 		this.afterSaveOrClose = (afterSaveOrClose != null) ? afterSaveOrClose : () -> {};

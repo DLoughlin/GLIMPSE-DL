@@ -102,7 +102,7 @@ final class ConsoleManager {
 
     private static final String BASE_CONSOLE_STYLE =
             "-fx-control-inner-background: white;"
-          + "-fx-font-family: 'Consolas', 'Courier New', monospace';"
+          + "-fx-font-family: 'Consolas', 'Courier New', monospace;"
           + "-fx-highlight-fill: derive(-fx-focus-color, 60%);"
           + "-fx-highlight-text-fill: -fx-text-inner-color;";
     private static final String STYLE_INFO = BASE_CONSOLE_STYLE + "-fx-text-fill: darkblue;";

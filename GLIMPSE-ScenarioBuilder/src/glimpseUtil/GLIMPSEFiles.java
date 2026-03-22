@@ -74,7 +74,7 @@ public class GLIMPSEFiles {
     // Constants
     private static final int BUFFER_SIZE = 1024;
     private static final String COMMENT_CHAR = "#";
-    private static final String ERROR_MSG_FILE_NOT_EXIST = "File does not exist:";
+    private static final String ERROR_MSG_FILE_NOT_EXIST = "File does not exist: ";
     private static final String ERROR_MSG_WRITING_FILE = "Error writing file";
     private static final String ERROR_MSG_DELETING_FILE = "error deleting ";
     private static final String ERROR_MSG_ZIPPING = "Error zipping directory: ";

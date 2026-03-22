@@ -573,7 +573,6 @@ public abstract class PolicyTab extends Tab {
         textFieldStartYear.setText(DEFAULT_START_YEAR);
         textFieldEndYear.setText(DEFAULT_END_YEAR);
         textFieldPeriodLength.setText(DEFAULT_PERIOD_LENGTH);
-          
       }
 
 

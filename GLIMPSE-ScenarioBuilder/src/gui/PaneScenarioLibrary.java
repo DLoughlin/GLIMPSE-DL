@@ -903,6 +903,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 }
 
                 Alert alert = new Alert(AlertType.CONFIRMATION);
+                glimpseUtil.UtilsDialogs.initDialogOwner(alert);
                 alert.setTitle("GCAM waiting for database");
                 alert.setHeaderText("Close ModelInterface to continue GCAM");
 
@@ -1268,10 +1269,14 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     private void generateErrorReport() {
+        ScenarioSelection selection = ScenarioSelection.capture();
+        if (scenarioFileActionService.warnIfAnyScenarioMainLogMissing(selection)) {
+            return;
+        }
         ArrayList<String> txtArray = ScenarioLibraryReportHelper.createScenarioErrorReport(
                 files,
                 vars.getScenarioDir(),
-                ScenarioSelection.capture().getRows());
+                selection.getRows());
         if (txtArray.size() <= 2) {
             utils.warningMessage("No scenario error report available.");
             return;

@@ -3,6 +3,7 @@ package glimpseUtil;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import gui.Client;
 import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
@@ -16,7 +17,9 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 
 /**
  * Dialog helper methods extracted from {@link GLIMPSEUtils}.
@@ -63,6 +66,56 @@ public final class UtilsDialogs {
 		}
 	}
 
+	public static void initDialogOwner(javafx.scene.control.Dialog<?> dialog) {
+		INSTANCE.applyDialogOwner(dialog);
+	}
+
+	public static void initStageOwner(Stage stage) {
+		INSTANCE.applyStageOwner(stage);
+	}
+
+	public static Window getPrimaryOwnerWindow() {
+		return INSTANCE.getVisiblePrimaryWindow();
+	}
+
+	private void applyDialogOwner(javafx.scene.control.Dialog<?> dialog) {
+		if (dialog == null) {
+			return;
+		}
+		try {
+			Window owner = getVisiblePrimaryWindow();
+			if (owner != null) {
+				dialog.initOwner(owner);
+			}
+		} catch (Exception ignored) {
+		}
+	}
+
+	private void applyStageOwner(Stage stage) {
+		if (stage == null) {
+			return;
+		}
+		try {
+			Window owner = getVisiblePrimaryWindow();
+			if (owner != null) {
+				stage.initOwner(owner);
+				stage.initModality(Modality.WINDOW_MODAL);
+			}
+		} catch (Exception ignored) {
+		}
+	}
+
+	private Window getVisiblePrimaryWindow() {
+		try {
+			Stage owner = Client.primaryStage;
+			if (owner != null && owner.isShowing()) {
+				return owner;
+			}
+		} catch (Exception ignored) {
+		}
+		return null;
+	}
+
 	public void warningMessage(String msg) {
 		if (msg == null)
 			return;
@@ -72,6 +125,7 @@ public final class UtilsDialogs {
 		}
 		Runnable showAlert = () -> {
 			Alert alert = new Alert(AlertType.WARNING);
+			applyDialogOwner(alert);
 			applyModernThemeToDialog(alert);
 			alert.setTitle(GLIMPSEUtils.LABEL_WARNING);
 			alert.setHeaderText(GLIMPSEUtils.LABEL_WARNING);
@@ -107,6 +161,7 @@ public final class UtilsDialogs {
 				continue;
 			}
 			Alert alert = new Alert(AlertType.WARNING);
+			applyDialogOwner(alert);
 			applyModernThemeToDialog(alert);
 			alert.setTitle(GLIMPSEUtils.LABEL_WARNING);
 			alert.setHeaderText(GLIMPSEUtils.LABEL_WARNING);
@@ -126,6 +181,7 @@ public final class UtilsDialogs {
 
 		try {
 			Stage stage = new Stage();
+			applyStageOwner(stage);
 			stage.setTitle(title);
 			stage.setWidth(400);
 			stage.setHeight(400);
@@ -174,6 +230,7 @@ public final class UtilsDialogs {
 	public boolean confirmDelete() {
 		boolean continueWithDelete = true;
 		Alert alert = new Alert(AlertType.CONFIRMATION);
+		applyDialogOwner(alert);
 		applyModernThemeToDialog(alert);
 		alert.setTitle(GLIMPSEUtils.LABEL_CONFIRMATION_DIALOG);
 		alert.setHeaderText(GLIMPSEUtils.LABEL_DELETE_SELECTED_ITEMS);
@@ -188,6 +245,7 @@ public final class UtilsDialogs {
 	public boolean confirmAction(String s) {
 		boolean continueAction = true;
 		Alert alert = new Alert(AlertType.CONFIRMATION);
+		applyDialogOwner(alert);
 		applyModernThemeToDialog(alert);
 		alert.setTitle(GLIMPSEUtils.LABEL_CONFIRMATION_DIALOG);
 		alert.setHeaderText(s);
@@ -203,6 +261,7 @@ public final class UtilsDialogs {
 		if (title == null || header == null || content == null)
 			return false;
 		Alert alert = new Alert(AlertType.INFORMATION);
+		applyDialogOwner(alert);
 		applyModernThemeToDialog(alert);
 		alert.setTitle(title);
 		alert.setHeaderText(header);
@@ -213,6 +272,7 @@ public final class UtilsDialogs {
 
 	public boolean confirmArchiveScenario() {
 		Alert alert = new Alert(AlertType.CONFIRMATION);
+		applyDialogOwner(alert);
 		applyModernThemeToDialog(alert);
 		alert.setTitle(GLIMPSEUtils.LABEL_CONFIRMATION_DIALOG);
 		alert.setHeaderText(GLIMPSEUtils.LABEL_ARCHIVE_SCENARIO);
@@ -239,6 +299,7 @@ public final class UtilsDialogs {
 		if (title == null || header == null || content == null)
 			return false;
 		Alert alert = new Alert(AlertType.INFORMATION);
+		applyDialogOwner(alert);
 		applyModernThemeToDialog(alert);
 		alert.setTitle(title);
 		alert.setHeaderText(header);
@@ -249,6 +310,7 @@ public final class UtilsDialogs {
 
 	public boolean selectYesOrNoDialog(String s) {
 		Alert alert = new Alert(AlertType.CONFIRMATION);
+		applyDialogOwner(alert);
 		applyModernThemeToDialog(alert);
 		alert.setTitle("Confirmation required");
 		alert.setHeaderText(null);
