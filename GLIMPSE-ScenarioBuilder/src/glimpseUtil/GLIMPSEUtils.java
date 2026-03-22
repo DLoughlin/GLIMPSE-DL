@@ -2672,10 +2672,10 @@ public class GLIMPSEUtils {
 			String dbFreePct = (maxDbSize > 0f) ? String.format("%,.0f", (1.0f - (databaseSize / maxDbSize)) * 100.0f) : "n/a";
 			status = "  Resources... " 
 					+ "CPU: " + String.format("%,.0f", cpuLoad * 100.0f) + "% | " 
-					+ "RAM: " + String.format("%,.0f", physicalMemorySize) + "GB Free:" + String.format("%,.0f", physicalMemorySize > 0f ? physicalMemoryFree / physicalMemorySize * 100.0f : 0.0f)+ "%" + warningRAM + " | " 
-					+ "HD: " + String.format("%,.0f", totalSpace) + "GB Free:" + String.format("%,.0f", totalSpace > 0f ? freeSpace / totalSpace * 100.0f : 0.0f) + "%" + warningDisk+ " | " 
-					+ "Swap: " + String.format("%,.0f", swapSpaceSize) + "GB Free:" + String.format("%,.0f", swapSpaceSize > 0f ? freeSwapSpace / swapSpaceSize * 100.0f : 0.0f) + "%" + warningSwap + " | " 
-					+ "DB: " + (databaseShortName.isEmpty() ? "(not set)" : databaseShortName) + " " + String.format("%,.1f", databaseSize) + "GB Free:" + dbFreePct + "%" + warningDb;
+					+ "RAM: " + String.format("%,.0f", physicalMemorySize-physicalMemoryFree) + "/" + String.format("%,.0f", physicalMemorySize) + " GB (" +String.format("%,.0f", physicalMemorySize > 0f ? physicalMemoryFree / physicalMemorySize * 100.0f : 0.0f)+ "% Free)" + warningRAM + " | " 
+					+ "HD: " + String.format("%,.0f", totalSpace-freeSpace) + "/" + String.format("%,.0f", totalSpace) + " GB (" +String.format("%,.0f", totalSpace > 0f ? freeSpace / totalSpace * 100.0f : 0.0f)+ "% Free)" + warningDisk + " | " 
+					+ "Swap: " + String.format("%,.0f", swapSpaceSize-freeSwapSpace) + "/" + String.format("%,.0f", swapSpaceSize) + " GB (" +String.format("%,.0f", swapSpaceSize > 0f ? freeSwapSpace / swapSpaceSize * 100.0f : 0.0f)+ "% Free)" + warningSwap + " | "
+					+ "DB: " + (databaseShortName.isEmpty() ? "(not set)" : databaseShortName) + " " + String.format("%,.1f", databaseSize) + "/"+ vars.getMaxDatabaseSize() + " GB (" + dbFreePct + "%" + warningDb+" Free)";
 		} catch (Exception e) {
 			status = "";
 		}

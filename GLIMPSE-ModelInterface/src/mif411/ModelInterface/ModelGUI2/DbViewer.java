@@ -1178,10 +1178,14 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			File dbFile = dbFiles[0];
 			boolean create = false;
 			if (!dbFile.exists()) {
-				int response = JOptionPane.showConfirmDialog(parentFrame,
+				int response = main.showOptionDialog(
 						"The database '" + dbFile.getAbsolutePath() + "' does not exist. Would you like to create it?",
-						"Create Database?", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-				if (response == JOptionPane.YES_OPTION) {
+						"Create Database?",
+						new Object[] { "Create", "Cancel" },
+						JOptionPane.QUESTION_MESSAGE,
+						"Create",
+						JOptionPane.CANCEL_OPTION);
+				if (response == JOptionPane.OK_OPTION) {
 					create = true;
 				} else {
 					// User chose not to create, so abort
@@ -1812,7 +1816,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			// Add to region panel
 			comboBoxPresetRegions.addActionListener(e -> selectPresetRegions());
 		}
-		// Add the preset panel to BorderLayout.SOUTH of the right wrapper.
+			// Add the preset panel to BorderLayout.SOUTH of the right wrapper.
 		// getRightComponent() returns the rightWrapper (BorderLayout) we set in setupSplitPanes.
 		((JPanel) scenarioRegionSplit.getRightComponent()).add(presetRegionsPanel, BorderLayout.SOUTH);
 
@@ -3455,4 +3459,3 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		return new ImageIcon(resource);
 	}
 }
-

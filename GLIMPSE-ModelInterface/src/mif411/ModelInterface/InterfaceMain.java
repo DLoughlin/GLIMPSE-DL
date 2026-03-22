@@ -737,15 +737,19 @@ public class InterfaceMain implements ActionListener {
 				if (path != null) {
 					File dbFile = new File(path);
 					if (!dbFile.exists()) {
-						int response = JOptionPane.showConfirmDialog(main.mainFrame,
+						int response = main.showOptionDialog(
 								"The database '" + path + "' does not exist. Would you like to create it?",
-								"Create Database?", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-						if (response == JOptionPane.NO_OPTION || response == JOptionPane.CLOSED_OPTION) {
+								"Create Database?",
+								new Object[] { "Create", "Cancel" },
+								JOptionPane.QUESTION_MESSAGE,
+								"Create",
+								JOptionPane.CANCEL_OPTION);
+						if (response != JOptionPane.OK_OPTION) {
 							main.completeStartupStep(STARTUP_MESSAGE_READY);
 							showGUI();
 							return;
 						}
-						// If yes, doOpenDB will create it.
+						// If create is chosen, doOpenDB will create it.
 					}
 					main.updateStartupLoadingMessage(STARTUP_MESSAGE_OPENING_DB);
 					DbViewer db = (DbViewer) main.dbView;
@@ -2696,25 +2700,24 @@ public class InterfaceMain implements ActionListener {
 			}
 
 			Object initialValue = options[Math.max(0, Math.min(initialIndex, options.length - 1))];
-			int result = JOptionPane.showOptionDialog(mainFrame, message, title, optionType, messageType, null, options,
-					initialValue);
-			// showOptionDialog returns 0..n-1 for options; map to JOptionPane constants
-			if (optionType == JOptionPane.OK_CANCEL_OPTION) {
-				return (result == 0) ? JOptionPane.OK_OPTION : (result == 1 ? JOptionPane.CANCEL_OPTION : JOptionPane.CLOSED_OPTION);
-			}
-			if (optionType == JOptionPane.YES_NO_OPTION) {
-				return (result == 0) ? JOptionPane.YES_OPTION : (result == 1 ? JOptionPane.NO_OPTION : JOptionPane.CLOSED_OPTION);
-			}
-			if (optionType == JOptionPane.YES_NO_CANCEL_OPTION) {
-				return (result == 0) ? JOptionPane.YES_OPTION
-						: (result == 1 ? JOptionPane.NO_OPTION
-								: (result == 2 ? JOptionPane.CANCEL_OPTION : JOptionPane.CLOSED_OPTION));
-			}
-			return result;
+			return showOptionDialog(message, title, options, messageType, initialValue, defaultOption);
 		} catch (Exception ex) {
 			// Fallback to standard confirm dialog if any of the mapping logic fails.
 			return JOptionPane.showConfirmDialog(mainFrame, message, title, optionType, messageType);
 		}
+	}
+
+	public int showOptionDialog(Object message, String title, Object[] options, int messageType, Object initialValue,
+			int defaultClosedResult) {
+		if (GraphicsEnvironment.isHeadless()) {
+			return defaultClosedResult;
+		}
+		if (options == null || options.length == 0) {
+			return JOptionPane.CLOSED_OPTION;
+		}
+		int result = JOptionPane.showOptionDialog(mainFrame, message, title, JOptionPane.DEFAULT_OPTION, messageType, null,
+				options, initialValue);
+		return result >= 0 ? result : defaultClosedResult;
 	}
 
 	private void persistProperties() {
@@ -2749,4 +2752,3 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 }
-
