@@ -712,107 +712,36 @@ public class GLIMPSEUtils {
 		return UtilsSeriesCalculations.convertTo1990Dollars(vals, dollarYear, files);
 	}
 
+	public double[][] calculateValues(String calcType, int startYear, int endYear, double initialValue, double growth,
+			int periodLength, double factor) {
+		return UtilsSeriesCalculations.calculateValues(calcType, startYear, endYear, initialValue, growth, periodLength,
+				factor);
+	}
+
 	public String[] getAllSelectedRegions(TreeView<String> tree) {
-
-		ArrayList<CheckBoxTreeItem<String>> selectedLeaves = returnAllSelectedLeaves(tree.getRoot());
-		int n = selectedLeaves.size();
-		String[] list = new String[n];
-		for (int i = 0; i < selectedLeaves.size(); i++) {
-			list[i] = selectedLeaves.get(i).getValue();
-		}
-		list = removeUSADuplicate(list);
-		list = removeWorldRegion(list);
-
-		return list;
+		if (uiUtils == null)
+			return new UtilsUI().getAllSelectedRegions(tree);
+		return uiUtils.getAllSelectedRegions(tree);
 	}
 
-	public String[] removeWorldRegion(String[] s_orig) {
-		String[] s_return;
-
-		int world_location = -1;
-		int i = 0;
-		for (String s : s_orig) {
-			if (s.trim().toLowerCase().equals("world")) {
-				world_location = i;
-			}
-			i++;
-		}
-
-		if (world_location == -1) {
-			s_return = s_orig;
-		} else {
-			s_return = new String[s_orig.length - 1];
-			int pos = 0;
-			for (int j = 0; j < s_orig.length; j++) {
-				if (j != world_location) {
-					s_return[pos] = s_orig[j];
-					pos++;
-				}
-			}
-		}
-
-		return s_return;
+	public String[] removeWorldRegion(String[] sOrig) {
+		return UtilsStrings.removeWorldRegion(sOrig);
 	}
 
-	public String[] removeUSADuplicate(String[] s_orig) {
-		String[] s_return;
-
-		int usa_count = 0;
-		for (String s : s_orig) {
-			if (s.trim().toLowerCase().equals("usa")) {
-				usa_count++;
-			}
-		}
-
-		if (usa_count < 2) {
-			s_return = s_orig;
-		} else {
-			s_return = new String[s_orig.length - 1];
-			for (int i = 0; i < s_return.length; i++) {
-				s_return[i] = s_orig[i];
-			}
-		}
-
-		return s_return;
+	public String[] removeUSADuplicate(String[] sOrig) {
+		return UtilsStrings.removeUSADuplicate(sOrig);
 	}
 
 	public ArrayList<CheckBoxTreeItem<String>> returnAllSelectedLeaves(TreeItem<String> rootNode) {
-		ArrayList<TreeItem<String>> leaves = new ArrayList<>();
-		ArrayList<CheckBoxTreeItem<String>> selectedLeaves = new ArrayList<>();
-		getAllChildren(rootNode, leaves);
-		for (TreeItem<String> leaf : leaves) {
-			if (leaf instanceof CheckBoxTreeItem) {
-				CheckBoxTreeItem<String> temp = (CheckBoxTreeItem<String>) leaf;
-				if (temp.isSelected()) {
-					selectedLeaves.add(temp);
-				}
-			}
-		}
-		return selectedLeaves;
+		if (uiUtils == null)
+			return new UtilsUI().returnAllSelectedLeaves(rootNode);
+		return uiUtils.returnAllSelectedLeaves(rootNode);
 	}
 
 	public boolean getAllChildren(TreeItem<String> node, ArrayList<TreeItem<String>> list) {
-		ObservableList<TreeItem<String>> childrenNodes = node.getChildren();
-		boolean areAllChildrenSelected = true;
-
-		if (!childrenNodes.isEmpty()) {
-
-			for (TreeItem<String> item : childrenNodes) {
-				if (!getAllChildren(item, list))
-					areAllChildrenSelected = false;
-			}
-			// If all of the children are selected, the node itself is also
-			// added
-			// this may be problematic if GCAM-USA accepts taxes or policies at
-			// the USA level
-			if (areAllChildrenSelected)
-				list.add(node);
-
-		} else {
-			list.add(node);
-		}
-
-		return areAllChildrenSelected;
+		if (uiUtils == null)
+			return new UtilsUI().getAllChildren(node, list);
+		return uiUtils.getAllChildren(node, list);
 	}
 
 	public boolean confirmAction(String s) {

@@ -45,27 +45,26 @@ import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEStyles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
-import glimpseUtil.UtilsSeriesCalculations;
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
+import javafx.beans.binding.DoubleBinding;
 import javafx.collections.ListChangeListener;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
-import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
 import javafx.scene.layout.Priority;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.Button;
-import javafx.event.EventHandler;
-import javafx.event.ActionEvent;
+import javafx.scene.layout.VBox;
 import org.controlsfx.control.CheckComboBox;
-import javafx.scene.layout.ColumnConstraints;
-import javafx.beans.binding.Bindings;
-import javafx.beans.binding.DoubleBinding;
 
 /**
  * Abstract base class for policy-related tabs in the GLIMPSE Scenario Builder.
@@ -644,7 +643,7 @@ public abstract class PolicyTab extends Tab {
         if (!NONE.equals(convertYear)) {
             factor = utils.getConversionFactor(convertYear, toYear);
         }
-        return UtilsSeriesCalculations.calculateValues(calcType, startYear, endYear, initialValue, growth, periodLength, factor);
+        return utils.calculateValues(calcType, startYear, endYear, initialValue, growth, periodLength, factor);
     }
     
     /**

@@ -490,4 +490,58 @@ public final class UtilsStrings {
 		return newStringLine.toString();
 	}
 
+	public static String[] removeWorldRegion(String[] sOrig) {
+		if (sOrig == null)
+			return null;
+		String[] sReturn;
+
+		int worldLocation = -1;
+		int i = 0;
+		for (String s : sOrig) {
+			if (s != null && s.trim().toLowerCase().equals("world")) {
+				worldLocation = i;
+			}
+			i++;
+		}
+
+		if (worldLocation == -1) {
+			sReturn = sOrig;
+		} else {
+			sReturn = new String[sOrig.length - 1];
+			int pos = 0;
+			for (int j = 0; j < sOrig.length; j++) {
+				if (j != worldLocation) {
+					sReturn[pos] = sOrig[j];
+					pos++;
+				}
+			}
+		}
+
+		return sReturn;
+	}
+
+	public static String[] removeUSADuplicate(String[] sOrig) {
+		if (sOrig == null)
+			return null;
+		String[] sReturn;
+
+		int usaCount = 0;
+		for (String s : sOrig) {
+			if (s != null && s.trim().toLowerCase().equals("usa")) {
+				usaCount++;
+			}
+		}
+
+		if (usaCount < 2) {
+			sReturn = sOrig;
+		} else {
+			sReturn = new String[sOrig.length - 1];
+			for (int i = 0; i < sReturn.length; i++) {
+				sReturn[i] = sOrig[i];
+			}
+		}
+
+		return sReturn;
+	}
+
 }

@@ -36,24 +36,29 @@
 package glimpseUtil;
 
 import java.io.File;
+import java.util.ArrayList;
 
 import org.controlsfx.control.CheckComboBox;
 
 import com.sun.javafx.tk.FontLoader;
 import com.sun.javafx.tk.Toolkit;
 
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.CheckBoxTreeItem;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
+import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeView;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.text.Font;
@@ -292,5 +297,52 @@ public class UtilsUI {
             return resizeLabelText(label, text, size - 0.5);
         } else
             return label;
+    }
+
+    public String[] getAllSelectedRegions(TreeView<String> tree) {
+        if (tree == null || tree.getRoot() == null)
+            return new String[0];
+        ArrayList<CheckBoxTreeItem<String>> selectedLeaves = returnAllSelectedLeaves(tree.getRoot());
+        int n = selectedLeaves.size();
+        String[] list = new String[n];
+        for (int i = 0; i < selectedLeaves.size(); i++) {
+            list[i] = selectedLeaves.get(i).getValue();
+        }
+        list = UtilsStrings.removeUSADuplicate(list);
+        list = UtilsStrings.removeWorldRegion(list);
+        return list;
+    }
+
+    public ArrayList<CheckBoxTreeItem<String>> returnAllSelectedLeaves(TreeItem<String> rootNode) {
+        ArrayList<TreeItem<String>> leaves = new ArrayList<>();
+        ArrayList<CheckBoxTreeItem<String>> selectedLeaves = new ArrayList<>();
+        getAllChildren(rootNode, leaves);
+        for (TreeItem<String> leaf : leaves) {
+            if (leaf instanceof CheckBoxTreeItem) {
+                CheckBoxTreeItem<String> temp = (CheckBoxTreeItem<String>) leaf;
+                if (temp.isSelected()) {
+                    selectedLeaves.add(temp);
+                }
+            }
+        }
+        return selectedLeaves;
+    }
+
+    public boolean getAllChildren(TreeItem<String> node, ArrayList<TreeItem<String>> list) {
+        ObservableList<TreeItem<String>> childrenNodes = node.getChildren();
+        boolean areAllChildrenSelected = true;
+
+        if (!childrenNodes.isEmpty()) {
+            for (TreeItem<String> item : childrenNodes) {
+                if (!getAllChildren(item, list))
+                    areAllChildrenSelected = false;
+            }
+            if (areAllChildrenSelected)
+                list.add(node);
+        } else {
+            list.add(node);
+        }
+
+        return areAllChildrenSelected;
     }
 }
