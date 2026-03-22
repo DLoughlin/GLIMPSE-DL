@@ -1,7 +1,9 @@
 package glimpseUtil;
 
 import java.io.File;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -138,17 +140,17 @@ public final class UtilsErrors {
 			table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
 			String[][] rawData = utils.getDataMatrixFromArrayList(csvData);
-			int numCols = computeMaxRowLength(rawData);
+			int numCols = UtilsTable.computeMaxRowLength(rawData);
 			String[] headerRow = rawData.length > 0 ? rawData[0] : new String[0];
 			int startRowIndex = rawData.length > 0 ? 1 : 0;
 			int classCol = findColumnIndex(headerRow, "Classification");
 
 			Class<?>[] types = new Class<?>[numCols];
 			for (int columnIndex = 0; columnIndex < numCols; columnIndex++) {
-				String[] column = extractColumn(rawData, columnIndex);
-				types[columnIndex] = deduceColumnType(column);
-				TableColumn<List<Object>, String> col = createColumn(types[columnIndex], columnIndex,
-						getColumnHeader(rawData, columnIndex));
+				String[] column = UtilsTable.extractColumn(rawData, columnIndex);
+				types[columnIndex] = UtilsTable.deduceColumnType(column);
+				TableColumn<List<Object>, String> col = UtilsTable.createColumn(types[columnIndex], columnIndex,
+						UtilsTable.getColumnHeader(rawData, columnIndex));
 				installErrorReportOverflowBehavior(col, columnIndex, numCols);
 				table.getColumns().add(col);
 			}
@@ -157,7 +159,7 @@ public final class UtilsErrors {
 			for (int rowIndex = startRowIndex; rowIndex < rawData.length; rowIndex++) {
 				List<Object> row = new ArrayList<>();
 				for (int columnIndex = 0; columnIndex < numCols; columnIndex++) {
-					row.add(getDataAsType(rawData[rowIndex], types[columnIndex], columnIndex));
+					row.add(UtilsTable.getDataAsType(rawData[rowIndex], types[columnIndex], columnIndex));
 				}
 				master.add(row);
 			}
@@ -210,7 +212,7 @@ public final class UtilsErrors {
 						ArrayList<String> exportRows = new ArrayList<>();
 						ArrayList<String> header = new ArrayList<>();
 						for (int col = 0; col < numCols; col++) {
-							header.add(sanitizeCsvField(getColumnHeader(rawData, col)));
+							header.add(sanitizeCsvField(UtilsTable.getColumnHeader(rawData, col)));
 						}
 						exportRows.add(buildCsvRow(header, numCols));
 						for (List<Object> row : filtered) {
@@ -272,18 +274,6 @@ public final class UtilsErrors {
 			return "";
 		Object value = row.get(colIndex);
 		return value == null ? "" : value.toString();
-	}
-
-	private int computeMaxRowLength(String[][] data) {
-		if (data == null)
-			return 0;
-		int maxLength = 0;
-		for (String[] row : data) {
-			if (row != null && row.length > maxLength) {
-				maxLength = row.length;
-			}
-		}
-		return maxLength;
 	}
 
 	private String[] extractColumn(String[][] data, int columnIndex) {
@@ -476,5 +466,201 @@ public final class UtilsErrors {
 			sb.append(value == null ? "" : value);
 		}
 		return sb.toString();
+	}
+
+	public ArrayList<String> generateErrorReport(String mainLogFile, String scenario) {
+		if (files == null || vars == null)
+			return new ArrayList<>();
+		DecimalFormat formatter = new DecimalFormat("0.###");
+		formatter.setGroupingUsed(false);
+		double minDmd = 0.0001;
+		double minRed = 0.01;
+		int totalFails = 0;
+		int minorFails = 0;
+		int smallMarketFails = 0;
+		int majorFails = 0;
+		int moderateFails = 0;
+		String scenarioLabel = (scenario == null || scenario.trim().isEmpty()) ? "exe/main_log.txt" : scenario;
+		ArrayList<String> report = new ArrayList<>();
+		ArrayList<String[]> tokenRows = new ArrayList<>();
+		ArrayList<String> classifications = new ArrayList<>();
+		ArrayList<String> smallMarkets = new ArrayList<>();
+		int maxTokenCount = 0;
+		File mainlogfile = new File(mainLogFile);
+		if (mainlogfile.exists()) {
+			String[] prefixes = { "ERROR", "SEVERE", "Period" };
+			ArrayList<String> errorLines = files.getStringArrayWithPrefix(mainlogfile.getPath(), prefixes);
+			for (String errorLine : errorLines) {
+				if (errorLine == null)
+					continue;
+				String normalized = errorLine.replace(":", ",");
+				String[] tokens = normalized.split(",");
+				maxTokenCount = Math.max(maxTokenCount, tokens.length);
+				String classification = "";
+				String smallMarket = "";
+				try {
+					if (tokens.length > 12) {
+						double red = Double.parseDouble(tokens[7].trim());
+						double dmd = Double.parseDouble(tokens[9].trim());
+						tokens[12].trim();
+						totalFails++;
+						if (red > minRed) {
+							if (red > minRed * 5.0) {
+								classification = "MAJOR";
+								majorFails++;
+							} else {
+								classification = "MODERATE";
+								moderateFails++;
+								if (dmd <= minDmd)
+									smallMarketFails++;
+							}
+						} else {
+							classification = "MINOR";
+							minorFails++;
+							if (dmd <= minDmd)
+								smallMarketFails++;
+						}
+						smallMarket = (dmd <= minDmd) ? "true" : "false";
+					}
+				} catch (Exception e) {
+					// Ignore parse errors for robustness
+				}
+				tokenRows.add(tokens);
+				classifications.add(classification);
+				smallMarkets.add(smallMarket);
+			}
+			if (tokenRows.isEmpty()) {
+				maxTokenCount = Math.max(maxTokenCount, 1);
+				tokenRows.add(new String[] { "No errors reported" });
+				classifications.add("");
+				smallMarkets.add("");
+			}
+			if (totalFails > 0) {
+				maxTokenCount = Math.max(maxTokenCount, 1);
+				String verdict;
+				if (totalFails == 0) {
+					verdict = "Verdict: Pass (no errors)";
+				} else if (totalFails == minorFails) {
+					verdict = "Verdict: Pass? (all errors are minor)";
+				} else if (totalFails == minorFails + moderateFails) {
+					verdict = "Verdict: Pass? (all errors are minor or moderate)";
+				} else if (totalFails == smallMarketFails) {
+					verdict = "Verdict: Pass? (all fails are in small markets)";
+				} else if (totalFails == minorFails + smallMarketFails) {
+					verdict = "Verdict: Pass? (all fails are minor or in small markets)";
+				} else {
+					verdict = "Verdict: Fail? (major, non-small market failures)";
+				}
+				String summary = "Total errors=" + totalFails + "; Major errors=" + majorFails + "; Moderate errors="
+						+ moderateFails + "; Small market errors=" + smallMarketFails + "; "
+						+ verdict + " (" + formatter.format(minRed * 100.0) + "-"
+						+ formatter.format(minRed * 5.0 * 100.0) + "% thresholds)";
+				tokenRows.add(new String[] { "Summary", summary });
+				classifications.add("");
+				smallMarkets.add("");
+			}
+		} else {
+			maxTokenCount = Math.max(maxTokenCount, 1);
+			tokenRows.add(new String[] { "Main log not found" });
+			classifications.add("");
+			smallMarkets.add("");
+		}
+
+		int columnCount = 1 + Math.max(1, maxTokenCount) + 2;
+		for (int i = 0; i < tokenRows.size(); i++) {
+			ArrayList<String> fields = new ArrayList<>();
+			fields.add(sanitizeCsvField(scenarioLabel));
+			String[] tokens = tokenRows.get(i);
+			for (int t = 0; t < Math.max(1, maxTokenCount); t++) {
+				String token = (tokens != null && t < tokens.length) ? tokens[t] : "";
+				fields.add(sanitizeCsvField(token));
+			}
+			fields.add(sanitizeCsvField(classifications.get(i)));
+			fields.add(sanitizeCsvField(smallMarkets.get(i)));
+			report.add(buildCsvRow(fields, columnCount));
+		}
+		return report;
+	}
+
+	public ArrayList<String> buildErrorReportTable(ArrayList<String> rows) {
+		ArrayList<String> table = new ArrayList<>();
+		int maxCols = 0;
+		if (rows != null) {
+			for (String row : rows) {
+				if (row == null)
+					continue;
+				int len = row.split(",", -1).length;
+				if (len > maxCols)
+					maxCols = len;
+			}
+		}
+		if (maxCols < 4)
+			maxCols = 4;
+		int tokenCols = Math.max(1, maxCols - 3);
+		ArrayList<String> header = new ArrayList<>();
+		header.add("Scenario");
+		for (int i = 1; i <= tokenCols; i++) {
+			header.add("Field" + i);
+		}
+		header.add("Classification");
+		header.add("SmallMarket");
+		table.add(buildCsvRow(header, header.size()));
+
+		if (rows == null || rows.isEmpty()) {
+			ArrayList<String> noErr = new ArrayList<>();
+			noErr.add(" ");
+			noErr.add("No errors reported");
+			table.add(buildCsvRow(noErr, header.size()));
+			return table;
+		}
+		for (String row : rows) {
+			String[] parts = row == null ? new String[0] : row.split(",", -1);
+			ArrayList<String> fields = new ArrayList<>();
+			Collections.addAll(fields, parts);
+			table.add(buildCsvRow(fields, header.size()));
+		}
+		return table;
+	}
+
+	public String processErrors(ArrayList<String> errors, double minRed) {
+		if (errors == null)
+			return "";
+		double minDmd = 0.0001;
+		int total = 0;
+		int major = 0;
+		int moderate = 0;
+		int minor = 0;
+		int smallMarkets = 0;
+		for (String errorLine : errors) {
+			if (errorLine == null)
+				continue;
+			String normalized = errorLine.replace(":", ",");
+			String[] tokens = normalized.split(",");
+			try {
+				if (tokens.length > 12) {
+					double red = Double.parseDouble(tokens[7].trim());
+					double dmd = Double.parseDouble(tokens[9].trim());
+					String mkt = tokens[12].trim();
+					total++;
+					if (dmd <= minDmd)
+						smallMarkets++;
+					if ((red > minRed) && (!mkt.contains("water consumption"))) {
+						if (red > minRed * 5.0) {
+							major++;
+						} else {
+							moderate++;
+						}
+					} else {
+						minor++;
+					}
+				}
+			} catch (Exception e) {
+				// ignore parse errors
+			}
+		}
+		if (total == 0)
+			return "";
+		return "total=" + total + ";major=" + major + ";moderate=" + moderate + ";minor=" + minor
+				+ ";small=" + smallMarkets;
 	}
 }

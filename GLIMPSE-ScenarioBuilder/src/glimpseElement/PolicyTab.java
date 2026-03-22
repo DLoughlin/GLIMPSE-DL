@@ -45,6 +45,7 @@ import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEStyles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
+import glimpseUtil.UtilsSeriesCalculations;
 import javafx.application.Platform;
 import javafx.collections.ListChangeListener;
 import javafx.scene.control.ProgressBar;
@@ -643,7 +644,7 @@ public abstract class PolicyTab extends Tab {
         if (!NONE.equals(convertYear)) {
             factor = utils.getConversionFactor(convertYear, toYear);
         }
-        return utils.calculateValues(calcType, startYear, endYear, initialValue, growth, periodLength, factor);
+        return UtilsSeriesCalculations.calculateValues(calcType, startYear, endYear, initialValue, growth, periodLength, factor);
     }
     
     /**
