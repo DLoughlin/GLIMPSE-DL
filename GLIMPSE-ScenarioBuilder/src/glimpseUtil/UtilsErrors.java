@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import gui.ScenarioBuilder;
+import gui.ScenarioLibraryReportHelper;
+import gui.ScenarioLibraryReportHelper.ErrorTextReport;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -116,114 +118,75 @@ public final class UtilsErrors {
 	}
 
 	public void showPopupTableOfErrorReport(String title, ArrayList<String> csvData, int wd, int ht) {
-		if (styles == null)
+		if (styles == null) {
 			return;
+		}
 		if (csvData == null || csvData.isEmpty()) {
 			utils.showPopupTableOfCSVData(title, csvData, wd, ht);
 			return;
 		}
-		final String finalTitle = title;
+		ScenarioLibraryReportHelper.ErrorTextReport report = buildTextReportFromCsv(title, csvData);
+		showTextErrorReport(report, wd, ht);
+	}
+
+	public void showTextErrorReport(ScenarioLibraryReportHelper.ErrorTextReport report, int wd, int ht) {
+		if (styles == null || report == null) {
+			return;
+		}
 		Runnable popupTask = () -> {
-			String usedTitle = finalTitle == null ? GLIMPSEUtils.LABEL_DISPLAY : finalTitle;
+			String usedTitle = report.getTitle() == null || report.getTitle().trim().isEmpty()
+					? GLIMPSEUtils.LABEL_DISPLAY
+					: report.getTitle();
 			Stage stage = new Stage();
 			stage.setTitle(usedTitle);
 			stage.setWidth(wd);
 			stage.setHeight(ht);
-			BorderPane border = new BorderPane();
 			stage.setResizable(true);
 
-			Button closeButton = utils.createButton(GLIMPSEUtils.LABEL_CLOSE, styles.getBigButtonWidth(), null);
-			closeButton.setOnAction(e -> stage.close());
+			BorderPane border = new BorderPane();
+			TextArea textArea = new TextArea();
+			textArea.setEditable(false);
+			textArea.setWrapText(false);
+			textArea.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+			textArea.setMinHeight(0);
 
-			TableView<List<Object>> table = new TableView<>();
-			table.setEditable(false);
-			table.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-			table.setMinHeight(0);
-			UtilsTable.installCopyPasteHandler(table);
-			table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-
-			String[][] rawData = utils.getDataMatrixFromArrayList(csvData);
-			int numCols = UtilsTable.computeMaxRowLength(rawData);
-			String[] headerRow = rawData.length > 0 ? rawData[0] : new String[0];
-			int startRowIndex = rawData.length > 0 ? 1 : 0;
-			int classCol = findColumnIndex(headerRow, "Classification");
-
-			Class<?>[] types = new Class<?>[numCols];
-			for (int columnIndex = 0; columnIndex < numCols; columnIndex++) {
-				String[] column = UtilsTable.extractColumn(rawData, columnIndex);
-				types[columnIndex] = UtilsTable.deduceColumnType(column);
-				TableColumn<List<Object>, String> col = UtilsTable.createColumn(types[columnIndex], columnIndex,
-						UtilsTable.getColumnHeader(rawData, columnIndex));
-				installErrorReportOverflowBehavior(col, columnIndex, numCols);
-				table.getColumns().add(col);
+			ChoiceBox<String> viewSelector = new ChoiceBox<>(FXCollections.observableArrayList(report.getFilterOptions()));
+			if (viewSelector.getItems().isEmpty()) {
+				viewSelector.getItems().add("All lines");
 			}
-
-			ObservableList<List<Object>> master = FXCollections.observableArrayList();
-			for (int rowIndex = startRowIndex; rowIndex < rawData.length; rowIndex++) {
-				List<Object> row = new ArrayList<>();
-				for (int columnIndex = 0; columnIndex < numCols; columnIndex++) {
-					row.add(UtilsTable.getDataAsType(rawData[rowIndex], types[columnIndex], columnIndex));
-				}
-				master.add(row);
-			}
-
-			FilteredList<List<Object>> filtered = new FilteredList<>(master, row -> true);
-			table.setItems(filtered);
-
-			ChoiceBox<String> viewSelector = new ChoiceBox<>(FXCollections.observableArrayList(
-					"All lines",
-					"Major errors",
-					"Moderate errors",
-					"Minor errors"));
 			viewSelector.getSelectionModel().select(0);
-			viewSelector.setTooltip(new Tooltip("Choose which rows to display"));
+			viewSelector.setTooltip(new Tooltip("Choose which lines to display"));
 
-			viewSelector.getSelectionModel().selectedIndexProperty().addListener((obs, oldV, newV) -> {
-				int idx = newV == null ? 0 : newV.intValue();
-				filtered.setPredicate(row -> {
-					if (row == null)
-						return false;
-					if (idx == 0)
-						return true;
-					String classification = getCellString(row, classCol);
-					switch (idx) {
-					case 1:
-						return "major".equalsIgnoreCase(classification);
-					case 2:
-						return "moderate".equalsIgnoreCase(classification);
-					case 3:
-						return "minor".equalsIgnoreCase(classification);
-					default:
-						return true;
-					}
-				});
-				table.getSelectionModel().clearSelection();
-				if (!table.getItems().isEmpty()) {
-					table.scrollTo(0);
+			Runnable refreshText = () -> {
+				String selectedFilter = viewSelector.getValue();
+				String text = report.buildText(selectedFilter);
+				if ((text == null || text.trim().isEmpty()) && !report.hasVisibleContent(selectedFilter)) {
+					text = "No errors reported" + System.lineSeparator();
 				}
-			});
+				textArea.setText(text == null ? "" : text);
+				textArea.positionCaret(0);
+				textArea.setScrollTop(0);
+				textArea.setScrollLeft(0);
+			};
+			refreshText.run();
+			viewSelector.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> refreshText.run());
 
 			Button saveAsBtn = new Button("Save As...");
-			saveAsBtn.setTooltip(new Tooltip("Save the currently visible error report as CSV"));
+			saveAsBtn.setTooltip(new Tooltip("Save the currently visible error report as text"));
 			saveAsBtn.setOnAction(ev -> {
 				try {
 					File initialDir = new File(vars.getGlimpseLogDir());
-					FileChooser.ExtensionFilter csvFilter = FileChooserPlus.createExtensionFilter("CSV files (*.csv)", "csv");
-					File chosen = FileChooserPlus.showSaveDialog(stage, "Save Error Report", initialDir, "error_report.csv",
-							csvFilter);
+					FileChooser.ExtensionFilter txtFilter = FileChooserPlus.createExtensionFilter("Text files (*.txt)", "txt");
+					String defaultName = report.getDefaultSaveFileName();
+					if (defaultName == null || defaultName.trim().isEmpty()) {
+						defaultName = "error_report.txt";
+					}
+					File chosen = FileChooserPlus.showSaveDialog(stage, "Save Error Report", initialDir, defaultName, txtFilter);
 					if (chosen != null) {
 						ArrayList<String> exportRows = new ArrayList<>();
-						ArrayList<String> header = new ArrayList<>();
-						for (int col = 0; col < numCols; col++) {
-							header.add(sanitizeCsvField(UtilsTable.getColumnHeader(rawData, col)));
-						}
-						exportRows.add(buildCsvRow(header, numCols));
-						for (List<Object> row : filtered) {
-							ArrayList<String> fields = new ArrayList<>();
-							for (int col = 0; col < numCols; col++) {
-								fields.add(sanitizeCsvField(getCellString(row, col)));
-							}
-							exportRows.add(buildCsvRow(fields, numCols));
+						String text = report.buildText(viewSelector.getValue());
+						if (text != null && !text.isEmpty()) {
+							Collections.addAll(exportRows, text.split("\\R", -1));
 						}
 						files.saveFile(exportRows, chosen.getPath());
 						utils.showInformationDialog("Information", "Export successful", "Saved report to: " + chosen.getPath());
@@ -232,6 +195,9 @@ public final class UtilsErrors {
 					utils.showInformationDialog("Information", "Export failed", "Could not save report: " + ex.getMessage());
 				}
 			});
+
+			Button closeButton = utils.createButton(GLIMPSEUtils.LABEL_CLOSE, styles.getBigButtonWidth(), null);
+			closeButton.setOnAction(e -> stage.close());
 
 			HBox controls = new HBox(10, new Label("View:"), viewSelector, saveAsBtn);
 			controls.setPadding(new Insets(6, 10, 6, 10));
@@ -244,7 +210,7 @@ public final class UtilsErrors {
 			buttonBox.getChildren().addAll(closeButton);
 
 			border.setTop(controls);
-			border.setCenter(table);
+			border.setCenter(textArea);
 			border.setBottom(buttonBox);
 
 			Scene scene = new Scene(border);
@@ -259,6 +225,48 @@ public final class UtilsErrors {
 			stage.show();
 		};
 		popupTask.run();
+	}
+
+	private ScenarioLibraryReportHelper.ErrorTextReport buildTextReportFromCsv(String title, ArrayList<String> csvData) {
+		ArrayList<ScenarioLibraryReportHelper.ErrorReportLine> reportLines = new ArrayList<>();
+		if (csvData != null && !csvData.isEmpty()) {
+			String[][] rawData = utils.getDataMatrixFromArrayList(csvData);
+			String[] headerRow = rawData.length > 0 ? rawData[0] : new String[0];
+			int classificationIndex = findColumnIndex(headerRow, "Classification");
+			for (int rowIndex = 1; rowIndex < rawData.length; rowIndex++) {
+				String[] row = rawData[rowIndex];
+				if (row == null) {
+					continue;
+				}
+				String classification = classificationIndex >= 0 && classificationIndex < row.length ? row[classificationIndex] : "";
+				StringBuilder lineText = new StringBuilder();
+				for (int col = 0; col < row.length; col++) {
+					if (classificationIndex == col) {
+						continue;
+					}
+					String value = row[col] == null ? "" : row[col].trim();
+					if (lineText.length() > 0) {
+						lineText.append('\t');
+					}
+					lineText.append(value);
+				}
+				reportLines.add(new ScenarioLibraryReportHelper.ErrorReportLine(classification, lineText.toString()));
+			}
+		}
+		return new ScenarioLibraryReportHelper.ErrorTextReport(
+				title,
+				defaultErrorFilters(),
+				reportLines,
+				"error_report.txt");
+	}
+
+	private ArrayList<String> defaultErrorFilters() {
+		ArrayList<String> filters = new ArrayList<>();
+		filters.add("All lines");
+		filters.add("Major errors");
+		filters.add("Moderate errors");
+		filters.add("Minor errors");
+		return filters;
 	}
 
 	private int findColumnIndex(String[] headerRow, String headerName) {

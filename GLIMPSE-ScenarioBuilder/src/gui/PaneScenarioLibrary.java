@@ -253,9 +253,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         Client.buttonResultsForSelected.setDisable(!selectionState.hasSingleSelection);
         Client.buttonViewConfig.setDisable(false);
         Client.buttonDiffFiles.setDisable(!selectionState.hasTwoSelections);
-        Client.buttonViewLog.setDisable(!selectionState.hasSelection);
+        Client.buttonViewLog.setDisable(!selectionState.hasSingleSelection);
         Client.buttonViewExeErrors.setDisable(false);
-        Client.buttonViewErrors.setDisable(!selectionState.hasSelection);
+        Client.buttonViewErrors.setDisable(!selectionState.hasSingleSelection);
         Client.buttonViewExeLog.setDisable(false);
         Client.buttonReport.setDisable(false);
     }
@@ -343,6 +343,30 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             return;
         }
         try {
+            if (Client.buttonRunScenario != null) {
+                Client.buttonRunScenario.setDisable(!selectionState.hasSelection);
+            }
+            if (Client.buttonBrowseScenarioFolder != null) {
+                Client.buttonBrowseScenarioFolder.setDisable(!selectionState.hasSelection);
+            }
+            if (Client.buttonArchiveScenario != null) {
+                Client.buttonArchiveScenario.setDisable(!selectionState.hasSelection);
+            }
+            if (Client.buttonDeleteScenario != null) {
+                Client.buttonDeleteScenario.setDisable(!selectionState.hasSelection);
+            }
+            if (Client.buttonResultsForSelected != null) {
+                Client.buttonResultsForSelected.setDisable(!selectionState.hasSingleSelection);
+            }
+            if (Client.buttonDiffFiles != null) {
+                Client.buttonDiffFiles.setDisable(!selectionState.hasTwoSelections);
+            }
+            if (Client.buttonViewLog != null) {
+                Client.buttonViewLog.setDisable(!selectionState.hasSingleSelection);
+            }
+            if (Client.buttonViewErrors != null) {
+                Client.buttonViewErrors.setDisable(!selectionState.hasSingleSelection);
+            }
             if (Client.buttonStopScenario != null) {
                 Client.buttonStopScenario.setDisable(!selectionState.hasActiveRun);
             }
@@ -1258,14 +1282,14 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     private void generateExeErrorReport() {
-        ArrayList<String> txtArray = ScenarioLibraryReportHelper.createExecutableErrorReport(
+        ScenarioLibraryReportHelper.ErrorTextReport report = ScenarioLibraryReportHelper.createExecutableErrorTextReport(
                 files,
                 ScenarioLibraryPathHelper.exeMainLogPath(vars.getgCamExecutableDir()).toFile());
-        if (txtArray.size() <= 3) {
+        if (!report.hasVisibleContent("All lines") || report.buildText("All lines").trim().isEmpty()) {
             utils.warningMessage("No executable error report available.");
             return;
         }
-        utils.displayArrayList(txtArray, "Executable Errors");
+        utils.showTextErrorReport(report, 910, 600);
     }
 
     private void generateErrorReport() {
@@ -1273,15 +1297,15 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         if (scenarioFileActionService.warnIfAnyScenarioMainLogMissing(selection)) {
             return;
         }
-        ArrayList<String> txtArray = ScenarioLibraryReportHelper.createScenarioErrorReport(
+        ScenarioLibraryReportHelper.ErrorTextReport report = ScenarioLibraryReportHelper.createScenarioErrorTextReport(
                 files,
                 vars.getScenarioDir(),
                 selection.getRows());
-        if (txtArray.size() <= 2) {
+        if (!report.hasVisibleContent("All lines") || report.buildText("All lines").trim().isEmpty()) {
             utils.warningMessage("No scenario error report available.");
             return;
         }
-        utils.displayArrayList(txtArray, "Scenario Errors");
+        utils.showTextErrorReport(report, 910, 600);
     }
 
     // --- Helpers ---

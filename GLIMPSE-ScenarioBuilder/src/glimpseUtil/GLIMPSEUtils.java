@@ -35,9 +35,13 @@
 */
 package glimpseUtil;
 
+import gui.Client;
+import gui.DiffLineRow;
+import gui.ScenarioLibraryReportHelper;
+
 import java.io.File;
-import java.nio.file.Path;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
@@ -61,9 +65,6 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
-
-import gui.Client;
-import gui.DiffLineRow;
 
 /**
  * Utility class for common operations in GLIMPSE ScenarioBuilder.
@@ -821,6 +822,10 @@ public class GLIMPSEUtils {
 
 	public void showPopupTableOfErrorReport(String title, ArrayList<String> csvData, int wd, int ht) {
 		UtilsErrors.getInstance().showPopupTableOfErrorReport(title, csvData, wd, ht);
+	}
+
+	public void showTextErrorReport(ScenarioLibraryReportHelper.ErrorTextReport report, int wd, int ht) {
+		UtilsErrors.getInstance().showTextErrorReport(report, wd, ht);
 	}
 
 	public double getConversionFactor(String fromYear, String toYear) {

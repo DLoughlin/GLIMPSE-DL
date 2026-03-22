@@ -22,11 +22,11 @@ public final class ScenarioLibraryReportHelper {
     private static final String ERROR_REPORT_FILTER_MAJOR = "Major errors";
     private static final String ERROR_REPORT_FILTER_MODERATE = "Moderate errors";
     private static final String ERROR_REPORT_FILTER_MINOR = "Minor errors";
-    private static final String ERROR_REPORT_SECTION_SEPARATOR = "-------------------";
-    private static final String ERROR_REPORT_SUMMARY_SEPARATOR = "-----------";
+    private static final String ERROR_REPORT_SECTION_SEPARATOR = "-----------------";
     private static final Pattern SUMMARY_TOTAL_PATTERN = Pattern.compile("Total errors\\s*=\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern SUMMARY_MAJOR_PATTERN = Pattern.compile("Major errors\\s*=\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern SUMMARY_MODERATE_PATTERN = Pattern.compile("Moderate errors\\s*=\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern SUMMARY_VERDICT_PATTERN = Pattern.compile("(Verdict:\\s*[^;]+)", Pattern.CASE_INSENSITIVE);
 
     public static final class ErrorReportLine {
         private final String severity;
@@ -45,20 +45,9 @@ public final class ScenarioLibraryReportHelper {
             return text;
         }
 
-        public boolean isSummaryOnly() {
-            String normalized = safeText(text);
-            return ERROR_REPORT_SUMMARY_SEPARATOR.equals(normalized)
-                    || normalized.startsWith("Summary:")
-                    || normalized.startsWith("Verdict:");
-        }
-
         public boolean matchesFilter(String filterLabel) {
             String filter = safeText(filterLabel);
-            String normalizedText = safeText(text);
             if (filter.isEmpty() || ERROR_REPORT_FILTER_ALL.equalsIgnoreCase(filter)) {
-                return true;
-            }
-            if (isContextLine(normalizedText)) {
                 return true;
             }
             if (ERROR_REPORT_FILTER_MAJOR.equalsIgnoreCase(filter)) {
@@ -104,14 +93,12 @@ public final class ScenarioLibraryReportHelper {
         }
 
         public String buildText(String filterLabel) {
-            String normalizedFilter = safeText(filterLabel);
-            boolean allLines = normalizedFilter.isEmpty() || ERROR_REPORT_FILTER_ALL.equalsIgnoreCase(normalizedFilter);
             StringBuilder builder = new StringBuilder();
             for (ErrorReportLine line : lines) {
-                if (line == null || !line.matchesFilter(normalizedFilter)) {
+                if (line == null || !line.matchesFilter(filterLabel)) {
                     continue;
                 }
-                String text = formatVisibleErrorText(line, allLines);
+                String text = formatVisibleErrorText(line);
                 if (text.isEmpty()) {
                     continue;
                 }
@@ -124,13 +111,11 @@ public final class ScenarioLibraryReportHelper {
         }
 
         public boolean hasVisibleContent(String filterLabel) {
-            String normalizedFilter = safeText(filterLabel);
-            boolean allLines = normalizedFilter.isEmpty() || ERROR_REPORT_FILTER_ALL.equalsIgnoreCase(normalizedFilter);
             for (ErrorReportLine line : lines) {
-                if (line == null || !line.matchesFilter(normalizedFilter)) {
+                if (line == null || !line.matchesFilter(filterLabel)) {
                     continue;
                 }
-                if (!formatVisibleErrorText(line, allLines).isEmpty()) {
+                if (!formatVisibleErrorText(line).isEmpty()) {
                     return true;
                 }
             }
@@ -352,7 +337,7 @@ public final class ScenarioLibraryReportHelper {
                         true);
                 boolean scenarioHasContent = false;
                 for (ErrorReportLine reportLine : scenarioReport.getLines()) {
-                    String visibleText = formatVisibleErrorText(reportLine, true);
+                    String visibleText = formatVisibleErrorText(reportLine);
                     if (visibleText.isEmpty()) {
                         continue;
                     }
@@ -390,7 +375,7 @@ public final class ScenarioLibraryReportHelper {
         reportLines.add(line(null, ERROR_REPORT_SECTION_SEPARATOR));
         if (utils != null && !resolvedPath.isEmpty()) {
             ArrayList<String> csvRows = utils.generateErrorReport(resolvedPath, scenarioName);
-            boolean addedErrorDetail = appendGeneratedErrorRows(reportLines, csvRows, includeSummary);
+            boolean addedErrorDetail = appendGeneratedErrorRows(reportLines, csvRows, label, includeSummary);
             if (!addedErrorDetail) {
                 reportLines.add(line(null, "No errors reported"));
             }
@@ -413,7 +398,7 @@ public final class ScenarioLibraryReportHelper {
                 true);
         boolean addedErrorDetail = false;
         for (ErrorReportLine reportLine : scenarioReport.getLines()) {
-            String visibleText = formatVisibleErrorText(reportLine, true);
+            String visibleText = formatVisibleErrorText(reportLine);
             if (visibleText.isEmpty()) {
                 continue;
             }
@@ -426,7 +411,7 @@ public final class ScenarioLibraryReportHelper {
         return addedErrorDetail;
     }
 
-    private static boolean appendGeneratedErrorRows(List<ErrorReportLine> reportLines, List<String> csvRows, boolean includeSummary) {
+    private static boolean appendGeneratedErrorRows(List<ErrorReportLine> reportLines, List<String> csvRows, String defaultScenarioName, boolean includeSummary) {
         if (reportLines == null || csvRows == null || csvRows.isEmpty()) {
             return false;
         }
@@ -439,12 +424,12 @@ public final class ScenarioLibraryReportHelper {
                 continue;
             }
             String firstField = safeCsvField(fields, ERROR_REPORT_FIRST_FIELD_COLUMN);
-            if ("Summary".equalsIgnoreCase(firstField)) {
+            if (isSummaryRow(firstField)) {
                 summaryLine = buildReadableSummary(fields);
                 verdictLine = extractVerdictLine(fields);
                 continue;
             }
-            String text = formatScenarioErrorDetailLine(fields);
+            String text = formatScenarioErrorDetailLine(fields, defaultScenarioName);
             if (text.isEmpty()) {
                 continue;
             }
@@ -452,7 +437,7 @@ public final class ScenarioLibraryReportHelper {
             addedErrorDetail = true;
         }
         if (includeSummary && (!summaryLine.isEmpty() || !verdictLine.isEmpty())) {
-            reportLines.add(line(null, ERROR_REPORT_SUMMARY_SEPARATOR));
+            reportLines.add(line(null, ERROR_REPORT_SECTION_SEPARATOR));
             if (!summaryLine.isEmpty()) {
                 reportLines.add(line(null, summaryLine));
             }
@@ -463,7 +448,7 @@ public final class ScenarioLibraryReportHelper {
         return addedErrorDetail;
     }
 
-    private static String formatScenarioErrorDetailLine(String[] fields) {
+    private static String formatScenarioErrorDetailLine(String[] fields, String defaultScenarioName) {
         String firstToken = safeCsvField(fields, ERROR_REPORT_FIRST_FIELD_COLUMN);
         if (firstToken.isEmpty()) {
             return "";
@@ -471,50 +456,43 @@ public final class ScenarioLibraryReportHelper {
         if ("No errors reported".equalsIgnoreCase(firstToken) || "Main log not found".equalsIgnoreCase(firstToken)) {
             return firstToken;
         }
+        ArrayList<String> visibleTokens = extractVisibleTokens(fields);
+        if (visibleTokens.isEmpty()) {
+            return "";
+        }
+        return joinWithSeparator(visibleTokens, "\t");
+    }
+
+    private static ArrayList<String> extractVisibleTokens(String[] fields) {
         ArrayList<String> visibleTokens = new ArrayList<>();
         int tokenLimit = Math.max(ERROR_REPORT_FIRST_FIELD_COLUMN, fields.length - ERROR_REPORT_CLASSIFICATION_OFFSET);
         for (int i = ERROR_REPORT_FIRST_FIELD_COLUMN; i < tokenLimit; i++) {
             String value = safeCsvField(fields, i);
-            if (!value.isEmpty()) {
-                visibleTokens.add(value);
+            if (value.isEmpty()) {
+                continue;
             }
+            visibleTokens.add(value);
         }
         String classification = extractClassification(fields);
         if (!classification.isEmpty() && isDetailedMarketRow(visibleTokens)) {
             visibleTokens.add("[" + buildClassificationLabel(classification) + "]");
         }
-        return joinWithSeparator(visibleTokens, "\t");
+        return visibleTokens;
     }
 
     private static String extractClassification(String[] fields) {
         return safeCsvField(fields, fields.length - ERROR_REPORT_CLASSIFICATION_OFFSET);
     }
 
-    private static String formatVisibleErrorText(ErrorReportLine line, boolean allLines) {
+    private static String formatVisibleErrorText(ErrorReportLine line) {
         if (line == null || line.getText() == null) {
             return "";
         }
-        String normalized = line.getText().trim();
-        if (normalized.isEmpty()) {
-            return "";
-        }
-        if (!allLines && line.isSummaryOnly()) {
-            return "";
-        }
-        return normalized;
+        return line.getText().trim();
     }
 
-    private static boolean isContextLine(String text) {
-        String normalized = safeText(text);
-        if (normalized.isEmpty()) {
-            return false;
-        }
-        return normalized.startsWith("Errors in scenario:")
-                || ERROR_REPORT_SECTION_SEPARATOR.equals(normalized)
-                || normalized.startsWith("Period\t")
-                || normalized.startsWith("Period ")
-                || normalized.equals("No errors reported")
-                || normalized.equals("Main log not found");
+    private static boolean isSummaryRow(String firstField) {
+        return "Summary".equalsIgnoreCase(safeText(firstField));
     }
 
     private static String buildScenarioHeading(String scenarioName) {
@@ -572,19 +550,11 @@ public final class ScenarioLibraryReportHelper {
         if (summary.isEmpty()) {
             return "";
         }
-        int verdictIndex = summary.toLowerCase().indexOf("verdict:");
-        if (verdictIndex < 0) {
+        Matcher matcher = SUMMARY_VERDICT_PATTERN.matcher(summary);
+        if (!matcher.find()) {
             return "";
         }
-        String verdictText = summary.substring(verdictIndex).trim();
-        int thresholdIndex = verdictText.toLowerCase().indexOf(" threshold");
-        if (thresholdIndex > 0) {
-            int trimIndex = verdictText.lastIndexOf('(', thresholdIndex);
-            if (trimIndex > 0) {
-                verdictText = verdictText.substring(0, trimIndex).trim();
-            }
-        }
-        return verdictText;
+        return matcher.group(1).trim();
     }
 
     private static String extractSummaryCount(String summary, Pattern pattern) {
