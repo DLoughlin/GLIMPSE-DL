@@ -302,7 +302,7 @@ public final class UtilsStrings {
 	 * @param delimiter Delimiter
 	 * @return Associated value, or empty string if not found
 	 */
-	public String getMatch(ArrayList<String> list, String item, String delimiter) {
+	public String getMatchOld(ArrayList<String> list, String item, String delimiter) {
 		String rtn_str = "";
 		item = item.trim();
 		String temp = "";
@@ -326,7 +326,7 @@ public final class UtilsStrings {
 	 * @param delimiter Delimiter
 	 * @return Associated value, or empty string if not found
 	 */
-	public String getMatch(ArrayList<String> list, String item, String delimiter1, String delimiter2) {
+	public String getMatchOld(ArrayList<String> list, String item, String delimiter1, String delimiter2) {
 		String rtn_str = "";
 		item = item.trim();
 

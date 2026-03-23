@@ -92,12 +92,12 @@ final class ConsoleManager {
     private static final boolean REDUCED_LIVE_GCAM_OUTPUT = true;
     private static final String GCAM_COMPLETION_MARKER = "Model run completed.";
     private static final String[] GCAM_STDOUT_PREFIX_FILTERS = {
-            "Config",
-            "Parsi",
-            "XML ",
-            "Starting new",
-            "Period",
-            "Error"
+            "config",
+            "parsi",
+            "xml ",
+            "starting new",
+            "period",
+            "error"
     };
 
     private static final String BASE_CONSOLE_STYLE =
@@ -731,7 +731,7 @@ final class ConsoleManager {
             if (normalizedLine == null) {
                 return false;
             }
-            String trimmed = normalizedLine.trim();
+            String trimmed = normalizedLine.trim().toLowerCase();
             if (trimmed.isEmpty()) {
                 return false;
             }

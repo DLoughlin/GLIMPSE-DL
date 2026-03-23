@@ -390,17 +390,17 @@ public class GLIMPSEUtils {
 		return stringUtils.getKeyValue(keyValuePairs, key);
 	}
 
-	public String getMatch(ArrayList<String> list, String item, String delimiter) {
-		return stringUtils.getMatch(list, item, delimiter);
-	}
-
-	public String getMatch(ArrayList<String> list, String item, String delimiter1, String delimiter2) {
-		return stringUtils.getMatch(list, item, delimiter1, delimiter2);
-	}
-
-	public String[] getMatches(ArrayList<String> list, String item, String delimiter1, String delimiter2, String delimiter3) {
-		return stringUtils.getMatches(list, item, delimiter1, delimiter2, delimiter3);
-	}
+//	public String getMatch(ArrayList<String> list, String item, String delimiter) {
+//		return stringUtils.getMatch(list, item, delimiter);
+//	}
+//
+//	public String getMatch(ArrayList<String> list, String item, String delimiter1, String delimiter2) {
+//		return stringUtils.getMatch(list, item, delimiter1, delimiter2);
+//	}
+//
+//	public String[] getMatches(ArrayList<String> list, String item, String delimiter1, String delimiter2, String delimiter3) {
+//		return stringUtils.getMatches(list, item, delimiter1, delimiter2, delimiter3);
+//	}
 
 	public int getMaxValFromStringArray(String[] strArray) {
 		return stringUtils.getMaxValFromStringArray(strArray);
@@ -1088,7 +1088,78 @@ public class GLIMPSEUtils {
 			return "";
 		return statusUtils.getComputerStatString();
 	}
-	
 
+	public String getMatch(String str, String item, String delimiter1, String delimiter2) {
+		String rtn_str = "";
+		item = item.trim();
+		
+		try {
+
+			String[] s = str.split(delimiter1);
+			for (String temp : s) {
+				String left = temp.split(delimiter2)[0].trim();
+				String right = temp.split(delimiter2)[1].trim();
+				if (left.equals(item)) {
+					rtn_str = right;
+					break;
+				}
+			}
+		
+		} catch (Exception e) {
+			System.out.println("Error in getMatch: " + e);
+		}
+		return rtn_str;
+	}
+	
+	public String[] getMatches(String str, String item, String delimiter1, String delimiter2, String delimiter3) {
+		String[] rtn_str = null;
+		item = item.trim();
+		//for (String str : list) {
+			String[] s1 = str.split(delimiter1);
+			for (String temp : s1) {
+				String[] s2 = temp.split(delimiter2);
+				if (s2[0].trim().equals(item)) {
+					rtn_str = s2[1].split(delimiter3);
+					for (int i = 0; i < rtn_str.length; i++) {
+						rtn_str[i] = rtn_str[i].trim();
+					}
+					break;
+				}
+			}
+		//}
+		return rtn_str;
+		
+		
+		
+	}
+	
+	public String getMatch(String str, String item, String delimiter) {
+		String rtn_str = "";
+		item = item.trim();
+		String temp = "";
+
+			String[] s = str.split(delimiter);
+			temp = s[0].trim();
+			if (temp.equals(item)) {
+				rtn_str = s[1].trim();
+			}
+		
+		return rtn_str;
+	}
+	
+	public String getMatch(ArrayList<String> list, String item, String delimiter) {
+		String rtn_str = "";
+		item = item.trim();
+		String temp = "";
+		for (String str : list) {
+			String[] s = str.split(delimiter);
+			temp = s[0].trim();
+			if (temp.equals(item)) {
+				rtn_str = s[1].trim();
+				break;
+			}
+		}
+		return rtn_str;
+	}
 	
 }
