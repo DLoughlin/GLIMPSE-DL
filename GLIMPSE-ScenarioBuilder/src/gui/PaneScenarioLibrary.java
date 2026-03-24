@@ -46,9 +46,11 @@ import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -81,6 +83,11 @@ import javafx.stage.Stage;
 public class PaneScenarioLibrary extends ScenarioBuilder {
     private static final Duration LIVE_STATUS_REFRESH_INTERVAL = Duration.ofSeconds(5);
     private static final String STOPPED_LOG_MARKER = "GLIMPSE scenario status: Stopped";
+    private static final String LIVE_STDOUT_ERROR_PREFIX = "ERROR";
+    private static final java.util.regex.Pattern LIVE_UNSOLVED_PERIOD_ERROR_PATTERN = java.util.regex.Pattern.compile(
+            "did\\s+not\\s+solve\\s+periods?\\s*[:=]?\\s*([0-9]{1,3}(?:\\s*(?:,|and|&)\\s*[0-9]{1,3})*)",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+    private static final java.util.regex.Pattern LIVE_UNSOLVED_PERIOD_NUMBER_PATTERN = java.util.regex.Pattern.compile("\\d{1,3}");
     private static final String[] EXE_LOG_ARTIFACT_FILENAMES = {
             "main_log.txt",
             "main_error.txt",
@@ -183,6 +190,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
     private Timeline liveStatusRefreshTimeline;
     private final AtomicBoolean liveStatusRefreshInProgress = new AtomicBoolean(false);
+    private final ConcurrentHashMap<String, LinkedHashSet<String>> liveStdoutErrorPeriodsByScenario = new ConcurrentHashMap<>();
     private long startupTime = 0;
     private final HBox scenarioLibraryHBox = new HBox(1);
     private final AtomicBoolean scenarioRefreshInProgress = new AtomicBoolean(false);
@@ -876,6 +884,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         } catch (Exception ignored) {}
         if (!stderr) {
             try {
+                if (isLiveStdoutErrorLine(line)) {
+                    recordLiveStdoutError(scenarioName, line);
+                }
+            } catch (Exception ignored) {}
+            try {
                 gcamPromptMonitor.handlePotentialInteractivePrompt(line);
             } catch (Exception ignored) {}
             try {
@@ -1009,6 +1022,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 if (scenarioName == null || scenarioName.trim().isEmpty()) {
                     return;
                 }
+                clearLiveStdoutError(scenarioName);
                 Platform.runLater(() -> {
                     try {
                         updateScenarioRowInPlace(scenarioName, row -> row.setStatus("Success"));
@@ -1047,9 +1061,97 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 pendingRefreshViewState,
                 NO_SCENARIOS_MESSAGE,
                 READY_MESSAGE);
+        applyLiveStdoutErrorPeriods();
         applyLiveRuntimeForActiveScenario();
         pendingRefreshViewState = ScenarioLibraryViewStateHelper.RefreshViewState.empty();
         refreshScenarioActionButtons();
+    }
+
+    private void applyLiveStdoutErrorPeriods() {
+        if (liveStdoutErrorPeriodsByScenario.isEmpty()) {
+            return;
+        }
+        GcamRunController.ExecutionState executionState = runController.snapshot();
+        for (java.util.Map.Entry<String, LinkedHashSet<String>> entry : liveStdoutErrorPeriodsByScenario.entrySet()) {
+            String scenarioName = entry.getKey();
+            String periodsText = formatLiveErrorPeriods(entry.getValue());
+            if (scenarioName == null || scenarioName.trim().isEmpty() || periodsText.isEmpty()) {
+                continue;
+            }
+            if (!executionState.isScenarioActivelyRunning(scenarioName)) {
+                continue;
+            }
+            updateScenarioRowInPlace(scenarioName, row -> row.setUnsolvedMarkets(periodsText));
+        }
+    }
+
+    private boolean isLiveStdoutErrorLine(String line) {
+        if (line == null) {
+            return false;
+        }
+        return line.trim().startsWith(LIVE_STDOUT_ERROR_PREFIX);
+    }
+
+    private LinkedHashSet<String> extractLiveErrorPeriods(String line) {
+        LinkedHashSet<String> periods = new LinkedHashSet<>();
+        if (line == null) {
+            return periods;
+        }
+        String trimmed = line.trim();
+        if (trimmed.isEmpty() || !trimmed.toLowerCase(Locale.ENGLISH).contains("did not solve period")) {
+            return periods;
+        }
+        java.util.regex.Matcher matcher = LIVE_UNSOLVED_PERIOD_ERROR_PATTERN.matcher(trimmed);
+        if (!matcher.find()) {
+            return periods;
+        }
+        String rawPeriods = matcher.group(1);
+        if (rawPeriods == null || rawPeriods.trim().isEmpty()) {
+            return periods;
+        }
+        java.util.regex.Matcher numberMatcher = LIVE_UNSOLVED_PERIOD_NUMBER_PATTERN.matcher(rawPeriods);
+        while (numberMatcher.find()) {
+            String period = numberMatcher.group() == null ? "" : numberMatcher.group().trim();
+            if (!period.isEmpty()) {
+                periods.add(period);
+            }
+        }
+        return periods;
+    }
+
+    private String formatLiveErrorPeriods(java.util.Set<String> periods) {
+        if (periods == null || periods.isEmpty()) {
+            return "";
+        }
+        return String.join(",", periods);
+    }
+
+    private void recordLiveStdoutError(String scenarioName, String line) {
+        String normalizedScenarioName = scenarioName == null ? "" : scenarioName.trim();
+        if (normalizedScenarioName.isEmpty()) {
+            return;
+        }
+        LinkedHashSet<String> periods = extractLiveErrorPeriods(line);
+        if (periods.isEmpty()) {
+            return;
+        }
+        LinkedHashSet<String> updatedPeriods = liveStdoutErrorPeriodsByScenario.compute(normalizedScenarioName, (key, existing) -> {
+            LinkedHashSet<String> mergedPeriods = existing == null ? new LinkedHashSet<>() : new LinkedHashSet<>(existing);
+            mergedPeriods.addAll(periods);
+            return mergedPeriods;
+        });
+        String periodsText = formatLiveErrorPeriods(updatedPeriods);
+        if (periodsText.isEmpty()) {
+            return;
+        }
+        updateScenarioRowInPlace(normalizedScenarioName, row -> row.setUnsolvedMarkets(periodsText));
+    }
+
+    private void clearLiveStdoutError(String scenarioName) {
+        if (scenarioName == null || scenarioName.trim().isEmpty()) {
+            return;
+        }
+        liveStdoutErrorPeriodsByScenario.remove(scenarioName.trim());
     }
 
     private void applyLiveRuntimeForActiveScenario() {
@@ -1176,10 +1278,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     private void markScenarioStopped(String scenarioName) {
+        clearLiveStdoutError(scenarioName);
         updateScenarioTerminalStatus(scenarioName, ScenarioStatusService.STATUS_STOPPED);
     }
 
     private void markScenarioDnF(String scenarioName) {
+        clearLiveStdoutError(scenarioName);
         updateScenarioTerminalStatus(scenarioName, ScenarioStatusService.STATUS_DNF);
     }
 
@@ -1404,6 +1508,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
         ScenarioRunStateClearMode effectiveMode = mode == null ? ScenarioRunStateClearMode.IMPORT_OVERWRITE : mode;
         runController.clearStoppedScenario(scenarioName);
+        clearLiveStdoutError(scenarioName);
         if (ScenarioRunStateClearMode.DELETE.equals(effectiveMode)) {
             return;
         }
