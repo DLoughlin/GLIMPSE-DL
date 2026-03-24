@@ -847,7 +847,7 @@ public abstract class PolicyTab extends Tab {
         buttonDelete.setOnAction(e -> Platform.runLater(() -> paneForComponentDetails.deleteItemsFromTable()));
         buttonPopulate.setOnAction(e -> Platform.runLater(() -> {
         	if (qaPopulate()) {
-                double[][] values = calculateValues();
+                double[][] values = calculateValues();               
                 paneForComponentDetails.setValues(values);
             } else {
 				utils.warningMessage("Please fill in fields at bottom of left column to use populate button.");
