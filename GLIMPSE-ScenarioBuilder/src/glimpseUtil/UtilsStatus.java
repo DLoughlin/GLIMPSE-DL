@@ -49,6 +49,9 @@ public class UtilsStatus {
 	private static final Pattern RUNNING_PERIOD_PATTERN = Pattern.compile(
 			"(?:^|[^A-Za-z])(period|final-calibration period|model period|solving period|time period)\\s*[:=]?\\s*(\\d{1,3})(?:[^0-9]|$)",
 			Pattern.CASE_INSENSITIVE);
+	private static final Pattern RUNNING_PERIOD_WITH_YEAR_PATTERN = Pattern.compile(
+			"(?:^|[^A-Za-z])(period|final-calibration period|model period|solving period|time period)\\s+(\\d{1,3})\\s*[:=]\\s*(\\d{4})(?:[^0-9]|$)",
+			Pattern.CASE_INSENSITIVE);
 
 	private GLIMPSEVariables vars;
 	private GLIMPSEFiles files;
@@ -106,6 +109,22 @@ public class UtilsStatus {
 				String trimmed = line.trim();
 				if (trimmed.isEmpty()) {
 					continue;
+				}
+				Matcher yearMatcher = RUNNING_PERIOD_WITH_YEAR_PATTERN.matcher(trimmed);
+				if (yearMatcher.find()) {
+					String period = yearMatcher.group(2);
+					String year = yearMatcher.group(3);
+					String trimmedPeriod = period == null ? "" : period.trim();
+					String trimmedYear = year == null ? "" : year.trim();
+					if (!trimmedPeriod.isEmpty() && !trimmedYear.isEmpty()) {
+						return trimmedPeriod + "," + trimmedYear;
+					}
+					if (!trimmedPeriod.isEmpty()) {
+						return trimmedPeriod;
+					}
+					if (!trimmedYear.isEmpty()) {
+						return trimmedYear;
+					}
 				}
 				Matcher matcher = RUNNING_PERIOD_PATTERN.matcher(trimmed);
 				if (matcher.find()) {

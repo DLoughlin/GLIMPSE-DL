@@ -38,6 +38,9 @@ final class ScenarioStatusService {
     private static final java.util.regex.Pattern RUNNING_PERIOD_PATTERN = java.util.regex.Pattern.compile(
             "(?:^|[^A-Za-z])(period|final-calibration period|model period|solving period|time period)\\s*[:=]?\\s*(\\d{1,3})(?:[^0-9]|$)",
             java.util.regex.Pattern.CASE_INSENSITIVE);
+    private static final java.util.regex.Pattern RUNNING_PERIOD_WITH_YEAR_PATTERN = java.util.regex.Pattern.compile(
+            "(?:^|[^A-Za-z])(period|final-calibration period|model period|solving period|time period)\\s+(\\d{1,3})\\s*[:=]\\s*(\\d{4})(?:[^0-9]|$)",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
     private static final java.util.regex.Pattern UNSOLVED_PERIOD_ERROR_PATTERN = java.util.regex.Pattern.compile(
             "did\\s+not\\s+solve\\s+periods?\\s*[:=]?\\s*([0-9]{1,3}(?:\\s*(?:,|and|&)\\s*[0-9]{1,3})*)",
             java.util.regex.Pattern.CASE_INSENSITIVE);
@@ -518,6 +521,22 @@ final class ScenarioStatusService {
     private String extractRunningPeriod(String line) {
         if (line == null || line.isEmpty()) {
             return "";
+        }
+        java.util.regex.Matcher yearMatcher = RUNNING_PERIOD_WITH_YEAR_PATTERN.matcher(line);
+        if (yearMatcher.find()) {
+            String period = yearMatcher.group(2);
+            String year = yearMatcher.group(3);
+            String trimmedPeriod = period == null ? "" : period.trim();
+            String trimmedYear = year == null ? "" : year.trim();
+            if (!trimmedPeriod.isEmpty() && !trimmedYear.isEmpty()) {
+                return trimmedPeriod + "," + trimmedYear;
+            }
+            if (!trimmedPeriod.isEmpty()) {
+                return trimmedPeriod;
+            }
+            if (!trimmedYear.isEmpty()) {
+                return trimmedYear;
+            }
         }
         java.util.regex.Matcher matcher = RUNNING_PERIOD_PATTERN.matcher(line);
         if (!matcher.find()) {
