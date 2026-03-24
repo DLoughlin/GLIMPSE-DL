@@ -402,6 +402,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
         ScenarioSelection selection = ScenarioSelection.capture();
         dequeueScenariosAndClearStatus(FXCollections.observableArrayList(selection.getRows()));
+        clearDeletedScenarioRunState(selection);
         try {
             List<ScenarioRow> deletedRows = scenarioFileActionService.deleteScenarios(selection);
             ScenarioTable.removeFromListOfRunFiles(FXCollections.observableArrayList(deletedRows));
@@ -760,6 +761,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                             if (result != null && (result.getExitCode() != 0 || result.isTimedOut())) {
                                 if (finishedScenarioName != null
                                         && finishedScenarioName.equals(runController.getStopRequestedScenarioName())) {
+                                    moveExeMainLogToScenarioFolder(finishedScenarioName);
                                     persistStoppedStatusMarker(finishedScenarioName);
                                     markScenarioStopped(finishedScenarioName);
                                 } else {
@@ -1236,6 +1238,29 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
+    private void moveExeMainLogToScenarioFolder(String scenarioName) {
+        if (scenarioName == null || scenarioName.trim().isEmpty()) {
+            return;
+        }
+        try {
+            Path exeMainLogPath = ScenarioLibraryPathHelper.exeMainLogPath(vars.getgCamExecutableDir());
+            if (exeMainLogPath == null || !Files.exists(exeMainLogPath)) {
+                return;
+            }
+            Path scenarioMainLogPath = ScenarioLibraryPathHelper.scenarioMainLogPath(vars.getScenarioDir(), scenarioName);
+            if (scenarioMainLogPath == null) {
+                return;
+            }
+            Path scenarioDirPath = scenarioMainLogPath.getParent();
+            if (scenarioDirPath != null) {
+                Files.createDirectories(scenarioDirPath);
+            }
+            Files.move(exeMainLogPath, scenarioMainLogPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } catch (Exception ex) {
+            System.out.println("Problem moving executable main_log.txt for stopped scenario " + scenarioName + ": " + ex);
+        }
+    }
+
     private void finalizeScenarioRunArtifacts(String scenarioName) {
         if (scenarioName == null || scenarioName.trim().isEmpty()) {
             return;
@@ -1329,6 +1354,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         return runController.getStopRequestedScenarioName();
     }
 
+    private void clearDeletedScenarioRunState(ScenarioSelection selection) {
+        clearScenarioTransientRunState(selection, ScenarioRunStateClearMode.DELETE);
+    }
+
     private void dequeueScenariosAndClearStatus(ObservableList<ScenarioRow> scenariosToDequeue) {
         if (scenariosToDequeue == null || scenariosToDequeue.isEmpty()) {
             return;
@@ -1348,40 +1377,46 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
-    private void clearScenarioRunStatusFields(String scenarioName) {
-        if (scenarioName == null || scenarioName.trim().isEmpty()) {
-            return;
-        }
-        Platform.runLater(() -> {
-            try {
-                for (ScenarioRow s : ScenarioTable.listOfScenarioRuns) {
-                    if (s != null && scenarioName.equals(s.getScenarioName())) {
-                        s.setStatus("Updating...");
-                        s.setRuntime("");
-                        s.setUnsolvedMarkets("");
-                        s.setCompletedDate("");
-                        break;
-                    }
-                }
-            } catch (Exception ignored) {
-            }
-        });
+    void clearScenarioRunStatusFields(String scenarioName) {
+        clearScenarioTransientRunState(scenarioName, ScenarioRunStateClearMode.PREPARE_RUN);
+    }
+
+    void clearScenarioRunResultFields(String scenarioName) {
+        clearScenarioTransientRunState(scenarioName, ScenarioRunStateClearMode.RECREATE_OVERWRITE);
     }
 
     private void clearImportedScenarioRunResultFields(String scenarioName) {
+        clearScenarioTransientRunState(scenarioName, ScenarioRunStateClearMode.IMPORT_OVERWRITE);
+    }
+
+    private void clearScenarioTransientRunState(ScenarioSelection selection, ScenarioRunStateClearMode mode) {
+        if (selection == null) {
+            return;
+        }
+        for (String scenarioName : selection.getScenarioNames()) {
+            clearScenarioTransientRunState(scenarioName, mode);
+        }
+    }
+
+    private void clearScenarioTransientRunState(String scenarioName, ScenarioRunStateClearMode mode) {
         if (scenarioName == null || scenarioName.trim().isEmpty()) {
+            return;
+        }
+        ScenarioRunStateClearMode effectiveMode = mode == null ? ScenarioRunStateClearMode.IMPORT_OVERWRITE : mode;
+        runController.clearStoppedScenario(scenarioName);
+        if (ScenarioRunStateClearMode.DELETE.equals(effectiveMode)) {
             return;
         }
         Platform.runLater(() -> {
             try {
-                for (ScenarioRow s : ScenarioTable.listOfScenarioRuns) {
-                    if (s == null || !scenarioName.equals(s.getScenarioName())) {
+                for (ScenarioRow row : ScenarioTable.listOfScenarioRuns) {
+                    if (row == null || !scenarioName.equals(row.getScenarioName())) {
                         continue;
                     }
-                    s.setStatus("");
-                    s.setRuntime("");
-                    s.setUnsolvedMarkets("");
-                    s.setCompletedDate("");
+                    row.setCompletedDate("");
+                    row.setRuntime("");
+                    row.setUnsolvedMarkets("");
+                    row.setStatus(effectiveMode.statusText);
                     break;
                 }
             } catch (Exception ignored) {
@@ -1428,5 +1463,18 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             return;
         }
         Platform.runLater(applyUpdate);
+    }
+
+    private enum ScenarioRunStateClearMode {
+        PREPARE_RUN("Updating..."),
+        IMPORT_OVERWRITE(""),
+        RECREATE_OVERWRITE(""),
+        DELETE(null);
+
+        final String statusText;
+
+        ScenarioRunStateClearMode(String statusText) {
+            this.statusText = statusText;
+        }
     }
 }

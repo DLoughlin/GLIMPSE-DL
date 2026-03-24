@@ -589,8 +589,8 @@ public class TabTechAvailable extends PolicyTab implements Runnable {
                     name = info[0].trim() + "," + info[1].trim() + "," + info[2].trim();
 
                     if (techBound.isBoundAll()) {
-                        firstYear = "3000";
-                        lastYear = "3005";
+                        firstYear=""+vars.getAllYears().get(0);
+                        lastYear=""+vars.getCalibrationYear();
                     }
 
                     if (isNested) {
@@ -745,15 +745,6 @@ public class TabTechAvailable extends PolicyTab implements Runnable {
         return list;
     }
 
-    /**
-     * Placeholder for exporting shareweight (market-share) related scenario
-     * data. Left intentionally unimplemented in this class but documented so
-     * callers understand the intended purpose.
-     */
-    public void saveScenarioComponentShareweight() {
-        // Implementation for saving shareweight scenario data
-        // (Not implemented in this version)
-    }
 
     /**
      * Validate that required inputs are present before attempting to save. The

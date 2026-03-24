@@ -34,13 +34,16 @@
 * 
 */package glimpseElement;
 
+import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ScenarioRow {
 
+	private static final String TABLE_DATE_FORMAT = "yyyy-MM-dd:HH:mm";
 	private final StringProperty scenName = new SimpleStringProperty(this, "scenName", "");
 	private final StringProperty components = new SimpleStringProperty(this, "components", "");
 	private final StringProperty createdDate = new SimpleStringProperty(this, "createdDate", "");
@@ -176,7 +179,7 @@ public class ScenarioRow {
 	}
 	
 	public final void setCreatedDate(Date date) {
-		createdDate.set(date.toString());
+		createdDate.set(formatTableDate(date));
 	}	
 	
 	public final void setCreatedDate(String date) {
@@ -184,7 +187,7 @@ public class ScenarioRow {
 	}	
 	
 	public final void setCreatedDate(Long date) {
-		createdDate.set(new Date(date).toString());
+		createdDate.set(formatTableDate(date == null ? null : new Date(date)));
 	}		
 	
 	public final StringProperty completedDateProperty() {
@@ -196,7 +199,7 @@ public class ScenarioRow {
 	}	
 	
 	public final void setCompletedDate(Date date) {
-		completedDate.set(date.toString());
+		completedDate.set(formatTableDate(date));
 	}	
 	
 	public final void setCompletedDate(String date) {
@@ -204,7 +207,7 @@ public class ScenarioRow {
 	}	
 	
 	public final void setCompletedDate(Long date) {
-		completedDate.set(new Date(date).toString());
+		completedDate.set(formatTableDate(date == null ? null : new Date(date)));
 	}	
 	
 	public final StringProperty startedDateProperty() {
@@ -216,7 +219,7 @@ public class ScenarioRow {
 	}	
 	
 	public final void setStartedDate(Date date) {
-		startedDate.set(date.toString());
+		startedDate.set(formatTableDate(date));
 	}	
 	
 	public final void setStartedDate(String date) {
@@ -224,8 +227,13 @@ public class ScenarioRow {
 	}	
 	
 	public final void setStartedDate(Long date) {
-		startedDate.set(new Date(date).toString());
+		startedDate.set(formatTableDate(date == null ? null : new Date(date)));
 	}	
 
-
+	private static String formatTableDate(Date date) {
+		if (date == null) {
+			return "";
+		}
+		return new SimpleDateFormat(TABLE_DATE_FORMAT, Locale.ENGLISH).format(date);
+	}
 }

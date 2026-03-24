@@ -342,6 +342,21 @@ final class GcamRunController {
         lastStoppedScenarioName = normalize(scenarioName);
     }
 
+    void clearStoppedScenario(String scenarioName) {
+        String normalized = normalize(scenarioName);
+        if (normalized.isEmpty()) {
+            return;
+        }
+        String currentScenario = getCurrentScenarioName();
+        ProcessRunner.RunningProcess run = currentRun;
+        if (normalized.equals(currentScenario) && run != null && run.isStopRequested()) {
+            return;
+        }
+        if (normalized.equals(normalize(lastStoppedScenarioName))) {
+            lastStoppedScenarioName = "";
+        }
+    }
+
     void clearQueuedRuns() {
         synchronized (queuedScenarioNames) {
             queuedScenarioNames.clear();

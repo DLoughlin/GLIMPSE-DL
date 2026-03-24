@@ -151,21 +151,21 @@ public class UtilsStatus {
 
 			String warningRAM = "";
 			String warningDisk = "";
-			String warningSwap = "";
+			//String warningSwap = "";
 			String warningDb = "";
 			float maxDbSize = vars != null ? vars.getMaxDatabaseSize() : 0f;
 
 			if (physicalMemorySize > 0f && physicalMemoryFree / physicalMemorySize < 0.05f)
 				warningRAM = "*";
-			if (swapSpaceSize > 0f && freeSwapSpace / swapSpaceSize < 0.05f)
-				warningSwap = "*";
+			//if (swapSpaceSize > 0f && freeSwapSpace / swapSpaceSize < 0.05f)
+			//	warningSwap = "*";
 			if (freeSpace < 40.0f)
 				warningDisk = "*";
 			if (maxDbSize > 0f && databaseSize > maxDbSize * .8f)
 				warningDb = "*";
 
 			if ((physicalMemorySize > 0f && physicalMemoryFree / physicalMemorySize < 0.05f)
-					|| (swapSpaceSize > 0f && freeSwapSpace / swapSpaceSize < 0.05f) || (freeSpace < 40.0f)
+					|| (freeSpace < 40.0f)
 					|| (maxDbSize > 0f && databaseSize > maxDbSize * .8f)) {
 				warning = true;
 			}
@@ -174,19 +174,19 @@ public class UtilsStatus {
 			status = GLIMPSEUtils.LABEL_RESOURCES
 					+ "CPU: " + String.format("%,.0f", cpuLoad * 100.0f) + "% | "
 					+ "RAM: " + String.format("%,.0f", physicalMemorySize - physicalMemoryFree) + "/"
-					+ String.format("%,.0f", physicalMemorySize) + " GB ("
+					+ String.format("%,.0f", physicalMemorySize) + " GB used ("
 					+ String.format("%,.0f", physicalMemorySize > 0f ? physicalMemoryFree / physicalMemorySize * 100.0f : 0.0f)
 					+ "% Free)" + warningRAM + " | "
 					+ "HD: " + String.format("%,.0f", totalSpace - freeSpace) + "/" + String.format("%,.0f", totalSpace)
-					+ " GB (" + String.format("%,.0f", totalSpace > 0f ? freeSpace / totalSpace * 100.0f : 0.0f)
+					+ " GB used (" + String.format("%,.0f", totalSpace > 0f ? freeSpace / totalSpace * 100.0f : 0.0f)
 					+ "% Free)" + warningDisk + " | "
-					+ "Swap: " + String.format("%,.0f", swapSpaceSize - freeSwapSpace) + "/"
-					+ String.format("%,.0f", swapSpaceSize) + " GB ("
-					+ String.format("%,.0f", swapSpaceSize > 0f ? freeSwapSpace / swapSpaceSize * 100.0f : 0.0f)
-					+ "% Free)" + warningSwap + " | " + "DB: "
-					+ (databaseShortName.isEmpty() ? "(not set)" : databaseShortName) + " "
-					+ String.format("%,.1f", databaseSize) + "/" + (vars != null ? vars.getMaxDatabaseSize() : 0f)
-					+ " GB (" + dbFreePct + "%" + warningDb + " Free)";
+					//+ "Swap: " + String.format("%,.0f", swapSpaceSize - freeSwapSpace) + "/"
+					//+ String.format("%,.0f", swapSpaceSize) + " GB ("
+					//+ String.format("%,.0f", swapSpaceSize > 0f ? freeSwapSpace / swapSpaceSize * 100.0f : 0.0f)
+					//+ "% Free)" + warningSwap + " | " 
+					+ "DB: " + (databaseShortName.isEmpty() ? "(not set)" : databaseShortName) + " "
+					+ String.format("%,.1f", databaseSize) + "/" + (vars != null ? maxDbSize : 0f)
+					+ " GB used (" + dbFreePct + "%" + warningDb + " Free)";
 		} catch (Exception e) {
 			status = "";
 		}
