@@ -1025,7 +1025,13 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 clearLiveStdoutError(scenarioName);
                 Platform.runLater(() -> {
                     try {
-                        updateScenarioRowInPlace(scenarioName, row -> row.setStatus("Success"));
+                        updateScenarioRowInPlace(scenarioName, row -> {
+                            if (sameText(row.getStatus(), "Success")) {
+                                return false;
+                            }
+                            row.setStatus("Success");
+                            return true;
+                        });
                     } catch (Exception ignored) {}
                 });
                 return;
@@ -1081,7 +1087,13 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             if (!executionState.isScenarioActivelyRunning(scenarioName)) {
                 continue;
             }
-            updateScenarioRowInPlace(scenarioName, row -> row.setUnsolvedMarkets(periodsText));
+            updateScenarioRowInPlace(scenarioName, row -> {
+                if (sameText(row.getUnsolvedMarkets(), periodsText)) {
+                    return false;
+                }
+                row.setUnsolvedMarkets(periodsText);
+                return true;
+            });
         }
     }
 
@@ -1144,7 +1156,13 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         if (periodsText.isEmpty()) {
             return;
         }
-        updateScenarioRowInPlace(normalizedScenarioName, row -> row.setUnsolvedMarkets(periodsText));
+        updateScenarioRowInPlace(normalizedScenarioName, row -> {
+            if (sameText(row.getUnsolvedMarkets(), periodsText)) {
+                return false;
+            }
+            row.setUnsolvedMarkets(periodsText);
+            return true;
+        });
     }
 
     private void clearLiveStdoutError(String scenarioName) {
@@ -1167,21 +1185,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
         updateScenarioRowInPlace(scenarioName, row -> {
             String currentRuntime = row.getRuntime();
-            if (!liveRuntime.equals(currentRuntime)) {
-                row.setRuntime(liveRuntime);
+            if (sameText(currentRuntime, liveRuntime)) {
+                return false;
             }
+            row.setRuntime(liveRuntime);
+            return true;
         });
-    }
-
-    private String formatLiveRuntime(long startTimeMillis, long currentTimeMillis) {
-        if (startTimeMillis <= 0L) {
-            return "";
-        }
-        long elapsedMillis = Math.max(0L, currentTimeMillis - startTimeMillis);
-        long totalMinutes = elapsedMillis / 60_000L;
-        long hours = totalMinutes / 60L;
-        long minutes = totalMinutes % 60L;
-        return LIVE_RUNTIME_PREFIX + hours + " hr " + minutes + " min";
     }
 
     public void clearAndRefreshScenarioTable() {
@@ -1545,7 +1554,13 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         });
     }
 
-    private void updateScenarioRowInPlace(String scenarioName, java.util.function.Consumer<ScenarioRow> rowUpdate) {
+    private static boolean sameText(String left, String right) {
+        String normalizedLeft = left == null ? "" : left;
+        String normalizedRight = right == null ? "" : right;
+        return normalizedLeft.equals(normalizedRight);
+    }
+
+    private void updateScenarioRowInPlace(String scenarioName, java.util.function.Predicate<ScenarioRow> rowUpdate) {
         if (scenarioName == null || scenarioName.trim().isEmpty() || rowUpdate == null) {
             return;
         }
@@ -1553,14 +1568,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             try {
                 for (ScenarioRow row : ScenarioTable.listOfScenarioRuns) {
                     if (row != null && scenarioName.equals(row.getScenarioName())) {
-                        rowUpdate.accept(row);
+                        rowUpdate.test(row);
                         break;
                     }
                 }
-                if (ScenarioTable.tableScenariosLibrary != null) {
-                    ScenarioTable.tableScenariosLibrary.refresh();
-                }
-                refreshScenarioActionButtons();
             } catch (Exception ignored) {}
         };
         if (Platform.isFxApplicationThread()) {
@@ -1568,6 +1579,27 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             return;
         }
         Platform.runLater(applyUpdate);
+    }
+
+    private static String formatLiveRuntime(long runStartTimeMillis, long currentTimeMillis) {
+        if (runStartTimeMillis <= 0L || currentTimeMillis <= runStartTimeMillis) {
+            return "";
+        }
+        long elapsedMillis = currentTimeMillis - runStartTimeMillis;
+        long totalSeconds = Math.max(0L, elapsedMillis / 1000L);
+        long hours = totalSeconds / 3600L;
+        long minutes = (totalSeconds % 3600L) / 60L;
+        long seconds = totalSeconds % 60L;
+
+        StringBuilder runtime = new StringBuilder(LIVE_RUNTIME_PREFIX);
+        if (hours > 0L) {
+            runtime.append(hours).append(" hr ");
+        }
+        if (hours > 0L || minutes > 0L) {
+            runtime.append(minutes).append(" min ");
+        }
+        runtime.append(seconds).append(" sec");
+        return runtime.toString().trim();
     }
 
     private enum ScenarioRunStateClearMode {
