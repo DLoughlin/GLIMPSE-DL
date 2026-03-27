@@ -195,6 +195,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private final HBox scenarioLibraryHBox = new HBox(1);
     private final AtomicBoolean scenarioRefreshInProgress = new AtomicBoolean(false);
     private ScenarioLibraryViewStateHelper.RefreshViewState pendingRefreshViewState = ScenarioLibraryViewStateHelper.RefreshViewState.empty();
+    private final ConcurrentHashMap<String, Boolean> liveSuccessMarkedByScenario = new ConcurrentHashMap<>();
 
     // --- Constructors ---
     PaneScenarioLibrary(Stage stage) {
@@ -1022,10 +1023,14 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 if (scenarioName == null || scenarioName.trim().isEmpty()) {
                     return;
                 }
-                clearLiveStdoutError(scenarioName);
+                String normalizedScenarioName = scenarioName.trim();
+                if (liveSuccessMarkedByScenario.putIfAbsent(normalizedScenarioName, Boolean.TRUE) != null) {
+                    return;
+                }
+                clearLiveStdoutError(normalizedScenarioName);
                 Platform.runLater(() -> {
                     try {
-                        updateScenarioRowInPlace(scenarioName, row -> {
+                        updateScenarioRowInPlace(normalizedScenarioName, row -> {
                             if (sameText(row.getStatus(), "Success")) {
                                 return false;
                             }
@@ -1518,6 +1523,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         ScenarioRunStateClearMode effectiveMode = mode == null ? ScenarioRunStateClearMode.IMPORT_OVERWRITE : mode;
         runController.clearStoppedScenario(scenarioName);
         clearLiveStdoutError(scenarioName);
+        liveSuccessMarkedByScenario.remove(scenarioName.trim());
         if (ScenarioRunStateClearMode.DELETE.equals(effectiveMode)) {
             return;
         }

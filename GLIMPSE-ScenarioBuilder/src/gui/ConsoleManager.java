@@ -89,6 +89,12 @@ final class ConsoleManager {
     private static final int BUFFER_FORCE_FLUSH_CHAR_THRESHOLD = 64 * 1024;
     private static final int MAX_VISIBLE_CHARS_PER_CONSOLE = 400_000;
     private static final int TRIM_TO_VISIBLE_CHARS = 300_000;
+    private static final int TRIM_TRIGGER_APPEND_CHARS = 32 * 1024;
+    private static final int AUTO_SCROLL_FOLLOW_TAIL_THRESHOLD_CHARS = 2048;
+    // When true, GCAM console text is buffered until the console window is visible on the GCAM tab.
+    // This only changes UI painting behavior; GCAM line ingestion and scenario table/status updates still run.
+    private static final boolean DEFER_GCAM_PAINT_WHEN_HIDDEN = true;
+    private static final int MAX_DEFERRED_GCAM_CHARS = 2 * MAX_VISIBLE_CHARS_PER_CONSOLE;
     private static final boolean REDUCED_LIVE_GCAM_OUTPUT = true;
     private static final String GCAM_COMPLETION_MARKER = "Model run completed.";
     private static final String[] GCAM_STDOUT_PREFIX_FILTERS = {
@@ -123,6 +129,12 @@ final class ConsoleManager {
     private static final ConcurrentHashMap<StreamSource, BufferedAppender> BUFFERED = new ConcurrentHashMap<>();
     private static volatile ScheduledFuture<?> flushTask;
     private static final AtomicBoolean uiFlushScheduled = new AtomicBoolean(false);
+    private static final ConcurrentHashMap<TextArea, MessageKind> LAST_APPLIED_AREA_STYLE = new ConcurrentHashMap<>();
+    private static final Object DEFERRED_GCAM_LOCK = new Object();
+    private static final StringBuilder deferredGcamText = new StringBuilder();
+    private static volatile MessageKind deferredGcamKind = MessageKind.MODEL_STDOUT;
+    private static volatile int deferredGcamChars = 0;
+    private static final AtomicBoolean deferredGcamFlushInProgress = new AtomicBoolean(false);
 
     private ConsoleManager() {}
 
@@ -174,12 +186,14 @@ final class ConsoleManager {
         try {
             buffered(source).clearPending();
         } catch (Exception ignored) {}
+        clearDeferredPaintIfNeeded(source);
 
         Platform.runLater(() -> {
             ensureModelCreated();
             TextArea area = areaFor(source);
             if (area != null) {
                 area.clear();
+                LAST_APPLIED_AREA_STYLE.remove(area);
                 applyAreaStyle(area, MessageKind.MODEL_STDOUT);
             }
         });
@@ -201,10 +215,17 @@ final class ConsoleManager {
             return;
         }
 
-        area.appendText(normalized + System.lineSeparator());
+        String text = normalized + System.lineSeparator();
+        if (shouldDeferGcamPaint(source, text)) {
+            enqueueDeferredGcamPaint(kind, text);
+            return;
+        }
+
+        flushDeferredGcamBacklogIfVisible();
+        area.appendText(text);
         applyAreaStyle(area, kind);
-        trimVisibleConsoleText(area);
-        autoScrollToBottom(area);
+        trimVisibleConsoleText(area, text.length());
+        autoScrollToBottom(area, true);
     }
 
     private static void appendChunkToUi(StreamSource source, MessageKind kind, String text, boolean scrollToBottom) {
@@ -217,12 +238,17 @@ final class ConsoleManager {
         if (area == null || text == null || text.isEmpty()) {
             return;
         }
+        if (shouldDeferGcamPaint(source, text)) {
+            enqueueDeferredGcamPaint(kind, text);
+            return;
+        }
 
+        flushDeferredGcamBacklogIfVisible();
         area.appendText(text);
         applyAreaStyle(area, kind);
-        trimVisibleConsoleText(area);
+        trimVisibleConsoleText(area, text.length());
         if (scrollToBottom) {
-            autoScrollToBottom(area);
+            autoScrollToBottom(area, false);
         }
     }
 
@@ -283,6 +309,9 @@ final class ConsoleManager {
         tabPane.getTabs().add(createTab("GLIMPSE", glimpseStdoutArea));
         tabPane.getTabs().add(createTab("GCAM", gcamStdoutArea));
         tabPane.getTabs().add(createTab("ModelInterface", modelInterfaceArea));
+        if (tabPane.getSelectionModel() != null) {
+            tabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> flushDeferredGcamBacklogIfVisible());
+        }
 
         Button clearActive = new Button("Clear");
         clearActive.setOnAction(e -> {
@@ -305,6 +334,12 @@ final class ConsoleManager {
         Scene scene = new Scene(root, 700, 525);
         ScenarioBuilder.applyModernTheme(scene);
         stage.setScene(scene);
+        stage.showingProperty().addListener((obs, wasShowing, isShowing) -> {
+            if (Boolean.TRUE.equals(isShowing)) {
+                flushDeferredGcamBacklogIfVisible();
+            }
+        });
+        stage.setOnShown(e -> flushDeferredGcamBacklogIfVisible());
     }
 
     private static Tab createTab(String title, TextArea area) {
@@ -359,7 +394,7 @@ final class ConsoleManager {
         }
 
         try {
-            Files.write(outFile.toPath(), area.getText().getBytes(StandardCharsets.UTF_8));
+            Files.write(outFile.toPath(), getExportText(selected, area).getBytes(StandardCharsets.UTF_8));
             appendHeader(StreamSource.GLIMPSE_STDOUT, "Saved '" + tabName + "' to: " + outFile.getAbsolutePath());
         } catch (IOException ex) {
             showAlert(Alert.AlertType.ERROR, "Save As", "Failed to write file:", ex.getMessage());
@@ -418,7 +453,7 @@ final class ConsoleManager {
                     String text = "";
                     TextArea area = areaFromTab(t);
                     if (area != null) {
-                        text = area.getText();
+                        text = getExportText(t, area);
                     }
 
                     ZipEntry entry = new ZipEntry(entryName);
@@ -456,7 +491,12 @@ final class ConsoleManager {
         if (area == null) {
             return;
         }
-        switch (kind == null ? MessageKind.MODEL_STDOUT : kind) {
+        MessageKind effectiveKind = kind == null ? MessageKind.MODEL_STDOUT : kind;
+        MessageKind previousKind = LAST_APPLIED_AREA_STYLE.get(area);
+        if (effectiveKind == previousKind) {
+            return;
+        }
+        switch (effectiveKind) {
         case STDERR:
             area.setStyle(STYLE_STDERR);
             break;
@@ -468,13 +508,17 @@ final class ConsoleManager {
             area.setStyle(STYLE_STDOUT);
             break;
         }
+        LAST_APPLIED_AREA_STYLE.put(area, effectiveKind);
     }
 
-    private static void autoScrollToBottom(TextArea area) {
+    private static void autoScrollToBottom(TextArea area, boolean force) {
         if (area == null) {
             return;
         }
         try {
+            if (!force && !shouldFollowConsoleTail(area)) {
+                return;
+            }
             area.positionCaret(area.getLength());
             area.setScrollTop(Double.MAX_VALUE);
         } catch (Exception ignored) {}
@@ -485,6 +529,7 @@ final class ConsoleManager {
             return;
         }
         area.clear();
+        LAST_APPLIED_AREA_STYLE.remove(area);
         applyAreaStyle(area, MessageKind.MODEL_STDOUT);
     }
 
@@ -568,6 +613,7 @@ final class ConsoleManager {
                 a.drainToUi(maxItems);
             }
         }
+        flushDeferredGcamBacklogIfVisible();
     }
 
     private static String ensureUniqueEntryName(String entryName, Set<String> usedEntryNames) {
@@ -653,21 +699,104 @@ final class ConsoleManager {
         return effective == StreamSource.GLIMPSE_STDOUT;
     }
 
-    private static void trimVisibleConsoleText(TextArea area) {
-        if (area == null) {
+    private static boolean shouldDeferGcamPaint(StreamSource source, String text) {
+        if (!DEFER_GCAM_PAINT_WHEN_HIDDEN) {
+            return false;
+        }
+        if (effectiveSource(source) != StreamSource.GCAM_STDOUT) {
+            return false;
+        }
+        return !shouldPaintGcamNow();
+    }
+
+    private static boolean shouldPaintGcamNow() {
+        if (stage == null || !stage.isShowing() || tabPane == null) {
+            return false;
+        }
+        try {
+            Tab selected = tabPane.getSelectionModel() == null ? null : tabPane.getSelectionModel().getSelectedItem();
+            return selected != null && areaFromTab(selected) == gcamStdoutArea;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private static void clearDeferredPaintIfNeeded(StreamSource source) {
+        if (!DEFER_GCAM_PAINT_WHEN_HIDDEN || effectiveSource(source) != StreamSource.GCAM_STDOUT) {
+            return;
+        }
+        synchronized (DEFERRED_GCAM_LOCK) {
+            deferredGcamText.setLength(0);
+            deferredGcamChars = 0;
+            deferredGcamKind = MessageKind.MODEL_STDOUT;
+        }
+    }
+
+    private static void enqueueDeferredGcamPaint(MessageKind kind, String text) {
+        if (!DEFER_GCAM_PAINT_WHEN_HIDDEN || text == null || text.isEmpty()) {
+            return;
+        }
+        synchronized (DEFERRED_GCAM_LOCK) {
+            if (deferredGcamText.length() > 0 && deferredGcamKind != kind) {
+                deferredGcamText.append(System.lineSeparator());
+                deferredGcamChars += System.lineSeparator().length();
+            }
+            deferredGcamText.append(text);
+            deferredGcamChars += text.length();
+            deferredGcamKind = kind == null ? MessageKind.MODEL_STDOUT : kind;
+            trimDeferredGcamBacklogLocked();
+        }
+    }
+
+    private static void trimDeferredGcamBacklogLocked() {
+        if (!DEFER_GCAM_PAINT_WHEN_HIDDEN || deferredGcamChars <= MAX_DEFERRED_GCAM_CHARS) {
+            return;
+        }
+        int trimTarget = Math.max(0, deferredGcamChars - TRIM_TO_VISIBLE_CHARS);
+        if (trimTarget <= 0 || deferredGcamText.length() == 0) {
+            return;
+        }
+        int maxPrefix = Math.min(trimTarget, deferredGcamText.length());
+        int newline = deferredGcamText.indexOf("\n", Math.max(0, maxPrefix - TRIM_TRIGGER_APPEND_CHARS));
+        int trimEnd = newline >= 0 ? newline + 1 : maxPrefix;
+        if (trimEnd <= 0) {
+            return;
+        }
+        deferredGcamText.delete(0, trimEnd);
+        deferredGcamChars = deferredGcamText.length();
+    }
+
+    private static void flushDeferredGcamBacklogIfVisible() {
+        if (!DEFER_GCAM_PAINT_WHEN_HIDDEN || !shouldPaintGcamNow()) {
+            return;
+        }
+        if (!deferredGcamFlushInProgress.compareAndSet(false, true)) {
             return;
         }
         try {
-            String text = area.getText();
-            if (text == null || text.length() <= MAX_VISIBLE_CHARS_PER_CONSOLE) {
+            String textToFlush;
+            MessageKind kindToFlush;
+            synchronized (DEFERRED_GCAM_LOCK) {
+                if (deferredGcamText.length() == 0) {
+                    return;
+                }
+                textToFlush = deferredGcamText.toString();
+                kindToFlush = deferredGcamKind;
+                deferredGcamText.setLength(0);
+                deferredGcamChars = 0;
+                deferredGcamKind = MessageKind.MODEL_STDOUT;
+            }
+            if (gcamStdoutArea == null || textToFlush.isEmpty()) {
                 return;
             }
-            int targetStart = Math.max(0, text.length() - TRIM_TO_VISIBLE_CHARS);
-            int newline = text.indexOf('\n', targetStart);
-            int trimStart = newline >= 0 ? newline + 1 : targetStart;
-            String trimmed = text.substring(trimStart);
-            area.setText(trimmed);
-        } catch (Exception ignored) {}
+            gcamStdoutArea.appendText(textToFlush);
+            applyAreaStyle(gcamStdoutArea, kindToFlush);
+            trimVisibleConsoleText(gcamStdoutArea, textToFlush.length());
+            autoScrollToBottom(gcamStdoutArea, false);
+        } catch (Exception ignored) {
+        } finally {
+            deferredGcamFlushInProgress.set(false);
+        }
     }
 
     private static final class BufferedAppender {
@@ -767,6 +896,31 @@ final class ConsoleManager {
         private BufferedItem(MessageKind kind, String line) {
             this.kind = (kind == null) ? MessageKind.GLIMPSE_INFO : kind;
             this.line = (line == null) ? "" : line;
+        }
+    }
+
+    private static String getExportText(Tab tab, TextArea area) {
+        String visibleText = area == null ? "" : area.getText();
+        if (!DEFER_GCAM_PAINT_WHEN_HIDDEN) {
+            return visibleText == null ? "" : visibleText;
+        }
+        if (area != gcamStdoutArea && (tab == null || areaFromTab(tab) != gcamStdoutArea)) {
+            return visibleText == null ? "" : visibleText;
+        }
+        String deferredText = getDeferredGcamTextSnapshot();
+        if (deferredText.isEmpty()) {
+            return visibleText == null ? "" : visibleText;
+        }
+        String safeVisibleText = visibleText == null ? "" : visibleText;
+        return safeVisibleText + deferredText;
+    }
+
+    private static String getDeferredGcamTextSnapshot() {
+        if (!DEFER_GCAM_PAINT_WHEN_HIDDEN) {
+            return "";
+        }
+        synchronized (DEFERRED_GCAM_LOCK) {
+            return deferredGcamText.toString();
         }
     }
 }
