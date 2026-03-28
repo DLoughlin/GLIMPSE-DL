@@ -524,6 +524,51 @@ final class ConsoleManager {
         } catch (Exception ignored) {}
     }
 
+    private static boolean shouldFollowConsoleTail(TextArea area) {
+        if (area == null) {
+            return false;
+        }
+        try {
+            int length = area.getLength();
+            if (length <= 0) {
+                return true;
+            }
+            int caret = area.getCaretPosition();
+            int anchor = area.getAnchor();
+            if (Math.abs(caret - anchor) > 0) {
+                return false;
+            }
+            return length - caret <= AUTO_SCROLL_FOLLOW_TAIL_THRESHOLD_CHARS;
+        } catch (Exception ignored) {
+            return true;
+        }
+    }
+
+    private static void trimVisibleConsoleText(TextArea area, int appendedChars) {
+        if (area == null) {
+            return;
+        }
+        try {
+            String existing = area.getText();
+            if (existing == null || existing.length() <= MAX_VISIBLE_CHARS_PER_CONSOLE) {
+                return;
+            }
+            int trimTarget = Math.max(0, existing.length() - TRIM_TO_VISIBLE_CHARS);
+            if (trimTarget <= 0) {
+                return;
+            }
+            int hintWindow = Math.max(TRIM_TRIGGER_APPEND_CHARS, appendedChars);
+            int searchFrom = Math.max(0, trimTarget - hintWindow);
+            int newline = existing.indexOf('\n', searchFrom);
+            int trimEnd = newline >= 0 ? newline + 1 : trimTarget;
+            if (trimEnd <= 0) {
+                return;
+            }
+            trimEnd = Math.min(trimEnd, existing.length());
+            area.deleteText(0, trimEnd);
+        } catch (Exception ignored) {}
+    }
+
     private static void clearArea(TextArea area) {
         if (area == null) {
             return;
