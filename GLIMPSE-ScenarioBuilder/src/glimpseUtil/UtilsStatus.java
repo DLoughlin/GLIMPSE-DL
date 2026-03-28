@@ -204,7 +204,7 @@ public class UtilsStatus {
 					//+ String.format("%,.0f", swapSpaceSize > 0f ? freeSwapSpace / swapSpaceSize * 100.0f : 0.0f)
 					//+ "% Free)" + warningSwap + " | " 
 					+ "DB: " + (databaseShortName.isEmpty() ? "(not set)" : databaseShortName) + " "
-					+ String.format("%,.1f", databaseSize) + "/" + (vars != null ? maxDbSize : 0f)
+					+ String.format("%,.0f", databaseSize) + "/" + (vars != null ? String.format("%,.0f", maxDbSize) : 0f)
 					+ " GB used (" + dbFreePct + "%" + warningDb + " Free)";
 		} catch (Exception e) {
 			status = "";
