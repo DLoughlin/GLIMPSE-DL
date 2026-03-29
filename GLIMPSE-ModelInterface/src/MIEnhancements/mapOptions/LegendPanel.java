@@ -7,6 +7,7 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import javax.swing.JComponent;
+import javax.swing.UIManager;
 import org.jfree.chart.axis.AxisLocation;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.axis.NumberTickUnit;
@@ -25,6 +26,8 @@ public class LegendPanel extends JComponent {
     private static final long serialVersionUID = -9100503749455967320L;
     private PaintScaleLegend legend;
     private boolean debug = false;
+    private static final Font LEGEND_LABEL_FONT = resolveUiFont(Font.PLAIN, 13);
+    private static final Font LEGEND_TICK_FONT = resolveUiFont(Font.PLAIN, 12);
 
     /**
      * Constructs a LegendPanel for the given MapColor and units.
@@ -55,7 +58,7 @@ public class LegendPanel extends JComponent {
      */
     @Override
     public Dimension getPreferredSize() {
-        return new Dimension(200, 150);
+        return new Dimension(150, 145);
     }
 
     /**
@@ -63,7 +66,7 @@ public class LegendPanel extends JComponent {
      */
     @Override
     public Dimension getMinimumSize() {
-        return new Dimension(150, 150);
+        return new Dimension(130, 130);
     }
 
     /**
@@ -76,7 +79,8 @@ public class LegendPanel extends JComponent {
         NumberAxis scaleAxis = new NumberAxis(units);
         scaleAxis.setTickMarkPaint(Color.BLACK);
         scaleAxis.setTickMarkStroke(new BasicStroke(1));
-        scaleAxis.setTickLabelFont(new Font("Dialog", Font.PLAIN, 14));
+        scaleAxis.setTickLabelFont(LEGEND_TICK_FONT);
+        scaleAxis.setLabelFont(LEGEND_LABEL_FONT);
 
         try {
             // Calculate interval, min, and max for the legend
@@ -105,9 +109,9 @@ public class LegendPanel extends JComponent {
             legend.setAxisLocation(AxisLocation.BOTTOM_OR_LEFT);
             legend.setAxisOffset(0);
             legend.setMargin(new RectangleInsets(2, 2, 2, 2));
-            legend.setFrame(new BlockBorder(Color.red));
-            legend.setPadding(new RectangleInsets(10, 10, 10, 10));
-            legend.setStripWidth(90);
+            legend.setFrame(new BlockBorder(new Color(180, 180, 180)));
+            legend.setPadding(new RectangleInsets(6, 6, 6, 6));
+            legend.setStripWidth(72);
             legend.setPosition(RectangleEdge.RIGHT);
             legend.setBackgroundPaint(Color.WHITE);
         } else {
@@ -147,5 +151,13 @@ public class LegendPanel extends JComponent {
             }
         }
         return paintScale;
+    }
+
+    private static Font resolveUiFont(int style, int fallbackSize) {
+        Font baseFont = UIManager.getFont("Label.font");
+        if (baseFont == null) {
+            return new Font("Dialog", style, fallbackSize);
+        }
+        return baseFont.deriveFont(style, fallbackSize);
     }
 }

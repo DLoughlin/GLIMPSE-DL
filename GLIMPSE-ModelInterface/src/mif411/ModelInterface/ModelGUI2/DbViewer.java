@@ -515,7 +515,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	
 	private static Map<String, String> selectedYears = null;
 
-	public static ArrayList openWindows = new ArrayList();
+	public static ArrayList<java.awt.Window> openWindows = new ArrayList<java.awt.Window>();
 	
 	private JFrame parentFrame;
 	private BatchExecutionController batchExecutionController;
@@ -3459,3 +3459,4 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		return new ImageIcon(resource);
 	}
 }
+
