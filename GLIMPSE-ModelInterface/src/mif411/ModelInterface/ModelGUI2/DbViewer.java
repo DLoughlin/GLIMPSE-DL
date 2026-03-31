@@ -169,10 +169,14 @@ import filter.FilterTreePaneYears;
  * @since 2012
  */
 public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
+	private static final boolean DEBUG = false;
 	private JPanel loadingPanel;
 	private JLabel loadingLabel;
 	private volatile boolean dbViewInitialized = false;
+	private volatile StartupData startupDataResult;
 	private javax.swing.SwingWorker<StartupData, Void> startupLoader;
+	private volatile java.util.concurrent.atomic.AtomicReference<Thread> edtHeartbeatRef;
+	private volatile java.util.concurrent.atomic.AtomicReference<boolean[]> edtHeartbeatDoneRef;
 	private enum StartupLifecycleState {
 		IDLE,
 		PREPARING,
@@ -186,6 +190,14 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	private volatile StartupLifecycleState startupState = StartupLifecycleState.IDLE;
 	private volatile String lastControlOldValue = "(unset)";
 	private volatile String lastControlNewValue = "(unset)";
+
+	private void resetDbViewInitialized(String reason) {
+		if (dbViewInitialized) {
+			InterfaceMain.logStartupTiming("DbViewer:dbViewInitialized true -> false reason=" + reason
+					+ " [control old=" + lastControlOldValue + ", new=" + lastControlNewValue + "]");
+		}
+		dbViewInitialized = false;
+	}
 
 	private boolean isStartupActive() {
 		return startupState == StartupLifecycleState.PREPARING
@@ -228,11 +240,13 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		private final Vector<ScenarioListItem> scenarios;
 		private final Vector regions;
 		private final QueryTreeModel queries;
+		private final File queryFile;
 
-		private StartupData(Vector<ScenarioListItem> scenarios, Vector regions, QueryTreeModel queries) {
+		private StartupData(Vector<ScenarioListItem> scenarios, Vector regions, QueryTreeModel queries, File queryFile) {
 			this.scenarios = scenarios;
 			this.regions = regions;
 			this.queries = queries;
+			this.queryFile = queryFile;
 		}
 	}
 
@@ -267,6 +281,14 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		}
 	}
 
+	private void logStartupPhase(String phase, File dbFile) {
+		if (!DEBUG) {
+			return;
+		}
+		String context = dbFile == null ? "" : " [" + formatDatabaseStartupContext(dbFile) + "]";
+		System.out.println("DbViewer startup phase: " + phase + context);
+	}
+
 	private void showLoadingShell() {
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame frame = main.getFrame();
@@ -296,6 +318,18 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			depth++;
 		}
 		return detail.toString();
+	}
+
+	private String formatDatabaseStartupContext(File dbFile) {
+		if (dbFile == null) {
+			return "dbPath=(unknown), container=(unknown)";
+		}
+		File absoluteDbFile = dbFile.getAbsoluteFile();
+		String containerName = absoluteDbFile.getName();
+		if (containerName == null || containerName.trim().isEmpty()) {
+			containerName = "(unknown)";
+		}
+		return "dbPath=" + absoluteDbFile.getAbsolutePath() + ", container=" + containerName;
 	}
 
 	private Throwable unwrapFailure(Throwable failure) {
@@ -462,6 +496,37 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		return queryFile;
 	}
 
+	private StartupData loadStartupDataInBackground(final File dbFile, final boolean create) {
+		logStartupPhase(STARTUP_MESSAGE_OPENING_DB, dbFile);
+		updateStartupMessage(STARTUP_MESSAGE_OPENING_DB);
+		try {
+			File queryFile = prepareQueryDefinitionsForStartup();
+			XMLDB.openDatabase(dbFile.getAbsolutePath(), create);
+			logStartupPhase("Database opened", dbFile);
+			logStartupPhase(STARTUP_MESSAGE_LOADING_SCENARIOS, dbFile);
+			updateStartupMessage(STARTUP_MESSAGE_LOADING_SCENARIOS);
+			Vector<ScenarioListItem> loadedScenarios = getScenarios();
+			logStartupPhase("Scenarios loaded", dbFile);
+			logStartupPhase(STARTUP_MESSAGE_LOADING_REGIONS, dbFile);
+			updateStartupMessage(STARTUP_MESSAGE_LOADING_REGIONS);
+			Vector loadedRegions = getRegions();
+			logStartupPhase("Regions loaded", dbFile);
+			logStartupPhase(STARTUP_MESSAGE_LOADING_QUERIES, dbFile);
+			updateStartupMessage(STARTUP_MESSAGE_LOADING_QUERIES);
+			if (DEBUG) System.out.println("DbViewer.loadStartupData: calling validateQueriesDocument()...");
+			validateQueriesDocument();
+			if (DEBUG) System.out.println("DbViewer.loadStartupData: validateQueriesDocument() done, calling getQueries()...");
+			QueryTreeModel loadedQueries = getQueries();
+			if (DEBUG) System.out.println("DbViewer.loadStartupData: getQueries() done, calling validateStartupData()...");
+			logStartupPhase("Query definitions loaded", dbFile);
+			return validateStartupData(new StartupData(loadedScenarios, loadedRegions, loadedQueries, queryFile));
+		} catch (RuntimeException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new IllegalStateException("Could not open or initialize the database view.", e);
+		}
+	}
+
 	private Document queriesDoc;
 
 	private static String controlStr = "DbViewer";
@@ -620,6 +685,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 				if (evt.getPropertyName().equals("Control")) {
 					updateLastControlTransition(evt.getOldValue(), evt.getNewValue());
 					if (evt.getOldValue().equals(controlStr) || evt.getOldValue().equals(controlStr + "Same")) {
+						resetDbViewInitialized("control-transition-exit");
 						boolean shutdownTriggered = false;
 						if (DbViewer.this.isStartupActive()) {
 							if (startupLoader != null && !startupLoader.isDone()) {
@@ -680,6 +746,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 							InterfaceMain.logStartupTiming("DbViewer:ignoring duplicate control enter for " + controlStr);
 							return;
 						}
+						resetDbViewInitialized("control-transition-enter");
 						setStartupState(StartupLifecycleState.PREPARING);
 						Properties prop = main.getProperties();
 						File queryFile = resolveStartupQueryFile(prop, parentFrame);
@@ -754,7 +821,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 					Object rsp = globalProperties.get("selectedYearList");
 					if (rsp != null) {
 						String defaultYearStr = rsp.toString();
-						System.out.println("DbViewer375: Using selectedYearsStr from properties file: " + defaultYearStr);
+						if (DEBUG) System.out.println("DbViewer375: Using selectedYearsStr from properties file: " + defaultYearStr);
 
 						String[] yearsArr = InterfaceMain.splitListProperty(defaultYearStr);
 						Arrays.sort(yearsArr);
@@ -815,7 +882,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			Properties globalProperties = InterfaceMain.getInstance().getProperties();
 			if (globalProperties != null) {
 				String allYearStr = (String) globalProperties.get("allYearsList");
-				System.out.println("DbViewer421: Setting allYearStr from properties file: " + allYearStr);
+				if (DEBUG) System.out.println("DbViewer421: Setting allYearStr from properties file: " + allYearStr);
 
 				if (allYearStr != null) {
 					String[] yearsArr = InterfaceMain.splitListProperty(allYearStr);
@@ -1415,6 +1482,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		final long openStart = System.nanoTime();
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
+		resetDbViewInitialized("doOpenDB-begin");
 		invalidateQueriesDocument("doOpenDB-begin");
 		setStartupState(StartupLifecycleState.OPENING_DB);
 		if (dbFile.getParent() != null) {
@@ -1423,24 +1491,6 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		showLoadingShell();
 		updateStartupMessage(STARTUP_MESSAGE_OPENING_DB);
 		parentFrame.getGlassPane().setVisible(true);
-		try {
-			prepareQueryDefinitionsForStartup();
-			XMLDB.openDatabase(dbFile.getAbsolutePath(), create);
-			logStartup("doOpenDB:XMLDB.openDatabase", openStart);
-		} catch (Exception e) {
-			invalidateQueriesDocument("doOpenDB-open-failed");
-			setStartupState(StartupLifecycleState.FAILED);
-			if (XMLDB.isSuppressedBaseXResourceException(e)) {
-				System.err.println("Suppressing BaseX packaged-resource stack trace during DB open: " + e.getMessage());
-			} else {
-				e.printStackTrace();
-			}
-			parentFrame.getGlassPane().setVisible(false);
-			main.hideStartupLoadingView();
-			InterfaceMain.getInstance().showMessageDialog(buildOpenFailureMessage(e, dbFile), OPEN_DB_DIALOG_TITLE,
-					JOptionPane.ERROR_MESSAGE);
-			return;
-		}
 
 		tablesTabs.setTransferHandler(new TableTransferHandler());
 		TabDragListener dragListener = new TabDragListener();
@@ -1448,59 +1498,136 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		tablesTabs.addMouseMotionListener(dragListener);
 		logStartup("doOpenDB:table tabs initialized", openStart);
 
-		updateStartupMessage(STARTUP_MESSAGE_LOADING_SCENARIOS);
 		logStartup("doOpenDB:loadingShell", openStart);
 		setStartupState(StartupLifecycleState.LOADING_DATA);
-		startBackgroundInitialization(openStart, dbFile);
+		startBackgroundInitialization(openStart, dbFile, create);
 	}
 
-	private void startBackgroundInitialization(final long openStart, final File dbFile) {
+	private void startBackgroundInitialization(final long openStart, final File dbFile, final boolean create) {
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
+		startupDataResult = null;
 		startupLoader = new javax.swing.SwingWorker<StartupData, Void>() {
 			@Override
 			protected StartupData doInBackground() {
 				final long loadStart = System.nanoTime();
-				updateStartupMessage(STARTUP_MESSAGE_LOADING_SCENARIOS);
-				Vector<ScenarioListItem> loadedScenarios = getScenarios();
-				updateStartupMessage(STARTUP_MESSAGE_LOADING_REGIONS);
-				Vector loadedRegions = getRegions();
-				updateStartupMessage(STARTUP_MESSAGE_LOADING_QUERIES);
-				validateQueriesDocument();
-				QueryTreeModel loadedQueries = getQueries();
+				StartupData data = loadStartupDataInBackground(dbFile, create);
+				startupDataResult = data;
 				InterfaceMain.logStartupTiming("DbViewer:backgroundLoad:modelData " + elapsedMillis(loadStart) + " ms");
-				return validateStartupData(new StartupData(loadedScenarios, loadedRegions, loadedQueries));
+				if (DEBUG) System.out.println("DbViewer.doInBackground: complete for " + dbFile.getName()
+						+ ", posting done() to EDT now...");
+				// Start an EDT-responsiveness heartbeat so we can tell if done() is being delayed
+				// because the EDT is busy/blocked.
+				final long bgCompleteNanos = System.nanoTime();
+				final boolean[] doneStarted = { false };
+				Thread edtHeartbeat = new Thread(() -> {
+					final long intervalMs = 2_000L;
+					int ticks = 0;
+					while (!doneStarted[0]) {
+						try {
+							Thread.sleep(intervalMs);
+						} catch (InterruptedException ie) {
+							Thread.currentThread().interrupt();
+							break;
+						}
+						if (doneStarted[0]) break;
+						ticks++;
+						long waitedMs = (System.nanoTime() - bgCompleteNanos) / 1_000_000L;
+						if (DEBUG) System.out.println("DbViewer: EDT-heartbeat tick=" + ticks
+								+ " - done() has NOT been called yet, " + waitedMs + " ms since doInBackground finished."
+								+ " EDT may be blocked.");
+						// Ping EDT to see if it responds
+						javax.swing.SwingUtilities.invokeLater(() -> {
+							if (DEBUG) System.out.println("DbViewer: EDT responded to heartbeat ping at " 
+									+ ((System.nanoTime() - bgCompleteNanos) / 1_000_000L) + " ms post-bgComplete.");
+						});
+					}
+					if (DEBUG) System.out.println("DbViewer: EDT-heartbeat stopping (done() started or heartbeat interrupted).");
+				}, "DbViewer-EDT-heartbeat");
+				edtHeartbeat.setDaemon(true);
+				// Store reference so done() can stop it
+				edtHeartbeatRef = new java.util.concurrent.atomic.AtomicReference<>(edtHeartbeat);
+				edtHeartbeatDoneRef = new java.util.concurrent.atomic.AtomicReference<>(doneStarted);
+				edtHeartbeat.start();
+				return data;
 			}
 
 			@Override
 			protected void done() {
+				// Signal heartbeat to stop
+				if (edtHeartbeatDoneRef != null && edtHeartbeatDoneRef.get() != null) {
+					edtHeartbeatDoneRef.get()[0] = true;
+				}
+				if (edtHeartbeatRef != null && edtHeartbeatRef.get() != null) {
+					edtHeartbeatRef.get().interrupt();
+				}
+				if (DEBUG) System.out.println("DbViewer.done() entered on EDT for " + dbFile.getName());
 				try {
-					if (isCancelled() || dbViewInitialized) {
-						if (isCancelled()) {
+					final boolean cancelled = isCancelled();
+					if (DEBUG) System.out.println("DbViewer.done(): pre-check cancelled=" + cancelled
+							+ " dbViewInitialized=" + dbViewInitialized
+							+ " startupState=" + startupState);
+					if (cancelled || dbViewInitialized) {
+						if (DEBUG) System.out.println("DbViewer.done(): returning early due to cancelled/initialized state.");
+						if (cancelled) {
+							startupDataResult = null;
 							invalidateQueriesDocument("startupLoader-cancelled");
+							logStartupPhase("Startup cancelled", dbFile);
 						}
-						setStartupState(isCancelled() ? StartupLifecycleState.FAILED : startupState);
+						if (DEBUG) System.out.println("DbViewer.done(): calling setStartupState for early return...");
+						setStartupState(cancelled ? StartupLifecycleState.FAILED : startupState);
+						if (DEBUG) System.out.println("DbViewer.done(): setStartupState returned, hiding startup loading view...");
 						main.hideStartupLoadingView();
+						if (DEBUG) System.out.println("DbViewer.done(): early-return cleanup complete.");
 						return;
 					}
+					if (DEBUG) System.out.println("DbViewer.done(): logging background-complete phase...");
+					logStartupPhase("Background load complete; switching to EDT UI build", dbFile);
+					if (DEBUG) System.out.println("DbViewer.done(): background-complete phase logged.");
+					if (DEBUG) System.out.println("DbViewer.done(): setting startup state to BUILDING_UI...");
 					setStartupState(StartupLifecycleState.BUILDING_UI);
+					if (DEBUG) System.out.println("DbViewer.done(): BUILDING_UI state set.");
+					if (DEBUG) System.out.println("DbViewer.done(): updating startup message to building lists...");
 					updateStartupMessage(STARTUP_MESSAGE_BUILDING_LISTS);
-					StartupData data = validateStartupData(get());
+					if (DEBUG) System.out.println("DbViewer.done(): startup message updated.");
+					StartupData data = startupDataResult;
+					if (DEBUG) System.out.println("DbViewer.done(): startupDataResult present? " + (data != null));
+					if (data == null) {
+						throw new IllegalStateException("Startup data was unexpectedly unavailable on the EDT after background load completed. workerDone="
+								+ startupLoader.isDone() + " workerCancelled=" + startupLoader.isCancelled());
+					}
+					if (DEBUG) System.out.println("DbViewer.done(): validating startup data...");
+					data = validateStartupData(data);
+					if (DEBUG) System.out.println("DbViewer.done(): startup data validated.");
+					startupDataResult = null;
+					if (DEBUG) System.out.println("DbViewer.done(): startupDataResult cleared; creating table selector UI next...");
+					logStartupPhase("Creating table selector UI", dbFile);
 					createTableSelector(data);
+					if (DEBUG) System.out.println("DbViewer.done(): createTableSelector completed.");
+					logStartupPhase("Database viewer UI created", dbFile);
 					logStartup("doOpenDB:createTableSelector", openStart);
 					parentFrame.setTitle("GLIMPSE-CE ModelInterface");
 					main.setProperty("paramPath", dbFile.getAbsolutePath());
 					main.updateActiveDatabaseStatus(dbFile.getAbsolutePath());
+					if (data.queryFile != null) {
+						main.setProperty("queryFile", data.queryFile.getAbsolutePath());
+					}
 					setStartupState(StartupLifecycleState.READY);
+					logStartupPhase("Startup ready", dbFile);
 					logStartup("doOpenDB:complete", openStart);
 				} catch (Exception e) {
+					startupDataResult = null;
 					invalidateQueriesDocument("startupLoader-done-failed");
 					setStartupState(StartupLifecycleState.FAILED);
 					Throwable root = unwrapFailure(e);
 					if (XMLDB.isSuppressedBaseXResourceException(root)) {
 						System.err.println("Suppressing BaseX packaged-resource stack trace during startup load: " + root.getMessage());
 					} else {
+						System.err.println("DB STARTUP FAILURE [" + formatDatabaseStartupContext(dbFile) + "]: "
+								+ formatThrowableSummary(root));
+						System.err.println("DB STARTUP FAILURE STACK TRACE BEGIN [" + formatDatabaseStartupContext(dbFile) + "]");
 						e.printStackTrace();
+						System.err.println("DB STARTUP FAILURE STACK TRACE END [" + formatDatabaseStartupContext(dbFile) + "]");
 					}
 					parentFrame.getGlassPane().setVisible(false);
 					main.hideStartupLoadingView();
@@ -1546,10 +1673,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 				ret.add(new ScenarioListItem(docName, scnAttrMap.get("name"), scnAttrMap.get("date")));
 			}
 		} catch (Exception e) {
-			System.out.println("Could not load database: " + e.toString());
-			JOptionPane.showMessageDialog(null,
-					"Could not load selected database, probably due to file corruption. Please review console for futher details.  All loading will stop.");
-			return null;
+			throw new IllegalStateException("Could not load scenario list from the database.", e);
 		} finally {
 			queryProc.close();
 		}
@@ -1574,26 +1698,89 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 * @return Vector of region names.
 	 */
 	public Vector getRegions() {
-
-		Vector funcTemp = new Vector<String>(1, 0);
-		funcTemp.add("distinct-values");
+		// IMPORTANT: Do NOT use distinct-values(collection()/...) here.
+		// When distinct-values() wraps a large collection(), BaseX must exhaustively scan the
+		// entire remaining database before returning null from iter(), causing a hang on large
+		// GCAM-USA databases (hundreds of MB / many scenarios).
+		//
+		// Also do NOT query across all documents without distinct-values: that produces millions
+		// of duplicate region names (one per scenario-document × per region).
+		//
+		// The correct approach: query only the FIRST document in the collection to get the region
+		// list. All GCAM scenarios share the same world-region structure, so one document suffices.
+		// We fall back to scanning more documents only if the first document has no regions.
 		Vector ret = new Vector();
+		long startNanos = System.nanoTime();
+		if (DEBUG) System.out.println("DbViewer.getRegions: querying regions from first document in collection...");
+		// StandardQueryBinding always prepends "collection()" to the base path, so we pass
+		// "[1]/scenario/world/..." which produces "collection()[1]/scenario/world/...//@name"
 		QueryProcessor queryProc = XMLDB.getInstance().createQuery(
-				"/scenario/world/" + ModelInterface.ModelGUI2.queries.QueryBuilder.regionQueryPortion + "/@name",
-				funcTemp, null, null);
+				"[1]/scenario/world/" + ModelInterface.ModelGUI2.queries.QueryBuilder.regionQueryPortion + "/@name",
+				null, null, null);
 		try {
 			Iter res = queryProc.iter();
 			Item temp;
+			java.util.LinkedHashSet<String> seen = new java.util.LinkedHashSet<String>();
 			while ((temp = res.next()) != null) {
-				ret.add(temp.toJava());
+				// Item.string(null) returns a BaseX byte[] token; Token.string() converts it to
+				// a Java String. We cannot use toJava() here because querying /@name without
+				// distinct-values() returns raw attribute nodes (BXAttr), not String items.
+				seen.add(org.basex.util.Token.string(temp.string(null)));
 			}
+			if (DEBUG) System.out.println("DbViewer.getRegions: first-doc query found " + seen.size()
+					+ " regions in " + elapsedMillis(startNanos) + " ms.");
+			ret.addAll(seen);
 		} catch (QueryException e) {
-			System.out.println("Error loading regions: " + e.toString());
-			return null;
+			throw new IllegalStateException("Could not load region list from the database.", e);
 		} finally {
+			long closeStart = System.nanoTime();
+			if (DEBUG) System.out.println("DbViewer.getRegions: calling queryProc.close()...");
 			queryProc.close();
+			if (DEBUG) System.out.println("DbViewer.getRegions: queryProc.close() returned in " + elapsedMillis(closeStart) + " ms.");
 		}
+
+		if (ret.isEmpty()) {
+			// Fallback: the first document had no regions. This can happen if collection()[1]
+			// resolves to a document that has no world/region structure (e.g. a different doc type,
+			// or the database orders documents unexpectedly). Try subsequent documents one at a time.
+			// We stop as soon as we find a document with regions, or after checking MAX_DOC_PROBE
+			// documents. This avoids the distinct-values() hang while still handling edge cases.
+			if (DEBUG) System.out.println("DbViewer.getRegions: first-doc returned no regions, probing subsequent documents...");
+			final int MAX_DOC_PROBE = 20;
+			for (int docIdx = 2; docIdx <= MAX_DOC_PROBE && ret.isEmpty(); docIdx++) {
+				long probeStart = System.nanoTime();
+				QueryProcessor probeProc = XMLDB.getInstance().createQuery(
+						"[" + docIdx + "]/scenario/world/" + ModelInterface.ModelGUI2.queries.QueryBuilder.regionQueryPortion + "/@name",
+						null, null, null);
+				try {
+					Iter res = probeProc.iter();
+					Item temp;
+					java.util.LinkedHashSet<String> seen = new java.util.LinkedHashSet<String>();
+					while ((temp = res.next()) != null) {
+						seen.add(org.basex.util.Token.string(temp.string(null)));
+					}
+					if (!seen.isEmpty()) {
+						ret.addAll(seen);
+					 if (DEBUG) System.out.println("DbViewer.getRegions: doc[" + docIdx + "] found " + seen.size()
+								+ " regions in " + elapsedMillis(probeStart) + " ms.");
+					} else {
+						if (DEBUG) System.out.println("DbViewer.getRegions: doc[" + docIdx + "] also had no regions ("
+								+ elapsedMillis(probeStart) + " ms).");
+					}
+				} catch (QueryException e) {
+					throw new IllegalStateException("Could not load region list from the database (probe doc " + docIdx + ").", e);
+				} finally {
+					probeProc.close();
+				}
+			}
+			if (ret.isEmpty()) {
+				if (DEBUG) System.out.println("DbViewer.getRegions: WARNING - no regions found after probing "
+						+ MAX_DOC_PROBE + " documents.");
+			}
+		}
+
 		ret.add("Global");
+		if (DEBUG) System.out.println("DbViewer.getRegions: returning region list size=" + ret.size());
 		return ret;
 	}
 
@@ -1623,6 +1810,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	private JButton listCollapseButton; 
 
 	private JCheckBox doTotalCheckBox;
+	private static final int STARTUP_QUERY_TREE_EXPANSION_ROW_LIMIT = 250;
 
 	/**
 	 * Sets up the main UI components for the DbViewer, including scenario/region lists,
@@ -1634,7 +1822,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			return;
 		}
 		setupScenarioRegionLists();
-		createTableSelector(new StartupData(scns, regions, queries));
+		createTableSelector(new StartupData(scns, regions, queries, null));
 	}
 
 	private void createTableSelector(StartupData data) {
@@ -1642,33 +1830,34 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			return;
 		}
 		final long selectorStart = System.nanoTime();
+		if (DEBUG) System.out.println("createTableSelector: start");
 		updateStartupMessage(STARTUP_MESSAGE_BUILDING_LISTS);
 		applyStartupData(data);
-		logStartup("createTableSelector:scenarioRegionLists", selectorStart);
+		if (DEBUG) System.out.println("createTableSelector: applyStartupData done " + elapsedMillis(selectorStart) + " ms");
 		updateStartupMessage(STARTUP_MESSAGE_BUILDING_TREE);
 		setupQueryTree();
-		logStartup("createTableSelector:queryTree", selectorStart);
+		if (DEBUG) System.out.println("createTableSelector: setupQueryTree done " + elapsedMillis(selectorStart) + " ms");
 		updateStartupMessage(STARTUP_MESSAGE_LAYOUT);
 		setupSplitPanes();
-		logStartup("createTableSelector:splitPanes", selectorStart);
+		if (DEBUG) System.out.println("createTableSelector: setupSplitPanes done " + elapsedMillis(selectorStart) + " ms");
 		updateStartupMessage(STARTUP_MESSAGE_BUILDING_QUERY_PANEL);
 		setupQueryPanel();
-		logStartup("createTableSelector:queryPanel", selectorStart);
+		if (DEBUG) System.out.println("createTableSelector: setupQueryPanel done " + elapsedMillis(selectorStart) + " ms");
 		updateStartupMessage(STARTUP_MESSAGE_BUILDING_ACTIONS);
 		setupButtonPanel();
-		logStartup("createTableSelector:buttonPanel", selectorStart);
+		if (DEBUG) System.out.println("createTableSelector: setupButtonPanel done " + elapsedMillis(selectorStart) + " ms");
 		installResultsTabCompletionTracking();
-		logStartup("createTableSelector:tabTracking", selectorStart);
+		if (DEBUG) System.out.println("createTableSelector: installResultsTabCompletionTracking done " + elapsedMillis(selectorStart) + " ms");
 		setupPresetRegionDropdown();
-		logStartup("createTableSelector:presetRegionDropdown", selectorStart);
+		if (DEBUG) System.out.println("createTableSelector: setupPresetRegionDropdown done " + elapsedMillis(selectorStart) + " ms");
 		favoriteQueriesManager = new FavoriteQueriesManager(queryList, listScrollQueries);
-		logStartup("createTableSelector:favoriteQueriesManager", selectorStart);
+		if (DEBUG) System.out.println("createTableSelector: FavoriteQueriesManager done " + elapsedMillis(selectorStart) + " ms");
 		setupListeners();
-		logStartup("createTableSelector:listeners", selectorStart);
+		if (DEBUG) System.out.println("createTableSelector: setupListeners done " + elapsedMillis(selectorStart) + " ms");
 		updateStartupMessage(STARTUP_MESSAGE_FINISHING);
 		finalizeUI();
 		dbViewInitialized = true;
-		logStartup("createTableSelector:finalizeUI", selectorStart);
+		if (DEBUG) System.out.println("createTableSelector: finalizeUI done " + elapsedMillis(selectorStart) + " ms");
 	}
 
 	private void ensureSplitPanesInitialized() {
@@ -1749,9 +1938,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		if (queryList.getRowCount() > 0) {
 			queryList.setSelectionRow(0);
 		}
-		for (int i = 0; i < queryList.getRowCount(); ++i) {
-			queryList.expandRow(i);
-		}
+		expandQueryTreeRows(queryList, STARTUP_QUERY_TREE_EXPANSION_ROW_LIMIT);
 		queryList.setRowHeight(queryList.getFont().getSize() + 5);
 		ToolTipManager.sharedInstance().registerComponent(queryList);
 		ToolTipManager.sharedInstance().setInitialDelay(1200); // set tooltip delay
@@ -1771,6 +1958,21 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 				return this;
 			}
 		});
+	}
+
+	private void expandQueryTreeRows(JTree tree, int maxRowsToExpand) {
+		if (tree == null || maxRowsToExpand <= 0) {
+			return;
+		}
+		int expandedRows = 0;
+		for (int row = 0; row < tree.getRowCount() && expandedRows < maxRowsToExpand; row++) {
+			tree.expandRow(row);
+			expandedRows++;
+		}
+		if (maxRowsToExpand != Integer.MAX_VALUE && tree.getRowCount() > maxRowsToExpand) {
+			if (DEBUG) System.out.println("DbViewer: query tree startup expansion capped at " + maxRowsToExpand
+					+ " rows to keep the UI responsive.");
+		}
 	}
 
 	/**
@@ -2051,9 +2253,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 				}
 				queryList.setModel(queries);
 				queryList.setSelectionRow(0);
-				for (int i = 0; i < queryList.getRowCount(); ++i) {
-					queryList.expandRow(i);
-				}
+				expandQueryTreeRows(queryList, STARTUP_QUERY_TREE_EXPANSION_ROW_LIMIT);
 			}
 		});
 
@@ -2087,6 +2287,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 
 		// Add TreeSelectionListener to enable/disable Run Query and Diff Query buttons
 		queryList.addTreeSelectionListener(e -> {
+			if (DEBUG) System.out.println("DbViewer.setupListeners: TreeSelectionListener fired. selectionCount=" + queryList.getSelectionCount());
 			boolean hasQuerySelected = false;
 			TreePath[] selectedPaths = queryList.getSelectionPaths();
 			if (selectedPaths != null) {
@@ -2234,450 +2435,39 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		});
 
 		listCollapseButton.addActionListener(new ActionListener() {
-            private boolean expanded = true;
-            public void actionPerformed(ActionEvent e) {
-                if (expanded) {
-                    // Collapse all except root
-                    for (int i = queryList.getRowCount() - 1; i > 0; i--) {
-                        queryList.collapseRow(i);
-                    }
-                } else {
-                    // Expand all
-                    for (int i = 0; i < queryList.getRowCount(); i++) {
-                        queryList.expandRow(i);
-                    }
-                }
-                expanded = !expanded;
-            }
-        }); // listener end
-		
+			private boolean expanded = true;
+			public void actionPerformed(ActionEvent e) {
+				if (expanded) {
+					// Collapse all except root
+					for (int i = queryList.getRowCount() - 1; i > 0; i--) {
+						queryList.collapseRow(i);
+					}
+				} else {
+					// Expand all
+					expandQueryTreeRows(queryList, Integer.MAX_VALUE);
+				}
+				expanded = !expanded;
+			}
+		}); // listener end
+		if (DEBUG) System.out.println("DbViewer.setupListeners: listener registration complete, beginning main-view activation...");
 		
 		JFrame parentFrame = InterfaceMain.getInstance().getFrame();
+		if (DEBUG) System.out.println("DbViewer.setupListeners: parentFrame acquired? " + (parentFrame != null));
 		parentFrame.getContentPane();
+		if (DEBUG) System.out.println("DbViewer.setupListeners: calling InterfaceMain.setMainView(tableCreatorSplit)...");
 		// Use InterfaceMain.setMainView to replace the CENTER component while keeping the
 		// global status bar (installed in InterfaceMain.SOUTH) intact.
 		InterfaceMain.getInstance().setMainView(tableCreatorSplit);
+		if (DEBUG) System.out.println("DbViewer.setupListeners: InterfaceMain.setMainView returned.");
 
 		// have to get rid of the wait cursor
+		if (DEBUG) System.out.println("DbViewer.setupListeners: hiding glass pane...");
 		parentFrame.getGlassPane().setVisible(false);
+		if (DEBUG) System.out.println("DbViewer.setupListeners: glass pane hidden.");
 
+		if (DEBUG) System.out.println("DbViewer.setupListeners: calling parentFrame.setVisible(true)...");
 		parentFrame.setVisible(true);
-	}
-
-	/**
-	 * Filters the query tree model to show only the queries and groups that match
-	 * the given query string.
-	 *
-	 * @param model The query tree model to filter.
-	 * @param query The text to search for.
-	 * @return The filtered query tree model.
-	 */
-	private QueryTreeModel getFilteredQueries(QueryTreeModel model, String query) {
-
-		QueryGroup root = (QueryGroup) model.getRoot();
-		ArrayList query_list = root.getQueryList();
-
-		ArrayList toRemove = new ArrayList<>();
-
-		for (int i = 0; i < query_list.size(); i++) {
-			if (query_list.get(i) instanceof QueryGroup) {
-				QueryGroup group = (QueryGroup) query_list.get(i);
-			 toRemove.addAll(getMatchingNodes(group, query));
-			}
-		}
-
-		for (int i = 0; i < toRemove.size(); i++) {
-			QueryGenerator qg = (QueryGenerator) toRemove.get(i);
-			Node myNode = qg.getMyNode();
-			qg.getMyNode().getParentNode().removeChild(myNode);
-		}
-
-		return model;
-	}
-
-
-
-	
-	/**
-	 * Returns a list of matching nodes in the QueryGroup that do not contain the
-	 * query string.
-	 * <p>
-	 * This method traverses the QueryGroup and collects nodes that do not match the
-	 * query string.
-	 *
-	 * @param groupTop The QueryGroup to search.
-	 * @param query    The query string to filter by.
-	 * @return ArrayList of nodes to remove.
-	 */
-	private ArrayList getMatchingNodes(QueryGroup groupTop, String query) {
-		ArrayList query_list = groupTop.getQueryList();
-		ArrayList toRemove = new ArrayList();
-		for (int i = 0; i < query_list.size(); i++) {
-			if (query_list.get(i) instanceof QueryGroup) {
-				QueryGroup group = (QueryGroup) query_list.get(i);
-				getMatchingNodes(group, query);
-			} else {
-				if (!query_list.get(i).toString().toLowerCase().contains(query.toLowerCase())) {
-					toRemove.add(query_list.get(i));
-				}
-			}
-		}
-		for (int i = 0; i < toRemove.size(); i++) {
-		 query_list.remove(toRemove.get(i));
-
-		}
-		return toRemove;
-	}
-
-	/**
-	 * Saves the expansion state of a JTree.
-	 *
-	 * @param tree The JTree whose expansion state is to be saved.
-	 * @return An Enumeration of TreePaths representing the expanded nodes.
-	 */
-	// YD added,2024
-	public static Enumeration<TreePath> saveExpansionState(JTree tree) {
-		return tree.getExpandedDescendants(new TreePath(tree.getModel().getRoot()));
-	}
-
-	/**
-	 * Restores the expansion state of a JTree.
-	 *
-	 * @param enumeration An Enumeration of TreePaths to be expanded.
-	 * @param tree        The JTree whose expansion state is to be restored.
-	 */
-	// YD added,2024
-	public void restoreExpansionState(Enumeration enumeration, JTree tree) {
-		if (enumeration != null) {
-			while (enumeration.hasMoreElements()) {
-			 TreePath treePath = (TreePath) enumeration.nextElement();
-				tree.expandPath(treePath);
-			}
-		}
-	}
-
-	/**
-	 * Gets the full TreePath for a query group by its name.
-	 *
-	 * @param tree      The JTree to search in.
-	 * @param groupName The name of the query group.
-	 * @return The TreePath for the group, or null if not found.
-	 */
-	// YD added,2024
-	// this method is to get the full tree path for a query group name,YD added
- private TreePath getFullTreePath(JTree tree, String groupName) {
-		Enumeration<TreePath> allPath = tree.getExpandedDescendants(new TreePath(tree.getModel().getRoot()));
-		TreePath myTreePath = null;
-		if (allPath != null) {
-			while (allPath.hasMoreElements()) {
-				TreePath treePath = (TreePath) allPath.nextElement();
-				String treePathStr = treePath.toString();
-				String[] splitsTreePath = treePathStr.replace("[", "").replace("]", "").split(",");
-				String currentGroup = splitsTreePath[splitsTreePath.length - 1];
-				// handle when "," within groupName such as 'Markets, prices, and costs' first
-				boolean groupNameHasComma = groupName.contains(",");
-				if (groupNameHasComma && treePath.toString().contains(groupName)) {
-					myTreePath = treePath;
-				} else if (currentGroup.trim().equalsIgnoreCase(groupName)) {
-					myTreePath = treePath;
-				}
-				if (myTreePath != null) {
-					break;
-				}
-			}
-		}
-		return (myTreePath);
-	}
-
-	/**
-	 * Gets all TreePaths for a query group name, considering that the same name can
-	 * appear at different levels in the tree.
-	 *
-	 * @param tree      The JTree to search in.
-	 * @param groupName The name of the query group.
-	 * @param pathCount The expected path count (depth) of the group.
-	 * @return An ArrayList of matching TreePaths.
-	 */
-	// this method is to get the full tree path for a query group name
-	// considering that the same query group name can appear multiple times in the
-// same tree
-	public static ArrayList<TreePath> getFullTreePath2(JTree tree, String groupName, int pathCount) {
-		Enumeration<TreePath> allPath = tree.getExpandedDescendants(new TreePath(tree.getModel().getRoot()));
-		ArrayList<TreePath> myTreePath = new ArrayList<TreePath>();
-		if (allPath != null) {
-			while (allPath.hasMoreElements()) {
-				TreePath treePath = (TreePath) allPath.nextElement();
-				String treePathStr = treePath.toString();
-				String[] splitsTreePath = treePathStr.replace("[", "").replace("]", "").split(",");
-				String currentGroup = splitsTreePath[splitsTreePath.length - 1];
-				int checkPathCount = treePath.getPathCount();
-				// handle when "," within groupName such as 'Markets, prices, and costs' first
-				boolean groupNameHasComma = groupName.contains(",");
-				if (groupNameHasComma && treePath.toString().contains(groupName)) {
-					myTreePath.add(treePath);
-				} else if (checkPathCount == pathCount & currentGroup.trim().equals(groupName)) {
-					System.out.println("found for Sankey diagrams group:" + treePathStr);
-					myTreePath.add(treePath);
-				}
-			}
-		}
-		return (myTreePath);
-	}
-
-	/**
-	 * Checks if a QueryGroup contains any nested QueryGroups.
-	 *
-	 * @param mySubGroup The QueryGroup to check.
-	 * @return true if the group contains no other groups (only leaves), false
-	 *         otherwise.
-	 */
-	// YD added,2024
-	// this method is to check if there are more levels of query group under a query
-	// group
-	private boolean checkNoMoreQueryGroupInside(QueryGroup mySubGroup) {
-		boolean noMoreGroup = true;
-		ArrayList group_inside = mySubGroup.getQueryList();
-		for (int j = 0; j < group_inside.size(); j++) {
-			if (group_inside.get(j) instanceof QueryGroup) {
-				noMoreGroup = false;
-				break;
-			}
-		} // for loop end
-		return (noMoreGroup);
-	}
-
-	/**
-	 * Closes all open tabs in the results pane.
-	 */
-	public void closeAllTabs() {
-		// need to disable the export tabs option
-		if (menuExpPrn != null) menuExpPrn.setEnabled(false);
-
-		if (tablesTabs.getTabCount() > 0) {
-			// Treat all open query tabs as completed when user closes them.
-			int toComplete;
-			synchronized (activeQueryTabs) {
-				toComplete = activeQueryTabs.size();
-				activeQueryTabs.clear();
-			}
-			if (toComplete > 0) {
-				completedQueries = Math.min(totalQueries, completedQueries + toComplete);
-				updateProgressUI();
-				if (completedQueries >= totalQueries) {
-					finishProgressUI();
-				}
-			}
-			// iterate over children and close each one
-			tablesTabs.removeAll();
-		}
-	}
-
-	/**
-	 * Closes all open secondary windows (JDialog and JFrames) managed by the
-	 * application.
-	 */
-	public void closeAllWindows() {
-		// grab the panel
-		if (openWindows.isEmpty()) {
-			return;
-		}
-		// iterate over children
-		for (Object o : openWindows) {
-			// cast it
-			if (o instanceof JDialog) {
-				JDialog win = (JDialog) o;
-				win.dispose();
-			}
-			if (o instanceof JFrame) {
-				JFrame instance = (JFrame) o;
-				instance.dispose();
-			}
-			// close it
-		}
-		// clear out list
-		openWindows.clear();
-
-	}
-
-	/**
-	 * Reads lines from a file into an ArrayList, skipping lines starting with the
-	 * comment character.
-	 * 
-	 * @param filename    The file to read.
-	 * @param commentChar The character indicating a comment line.
-	 * @return ArrayList of lines from the file.
-	 * @throws IOException If an I/O error occurs.
-	 */
-	public ArrayList<String> getStringArrayFromFile(String filename, String commentChar) throws IOException {
-		ArrayList<String> arrayList = new ArrayList<String>();
-
-		BufferedReader br = new BufferedReader(new FileReader(filename));
-		for (String line; (line = br.readLine()) != null;) {
-			line = line.trim();
-			if (line.length() > 0) {
-				if (commentChar != null && !line.startsWith(commentChar)) {
-					arrayList.add(line);
-				}
-			}
-		}
-		br.close();
-
-		return arrayList;
-	}
-
-	/**
-	 * Splits a string into an ArrayList using the specified delimiter.
-	 * 
-	 * @param line  The string to split.
-	 * @param delim The delimiter.
-	 * @return ArrayList of split strings.
-	 */
-	public ArrayList<String> createArrayListFromString(String line, String delim) {
-		ArrayList<String> linesList = new ArrayList<String>();
-		String[] lines = splitString(line, delim);
-		for (int i = 0; i < lines.length; i++) {
-			lines[i] = lines[i];// + vars.getEol();
-			linesList.add(lines[i]);
-		}
-		return linesList;
-	}
-
-	/**
-	 * Splits a string into an array using the specified delimiter.
-	 * 
-	 * @param str   The string to split.
-	 * @param delim The delimiter.
-	 * @return Array of split strings.
-	 */
-	public String[] splitString(String str, String delim) {
-		String s[] = str.split(delim);
-		return s;
-	}
-
-	/**
-	 * Selects preset regions in the region list based on the dropdown selection.
-	 */
-	public void selectPresetRegions() {
-		if (comboBoxPresetRegions == null || regionList == null) {
-			return;
-		}
-		boolean verbose = false;
-		String selection = (String) comboBoxPresetRegions.getSelectedItem();
-		if (selection == null) {
-			return;
-		}
-		int idx = comboBoxPresetRegions.getSelectedIndex();
-		if (verbose)
-			System.out.println("this is my selection: " + selection);
-		if (idx > 0) {// YD added,Apr-2024
-			for (int i = 0; i < preset_region_list.size(); i++) {
-				String line = preset_region_list.get(i);
-				int index = line.indexOf(":");
-				if (index > 0) {
-					String name = line.substring(0, index).toLowerCase();
-					if (selection.toLowerCase().equals(name)) {
-						String[] subregions = splitString(line.substring(index + 1), ",");
-						if (verbose)
-							System.out.println("number of items in this subregion is: " + subregions.length);
-						selectItemsFromRegionList(subregions);
-					}
-				}
-			} // for loop end
-		} else { // YD added,Apr-2024
-			regionList.setSelectedIndex(0);
-		} // outer if else loop end
-	}// selectPresetRegions method end
-
-	/**
-	 * Selects items from the region list based on the provided subregions.
-	 * 
-	 * @param subregions Array of subregion names to select.
-	 */
-	public void selectItemsFromRegionList(String[] subregions) {
-
-		ArrayList<Integer> regionIndices = new ArrayList<Integer>();
-
-		for (int i = 0; i < subregions.length; i++) {
-
-			for (int j = 0; j < regions.size(); j++) {
-
-				String st_str = subregions[i].trim();
-				String regionName = regions.get(j).toString();
-				if (st_str.equals(regionName)) {
-					regionIndices.add(j);
-				}
-			}
-		}
-
-		int[] regionIndicesArray = new int[regionIndices.size()];
-		for (int n = 0; n < regionIndices.size(); n++) {
-			regionIndicesArray[n] = regionIndices.get(n);
-		}
-		// set selected sub-regions in the regionList
-		if (regionIndicesArray.length > 0) {
-			regionList.setSelectedIndices(regionIndicesArray);
-			// scroll to the selected items
-			java.awt.Rectangle bounds = regionList.getCellBounds(regionIndicesArray[0],
-					regionIndicesArray[regionIndices.size() - 1]);
-			listScrollRegions.getVerticalScrollBar().setValue((int) bounds.getMinY());
-		}
-	}
-
-	/**
-	 * Gets the row number for a leaf under a query group in the tree.
-	 * 
-	 * @param myTree   The JTree.
-	 * @param myPath   The TreePath to the group.
-	 * @param leafName The name of the leaf.
-	 * @return The row number for the leaf, or -1 if not found.
-	 */
-	public static int getRowNumberForLeaf(JTree myTree, TreePath myPath, String leafName) {
-		int rowNumForLeaf = -1;
-		int rowNumForSubgroup = myTree.getRowForPath(myPath);
-		QueryGroup myChildGroup = (QueryGroup) myPath.getLastPathComponent();
-		ArrayList leaves = myChildGroup.getQueryList();
-		for (int m = 0; m < leaves.size(); m++) {
-			if (leafName.replace("\"", "").trim().compareToIgnoreCase(leaves.get(m).toString().trim()) == 0) {
-				int myIndex = ((TreeModel) myTree.getModel()).getIndexOfChild(myChildGroup, leaves.get(m));
-				rowNumForLeaf = rowNumForSubgroup + myIndex + 1;
-				break;
-			}
-		}
-		return rowNumForLeaf;
-	}
-
-	public void runBatch(Node command) {
-		batchExecutionController.runBatch(command);
-	}
-
-	/**
-	 * Loads the preset region list from a file and populates the dropdown choices.
-	 * It reads from "config/preset_region_list.txt", parsing region groups and
-	 * their sub-regions.
-	 */
-	private void loadRegionListToDropdown() {
-		String region_list_file = "config/preset_region_list.txt";
-		try {
-			preset_region_list = getStringArrayFromFile(region_list_file, "#");
-			if (preset_region_list.size() > 0) {
-				preset_choices = new String[preset_region_list.size() + 1];
-				preset_choices[0] = "(optional)";
-				for (int i = 0; i < preset_region_list.size(); i++) {
-					String line = preset_region_list.get(i);
-					int index = line.indexOf(":");
-					if (index > 0) {
-						String name = line.substring(0, index);
-						preset_choices[i + 1] = name;
-						String[] subregions = splitString(line.substring(index + 1), ",");
-						for (int j = 0; j < subregions.length; j++) {
-							subregion_list.add(subregions[j]);
-						}
-					}
-				}
-			}
-		} catch (IOException e) {
-			System.out.println("Not able to read preset_region_list file: " + region_list_file);
-		}
+		if (DEBUG) System.out.println("DbViewer.setupListeners: parentFrame.setVisible(true) returned.");
 	}
 
 	/**
@@ -2686,16 +2476,29 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 */
 	private void finalizeUI() {
 		JFrame parentFrame = InterfaceMain.getInstance().getFrame();
+		if (DEBUG) System.out.println("DbViewer.finalizeUI: entered. parentFrame? " + (parentFrame != null));
 		if (parentFrame == null)
 			return;
 		parentFrame.getContentPane();
+		if (DEBUG) System.out.println("DbViewer.finalizeUI: calling InterfaceMain.setMainView(tableCreatorSplit)...");
 		InterfaceMain.getInstance().setMainView(tableCreatorSplit);
+		if (DEBUG) System.out.println("DbViewer.finalizeUI: InterfaceMain.setMainView returned.");
+		if (DEBUG) System.out.println("DbViewer.finalizeUI: calling hideStartupLoadingView()...");
 		InterfaceMain.getInstance().hideStartupLoadingView();
+		if (DEBUG) System.out.println("DbViewer.finalizeUI: hideStartupLoadingView() returned.");
+		if (DEBUG) System.out.println("DbViewer.finalizeUI: calling parentFrame.setLocationRelativeTo(null)...");
 		parentFrame.setLocationRelativeTo(null);
+		if (DEBUG) System.out.println("DbViewer.finalizeUI: parentFrame.setLocationRelativeTo(null) returned.");
+		if (DEBUG) System.out.println("DbViewer.finalizeUI: calling parentFrame.setVisible(true)...");
 		parentFrame.setVisible(true);
+		if (DEBUG) System.out.println("DbViewer.finalizeUI: parentFrame.setVisible(true) returned.");
+		if (DEBUG) System.out.println("DbViewer.finalizeUI: hiding glass pane...");
 		parentFrame.getGlassPane().setVisible(false);
+		if (DEBUG) System.out.println("DbViewer.finalizeUI: glass pane hidden.");
 		if (loadingPanel != null) {
+			if (DEBUG) System.out.println("DbViewer.finalizeUI: hiding loadingPanel...");
 			loadingPanel.setVisible(false);
+			if (DEBUG) System.out.println("DbViewer.finalizeUI: loadingPanel hidden.");
 		}
 	}
 
@@ -2819,9 +2622,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			queries = getQueries();
 			if (queryList != null) {
 				queryList.setModel(queries);
-				for (int i = 0; i < queryList.getRowCount(); ++i) {
-					queryList.expandRow(i);
-				}
+				expandQueryTreeRows(queryList, STARTUP_QUERY_TREE_EXPANSION_ROW_LIMIT);
 			}
 		}
 	}
@@ -3458,5 +3259,212 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		}
 		return new ImageIcon(resource);
 	}
-}
 
+	private QueryTreeModel getFilteredQueries(QueryTreeModel model, String query) {
+
+		QueryGroup root = (QueryGroup) model.getRoot();
+		ArrayList query_list = root.getQueryList();
+
+		ArrayList toRemove = new ArrayList<>();
+
+		for (int i = 0; i < query_list.size(); i++) {
+			if (query_list.get(i) instanceof QueryGroup) {
+				QueryGroup group = (QueryGroup) query_list.get(i);
+				toRemove.addAll(getMatchingNodes(group, query));
+			}
+		}
+
+		for (int i = 0; i < toRemove.size(); i++) {
+			QueryGenerator qg = (QueryGenerator) toRemove.get(i);
+			Node myNode = qg.getMyNode();
+			qg.getMyNode().getParentNode().removeChild(myNode);
+		}
+
+		return model;
+	}
+
+	private ArrayList getMatchingNodes(QueryGroup groupTop, String query) {
+		ArrayList query_list = groupTop.getQueryList();
+		ArrayList toRemove = new ArrayList();
+		for (int i = 0; i < query_list.size(); i++) {
+			if (query_list.get(i) instanceof QueryGroup) {
+				QueryGroup group = (QueryGroup) query_list.get(i);
+				getMatchingNodes(group, query);
+			} else {
+				if (!query_list.get(i).toString().toLowerCase().contains(query.toLowerCase())) {
+					toRemove.add(query_list.get(i));
+				}
+			}
+		}
+		for (int i = 0; i < toRemove.size(); i++) {
+			query_list.remove(toRemove.get(i));
+		}
+		return toRemove;
+	}
+
+	public void closeAllTabs() {
+		if (menuExpPrn != null) menuExpPrn.setEnabled(false);
+
+		if (tablesTabs.getTabCount() > 0) {
+			int toComplete;
+			synchronized (activeQueryTabs) {
+				toComplete = activeQueryTabs.size();
+				activeQueryTabs.clear();
+			}
+			if (toComplete > 0) {
+				completedQueries = Math.min(totalQueries, completedQueries + toComplete);
+				updateProgressUI();
+				if (completedQueries >= totalQueries) {
+					finishProgressUI();
+				}
+			}
+			tablesTabs.removeAll();
+		}
+	}
+
+	public void closeAllWindows() {
+		if (openWindows.isEmpty()) {
+			return;
+		}
+		for (Object o : openWindows) {
+			if (o instanceof JDialog) {
+				((JDialog) o).dispose();
+			}
+			if (o instanceof JFrame) {
+				((JFrame) o).dispose();
+			}
+		}
+		openWindows.clear();
+	}
+
+	private void loadRegionListToDropdown() {
+		String region_list_file = "config/preset_region_list.txt";
+		try {
+			preset_region_list = getStringArrayFromFile(region_list_file, "#");
+			if (preset_region_list.size() > 0) {
+				preset_choices = new String[preset_region_list.size() + 1];
+				preset_choices[0] = "(optional)";
+				for (int i = 0; i < preset_region_list.size(); i++) {
+					String line = preset_region_list.get(i);
+					int index = line.indexOf(":");
+					if (index > 0) {
+						String name = line.substring(0, index);
+						preset_choices[i + 1] = name;
+						String[] subregions = splitString(line.substring(index + 1), ",");
+						for (int j = 0; j < subregions.length; j++) {
+							subregion_list.add(subregions[j]);
+						}
+					}
+				}
+			}
+		} catch (IOException e) {
+			System.out.println("Not able to read preset_region_list file: " + region_list_file);
+		}
+	}
+
+	public void selectPresetRegions() {
+		if (comboBoxPresetRegions == null || regionList == null) {
+			return;
+		}
+		boolean verbose = false;
+		String selection = (String) comboBoxPresetRegions.getSelectedItem();
+		if (selection == null) {
+			return;
+		}
+		int idx = comboBoxPresetRegions.getSelectedIndex();
+		if (verbose)
+			System.out.println("this is my selection: " + selection);
+		if (idx > 0) {
+			for (int i = 0; i < preset_region_list.size(); i++) {
+				String line = preset_region_list.get(i);
+				int index = line.indexOf(":");
+				if (index > 0) {
+					String name = line.substring(0, index).toLowerCase();
+					if (selection.toLowerCase().equals(name)) {
+						String[] subregions = splitString(line.substring(index + 1), ",");
+						if (verbose)
+							System.out.println("number of items in this subregion is: " + subregions.length);
+						selectItemsFromRegionList(subregions);
+					}
+				}
+			}
+		} else {
+			regionList.setSelectedIndex(0);
+		}
+	}
+
+	public void selectItemsFromRegionList(String[] subregions) {
+		ArrayList<Integer> regionIndices = new ArrayList<Integer>();
+
+		for (int i = 0; i < subregions.length; i++) {
+			for (int j = 0; j < regions.size(); j++) {
+				String st_str = subregions[i].trim();
+				String regionName = regions.get(j).toString();
+				if (st_str.equals(regionName)) {
+					regionIndices.add(j);
+				}
+			}
+		}
+
+		int[] regionIndicesArray = new int[regionIndices.size()];
+		for (int n = 0; n < regionIndices.size(); n++) {
+			regionIndicesArray[n] = regionIndices.get(n);
+		}
+		if (regionIndicesArray.length > 0) {
+			regionList.setSelectedIndices(regionIndicesArray);
+			java.awt.Rectangle bounds = regionList.getCellBounds(regionIndicesArray[0],
+					regionIndicesArray[regionIndices.size() - 1]);
+			listScrollRegions.getVerticalScrollBar().setValue((int) bounds.getMinY());
+		}
+	}
+
+	public void runBatch(Node command) {
+		batchExecutionController.runBatch(command);
+	}
+
+	public ArrayList<String> getStringArrayFromFile(String filename, String commentChar) throws IOException {
+		ArrayList<String> arrayList = new ArrayList<String>();
+
+		BufferedReader br = new BufferedReader(new FileReader(filename));
+		for (String line; (line = br.readLine()) != null;) {
+			line = line.trim();
+			if (line.length() > 0) {
+				if (commentChar != null && !line.startsWith(commentChar)) {
+					arrayList.add(line);
+				}
+			}
+		}
+		br.close();
+
+		return arrayList;
+	}
+
+	public ArrayList<String> createArrayListFromString(String line, String delim) {
+		ArrayList<String> linesList = new ArrayList<String>();
+		String[] lines = splitString(line, delim);
+		for (int i = 0; i < lines.length; i++) {
+			linesList.add(lines[i]);
+		}
+		return linesList;
+	}
+
+	public String[] splitString(String str, String delim) {
+		String s[] = str.split(delim);
+		return s;
+	}
+
+	public static int getRowNumberForLeaf(JTree myTree, TreePath myPath, String leafName) {
+		int rowNumForLeaf = -1;
+		int rowNumForSubgroup = myTree.getRowForPath(myPath);
+		QueryGroup myChildGroup = (QueryGroup) myPath.getLastPathComponent();
+		ArrayList leaves = myChildGroup.getQueryList();
+		for (int m = 0; m < leaves.size(); m++) {
+			if (leafName.replace("\"", "").trim().compareToIgnoreCase(leaves.get(m).toString().trim()) == 0) {
+				int myIndex = ((TreeModel) myTree.getModel()).getIndexOfChild(myChildGroup, leaves.get(m));
+				rowNumForLeaf = rowNumForSubgroup + myIndex + 1;
+				break;
+			}
+		}
+		return rowNumForLeaf;
+	}
+}

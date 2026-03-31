@@ -1465,7 +1465,8 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     private boolean hasModelInterfaceLocationConfigured() {
-        return vars.getModelInterfaceDir() != null && !vars.getModelInterfaceDir().trim().isEmpty();
+        String modelInterfaceDir = vars.getModelInterfaceDir();
+        return modelInterfaceDir != null && !modelInterfaceDir.trim().isEmpty();
     }
 
     private String getStopRequestedScenarioName() {

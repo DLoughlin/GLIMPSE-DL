@@ -87,6 +87,7 @@ public class XMLDB {
      * The static instance of the XMLDB.
      */
 	private static XMLDB xmldbInstance = null;
+	private static final boolean DEBUG = false;
 
 	private static String buildOpenFailureMessage(String dbPath, String operation, Throwable cause) {
 		StringBuilder message = new StringBuilder("Could not ").append(operation).append(" DB");
@@ -598,7 +599,10 @@ public class XMLDB {
 	public QueryProcessor createQuery(QueryBinding queryBinding, Object[] scenarios, Object[] regions, DbProcInterrupt interrupt) {
 		String queryComplete = queryBinding.bindToQuery(scenarios, regions);
 		System.out.println("About to perform query: "+queryComplete);
+		String preview = queryComplete.length() > 160 ? queryComplete.substring(0, 160) + "..." : queryComplete;
+		if (DEBUG) System.out.println("XMLDB.createQuery: constructing QueryProcessor for query preview: " + preview);
         QueryProcessor ret = new QueryProcessor(queryComplete, context);
+		if (DEBUG) System.out.println("XMLDB.createQuery: QueryProcessor constructed successfully.");
         if(interrupt != null) {
             interrupt.setProc(ret);
         }

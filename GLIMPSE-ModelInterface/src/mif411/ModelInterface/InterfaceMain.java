@@ -121,14 +121,14 @@ public class InterfaceMain implements ActionListener {
 		STARTUP,
 		SHUTDOWN
 	}
-
+	private static final boolean DEBUG = false;
 	private static final int STARTUP_MESSAGE_LINGER_MS = 200;
 	private static final int STARTUP_PROGRESS_MAX = 100;
 	private static final int STARTUP_TOTAL_STEPS = 5;
 	private static final int SHUTDOWN_TOTAL_STEPS = 4;
 	private static final int SHUTDOWN_STEP_LINGER_MS = 120;
-	private static final String STARTUP_MESSAGE_WITH_DB = "Starting GLIMPSE...";
-	private static final String STARTUP_MESSAGE_WITHOUT_DB = "Starting GLIMPSE... waiting for database selection.";
+	private static final String STARTUP_MESSAGE_WITH_DB = "Starting ModelInterface...";
+	private static final String STARTUP_MESSAGE_WITHOUT_DB = "Starting ModelInterface... waiting for database selection.";
 	private static final String STARTUP_MESSAGE_INITIALIZING = "Loading interface...";
 	private static final String STARTUP_MESSAGE_STATUS_BAR = "Preparing workspace...";
 	private static final String STARTUP_MESSAGE_DB_VIEW = "Preparing database view...";
@@ -762,10 +762,11 @@ public class InterfaceMain implements ActionListener {
 						if (ModelInterface.ModelGUI2.xmldb.XMLDB.isSuppressedBaseXResourceException(e)) {
 							System.err.println("Suppressing BaseX packaged-resource stack trace during initial DB open: " + e.getMessage());
 						} else {
-							e.printStackTrace();
+						 e.printStackTrace();
 						}
 					}
-					main.completeStartupStep(STARTUP_MESSAGE_READY);
+					// DbViewer continues startup asynchronously via SwingWorker; keep the
+					// loading view in its current stage until DbViewer reports completion or failure.
 					File f = new File(path);
 					File[] files = new File[1];
 					files[0] = f;
@@ -1301,16 +1302,28 @@ public class InterfaceMain implements ActionListener {
 	 * Replace the main view in the CENTER while keeping the global status bar visible.
 	 */
 	public void setMainView(java.awt.Component view) {
+		if (DEBUG) System.out.println("InterfaceMain.setMainView: entered. view="
+				+ (view == null ? "null" : view.getClass().getName())
+				+ " thread=" + Thread.currentThread().getName());
 		ensureStatusBarInstalled();
+		if (DEBUG) System.out.println("InterfaceMain.setMainView: ensureStatusBarInstalled returned.");
 		java.awt.Component existing = ((BorderLayout) rootContent.getLayout()).getLayoutComponent(BorderLayout.CENTER);
+		if (DEBUG) System.out.println("InterfaceMain.setMainView: existing center="
+				+ (existing == null ? "null" : existing.getClass().getName()));
 		if (existing != null) {
 			rootContent.remove(existing);
+			if (DEBUG) System.out.println("InterfaceMain.setMainView: removed existing center.");
 		}
 		if (view != null) {
 			rootContent.add(view, BorderLayout.CENTER);
+			if (DEBUG) System.out.println("InterfaceMain.setMainView: added new center component.");
 		}
+		if (DEBUG) System.out.println("InterfaceMain.setMainView: calling rootContent.revalidate()...");
 		rootContent.revalidate();
+		if (DEBUG) System.out.println("InterfaceMain.setMainView: rootContent.revalidate() returned.");
+		if (DEBUG) System.out.println("InterfaceMain.setMainView: calling rootContent.repaint()...");
 		rootContent.repaint();
+		if (DEBUG) System.out.println("InterfaceMain.setMainView: rootContent.repaint() returned.");
 	}
 
 	private void resetQueryProgressUI() {
@@ -1748,7 +1761,7 @@ public class InterfaceMain implements ActionListener {
 			editMM.addMenuItem(new JMenu("Favorites List"), EDIT_FAVORITES_SUBMENU_POS);
 		}
 
-		// 5) Separator
+		//		// 5) Separator
 		editMM.addSeparator(5);
 
 		// 6) Preferences...
@@ -2751,4 +2764,4 @@ public class InterfaceMain implements ActionListener {
 			}
 		}
 	}
-}
+}

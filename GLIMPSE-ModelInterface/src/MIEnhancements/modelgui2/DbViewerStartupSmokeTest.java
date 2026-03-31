@@ -23,6 +23,8 @@ public final class DbViewerStartupSmokeTest {
         testQueryFallbackResolution(viewer);
         testQueriesDocInvalidation(viewer);
         testLifecycleTransitions(viewer);
+        testDbViewInitializedReset(viewer);
+        testBackgroundStartupLoaderFailsCleanly(viewer);
         testDbFileWithoutParentDoesNotCrash(viewer);
         testButtonPanelRequiresQueryPanel(viewer);
         testMissingIconFallsBack(viewer);
@@ -207,5 +209,46 @@ public final class DbViewerStartupSmokeTest {
                 new boolean[] { true }, null, new javax.swing.tree.TreePath(wrongTree.getModel().getRoot()));
 
         ext.valueChanged(event);
+    }
+
+    private static void testBackgroundStartupLoaderFailsCleanly(DbViewer viewer) throws Exception {
+        Method loadStartupDataInBackground = DbViewer.class.getDeclaredMethod("loadStartupDataInBackground", File.class,
+                boolean.class);
+        loadStartupDataInBackground.setAccessible(true);
+
+        File invalidDb = new File("build_tmp", "missing-db-for-startup-smoke");
+        if (invalidDb.exists()) {
+            throw new AssertionError("Expected smoke-test DB path to be absent: " + invalidDb.getAbsolutePath());
+        }
+
+        try {
+            loadStartupDataInBackground.invoke(viewer, invalidDb, false);
+            throw new AssertionError("Expected background startup loader to fail for a missing database path");
+        } catch (java.lang.reflect.InvocationTargetException ite) {
+            Throwable cause = ite.getCause();
+            assert cause instanceof IllegalStateException : "Expected IllegalStateException but got " + cause;
+            assert cause.getMessage() != null && cause.getMessage().contains("Could not open or initialize")
+                    : "Unexpected background loader failure message: " + cause.getMessage();
+        }
+    }
+
+    private static void testDbViewInitializedReset(DbViewer viewer) throws Exception {
+        Field dbViewInitializedField = DbViewer.class.getDeclaredField("dbViewInitialized");
+        dbViewInitializedField.setAccessible(true);
+        Method resetDbViewInitialized = DbViewer.class.getDeclaredMethod("resetDbViewInitialized", String.class);
+        resetDbViewInitialized.setAccessible(true);
+
+        dbViewInitializedField.setBoolean(viewer, true);
+        resetDbViewInitialized.invoke(viewer, "smoke-test");
+        assert !dbViewInitializedField.getBoolean(viewer) : "dbViewInitialized should reset to false";
+
+        dbViewInitializedField.setBoolean(viewer, true);
+        try {
+            viewer.doOpenDB(new File("startup-smoke-db"), false);
+        } catch (Exception expectedInHeadlessOrNoDbEnv) {
+            // The smoke environment may fail before startup completes; we only care that the stale init flag is reset.
+        }
+        assert !dbViewInitializedField.getBoolean(viewer)
+                : "Fresh doOpenDB should clear stale dbViewInitialized before startup begins";
     }
 }
