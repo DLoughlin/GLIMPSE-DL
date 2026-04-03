@@ -173,7 +173,6 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	private JPanel loadingPanel;
 	private JLabel loadingLabel;
 	private volatile boolean dbViewInitialized = false;
-	private volatile StartupData startupDataResult;
 	private javax.swing.SwingWorker<StartupData, Void> startupLoader;
 	private volatile java.util.concurrent.atomic.AtomicReference<Thread> edtHeartbeatRef;
 	private volatile java.util.concurrent.atomic.AtomicReference<boolean[]> edtHeartbeatDoneRef;
@@ -1271,36 +1270,117 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
 		FileChooser fc = FileChooserFactory.getFileChooser();
-		final FileFilter csvFilter = new javax.swing.filechooser.FileFilter() {
-			public boolean accept(File f) {
-				return f.getName().toLowerCase().endsWith(".csv") || f.isDirectory();
-			}
-
-			public String getDescription() {
-				return "CSV File (*.csv)";
-			}
-		};
-		File[] csvFiles = fc.doFilePrompt(parentFrame, "Export Tabs as CSVs", FileChooser.SAVE_DIALOG,
-				new File(main.getProperties().getProperty("lastDirectory", ".")), csvFilter);
-		if (csvFiles == null) {
+		final FileFilter dirFilter = new DirectoryFilter();
+		File[] exportDirs = fc.doFilePrompt(parentFrame, "Export Tabs as CSVs", FileChooser.LOAD_DIALOG,
+				new File(main.getProperties().getProperty("lastDirectory", ".")), dirFilter);
+		if (exportDirs == null || exportDirs.length == 0) {
 			return;
 		} else {
-			main.getProperties().setProperty("lastDirectory", csvFiles[0].getParent());
-			for (int i = 0; i < tablesTabs.getTabCount(); ++i) {
-				File file = new File(csvFiles[0].getParentFile(),
-						tablesTabs.getTitleAt(i).replaceAll("[^a-zA-Z0-9.-]", "_") + ".csv");
-				try {
-					PrintWriter pw = new PrintWriter(file);
-					BaseTableModel btm = getTableModelFromComponent(tablesTabs.getComponentAt(i));
-					if (btm != null) {
-						btm.print(pw);
-					}
-					pw.close();
-				} catch (FileNotFoundException e) {
-					e.printStackTrace();
-				}
+			File exportDir = exportDirs[0].isDirectory() ? exportDirs[0] : exportDirs[0].getParentFile();
+			if (exportDir == null) {
+				return;
+			}
+		main.getProperties().setProperty("lastDirectory", exportDir.getAbsolutePath());
+		int exportedCount = 0;
+		int skippedCount = 0;
+		List<String> skippedNoModel = new ArrayList<String>();
+		List<String> skippedWriteFailed = new ArrayList<String>();
+		for (int i = 0; i < tablesTabs.getTabCount(); ++i) {
+			String tabTitle = tablesTabs.getTitleAt(i);
+			JTable table = getJTableFromComponent(tablesTabs.getComponentAt(i));
+			if (table == null) {
+				skippedCount++;
+				skippedNoModel.add(tabTitle);
+				continue;
+			}
+			File file = new File(exportDir, tabTitle.replaceAll("[^a-zA-Z0-9.-]", "_") + ".csv");
+			try {
+				PrintWriter pw = new PrintWriter(file);
+				exportTableToCSV(table, pw);
+				pw.close();
+				exportedCount++;
+			} catch (FileNotFoundException e) {
+				skippedCount++;
+				skippedWriteFailed.add(tabTitle);
+				e.printStackTrace();
 			}
 		}
+		final int messageType = exportedCount == 0 && skippedCount > 0 ? JOptionPane.WARNING_MESSAGE
+				: JOptionPane.INFORMATION_MESSAGE;
+		StringBuilder dialogMessage = new StringBuilder();
+		dialogMessage.append("Export complete. Exported ").append(exportedCount).append(" tab(s), skipped ")
+				.append(skippedCount).append(" tab(s).\n")
+				.append("Folder: ").append(exportDir.getAbsolutePath());
+		
+		StringBuilder consoleMessage = new StringBuilder(dialogMessage.toString());
+		if (!skippedNoModel.isEmpty()) {
+			consoleMessage.append(" | Skipped (no table model): ")
+					.append(formatSkippedTabList(skippedNoModel));
+		}
+		if (!skippedWriteFailed.isEmpty()) {
+			consoleMessage.append(" | Skipped (write failed): ")
+					.append(formatSkippedTabList(skippedWriteFailed));
+		}
+		System.out.println("Export Tabs as CSVs: " + consoleMessage.toString());
+		main.showMessageDialog(
+				dialogMessage.toString(),
+				"Export Tabs as CSVs",
+				messageType);
+		}
+	}
+
+	private static String formatSkippedTabList(List<String> tabNames) {
+		final int maxNamesToShow = 8;
+		if (tabNames.size() <= maxNamesToShow) {
+			return String.join(", ", tabNames);
+		}
+		return String.join(", ", tabNames.subList(0, maxNamesToShow)) + " ... and "
+				+ (tabNames.size() - maxNamesToShow) + " more";
+	}
+	
+	/**
+	 * Exports a JTable's data to a CSV PrintWriter, regardless of the underlying table model type.
+	 * This handles both BaseTableModel and wrapped models like FilteredTable$1.
+	 */
+	private static void exportTableToCSV(JTable table, PrintWriter pw) {
+		int colCount = table.getColumnCount();
+		// Write header row
+		for (int col = 0; col < colCount; col++) {
+			if (col > 0) pw.print(",");
+			pw.print("\"" + escapeCSV(table.getColumnName(col)) + "\"");
+		}
+		pw.println();
+		// Write data rows
+		int rowCount = table.getRowCount();
+		for (int row = 0; row < rowCount; row++) {
+			for (int col = 0; col < colCount; col++) {
+				if (col > 0) pw.print(",");
+				Object val = table.getValueAt(row, col);
+				pw.print("\"" + escapeCSV(val == null ? "" : val.toString()) + "\"");
+			}
+			pw.println();
+		}
+	}
+	
+	private static String escapeCSV(String val) {
+		if (val == null) return "";
+		return val.replace("\"", "\"\"");
+	}
+
+	private static JTable findFirstJTable(Component comp) {
+		if (comp instanceof JTable) {
+			return (JTable) comp;
+		}
+		if (!(comp instanceof Container)) {
+			return null;
+		}
+		for (Component child : ((Container) comp).getComponents()) {
+			JTable table = findFirstJTable(child);
+			if (table != null) {
+				return table;
+			}
+		}
+		return null;
 	}
 
 	
@@ -1506,13 +1586,11 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	private void startBackgroundInitialization(final long openStart, final File dbFile, final boolean create) {
 		final InterfaceMain main = InterfaceMain.getInstance();
 		final JFrame parentFrame = main.getFrame();
-		startupDataResult = null;
 		startupLoader = new javax.swing.SwingWorker<StartupData, Void>() {
 			@Override
 			protected StartupData doInBackground() {
 				final long loadStart = System.nanoTime();
 				StartupData data = loadStartupDataInBackground(dbFile, create);
-				startupDataResult = data;
 				InterfaceMain.logStartupTiming("DbViewer:backgroundLoad:modelData " + elapsedMillis(loadStart) + " ms");
 				if (DEBUG) System.out.println("DbViewer.doInBackground: complete for " + dbFile.getName()
 						+ ", posting done() to EDT now...");
@@ -1570,7 +1648,6 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 					if (cancelled || dbViewInitialized) {
 						if (DEBUG) System.out.println("DbViewer.done(): returning early due to cancelled/initialized state.");
 						if (cancelled) {
-							startupDataResult = null;
 							invalidateQueriesDocument("startupLoader-cancelled");
 							logStartupPhase("Startup cancelled", dbFile);
 						}
@@ -1590,8 +1667,8 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 					if (DEBUG) System.out.println("DbViewer.done(): updating startup message to building lists...");
 					updateStartupMessage(STARTUP_MESSAGE_BUILDING_LISTS);
 					if (DEBUG) System.out.println("DbViewer.done(): startup message updated.");
-					StartupData data = startupDataResult;
-					if (DEBUG) System.out.println("DbViewer.done(): startupDataResult present? " + (data != null));
+					StartupData data = get();
+					if (DEBUG) System.out.println("DbViewer.done(): startup worker result present? " + (data != null));
 					if (data == null) {
 						throw new IllegalStateException("Startup data was unexpectedly unavailable on the EDT after background load completed. workerDone="
 								+ startupLoader.isDone() + " workerCancelled=" + startupLoader.isCancelled());
@@ -1599,7 +1676,6 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 					if (DEBUG) System.out.println("DbViewer.done(): validating startup data...");
 					data = validateStartupData(data);
 					if (DEBUG) System.out.println("DbViewer.done(): startup data validated.");
-					startupDataResult = null;
 					if (DEBUG) System.out.println("DbViewer.done(): startupDataResult cleared; creating table selector UI next...");
 					logStartupPhase("Creating table selector UI", dbFile);
 					createTableSelector(data);
@@ -1616,7 +1692,6 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 					logStartupPhase("Startup ready", dbFile);
 					logStartup("doOpenDB:complete", openStart);
 				} catch (Exception e) {
-					startupDataResult = null;
 					invalidateQueriesDocument("startupLoader-done-failed");
 					setStartupState(StartupLifecycleState.FAILED);
 					Throwable root = unwrapFailure(e);
