@@ -35,6 +35,8 @@
 */
 package glimpseElement;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.ArrayList;
 
 import glimpseUtil.GLIMPSEStyles;
@@ -112,6 +114,7 @@ public class PaneForComponentDetails extends VBox {
     // Input fields for year and value
     TextField textFieldYear = utils.createTextField();
     TextField textFieldValue = utils.createTextField();
+
     // Button to add new data point
     Button buttonAdd = utils.createButton("Add", styles.getBigButtonWidth(), null);
     // Flag to enforce year-value pair input
@@ -171,6 +174,8 @@ public class PaneForComponentDetails extends VBox {
         // Bind input field widths to table width
         textFieldYear.prefWidthProperty().bind(table.widthProperty().divide(8. / 2.75));
         textFieldValue.prefWidthProperty().bind(table.widthProperty().divide(8. / 3.75));
+        textFieldYear.setPromptText("Year");
+        textFieldValue.setPromptText("Value");
         
         inputHBox.getChildren().addAll(textFieldYear, textFieldValue, buttonAdd);
         inputHBox.setSpacing(3.);
@@ -557,9 +562,23 @@ public class PaneForComponentDetails extends VBox {
         for (int i = 0; i < values[0].length; i++) {
             int yr = (int) values[0][i];
             double val = values[1][i];
-            addOrReplacePlaceholderRow(String.valueOf(yr), String.valueOf(val));
+            addOrReplacePlaceholderRow(String.valueOf(yr), formatValueForDisplay(val));
         }
         updateTable();
+    }
+
+    /**
+     * Formats a numeric value for table display using 4 significant digits.
+     */
+    private String formatValueForDisplay(double value) {
+        if (Double.isNaN(value) || Double.isInfinite(value)) {
+            return String.valueOf(value);
+        }
+        if (value == 0d) {
+            return "0";
+        }
+        BigDecimal rounded = BigDecimal.valueOf(value).round(new MathContext(4));
+        return rounded.stripTrailingZeros().toString();
     }
 
     /**

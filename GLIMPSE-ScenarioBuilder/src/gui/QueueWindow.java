@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.function.Supplier;
 
+import glimpseUtil.UtilsDialogs;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
@@ -38,6 +39,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 import javafx.util.Duration;
 
 /**
@@ -110,13 +112,17 @@ public class QueueWindow {
         }
 
         dataSupplier = supplier;
+        Window resolvedOwner = owner;
+        if (resolvedOwner == null) {
+            resolvedOwner = UtilsDialogs.getPrimaryOwnerWindow();
+        }
 
         if (stage == null) {
             stage = new Stage();
             stage.initModality(Modality.NONE);
-            if (owner != null) {
+            if (resolvedOwner != null) {
                 try {
-                    stage.initOwner(owner);
+                    stage.initOwner(resolvedOwner);
                 } catch (Exception ignored) {}
             }
             stage.setTitle("Run Queue");
@@ -237,8 +243,25 @@ public class QueueWindow {
             stage.setHeight(lastHeight);
         } catch (Exception ignored) {}
 
+        centerStageOverOwner(stage, resolvedOwner != null ? resolvedOwner : stage.getOwner());
+
         stage.show();
         stage.toFront();
+    }
+
+    private static void centerStageOverOwner(Stage childStage, Window owner) {
+        if (childStage == null || owner == null || !owner.isShowing()) {
+            return;
+        }
+        try {
+            double childWidth = childStage.getWidth();
+            double childHeight = childStage.getHeight();
+            if (childWidth <= 0 || childHeight <= 0) {
+                return;
+            }
+            childStage.setX(owner.getX() + ((owner.getWidth() - childWidth) / 2.0));
+            childStage.setY(owner.getY() + ((owner.getHeight() - childHeight) / 2.0));
+        } catch (Exception ignored) {}
     }
 
     private static void updateAutoRefreshState() {

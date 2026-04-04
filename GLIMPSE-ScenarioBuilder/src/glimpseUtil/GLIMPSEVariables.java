@@ -788,7 +788,7 @@ public class GLIMPSEVariables {
      * @param s Model interface directory
      */
     public void setModelInterfaceDir(String s) {
-        this.modelInterfaceJarDir = s;
+        this.modelInterfaceDir = s;
     }
 
     /**
@@ -796,7 +796,7 @@ public class GLIMPSEVariables {
      * @return Model interface JAR directory
      */
     public String getModelInterfaceJarDir() {
-        return modelInterfaceDir;
+        return modelInterfaceJarDir;
     }
 
     /**
@@ -1431,8 +1431,6 @@ public class GLIMPSEVariables {
             returnVal = descriptionText;
             break;
         case "stopperiod":
-            returnVal = stopPeriod;
-            break;
         case "stop-period":
             returnVal = stopPeriod;
             break;
@@ -2558,4 +2556,5 @@ public class GLIMPSEVariables {
         this.ghgOutputUnit = ghgOutputUnit;
     }
 }
+
 

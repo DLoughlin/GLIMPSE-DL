@@ -35,6 +35,8 @@ package chartOptions;
 import java.lang.reflect.Method;
 import javax.swing.JOptionPane;
 
+import ModelInterface.InterfaceMain;
+
 /**
  * Utility class for displaying a document (URL) in the system's default web browser.
  * <p>
@@ -96,7 +98,7 @@ public class ShowDocument {
             }
         } catch (Exception e) {
             // Show error dialog if browser launch fails
-            JOptionPane.showMessageDialog(null, ERR_MSG);
+              JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), ERR_MSG);
         }
     }
 }

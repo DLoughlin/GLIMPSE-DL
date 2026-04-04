@@ -70,6 +70,16 @@ final class ScenarioFileActionService {
         return ScenarioLibraryPathHelper.exeMainLogFile(vars.getgCamExecutableDir());
     }
 
+    boolean warnIfAnyScenarioMainLogMissing(ScenarioSelection selection) {
+        for (String logPath : getScenarioMainLogPaths(selection)) {
+            if (!files.doesFileExist(logPath)) {
+                files.showFileInTextEditor(logPath);
+                return true;
+            }
+        }
+        return false;
+    }
+
     void openScenarioFolders(ScenarioSelection selection) {
         for (String folderPath : getScenarioFolderPaths(selection)) {
             files.openFileExplorer(folderPath);

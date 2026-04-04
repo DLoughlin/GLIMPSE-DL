@@ -42,6 +42,7 @@ import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEStyles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
+import glimpseUtil.UtilsDialogs;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
@@ -55,6 +56,7 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 
 public class CsvToXmlWidget {
 	protected GLIMPSEVariables vars = GLIMPSEVariables.getInstance();
@@ -77,6 +79,12 @@ public class CsvToXmlWidget {
 		String title="CSV to XML Converter";
 
 		Stage stage = new Stage();
+		try {
+			Window owner = UtilsDialogs.getPrimaryOwnerWindow();
+			if (owner != null) {
+				stage.initOwner(owner);
+			}
+		} catch (Exception ignored) {}
 		stage.setTitle(title);
 		//stage.setWidth(200);
 		//stage.setHeight(100);
@@ -177,6 +185,22 @@ public class CsvToXmlWidget {
 		scene.setRoot(root);
 
 		stage.setScene(scene);
+		stage.setOnShown(e -> {
+			try {
+				Window owner = stage.getOwner();
+				if (owner == null || !owner.isShowing()) {
+					owner = UtilsDialogs.getPrimaryOwnerWindow();
+				}
+				if (owner != null && owner.isShowing()) {
+					double w = stage.getWidth();
+					double h = stage.getHeight();
+					if (w > 0 && h > 0) {
+						stage.setX(owner.getX() + ((owner.getWidth() - w) / 2.0));
+						stage.setY(owner.getY() + ((owner.getHeight() - h) / 2.0));
+					}
+				}
+			} catch (Exception ignored) {}
+		});
 	
 		
 		stage.show();

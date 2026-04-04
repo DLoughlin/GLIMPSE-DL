@@ -39,6 +39,7 @@ import glimpseElement.CsvToXmlWidget;
 import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
+import glimpseUtil.UtilsDialogs;
 import gui.Client;
 import java.io.File;
 import java.io.IOException;
@@ -132,6 +133,7 @@ public final class SetupMenuTools {
 
     private boolean confirmDeleteTrash() {
         Alert alert = new Alert(AlertType.CONFIRMATION, "This will permanently delete all items from the trash folder.", ButtonType.OK, ButtonType.CANCEL);
+        UtilsDialogs.initDialogOwner(alert);
         alert.setTitle("Confirmation Dialog");
         alert.setHeaderText("Permanently delete all items from trash?");
         return alert.showAndWait().filter(b -> b == ButtonType.OK).isPresent();

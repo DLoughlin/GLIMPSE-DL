@@ -49,6 +49,8 @@ import javax.swing.JList;
 import javax.swing.JRadioButton;
 import javax.swing.JTextField;
 
+import ModelInterface.InterfaceMain;
+
 /**
  * Utility class for creating Swing components with preset properties.
  * Provides factory methods for dialogs, labels, buttons, lists, combo boxes, radio buttons, and text fields.
@@ -64,10 +66,11 @@ public class CreateComponent {
      * @return Configured JDialog instance
      */
     public static JDialog crtJDialog(String name) {
-        JDialog dialog = new JDialog();
+    JDialog dialog = new JDialog(InterfaceMain.getInstance().getFrame());
         dialog.setResizable(true);
         dialog.setTitle(name);
         dialog.setFocusable(true);
+    dialog.setLocationRelativeTo(InterfaceMain.getInstance().getFrame());
 
         // Add window listener for open/close events
         dialog.addWindowListener(new WindowAdapter() {
@@ -257,11 +260,12 @@ public class CreateComponent {
      * @return Configured JDialog instance
      */
     public static JDialog crtDialog(JComponent component, String title) {
-        JDialog dialog = new JDialog();
+    JDialog dialog = new JDialog(InterfaceMain.getInstance().getFrame());
         dialog.setTitle(title);
         dialog.setContentPane(component);
         dialog.pack();
         dialog.setPreferredSize(new Dimension(400, 300));
+    dialog.setLocationRelativeTo(InterfaceMain.getInstance().getFrame());
         dialog.setVisible(true);
         return dialog;
     }

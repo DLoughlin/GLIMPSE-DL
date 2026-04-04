@@ -46,9 +46,11 @@ import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -81,6 +83,11 @@ import javafx.stage.Stage;
 public class PaneScenarioLibrary extends ScenarioBuilder {
     private static final Duration LIVE_STATUS_REFRESH_INTERVAL = Duration.ofSeconds(5);
     private static final String STOPPED_LOG_MARKER = "GLIMPSE scenario status: Stopped";
+    private static final String LIVE_STDOUT_ERROR_PREFIX = "ERROR";
+    private static final java.util.regex.Pattern LIVE_UNSOLVED_PERIOD_ERROR_PATTERN = java.util.regex.Pattern.compile(
+            "did\\s+not\\s+solve\\s+periods?\\s*[:=]?\\s*([0-9]{1,3}(?:\\s*(?:,|and|&)\\s*[0-9]{1,3})*)",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+    private static final java.util.regex.Pattern LIVE_UNSOLVED_PERIOD_NUMBER_PATTERN = java.util.regex.Pattern.compile("\\d{1,3}");
     private static final String[] EXE_LOG_ARTIFACT_FILENAMES = {
             "main_log.txt",
             "main_error.txt",
@@ -183,10 +190,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
     private Timeline liveStatusRefreshTimeline;
     private final AtomicBoolean liveStatusRefreshInProgress = new AtomicBoolean(false);
+    private final ConcurrentHashMap<String, LinkedHashSet<String>> liveStdoutErrorPeriodsByScenario = new ConcurrentHashMap<>();
     private long startupTime = 0;
     private final HBox scenarioLibraryHBox = new HBox(1);
     private final AtomicBoolean scenarioRefreshInProgress = new AtomicBoolean(false);
     private ScenarioLibraryViewStateHelper.RefreshViewState pendingRefreshViewState = ScenarioLibraryViewStateHelper.RefreshViewState.empty();
+    private final ConcurrentHashMap<String, Boolean> liveSuccessMarkedByScenario = new ConcurrentHashMap<>();
 
     // --- Constructors ---
     PaneScenarioLibrary(Stage stage) {
@@ -251,11 +260,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         Client.buttonArchiveScenario.setDisable(!selectionState.hasSelection);
         Client.buttonDeleteScenario.setDisable(!selectionState.hasSelection);
         Client.buttonResultsForSelected.setDisable(!selectionState.hasSingleSelection);
-        Client.buttonViewConfig.setDisable(false);
+        Client.buttonViewConfig.setDisable(!selectionState.hasSelection);
         Client.buttonDiffFiles.setDisable(!selectionState.hasTwoSelections);
-        Client.buttonViewLog.setDisable(!selectionState.hasSelection);
+        Client.buttonViewLog.setDisable(!selectionState.hasSingleSelection);
         Client.buttonViewExeErrors.setDisable(false);
-        Client.buttonViewErrors.setDisable(!selectionState.hasSelection);
+        Client.buttonViewErrors.setDisable(!selectionState.hasSingleSelection);
         Client.buttonViewExeLog.setDisable(false);
         Client.buttonReport.setDisable(false);
     }
@@ -343,6 +352,30 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             return;
         }
         try {
+            if (Client.buttonRunScenario != null) {
+                Client.buttonRunScenario.setDisable(!selectionState.hasSelection);
+            }
+            if (Client.buttonBrowseScenarioFolder != null) {
+                Client.buttonBrowseScenarioFolder.setDisable(!selectionState.hasSelection);
+            }
+            if (Client.buttonArchiveScenario != null) {
+                Client.buttonArchiveScenario.setDisable(!selectionState.hasSelection);
+            }
+            if (Client.buttonDeleteScenario != null) {
+                Client.buttonDeleteScenario.setDisable(!selectionState.hasSelection);
+            }
+            if (Client.buttonResultsForSelected != null) {
+                Client.buttonResultsForSelected.setDisable(!selectionState.hasSingleSelection);
+            }
+            if (Client.buttonDiffFiles != null) {
+                Client.buttonDiffFiles.setDisable(!selectionState.hasTwoSelections);
+            }
+            if (Client.buttonViewLog != null) {
+                Client.buttonViewLog.setDisable(!selectionState.hasSingleSelection);
+            }
+            if (Client.buttonViewErrors != null) {
+                Client.buttonViewErrors.setDisable(!selectionState.hasSingleSelection);
+            }
             if (Client.buttonStopScenario != null) {
                 Client.buttonStopScenario.setDisable(!selectionState.hasActiveRun);
             }
@@ -350,7 +383,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 Client.buttonImportScenario.setDisable(false);
             }
             if (Client.buttonViewConfig != null) {
-                Client.buttonViewConfig.setDisable(false);
+                Client.buttonViewConfig.setDisable(!selectionState.hasSelection);
             }
             if (Client.buttonViewExeErrors != null) {
                 Client.buttonViewExeErrors.setDisable(false);
@@ -378,6 +411,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
         ScenarioSelection selection = ScenarioSelection.capture();
         dequeueScenariosAndClearStatus(FXCollections.observableArrayList(selection.getRows()));
+        clearDeletedScenarioRunState(selection);
         try {
             List<ScenarioRow> deletedRows = scenarioFileActionService.deleteScenarios(selection);
             ScenarioTable.removeFromListOfRunFiles(FXCollections.observableArrayList(deletedRows));
@@ -485,7 +519,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
         try {
             List<DiffLineRow> rows = utils.generateSideBySideDiffRows(file1, file2);
-            DiffWindow.show(file1, file2, rows);
+            DiffWindow.show(Client.primaryStage, file1, file2, rows);
         } catch (Exception e) {
             utils.warningMessage("Problem generating diff: " + e.getMessage());
         }
@@ -527,29 +561,24 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
         ArrayList<String> problems = new ArrayList<>();
         if (modelInterfaceDir == null || modelInterfaceDirStr == null || modelInterfaceDirStr.trim().isEmpty()) {
-            problems.add("ModelInterface directory is not set.");
+            problems.add("Set the ModelInterface directory in the options file.");
         } else if (!modelInterfaceDir.isDirectory()) {
-            problems.add("ModelInterface directory does not exist: " + modelInterfaceDir.getAbsolutePath());
+            problems.add("The ModelInterface directory was not found: " + modelInterfaceDir.getAbsolutePath());
         }
 
         File jarFile = null;
         if (jarName == null || jarName.trim().isEmpty()) {
-            problems.add("ModelInterface jar file name is not set.");
+            problems.add("Set the ModelInterface jar file name in the options file.");
         } else if (modelInterfaceDir != null) {
             jarFile = new File(modelInterfaceDir, jarName);
             if (!jarFile.isFile()) {
-                problems.add("ModelInterface jar not found: " + jarFile.getAbsolutePath());
+                problems.add("The ModelInterface jar file was not found: " + jarFile.getAbsolutePath());
             }
         }
 
         String resolvedDatabasePath = databasePath == null ? "" : databasePath.trim();
         if (resolvedDatabasePath.isEmpty()) {
-            problems.add("Output database path is not set.");
-        } else {
-            File db = new File(resolvedDatabasePath);
-            if (!db.exists()) {
-                problems.add("Database not found: " + db.getAbsolutePath());
-            }
+            problems.add("Set the output database path before opening ModelInterface.");
         }
 
         ScenarioLibraryModelInterfaceMiniHelper.validateOptionalFile(problems, "Query file", vars.getQueryFilename());
@@ -559,19 +588,24 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
         File mapsDir = null;
         if (modelInterfaceDir != null) {
-            mapsDir = new File(modelInterfaceDir, "map_resources");
-            if (!mapsDir.isDirectory()) {
-                problems.add("Map resources directory not found: " + mapsDir.getAbsolutePath());
+            File candidateMapsDir = new File(modelInterfaceDir, "map_resources");
+            if (candidateMapsDir.isDirectory()) {
+                mapsDir = candidateMapsDir;
             }
         }
 
         if (!problems.isEmpty()) {
             StringBuilder sb = new StringBuilder();
-            sb.append("Please fix:\n\n");
+            sb.append("ModelInterface could not be started because some required paths or files are missing or invalid.")
+              .append(vars.getEol())
+              .append(vars.getEol())
+              .append("Please review the following:")
+              .append(vars.getEol())
+              .append(vars.getEol());
             for (String p : problems) {
-                sb.append(" - ").append(p).append("\n");
+                sb.append(" - ").append(p).append(vars.getEol());
             }
-            utils.showInformationDialog("Notice", "Unable to start ModelInterface.", sb.toString());
+            utils.showInformationDialog("Configuration needed", "ModelInterface setup is incomplete.", sb.toString());
             System.out.println("Unable to start ModelInterface. " + sb.toString());
             return;
         }
@@ -599,6 +633,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         ConsoleManager.appendHeader(ConsoleManager.StreamSource.MODEL_INTERFACE, "Starting ModelInterface");
         ConsoleManager.appendLine(ConsoleManager.StreamSource.MODEL_INTERFACE, "cmd args: " + args);
         ConsoleManager.appendLine(ConsoleManager.StreamSource.MODEL_INTERFACE, "working dir: " + modelInterfaceDir.getAbsolutePath());
+        if (mapsDir == null) {
+            ConsoleManager.appendLine(ConsoleManager.StreamSource.MODEL_INTERFACE,
+                    "No ModelInterface map resources folder was found; launching without mapping support.");
+        }
 
         try {
             Client.modelInterfaceExecutionThread.submitCommandWithDirectory(args, modelInterfaceDir.getAbsolutePath());
@@ -736,6 +774,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                             if (result != null && (result.getExitCode() != 0 || result.isTimedOut())) {
                                 if (finishedScenarioName != null
                                         && finishedScenarioName.equals(runController.getStopRequestedScenarioName())) {
+                                    moveExeMainLogToScenarioFolder(finishedScenarioName);
                                     persistStoppedStatusMarker(finishedScenarioName);
                                     markScenarioStopped(finishedScenarioName);
                                 } else {
@@ -850,6 +889,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         } catch (Exception ignored) {}
         if (!stderr) {
             try {
+                if (isLiveStdoutErrorLine(line)) {
+                    recordLiveStdoutError(scenarioName, line);
+                }
+            } catch (Exception ignored) {}
+            try {
                 gcamPromptMonitor.handlePotentialInteractivePrompt(line);
             } catch (Exception ignored) {}
             try {
@@ -903,6 +947,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 }
 
                 Alert alert = new Alert(AlertType.CONFIRMATION);
+                glimpseUtil.UtilsDialogs.initDialogOwner(alert);
                 alert.setTitle("GCAM waiting for database");
                 alert.setHeaderText("Close ModelInterface to continue GCAM");
 
@@ -982,9 +1027,20 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 if (scenarioName == null || scenarioName.trim().isEmpty()) {
                     return;
                 }
+                String normalizedScenarioName = scenarioName.trim();
+                if (liveSuccessMarkedByScenario.putIfAbsent(normalizedScenarioName, Boolean.TRUE) != null) {
+                    return;
+                }
+                clearLiveStdoutError(normalizedScenarioName);
                 Platform.runLater(() -> {
                     try {
-                        updateScenarioRowInPlace(scenarioName, row -> row.setStatus("Success"));
+                        updateScenarioRowInPlace(normalizedScenarioName, row -> {
+                            if (sameText(row.getStatus(), "Success")) {
+                                return false;
+                            }
+                            row.setStatus("Success");
+                            return true;
+                        });
                     } catch (Exception ignored) {}
                 });
                 return;
@@ -1020,9 +1076,109 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 pendingRefreshViewState,
                 NO_SCENARIOS_MESSAGE,
                 READY_MESSAGE);
+        applyLiveStdoutErrorPeriods();
         applyLiveRuntimeForActiveScenario();
         pendingRefreshViewState = ScenarioLibraryViewStateHelper.RefreshViewState.empty();
         refreshScenarioActionButtons();
+    }
+
+    private void applyLiveStdoutErrorPeriods() {
+        if (liveStdoutErrorPeriodsByScenario.isEmpty()) {
+            return;
+        }
+        GcamRunController.ExecutionState executionState = runController.snapshot();
+        for (java.util.Map.Entry<String, LinkedHashSet<String>> entry : liveStdoutErrorPeriodsByScenario.entrySet()) {
+            String scenarioName = entry.getKey();
+            String periodsText = formatLiveErrorPeriods(entry.getValue());
+            if (scenarioName == null || scenarioName.trim().isEmpty() || periodsText.isEmpty()) {
+                continue;
+            }
+            if (!executionState.isScenarioActivelyRunning(scenarioName)) {
+                continue;
+            }
+            updateScenarioRowInPlace(scenarioName, row -> {
+                if (sameText(row.getUnsolvedMarkets(), periodsText)) {
+                    return false;
+                }
+                row.setUnsolvedMarkets(periodsText);
+                return true;
+            });
+        }
+    }
+
+    private boolean isLiveStdoutErrorLine(String line) {
+        if (line == null) {
+            return false;
+        }
+        return line.trim().startsWith(LIVE_STDOUT_ERROR_PREFIX);
+    }
+
+    private LinkedHashSet<String> extractLiveErrorPeriods(String line) {
+        LinkedHashSet<String> periods = new LinkedHashSet<>();
+        if (line == null) {
+            return periods;
+        }
+        String trimmed = line.trim();
+        if (trimmed.isEmpty() || !trimmed.toLowerCase(Locale.ENGLISH).contains("did not solve period")) {
+            return periods;
+        }
+        java.util.regex.Matcher matcher = LIVE_UNSOLVED_PERIOD_ERROR_PATTERN.matcher(trimmed);
+        if (!matcher.find()) {
+            return periods;
+        }
+        String rawPeriods = matcher.group(1);
+        if (rawPeriods == null || rawPeriods.trim().isEmpty()) {
+            return periods;
+        }
+        java.util.regex.Matcher numberMatcher = LIVE_UNSOLVED_PERIOD_NUMBER_PATTERN.matcher(rawPeriods);
+        while (numberMatcher.find()) {
+            String period = numberMatcher.group() == null ? "" : numberMatcher.group().trim();
+            if (!period.isEmpty()) {
+                periods.add(period);
+            }
+        }
+        return periods;
+    }
+
+    private String formatLiveErrorPeriods(java.util.Set<String> periods) {
+        if (periods == null || periods.isEmpty()) {
+            return "";
+        }
+        return String.join(",", periods);
+    }
+
+    private void recordLiveStdoutError(String scenarioName, String line) {
+        String normalizedScenarioName = scenarioName == null ? "" : scenarioName.trim();
+        if (normalizedScenarioName.isEmpty()) {
+            return;
+        }
+        LinkedHashSet<String> periods = extractLiveErrorPeriods(line);
+        if (periods.isEmpty()) {
+            return;
+        }
+        LinkedHashSet<String> updatedPeriods = liveStdoutErrorPeriodsByScenario.compute(normalizedScenarioName, (key, existing) -> {
+            LinkedHashSet<String> mergedPeriods = existing == null ? new LinkedHashSet<>() : new LinkedHashSet<>(existing);
+            mergedPeriods.addAll(periods);
+            return mergedPeriods;
+        });
+        String periodsText = formatLiveErrorPeriods(updatedPeriods);
+        if (periodsText.isEmpty()) {
+            return;
+        }
+        updateScenarioRowInPlace(normalizedScenarioName, row -> {
+            if (sameText(row.getUnsolvedMarkets(), periodsText)) {
+                return false;
+            }
+            row.setUnsolvedMarkets(periodsText);
+            return true;
+        });
+    }
+
+    private void clearLiveStdoutError(String scenarioName) {
+        if (scenarioName == null || scenarioName.trim().isEmpty()) {
+            return;
+        }
+        liveStdoutErrorPeriodsByScenario.remove(scenarioName.trim());
     }
 
     private void applyLiveRuntimeForActiveScenario() {
@@ -1038,21 +1194,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
         updateScenarioRowInPlace(scenarioName, row -> {
             String currentRuntime = row.getRuntime();
-            if (!liveRuntime.equals(currentRuntime)) {
-                row.setRuntime(liveRuntime);
+            if (sameText(currentRuntime, liveRuntime)) {
+                return false;
             }
+            row.setRuntime(liveRuntime);
+            return true;
         });
-    }
-
-    private String formatLiveRuntime(long startTimeMillis, long currentTimeMillis) {
-        if (startTimeMillis <= 0L) {
-            return "";
-        }
-        long elapsedMillis = Math.max(0L, currentTimeMillis - startTimeMillis);
-        long totalMinutes = elapsedMillis / 60_000L;
-        long hours = totalMinutes / 60L;
-        long minutes = totalMinutes % 60L;
-        return LIVE_RUNTIME_PREFIX + hours + " hr " + minutes + " min";
     }
 
     public void clearAndRefreshScenarioTable() {
@@ -1149,10 +1296,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     private void markScenarioStopped(String scenarioName) {
+        clearLiveStdoutError(scenarioName);
         updateScenarioTerminalStatus(scenarioName, ScenarioStatusService.STATUS_STOPPED);
     }
 
     private void markScenarioDnF(String scenarioName) {
+        clearLiveStdoutError(scenarioName);
         updateScenarioTerminalStatus(scenarioName, ScenarioStatusService.STATUS_DNF);
     }
 
@@ -1211,6 +1360,29 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
+    private void moveExeMainLogToScenarioFolder(String scenarioName) {
+        if (scenarioName == null || scenarioName.trim().isEmpty()) {
+            return;
+        }
+        try {
+            Path exeMainLogPath = ScenarioLibraryPathHelper.exeMainLogPath(vars.getgCamExecutableDir());
+            if (exeMainLogPath == null || !Files.exists(exeMainLogPath)) {
+                return;
+            }
+            Path scenarioMainLogPath = ScenarioLibraryPathHelper.scenarioMainLogPath(vars.getScenarioDir(), scenarioName);
+            if (scenarioMainLogPath == null) {
+                return;
+            }
+            Path scenarioDirPath = scenarioMainLogPath.getParent();
+            if (scenarioDirPath != null) {
+                Files.createDirectories(scenarioDirPath);
+            }
+            Files.move(exeMainLogPath, scenarioMainLogPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } catch (Exception ex) {
+            System.out.println("Problem moving executable main_log.txt for stopped scenario " + scenarioName + ": " + ex);
+        }
+    }
+
     private void finalizeScenarioRunArtifacts(String scenarioName) {
         if (scenarioName == null || scenarioName.trim().isEmpty()) {
             return;
@@ -1257,26 +1429,30 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     private void generateExeErrorReport() {
-        ArrayList<String> txtArray = ScenarioLibraryReportHelper.createExecutableErrorReport(
+        ScenarioLibraryReportHelper.ErrorTextReport report = ScenarioLibraryReportHelper.createExecutableErrorTextReport(
                 files,
                 ScenarioLibraryPathHelper.exeMainLogPath(vars.getgCamExecutableDir()).toFile());
-        if (txtArray.size() <= 3) {
+        if (!report.hasVisibleContent("All lines") || report.buildText("All lines").trim().isEmpty()) {
             utils.warningMessage("No executable error report available.");
             return;
         }
-        utils.displayArrayList(txtArray, "Executable Errors");
+        utils.showTextErrorReport(report, 910, 600);
     }
 
     private void generateErrorReport() {
-        ArrayList<String> txtArray = ScenarioLibraryReportHelper.createScenarioErrorReport(
+        ScenarioSelection selection = ScenarioSelection.capture();
+        if (scenarioFileActionService.warnIfAnyScenarioMainLogMissing(selection)) {
+            return;
+        }
+        ScenarioLibraryReportHelper.ErrorTextReport report = ScenarioLibraryReportHelper.createScenarioErrorTextReport(
                 files,
                 vars.getScenarioDir(),
-                ScenarioSelection.capture().getRows());
-        if (txtArray.size() <= 2) {
+                selection.getRows());
+        if (!report.hasVisibleContent("All lines") || report.buildText("All lines").trim().isEmpty()) {
             utils.warningMessage("No scenario error report available.");
             return;
         }
-        utils.displayArrayList(txtArray, "Scenario Errors");
+        utils.showTextErrorReport(report, 910, 600);
     }
 
     // --- Helpers ---
@@ -1293,11 +1469,16 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     private boolean hasModelInterfaceLocationConfigured() {
-        return vars.getModelInterfaceDir() != null && !vars.getModelInterfaceDir().trim().isEmpty();
+        String modelInterfaceDir = vars.getModelInterfaceDir();
+        return modelInterfaceDir != null && !modelInterfaceDir.trim().isEmpty();
     }
 
     private String getStopRequestedScenarioName() {
         return runController.getStopRequestedScenarioName();
+    }
+
+    private void clearDeletedScenarioRunState(ScenarioSelection selection) {
+        clearScenarioTransientRunState(selection, ScenarioRunStateClearMode.DELETE);
     }
 
     private void dequeueScenariosAndClearStatus(ObservableList<ScenarioRow> scenariosToDequeue) {
@@ -1319,40 +1500,48 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
-    private void clearScenarioRunStatusFields(String scenarioName) {
-        if (scenarioName == null || scenarioName.trim().isEmpty()) {
-            return;
-        }
-        Platform.runLater(() -> {
-            try {
-                for (ScenarioRow s : ScenarioTable.listOfScenarioRuns) {
-                    if (s != null && scenarioName.equals(s.getScenarioName())) {
-                        s.setStatus("Updating...");
-                        s.setRuntime("");
-                        s.setUnsolvedMarkets("");
-                        s.setCompletedDate("");
-                        break;
-                    }
-                }
-            } catch (Exception ignored) {
-            }
-        });
+    void clearScenarioRunStatusFields(String scenarioName) {
+        clearScenarioTransientRunState(scenarioName, ScenarioRunStateClearMode.PREPARE_RUN);
+    }
+
+    void clearScenarioRunResultFields(String scenarioName) {
+        clearScenarioTransientRunState(scenarioName, ScenarioRunStateClearMode.RECREATE_OVERWRITE);
     }
 
     private void clearImportedScenarioRunResultFields(String scenarioName) {
+        clearScenarioTransientRunState(scenarioName, ScenarioRunStateClearMode.IMPORT_OVERWRITE);
+    }
+
+    private void clearScenarioTransientRunState(ScenarioSelection selection, ScenarioRunStateClearMode mode) {
+        if (selection == null) {
+            return;
+        }
+        for (String scenarioName : selection.getScenarioNames()) {
+            clearScenarioTransientRunState(scenarioName, mode);
+        }
+    }
+
+    private void clearScenarioTransientRunState(String scenarioName, ScenarioRunStateClearMode mode) {
         if (scenarioName == null || scenarioName.trim().isEmpty()) {
+            return;
+        }
+        ScenarioRunStateClearMode effectiveMode = mode == null ? ScenarioRunStateClearMode.IMPORT_OVERWRITE : mode;
+        runController.clearStoppedScenario(scenarioName);
+        clearLiveStdoutError(scenarioName);
+        liveSuccessMarkedByScenario.remove(scenarioName.trim());
+        if (ScenarioRunStateClearMode.DELETE.equals(effectiveMode)) {
             return;
         }
         Platform.runLater(() -> {
             try {
-                for (ScenarioRow s : ScenarioTable.listOfScenarioRuns) {
-                    if (s == null || !scenarioName.equals(s.getScenarioName())) {
+                for (ScenarioRow row : ScenarioTable.listOfScenarioRuns) {
+                    if (row == null || !scenarioName.equals(row.getScenarioName())) {
                         continue;
                     }
-                    s.setStatus("");
-                    s.setRuntime("");
-                    s.setUnsolvedMarkets("");
-                    s.setCompletedDate("");
+                    row.setCompletedDate("");
+                    row.setRuntime("");
+                    row.setUnsolvedMarkets("");
+                    row.setStatus(effectiveMode.statusText);
                     break;
                 }
             } catch (Exception ignored) {
@@ -1376,7 +1565,13 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         });
     }
 
-    private void updateScenarioRowInPlace(String scenarioName, java.util.function.Consumer<ScenarioRow> rowUpdate) {
+    private static boolean sameText(String left, String right) {
+        String normalizedLeft = left == null ? "" : left;
+        String normalizedRight = right == null ? "" : right;
+        return normalizedLeft.equals(normalizedRight);
+    }
+
+    private void updateScenarioRowInPlace(String scenarioName, java.util.function.Predicate<ScenarioRow> rowUpdate) {
         if (scenarioName == null || scenarioName.trim().isEmpty() || rowUpdate == null) {
             return;
         }
@@ -1384,14 +1579,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             try {
                 for (ScenarioRow row : ScenarioTable.listOfScenarioRuns) {
                     if (row != null && scenarioName.equals(row.getScenarioName())) {
-                        rowUpdate.accept(row);
+                        rowUpdate.test(row);
                         break;
                     }
                 }
-                if (ScenarioTable.tableScenariosLibrary != null) {
-                    ScenarioTable.tableScenariosLibrary.refresh();
-                }
-                refreshScenarioActionButtons();
             } catch (Exception ignored) {}
         };
         if (Platform.isFxApplicationThread()) {
@@ -1399,5 +1590,39 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             return;
         }
         Platform.runLater(applyUpdate);
+    }
+
+    private static String formatLiveRuntime(long runStartTimeMillis, long currentTimeMillis) {
+        if (runStartTimeMillis <= 0L || currentTimeMillis <= runStartTimeMillis) {
+            return "";
+        }
+        long elapsedMillis = currentTimeMillis - runStartTimeMillis;
+        long totalSeconds = Math.max(0L, elapsedMillis / 1000L);
+        long hours = totalSeconds / 3600L;
+        long minutes = (totalSeconds % 3600L) / 60L;
+        long seconds = totalSeconds % 60L;
+
+        StringBuilder runtime = new StringBuilder(LIVE_RUNTIME_PREFIX);
+        if (hours > 0L) {
+            runtime.append(hours).append(" hr ");
+        }
+        if (hours > 0L || minutes > 0L) {
+            runtime.append(minutes).append(" min ");
+        }
+        runtime.append(seconds).append(" sec");
+        return runtime.toString().trim();
+    }
+
+    private enum ScenarioRunStateClearMode {
+        PREPARE_RUN("Updating..."),
+        IMPORT_OVERWRITE(""),
+        RECREATE_OVERWRITE(""),
+        DELETE(null);
+
+        final String statusText;
+
+        ScenarioRunStateClearMode(String statusText) {
+            this.statusText = statusText;
+        }
     }
 }

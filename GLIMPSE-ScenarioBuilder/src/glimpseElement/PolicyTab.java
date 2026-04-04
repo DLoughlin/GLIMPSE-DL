@@ -46,25 +46,25 @@ import glimpseUtil.GLIMPSEStyles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
+import javafx.beans.binding.DoubleBinding;
 import javafx.collections.ListChangeListener;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
-import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
 import javafx.scene.layout.Priority;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.Button;
-import javafx.event.EventHandler;
-import javafx.event.ActionEvent;
+import javafx.scene.layout.VBox;
 import org.controlsfx.control.CheckComboBox;
-import javafx.scene.layout.ColumnConstraints;
-import javafx.beans.binding.Bindings;
-import javafx.beans.binding.DoubleBinding;
 
 /**
  * Abstract base class for policy-related tabs in the GLIMPSE Scenario Builder.
@@ -573,7 +573,6 @@ public abstract class PolicyTab extends Tab {
         textFieldStartYear.setText(DEFAULT_START_YEAR);
         textFieldEndYear.setText(DEFAULT_END_YEAR);
         textFieldPeriodLength.setText(DEFAULT_PERIOD_LENGTH);
-          
       }
 
 
@@ -848,7 +847,7 @@ public abstract class PolicyTab extends Tab {
         buttonDelete.setOnAction(e -> Platform.runLater(() -> paneForComponentDetails.deleteItemsFromTable()));
         buttonPopulate.setOnAction(e -> Platform.runLater(() -> {
         	if (qaPopulate()) {
-                double[][] values = calculateValues();
+                double[][] values = calculateValues();               
                 paneForComponentDetails.setValues(values);
             } else {
 				utils.warningMessage("Please fill in fields at bottom of left column to use populate button.");

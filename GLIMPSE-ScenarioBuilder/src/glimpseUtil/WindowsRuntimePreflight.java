@@ -117,6 +117,7 @@ public final class WindowsRuntimePreflight {
 
     private static boolean showPromptDialog(GLIMPSEUtils utils, String message) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        UtilsDialogs.initDialogOwner(alert);
         alert.setTitle("Missing Microsoft Visual C++ Runtime");
         alert.setHeaderText("Required Windows runtime not found");
         alert.setContentText(message);

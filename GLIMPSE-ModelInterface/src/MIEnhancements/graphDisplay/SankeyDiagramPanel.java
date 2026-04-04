@@ -30,6 +30,7 @@ import org.jfree.data.flow.DefaultFlowDataset;
 import org.jfree.data.flow.NodeKey;
 import org.jfree.data.flow.FlowKey;
 
+import ModelInterface.InterfaceMain;
 import ModelInterface.ModelGUI2.DbViewer;
 import ModelInterface.ModelGUI2.QueryResultsPanel;
 import ModelInterface.ModelGUI2.tables.ComboTableModel;
@@ -127,7 +128,7 @@ public class SankeyDiagramPanel extends JFrame implements ComponentListener {
 		frame.setSize(preferredD);
 		frame.setMinimumSize(new Dimension(500,300));
 		frame.setResizable(true);
-		frame.setLocationRelativeTo(null);
+		frame.setLocationRelativeTo(InterfaceMain.getInstance().getFrame());
 		frame.setVisible(true);
 	}
 	
@@ -315,7 +316,7 @@ public class SankeyDiagramPanel extends JFrame implements ComponentListener {
 			sankey_query_treePath = getFullTreePathSankey(queryList,"Sankey diagrams");
 			if(sankey_query_treePath.size()==0) {
 				String errorMessage=" No group containing 'Sankey diagrams' is found in the query list:\n";
-				JOptionPane.showMessageDialog(null, errorMessage);
+				JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), errorMessage);
 				
 			}else {
 				int[] rowsToSelect = new int[sankey_query_names_to_select.length];

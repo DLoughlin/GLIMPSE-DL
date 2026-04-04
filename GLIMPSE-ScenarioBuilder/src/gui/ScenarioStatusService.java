@@ -8,6 +8,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -34,6 +35,16 @@ final class ScenarioStatusService {
     private static final String RUNTIME_PREFIX = "Data Readin, Model Run & Write Time:";
     private static final String UNSOLVED_PREFIX = "The following model periods did not solve:";
     private static final String ERROR_PREFIX = "ERROR";
+    private static final java.util.regex.Pattern RUNNING_PERIOD_PATTERN = java.util.regex.Pattern.compile(
+            "(?:^|[^A-Za-z])(period|final-calibration period|model period|solving period|time period)\\s*[:=]?\\s*(\\d{1,3})(?:[^0-9]|$)",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+    private static final java.util.regex.Pattern RUNNING_PERIOD_WITH_YEAR_PATTERN = java.util.regex.Pattern.compile(
+            "(?:^|[^A-Za-z])(period|final-calibration period|model period|solving period|time period)\\s+(\\d{1,3})\\s*[:=]\\s*(\\d{4})(?:[^0-9]|$)",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+    private static final java.util.regex.Pattern UNSOLVED_PERIOD_ERROR_PATTERN = java.util.regex.Pattern.compile(
+            "did\\s+not\\s+solve\\s+periods?\\s*[:=]?\\s*([0-9]{1,3}(?:\\s*(?:,|and|&)\\s*[0-9]{1,3})*)",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+    private static final java.util.regex.Pattern UNSOLVED_PERIOD_NUMBER_PATTERN = java.util.regex.Pattern.compile("\\d{1,3}");
     private static final String COMPONENTS_HEADER = "Components:";
     private static final String METADATA_HEADER = "##################### Scenario Meta Data #####################";
     private static final String METADATA_FOOTER = "###############################################################";
@@ -184,7 +195,7 @@ final class ScenarioStatusService {
                     String explicitRunState = getExplicitRunStateLabel(scenarioName, currentMainLogFile, runningStatus, request);
                     if (!explicitRunState.isEmpty()) {
                         status = explicitRunState;
-                    } else if (runningStatus.contains(",ERR")) {
+                    } else if (runningStatus.contains("ERROR:")) {
                         String temp = runningStatus.substring(0, runningStatus.indexOf(","));
                         status = status + "(" + temp + ")";
                         String errorStr = runningStatus.substring(runningStatus.indexOf(",") + 4);
@@ -393,7 +404,7 @@ final class ScenarioStatusService {
             if (runningScenario.isEmpty() && line.contains(CONFIG_FILE_PREFIX)) {
                 runningScenario = scenarioNameFromConfigLine(line);
             }
-            if (runningPeriod.isEmpty()) {
+            if (runningPeriod.isEmpty() && extractUnsolvedPeriodsFromErrorLine(line).isEmpty()) {
                 String period = extractRunningPeriod(line);
                 if (!period.isEmpty()) {
                     runningPeriod = period;
@@ -434,9 +445,11 @@ final class ScenarioStatusService {
                     if (errorLine.isEmpty() && trimmed.contains(ERROR_PREFIX)) {
                         errorLine = trimmed;
                     }
-                    String period = extractRunningPeriod(trimmed);
-                    if (!period.isEmpty()) {
-                        runningPeriod = period;
+                    if (runningPeriod.isEmpty() && extractUnsolvedPeriodsFromErrorLine(trimmed).isEmpty()) {
+                        String period = extractRunningPeriod(trimmed);
+                        if (!period.isEmpty()) {
+                            runningPeriod = period;
+                        }
                     }
                     if (!runtimeLine.isEmpty() && !unsolvedLine.isEmpty() && !errorLine.isEmpty()
                             && !runningScenario.isEmpty() && !runningPeriod.isEmpty() && !successLine.isEmpty() && stoppedMarkerFound) {
@@ -452,8 +465,13 @@ final class ScenarioStatusService {
         } else if (!unsolvedLine.isEmpty()) {
             String msg = unsolvedLine.replace(UNSOLVED_PREFIX, "").trim();
             statusText = "Unsolved,ERR " + msg;
-        } else if (!errorLine.isEmpty()) {
-            statusText = "ERROR,ERR " + errorLine.trim();
+        } else {
+            String unsolvedFromError = extractUnsolvedPeriodsFromErrorLine(errorLine);
+            if (!unsolvedFromError.isEmpty()) {
+                statusText = "Unsolved,ERR " + unsolvedFromError;
+            } else if (!errorLine.isEmpty()) {
+                statusText = "ERROR,ERR " + errorLine.trim();
+            }
         }
         return new LogAnalysis(successLine, runtimeLine, unsolvedLine, statusText, runningScenario, stdoutSuccessFound, stoppedMarkerFound);
     }
@@ -504,14 +522,55 @@ final class ScenarioStatusService {
         if (line == null || line.isEmpty()) {
             return "";
         }
-        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(
-                "(?:^|[^A-Za-z])(period|final-calibration period|model period|solving period|time period)\\s*[:=]?\\s*(\\d{1,3})(?:[^0-9]|$)",
-                java.util.regex.Pattern.CASE_INSENSITIVE).matcher(line);
+        java.util.regex.Matcher yearMatcher = RUNNING_PERIOD_WITH_YEAR_PATTERN.matcher(line);
+        if (yearMatcher.find()) {
+            String period = yearMatcher.group(2);
+            String year = yearMatcher.group(3);
+            String trimmedPeriod = period == null ? "" : period.trim();
+            String trimmedYear = year == null ? "" : year.trim();
+            if (!trimmedPeriod.isEmpty() && !trimmedYear.isEmpty()) {
+                return trimmedPeriod + "," + trimmedYear;
+            }
+            if (!trimmedPeriod.isEmpty()) {
+                return trimmedPeriod;
+            }
+            if (!trimmedYear.isEmpty()) {
+                return trimmedYear;
+            }
+        }
+        java.util.regex.Matcher matcher = RUNNING_PERIOD_PATTERN.matcher(line);
         if (!matcher.find()) {
             return "";
         }
         String period = matcher.group(2);
         return period == null ? "" : period.trim();
+    }
+
+    private String extractUnsolvedPeriodsFromErrorLine(String line) {
+        String trimmed = safeTrim(line);
+        if (trimmed.isEmpty() || !trimmed.toLowerCase(Locale.ENGLISH).contains("did not solve period")) {
+            return "";
+        }
+        java.util.regex.Matcher matcher = UNSOLVED_PERIOD_ERROR_PATTERN.matcher(trimmed);
+        if (!matcher.find()) {
+            return "";
+        }
+        String rawPeriods = matcher.group(1);
+        if (rawPeriods == null || rawPeriods.trim().isEmpty()) {
+            return "";
+        }
+        LinkedHashSet<String> periods = new LinkedHashSet<>();
+        java.util.regex.Matcher numberMatcher = UNSOLVED_PERIOD_NUMBER_PATTERN.matcher(rawPeriods);
+        while (numberMatcher.find()) {
+            String period = safeTrim(numberMatcher.group());
+            if (!period.isEmpty()) {
+                periods.add(period);
+            }
+        }
+        if (periods.isEmpty()) {
+            return "";
+        }
+        return String.join(", ", periods);
     }
 
     private boolean containsAny(String line, String[] markers) {

@@ -41,6 +41,7 @@ import ModelInterface.InterfaceMain;
 public class MapOptionsUtil {
 
     private static final AtomicBoolean mappingWarningShown = new AtomicBoolean(false);
+    private static final SimpleFeatureType EMPTY_FEATURE_TYPE = null;
 
     /**
      * Returns the text of the selected button in a ButtonGroup.
@@ -420,27 +421,27 @@ public class MapOptionsUtil {
      * @param shpFilePath the shapefile path
      * @return FeatureCollection from the shapefile
      */
-    public static FeatureCollection getCollectionFromShape(String shpFilePath) {
+    public static FeatureCollection<SimpleFeatureType, SimpleFeature> getCollectionFromShape(String shpFilePath) {
         ShapefileDataStore store = null;
-        FeatureCollection<SimpleFeatureType, SimpleFeature> featureCollection = null;
+        FeatureCollection<SimpleFeatureType, SimpleFeature> featureCollection = emptyFeatureCollection();
         try {
             if (shpFilePath == null || shpFilePath.trim().isEmpty()) {
                 System.err.println("MapOptionsUtil.getCollectionFromShape: shapefile path is null/blank. "
                         + "enableMapping=" + InterfaceMain.enableMapping + ", mapResourceFolder=" + InterfaceMain.shapeFileLocationPrefix);
-                return new ListFeatureCollection(null, Collections.emptyList());
+                return emptyFeatureCollection();
             }
 
             File shpFile = new File(shpFilePath);
             if (!shpFile.exists() || !shpFile.isFile()) {
                 System.err.println("MapOptionsUtil.getCollectionFromShape: shapefile not found: " + shpFile.getAbsolutePath()
                         + " (enableMapping=" + InterfaceMain.enableMapping + ", mapResourceFolder=" + InterfaceMain.shapeFileLocationPrefix + ")");
-                return new ListFeatureCollection(null, Collections.emptyList());
+                return emptyFeatureCollection();
             }
 
             shpFile.setReadOnly();
             store = new ShapefileDataStore(shpFile.toURI().toURL());
             String typeName = store.getTypeNames()[0];
-            FeatureSource featureSource = store.getFeatureSource(typeName);
+            FeatureSource<SimpleFeatureType, SimpleFeature> featureSource = store.getFeatureSource(typeName);
             featureCollection = featureSource.getFeatures();
         } catch (IOException e1) { // IOException covers MalformedURLException
             e1.printStackTrace();
@@ -458,15 +459,20 @@ public class MapOptionsUtil {
      * @param featuresToRemove array of feature IDs to remove
      * @return filtered FeatureCollection
      */
-    public static FeatureCollection removeFeaturesFromCollection(FeatureCollection myCollection, String[] featuresToRemove) {
+    public static FeatureCollection<SimpleFeatureType, SimpleFeature> removeFeaturesFromCollection(
+            FeatureCollection<SimpleFeatureType, SimpleFeature> myCollection,
+            String[] featuresToRemove) {
         FilterFactory2 ff = CommonFactoryFinder.getFilterFactory2();
         Set<FeatureId> fidSet = new HashSet<>();
         for (String featureId : featuresToRemove) {
             fidSet.add(ff.featureId(featureId));
         }
         Filter myFilter = ff.not(ff.id(fidSet));
-        FeatureCollection<SimpleFeatureType, SimpleFeature> filteredCollection = myCollection.subCollection(myFilter);
-        return filteredCollection;
+        return myCollection.subCollection(myFilter);
+    }
+
+    private static FeatureCollection<SimpleFeatureType, SimpleFeature> emptyFeatureCollection() {
+        return new ListFeatureCollection(EMPTY_FEATURE_TYPE, Collections.<SimpleFeature>emptyList());
     }
 
     /**
@@ -527,7 +533,7 @@ public class MapOptionsUtil {
                 + "  mapResourceFolder=" + InterfaceMain.shapeFileLocationPrefix + "\n"
                 + "  shapefile=" + shpFilePath;
 
-        Runnable show = () -> JOptionPane.showMessageDialog(null, msg, "Mapping not configured",
+            Runnable show = () -> JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), msg, "Mapping not configured",
                 JOptionPane.WARNING_MESSAGE);
 
         if (SwingUtilities.isEventDispatchThread()) {

@@ -47,15 +47,23 @@ package glimpseUtil;
 import java.io.File;
 import java.text.NumberFormat;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.List;
-import glimpseElement.DataPoint;
+import java.util.regex.Pattern;
 
+import glimpseElement.DataPoint;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TablePosition;
 import javafx.scene.control.TableView;
@@ -65,11 +73,17 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 
 public class UtilsTable {
 
 	public static NumberFormat numberFormatter = NumberFormat.getNumberInstance();
 	private static final int MAX_ROWS_AFTER_PASTE = 50;
+	private static final Pattern INT_PATTERN = Pattern.compile("-?[0-9]+");
+	private static final Pattern DOUBLE_PATTERN = Pattern.compile("-?(([0-9]+)|([0-9]*\\.[0-9]+))");
 
 	/**
 	 * Install the keyboard handler: + CTRL + C = copy to clipboard + CTRL + V =
@@ -299,5 +313,212 @@ public class UtilsTable {
 				dpItems.add(new DataPoint("", ""));
 			}
 		}
+	}
+
+	public static String[][] getDataMatrixFromArrayList(ArrayList<String> data) {
+		if (data == null || data.isEmpty())
+			return new String[0][0];
+		int numRows = data.size();
+		String[][] dataMatrix = new String[numRows][];
+		for (int rowIndex = 0; rowIndex < numRows; rowIndex++) {
+			String row = data.get(rowIndex);
+			dataMatrix[rowIndex] = row == null ? new String[0] : row.split(",", -1);
+		}
+		return dataMatrix;
+	}
+
+	public static int computeMaxRowLength(String[][] data) {
+		if (data == null)
+			return 0;
+		int maxLength = 0;
+		for (String[] row : data) {
+			if (row != null && row.length > maxLength) {
+				maxLength = row.length;
+			}
+		}
+		return maxLength;
+	}
+
+	public static String[] extractColumn(String[][] data, int columnIndex) {
+		if (data == null || columnIndex < 0)
+			return new String[0];
+		String[] column = new String[data.length];
+		for (int rowIndex = 0; rowIndex < data.length; rowIndex++) {
+			if (data[rowIndex] != null && columnIndex < data[rowIndex].length && data[rowIndex][columnIndex] != null) {
+				column[rowIndex] = data[rowIndex][columnIndex];
+			} else {
+				column[rowIndex] = "";
+			}
+		}
+		return column;
+	}
+
+	public static Class<?> deduceColumnType(String[] column) {
+		if (column == null || column.length <= 1)
+			return String.class;
+		boolean hasValue = false;
+		boolean allIntegers = true;
+		boolean allNumeric = true;
+		for (int rowIndex = 1; rowIndex < column.length; rowIndex++) {
+			String value = column[rowIndex];
+			if (value == null)
+				continue;
+			value = value.trim();
+			if (value.isEmpty())
+				continue;
+			hasValue = true;
+			if (!INT_PATTERN.matcher(value).matches()) {
+				allIntegers = false;
+			}
+			if (!DOUBLE_PATTERN.matcher(value).matches()) {
+				allNumeric = false;
+				break;
+			}
+		}
+		if (!hasValue)
+			return String.class;
+		if (allIntegers)
+			return Integer.class;
+		if (allNumeric)
+			return Double.class;
+		return String.class;
+	}
+
+	public static String getColumnHeader(String[][] data, int columnIndex) {
+		if (columnIndex < 0)
+			return "";
+		String fallback = "Column " + (columnIndex + 1);
+		if (data == null || data.length == 0 || data[0] == null || columnIndex >= data[0].length)
+			return fallback;
+		String header = data[0][columnIndex];
+		if (header == null)
+			return fallback;
+		header = header.trim();
+		return header.isEmpty() ? fallback : header;
+	}
+
+	public static Object getDataAsType(String[] row, Class<?> type, int columnIndex) {
+		try {
+			if (type == Integer.class) {
+				if (row != null && columnIndex < row.length) {
+					return Integer.valueOf(row[columnIndex]);
+				}
+				return Integer.valueOf(0);
+			} else if (type == Double.class) {
+				if (row != null && columnIndex < row.length) {
+					return Double.valueOf(row[columnIndex]);
+				}
+				return Double.valueOf(0.0);
+			}
+			if (row != null && columnIndex < row.length) {
+				return row[columnIndex];
+			}
+			return "";
+		} catch (Exception e) {
+			return "";
+		}
+	}
+
+	public static TableColumn<List<Object>, String> createColumn(Class<?> type, int index, String name) {
+		TableColumn<List<Object>, String> col = new TableColumn<>(name);
+		col.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().get(index).toString()));
+		return col;
+	}
+
+	public static void showPopupTableOfCSVData(String title, ArrayList<String> csvData, int wd, int ht,
+			GLIMPSEUtils utils, GLIMPSEVariables vars, GLIMPSEStyles styles, GLIMPSEFiles files) {
+		if (styles == null)
+			return;
+		final String finalTitle = title;
+		Runnable popupTask = () -> {
+			String usedTitle = finalTitle == null ? GLIMPSEUtils.LABEL_DISPLAY : finalTitle;
+			Stage stage = new Stage();
+			try {
+				javafx.stage.Window owner = UtilsDialogs.getPrimaryOwnerWindow();
+				if (owner != null) {
+					stage.initOwner(owner);
+				}
+			} catch (Exception ignored) {}
+			stage.setTitle(usedTitle);
+			stage.setWidth(wd);
+			stage.setHeight(ht);
+			BorderPane border = new BorderPane();
+			stage.setResizable(true);
+
+			Button closeButton = utils.createButton(GLIMPSEUtils.LABEL_CLOSE, styles.getBigButtonWidth(), null);
+			closeButton.setOnAction(e -> stage.close());
+
+			TableView<List<Object>> table = new TableView<>();
+			table.setEditable(false);
+			table.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+			table.setMinHeight(0);
+			UtilsTable.installCopyPasteHandler(table);
+			table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+			String[][] rawData = getDataMatrixFromArrayList(csvData);
+			int numCols = computeMaxRowLength(rawData);
+			int startRowIndex = rawData.length > 0 ? 1 : 0;
+
+			Class<?>[] types = new Class<?>[numCols];
+			for (int columnIndex = 0; columnIndex < numCols; columnIndex++) {
+				String[] column = extractColumn(rawData, columnIndex);
+				types[columnIndex] = deduceColumnType(column);
+				table.getColumns().add(createColumn(types[columnIndex], columnIndex, getColumnHeader(rawData, columnIndex)));
+			}
+			for (int rowIndex = startRowIndex; rowIndex < rawData.length; rowIndex++) {
+				List<Object> row = new ArrayList<>();
+				for (int columnIndex = 0; columnIndex < numCols; columnIndex++) {
+					row.add(getDataAsType(rawData[rowIndex], types[columnIndex], columnIndex));
+				}
+				table.getItems().add(row);
+			}
+
+			HBox buttonBox = new HBox();
+			buttonBox.setPadding(new Insets(4, 4, 4, 4));
+			buttonBox.setSpacing(5);
+			buttonBox.setAlignment(Pos.CENTER);
+			Button exportButton = utils.createButton("Export", styles.getBigButtonWidth(), null);
+			exportButton.setOnAction(ev -> {
+				try {
+					File initialDir = new File(vars.getGlimpseLogDir());
+					FileChooser.ExtensionFilter csvFilter = FileChooserPlus.createExtensionFilter("CSV files (*.csv)", "csv");
+					File chosen = FileChooserPlus.showSaveDialog(stage, "Save Scenario Report", initialDir,
+							"scenario_report.csv", csvFilter);
+					if (chosen != null) {
+						files.saveFile(csvData, chosen.getPath());
+						utils.showInformationDialog("Information", "Export successful",
+								"Saved report to: " + chosen.getPath());
+					}
+				} catch (Exception ex) {
+					utils.showInformationDialog("Information", "Export failed",
+							"Could not save report: " + ex.getMessage());
+				}
+			});
+
+			buttonBox.getChildren().addAll(exportButton, closeButton);
+			border.setCenter(table);
+			border.setBottom(buttonBox);
+
+			Scene scene = new Scene(border);
+			stage.setScene(scene);
+			stage.setOnShown(e -> {
+				try {
+					javafx.stage.Window owner = stage.getOwner();
+					if (owner == null || !owner.isShowing()) {
+						owner = UtilsDialogs.getPrimaryOwnerWindow();
+					}
+					if (owner != null && owner.isShowing()) {
+						double w = stage.getWidth();
+						double h = stage.getHeight();
+						if (w > 0 && h > 0) {
+							stage.setX(owner.getX() + ((owner.getWidth() - w) / 2.0));
+							stage.setY(owner.getY() + ((owner.getHeight() - h) / 2.0));
+						}
+					}
+				} catch (Exception ignored) {}
+			});
+			stage.show();
+		};
+		popupTask.run();
 	}
 }

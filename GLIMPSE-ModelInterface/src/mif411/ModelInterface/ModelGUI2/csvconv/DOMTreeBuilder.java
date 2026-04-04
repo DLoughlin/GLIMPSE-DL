@@ -622,7 +622,7 @@ public class DOMTreeBuilder {
 	}
 
 	/**
-	 * Ewww, GROSS!!!.  Takes the list of children headers and attempts to group together
+	 * Takes the list of children headers and attempts to group together
 	 * all headers that would want to combine togther and form a single Node.  For example:
 	 * <p>parent/+child,parent/+{year}child Yeilds &lt;parent&gt;
 	 * &lt;child year="read attr value"&gt;read data value&lt;/child&gt;&lt;/parent&gt;<p>

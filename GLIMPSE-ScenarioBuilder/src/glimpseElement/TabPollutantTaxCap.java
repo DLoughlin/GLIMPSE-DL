@@ -613,8 +613,6 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 			for (int s = 1; s < listOfSelectedRegions.length; s++) {
 				files.writeToBufferedFile(bw0,
 						listOfSelectedRegions[s] + "," + pol + "," + market_name + vars.getEol());
-				double progress = (double) s / (listOfSelectedRegions.length - 1);
-				updateProgressBar(progress);
 			}
 		}
 

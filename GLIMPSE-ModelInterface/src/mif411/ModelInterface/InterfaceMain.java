@@ -121,14 +121,14 @@ public class InterfaceMain implements ActionListener {
 		STARTUP,
 		SHUTDOWN
 	}
-
+	private static final boolean DEBUG = false;
 	private static final int STARTUP_MESSAGE_LINGER_MS = 200;
 	private static final int STARTUP_PROGRESS_MAX = 100;
 	private static final int STARTUP_TOTAL_STEPS = 5;
 	private static final int SHUTDOWN_TOTAL_STEPS = 4;
 	private static final int SHUTDOWN_STEP_LINGER_MS = 120;
-	private static final String STARTUP_MESSAGE_WITH_DB = "Starting GLIMPSE...";
-	private static final String STARTUP_MESSAGE_WITHOUT_DB = "Starting GLIMPSE... waiting for database selection.";
+	private static final String STARTUP_MESSAGE_WITH_DB = "Starting ModelInterface...";
+	private static final String STARTUP_MESSAGE_WITHOUT_DB = "Starting ModelInterface... waiting for database selection.";
 	private static final String STARTUP_MESSAGE_INITIALIZING = "Loading interface...";
 	private static final String STARTUP_MESSAGE_STATUS_BAR = "Preparing workspace...";
 	private static final String STARTUP_MESSAGE_DB_VIEW = "Preparing database view...";
@@ -737,15 +737,19 @@ public class InterfaceMain implements ActionListener {
 				if (path != null) {
 					File dbFile = new File(path);
 					if (!dbFile.exists()) {
-						int response = JOptionPane.showConfirmDialog(main.mainFrame,
+						int response = main.showOptionDialog(
 								"The database '" + path + "' does not exist. Would you like to create it?",
-								"Create Database?", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-						if (response == JOptionPane.NO_OPTION || response == JOptionPane.CLOSED_OPTION) {
+								"Create Database?",
+								new Object[] { "Create", "Cancel" },
+								JOptionPane.QUESTION_MESSAGE,
+								"Create",
+								JOptionPane.CANCEL_OPTION);
+						if (response != JOptionPane.OK_OPTION) {
 							main.completeStartupStep(STARTUP_MESSAGE_READY);
 							showGUI();
 							return;
 						}
-						// If yes, doOpenDB will create it.
+						// If create is chosen, doOpenDB will create it.
 					}
 					main.updateStartupLoadingMessage(STARTUP_MESSAGE_OPENING_DB);
 					DbViewer db = (DbViewer) main.dbView;
@@ -758,10 +762,11 @@ public class InterfaceMain implements ActionListener {
 						if (ModelInterface.ModelGUI2.xmldb.XMLDB.isSuppressedBaseXResourceException(e)) {
 							System.err.println("Suppressing BaseX packaged-resource stack trace during initial DB open: " + e.getMessage());
 						} else {
-							e.printStackTrace();
+						 e.printStackTrace();
 						}
 					}
-					main.completeStartupStep(STARTUP_MESSAGE_READY);
+					// DbViewer continues startup asynchronously via SwingWorker; keep the
+					// loading view in its current stage until DbViewer reports completion or failure.
 					File f = new File(path);
 					File[] files = new File[1];
 					files[0] = f;
@@ -1297,16 +1302,28 @@ public class InterfaceMain implements ActionListener {
 	 * Replace the main view in the CENTER while keeping the global status bar visible.
 	 */
 	public void setMainView(java.awt.Component view) {
+		if (DEBUG) System.out.println("InterfaceMain.setMainView: entered. view="
+				+ (view == null ? "null" : view.getClass().getName())
+				+ " thread=" + Thread.currentThread().getName());
 		ensureStatusBarInstalled();
+		if (DEBUG) System.out.println("InterfaceMain.setMainView: ensureStatusBarInstalled returned.");
 		java.awt.Component existing = ((BorderLayout) rootContent.getLayout()).getLayoutComponent(BorderLayout.CENTER);
+		if (DEBUG) System.out.println("InterfaceMain.setMainView: existing center="
+				+ (existing == null ? "null" : existing.getClass().getName()));
 		if (existing != null) {
 			rootContent.remove(existing);
+			if (DEBUG) System.out.println("InterfaceMain.setMainView: removed existing center.");
 		}
 		if (view != null) {
 			rootContent.add(view, BorderLayout.CENTER);
+			if (DEBUG) System.out.println("InterfaceMain.setMainView: added new center component.");
 		}
+		if (DEBUG) System.out.println("InterfaceMain.setMainView: calling rootContent.revalidate()...");
 		rootContent.revalidate();
+		if (DEBUG) System.out.println("InterfaceMain.setMainView: rootContent.revalidate() returned.");
+		if (DEBUG) System.out.println("InterfaceMain.setMainView: calling rootContent.repaint()...");
 		rootContent.repaint();
+		if (DEBUG) System.out.println("InterfaceMain.setMainView: rootContent.repaint() returned.");
 	}
 
 	private void resetQueryProgressUI() {
@@ -1744,7 +1761,7 @@ public class InterfaceMain implements ActionListener {
 			editMM.addMenuItem(new JMenu("Favorites List"), EDIT_FAVORITES_SUBMENU_POS);
 		}
 
-		// 5) Separator
+		//		// 5) Separator
 		editMM.addSeparator(5);
 
 		// 6) Preferences...
@@ -2696,25 +2713,24 @@ public class InterfaceMain implements ActionListener {
 			}
 
 			Object initialValue = options[Math.max(0, Math.min(initialIndex, options.length - 1))];
-			int result = JOptionPane.showOptionDialog(mainFrame, message, title, optionType, messageType, null, options,
-					initialValue);
-			// showOptionDialog returns 0..n-1 for options; map to JOptionPane constants
-			if (optionType == JOptionPane.OK_CANCEL_OPTION) {
-				return (result == 0) ? JOptionPane.OK_OPTION : (result == 1 ? JOptionPane.CANCEL_OPTION : JOptionPane.CLOSED_OPTION);
-			}
-			if (optionType == JOptionPane.YES_NO_OPTION) {
-				return (result == 0) ? JOptionPane.YES_OPTION : (result == 1 ? JOptionPane.NO_OPTION : JOptionPane.CLOSED_OPTION);
-			}
-			if (optionType == JOptionPane.YES_NO_CANCEL_OPTION) {
-				return (result == 0) ? JOptionPane.YES_OPTION
-						: (result == 1 ? JOptionPane.NO_OPTION
-								: (result == 2 ? JOptionPane.CANCEL_OPTION : JOptionPane.CLOSED_OPTION));
-			}
-			return result;
+			return showOptionDialog(message, title, options, messageType, initialValue, defaultOption);
 		} catch (Exception ex) {
 			// Fallback to standard confirm dialog if any of the mapping logic fails.
 			return JOptionPane.showConfirmDialog(mainFrame, message, title, optionType, messageType);
 		}
+	}
+
+	public int showOptionDialog(Object message, String title, Object[] options, int messageType, Object initialValue,
+			int defaultClosedResult) {
+		if (GraphicsEnvironment.isHeadless()) {
+			return defaultClosedResult;
+		}
+		if (options == null || options.length == 0) {
+			return JOptionPane.CLOSED_OPTION;
+		}
+		int result = JOptionPane.showOptionDialog(mainFrame, message, title, JOptionPane.DEFAULT_OPTION, messageType, null,
+				options, initialValue);
+		return result >= 0 ? result : defaultClosedResult;
 	}
 
 	private void persistProperties() {
@@ -2748,5 +2764,4 @@ public class InterfaceMain implements ActionListener {
 			}
 		}
 	}
-}
-
+}

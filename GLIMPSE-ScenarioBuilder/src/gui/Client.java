@@ -152,7 +152,7 @@ public class Client extends Application {
     // endregion
 
     // region Static Fields
-    static Stage primaryStage;
+    public static Stage primaryStage;
     private static String optionsFilename = null;
     public static boolean exit_on_exception = false; // Retained public for potential external access
     // endregion

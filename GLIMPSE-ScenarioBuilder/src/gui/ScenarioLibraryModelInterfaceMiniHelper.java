@@ -17,7 +17,7 @@ final class ScenarioLibraryModelInterfaceMiniHelper {
         }
         File f = new File(filename);
         if (!f.exists()) {
-            problems.add(label + " not found: " + f.getAbsolutePath());
+            problems.add("The configured " + label.toLowerCase() + " was not found: " + f.getAbsolutePath());
         }
     }
 

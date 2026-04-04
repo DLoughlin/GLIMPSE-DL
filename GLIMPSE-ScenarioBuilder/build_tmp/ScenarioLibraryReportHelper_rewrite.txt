@@ -1,0 +1,616 @@
+package gui;
+
+import glimpseUtil.GLIMPSEFiles;
+import glimpseUtil.GLIMPSEUtils;
+import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import glimpseElement.ScenarioRow;
+
+public final class ScenarioLibraryReportHelper {
+
+    private static final String RUNTIME_PREFIX = "Data Readin, Model Run & Write Time:";
+    private static final int ERROR_REPORT_FIRST_FIELD_COLUMN = 1;
+    private static final int ERROR_REPORT_CLASSIFICATION_OFFSET = 2;
+    private static final String ERROR_REPORT_FILTER_ALL = "All lines";
+    private static final String ERROR_REPORT_FILTER_MAJOR = "Major errors";
+    private static final String ERROR_REPORT_FILTER_MODERATE = "Moderate errors";
+    private static final String ERROR_REPORT_FILTER_MINOR = "Minor errors";
+    private static final String ERROR_REPORT_SECTION_SEPARATOR = "-----------------";
+    private static final Pattern SUMMARY_TOTAL_PATTERN = Pattern.compile("Total errors\\s*=\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern SUMMARY_MAJOR_PATTERN = Pattern.compile("Major errors\\s*=\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern SUMMARY_MODERATE_PATTERN = Pattern.compile("Moderate errors\\s*=\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern SUMMARY_VERDICT_PATTERN = Pattern.compile("(Verdict:\\s*[^;]+)", Pattern.CASE_INSENSITIVE);
+
+    public static final class ErrorReportLine {
+        private final String severity;
+        private final String text;
+
+        public ErrorReportLine(String severity, String text) {
+            this.severity = safeText(severity).toUpperCase();
+            this.text = text == null ? "" : text;
+        }
+
+        public String getSeverity() {
+            return severity;
+        }
+
+        public String getText() {
+            return text;
+        }
+
+        public boolean matchesFilter(String filterLabel) {
+            String filter = safeText(filterLabel);
+            if (filter.isEmpty() || ERROR_REPORT_FILTER_ALL.equalsIgnoreCase(filter)) {
+                return true;
+            }
+            if (ERROR_REPORT_FILTER_MAJOR.equalsIgnoreCase(filter)) {
+                return "MAJOR".equalsIgnoreCase(severity);
+            }
+            if (ERROR_REPORT_FILTER_MODERATE.equalsIgnoreCase(filter)) {
+                return "MODERATE".equalsIgnoreCase(severity);
+            }
+            if (ERROR_REPORT_FILTER_MINOR.equalsIgnoreCase(filter)) {
+                return "MINOR".equalsIgnoreCase(severity);
+            }
+            return true;
+        }
+    }
+
+    public static final class ErrorTextReport {
+        private final String title;
+        private final ArrayList<String> filterOptions;
+        private final ArrayList<ErrorReportLine> lines;
+        private final String defaultSaveFileName;
+
+        public ErrorTextReport(String title, ArrayList<String> filterOptions, ArrayList<ErrorReportLine> lines, String defaultSaveFileName) {
+            this.title = safeText(title);
+            this.filterOptions = filterOptions == null ? new ArrayList<>() : new ArrayList<>(filterOptions);
+            this.lines = lines == null ? new ArrayList<>() : new ArrayList<>(lines);
+            this.defaultSaveFileName = safeText(defaultSaveFileName);
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public ArrayList<String> getFilterOptions() {
+            return new ArrayList<>(filterOptions);
+        }
+
+        public ArrayList<ErrorReportLine> getLines() {
+            return new ArrayList<>(lines);
+        }
+
+        public String getDefaultSaveFileName() {
+            return defaultSaveFileName;
+        }
+
+        public String buildText(String filterLabel) {
+            StringBuilder builder = new StringBuilder();
+            for (ErrorReportLine line : lines) {
+                if (line == null || !line.matchesFilter(filterLabel)) {
+                    continue;
+                }
+                String text = formatVisibleErrorText(line);
+                if (text.isEmpty()) {
+                    continue;
+                }
+                builder.append(text);
+                if (!text.endsWith(System.lineSeparator())) {
+                    builder.append(System.lineSeparator());
+                }
+            }
+            return builder.toString();
+        }
+
+        public boolean hasVisibleContent(String filterLabel) {
+            for (ErrorReportLine line : lines) {
+                if (line == null || !line.matchesFilter(filterLabel)) {
+                    continue;
+                }
+                if (!formatVisibleErrorText(line).isEmpty()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    static ArrayList<String> createSimpleQueueReport(String runningScenarioName, List<String> runsQueuedList, List<String> runsCompletedList) {
+        ArrayList<String> rtnArray = new ArrayList<>();
+        String runningName = safeText(runningScenarioName);
+        rtnArray.add("Note: Includes only runs added to the queue since the start of this session.");
+        if (!runningName.isEmpty()) {
+            rtnArray.add("---");
+            rtnArray.add("Running:");
+            rtnArray.add(runningName);
+        }
+        if (runsQueuedList != null && !runsQueuedList.isEmpty()) {
+            rtnArray.add("---");
+            rtnArray.add("In queue:");
+            for (String queuedRun : runsQueuedList) {
+                if (safeText(queuedRun).equalsIgnoreCase(runningName)) {
+                    continue;
+                }
+                rtnArray.add(queuedRun);
+            }
+        }
+        if (runsCompletedList != null && !runsCompletedList.isEmpty()) {
+            rtnArray.add("---");
+            rtnArray.add("Completed:");
+            for (String completedRun : runsCompletedList) {
+                if (safeText(completedRun).equalsIgnoreCase(runningName)) {
+                    continue;
+                }
+                rtnArray.add(completedRun);
+            }
+        }
+        return rtnArray;
+    }
+
+    static String getComponentsFromConfig(File file) {
+        String rtnStr = "";
+        try (Scanner fileScanner = new Scanner(file)) {
+            boolean startRecording = false;
+            boolean stopRecording = false;
+            boolean hasMetaData = false;
+            int count = 0;
+            while (fileScanner.hasNext() && !stopRecording) {
+                String line = fileScanner.nextLine().trim();
+                if (line.equals("##################### Scenario Meta Data #####################")) {
+                    hasMetaData = true;
+                }
+                if (line.equals("###############################################################")) {
+                    stopRecording = true;
+                }
+                if (startRecording && (line.length() > 0) && !stopRecording) {
+                    if (count == 0) {
+                        count++;
+                        rtnStr += line;
+                    } else {
+                        rtnStr += " ; " + line;
+                    }
+                }
+                if (line.equals("Components:")) {
+                    startRecording = true;
+                }
+                if (line.equals("<Files>")) {
+                    stopRecording = true;
+                }
+            }
+            if (!hasMetaData) {
+                rtnStr = "Externally-created scenario";
+            }
+        } catch (Exception e) {
+            System.out.println("Problem reading components from " + file.getName() + ": " + e);
+        }
+        return rtnStr;
+    }
+
+    static int countLogMatches(GLIMPSEFiles files, File mainLog, String token) {
+        if (files == null || mainLog == null || token == null || token.trim().isEmpty() || !mainLog.exists()) {
+            return 0;
+        }
+        int count = 0;
+        try {
+            ArrayList<String> lines = files.getStringArrayFromFile(mainLog.getAbsolutePath(), "#");
+            for (String line : lines) {
+                if (line != null && line.contains(token)) {
+                    count++;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return count;
+    }
+
+    static String extractModelVersion(GLIMPSEFiles files, File mainLog) {
+        if (files == null || mainLog == null) {
+            return "";
+        }
+        String version = files.searchForTextInFileS(mainLog, "version", "#");
+        return version == null ? "" : version.trim().replace(',', ';');
+    }
+
+    static String extractUnsolvedMarkets(GLIMPSEFiles files, File mainLog) {
+        if (files == null || mainLog == null) {
+            return "";
+        }
+        String unsolved = files.searchForTextInFileS(mainLog, "The following model periods did not solve:", "#");
+        if (unsolved == null) {
+            return "";
+        }
+        return unsolved.replace("The following model periods did not solve:", "").trim().replace(',', ';');
+    }
+
+    static String extractLastLogValue(GLIMPSEFiles files, File mainLog, String prefix) {
+        if (files == null || mainLog == null || prefix == null || prefix.trim().isEmpty() || !mainLog.exists()) {
+            return "";
+        }
+        try {
+            ArrayList<String> lines = files.getStringArrayFromFile(mainLog.getAbsolutePath(), "#");
+            for (int i = lines.size() - 1; i >= 0; i--) {
+                String line = lines.get(i);
+                if (line == null) {
+                    continue;
+                }
+                if (line.contains(prefix)) {
+                    return line.substring(line.indexOf(prefix) + prefix.length()).trim().replace(',', ';');
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return "";
+    }
+
+    static ArrayList<String> createScenarioExecutionReport(GLIMPSEFiles files, String scenarioDir,
+            List<ScenarioRow> scenarioRows, List<String> selectedScenarioNames, List<String> queuedRuns,
+            List<String> completedRuns, String stopRequestedScenarioName) {
+        ArrayList<String> reportLines = new ArrayList<>();
+        reportLines.add("Scenario Execution Report");
+        reportLines.add("Generated: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+        reportLines.add("Queued this session: " + safeSize(queuedRuns));
+        reportLines.add("Completed this session: " + safeSize(completedRuns));
+        reportLines.add("---");
+
+        boolean filterToSelection = selectedScenarioNames != null && !selectedScenarioNames.isEmpty();
+        if (scenarioRows != null) {
+            for (ScenarioRow row : scenarioRows) {
+                if (row == null) {
+                    continue;
+                }
+                String scenarioName = safeText(row.getScenarioName());
+                if (scenarioName.isEmpty()) {
+                    continue;
+                }
+                if (filterToSelection && !selectedScenarioNames.contains(scenarioName)) {
+                    continue;
+                }
+                reportLines.add("Scenario: " + scenarioName);
+                reportLines.add("  Status: " + safeText(row.getStatus()));
+                reportLines.add("  Components: " + safeText(row.getComponents()));
+                reportLines.add("  Created: " + safeText(row.getCreatedDate()));
+                reportLines.add("  Completed: " + safeText(row.getCompletedDate()));
+                reportLines.add("  Runtime: " + safeText(row.getRuntime()));
+                reportLines.add("  Unsolved markets: " + safeText(row.getUnsolvedMarkets()));
+                reportLines.add("  Stop requested: " + (scenarioName.equals(safeText(stopRequestedScenarioName)) ? "yes" : "no"));
+
+                File mainLog = ScenarioLibraryPathHelper.scenarioMainLogPath(scenarioDir, scenarioName).toFile();
+                if (mainLog.exists()) {
+                    reportLines.add("  Main log: " + mainLog.getAbsolutePath());
+                    String version = extractModelVersion(files, mainLog);
+                    if (!version.isEmpty()) {
+                        reportLines.add("  Version: " + version);
+                    }
+                    String unsolved = extractUnsolvedMarkets(files, mainLog);
+                    if (!unsolved.isEmpty()) {
+                        reportLines.add("  Log unsolved: " + unsolved);
+                    }
+                    String runtimeLine = extractLastLogValue(files, mainLog, RUNTIME_PREFIX);
+                    if (!runtimeLine.isEmpty()) {
+                        reportLines.add("  Runtime raw: " + runtimeLine);
+                    }
+                }
+                reportLines.add("---");
+            }
+        }
+        return reportLines;
+    }
+
+    public static ErrorTextReport createExecutableErrorTextReport(GLIMPSEFiles files, File mainLog) {
+        return createSingleMainLogErrorTextReport(
+                GLIMPSEUtils.getInstance(),
+                mainLog == null ? "" : mainLog.getAbsolutePath(),
+                "exe/main_log.txt",
+                "Error Report",
+                "error_report.txt",
+                false);
+    }
+
+    public static ErrorTextReport createScenarioErrorTextReport(GLIMPSEFiles files, String scenarioDir, List<ScenarioRow> rows) {
+        ArrayList<ErrorReportLine> reportLines = new ArrayList<>();
+        GLIMPSEUtils utils = GLIMPSEUtils.getInstance();
+        boolean addedScenarioContent = false;
+        if (rows != null) {
+            for (ScenarioRow row : rows) {
+                if (row == null) {
+                    continue;
+                }
+                String scenarioName = safeText(row.getScenarioName());
+                if (scenarioName.isEmpty()) {
+                    continue;
+                }
+                File mainLog = ScenarioLibraryPathHelper.scenarioMainLogPath(scenarioDir, scenarioName).toFile();
+                ErrorTextReport scenarioReport = createSingleMainLogErrorTextReport(
+                        utils,
+                        mainLog.getAbsolutePath(),
+                        scenarioName,
+                        "",
+                        "scenario_errors.txt",
+                        true);
+                boolean scenarioHasContent = false;
+                for (ErrorReportLine reportLine : scenarioReport.getLines()) {
+                    String visibleText = formatVisibleErrorText(reportLine);
+                    if (visibleText.isEmpty()) {
+                        continue;
+                    }
+                    reportLines.add(reportLine);
+                    scenarioHasContent = true;
+                    addedScenarioContent = true;
+                }
+                if (!scenarioHasContent) {
+                    reportLines.add(line(null, buildScenarioHeading(scenarioName)));
+                    reportLines.add(line(null, ERROR_REPORT_SECTION_SEPARATOR));
+                    reportLines.add(line(null, "No errors reported"));
+                }
+                reportLines.add(line(null, ""));
+            }
+        }
+        if (!addedScenarioContent) {
+            reportLines.add(line(null, "No errors reported"));
+        }
+        return new ErrorTextReport("Error Report", defaultErrorFilters(), reportLines, "scenario_errors.txt");
+    }
+
+    public static ErrorTextReport createMainLogErrorTextReport(GLIMPSEUtils utils, String mainLogPath, String scenarioName) {
+        return createSingleMainLogErrorTextReport(utils, mainLogPath, scenarioName, "Error Report", "error_report.txt", true);
+    }
+
+    private static ErrorTextReport createSingleMainLogErrorTextReport(GLIMPSEUtils utils, String mainLogPath,
+            String scenarioName, String reportHeader, String defaultSaveFileName, boolean includeSummary) {
+        ArrayList<ErrorReportLine> reportLines = new ArrayList<>();
+        String resolvedPath = safeText(mainLogPath);
+        String label = safeText(scenarioName);
+        if (label.isEmpty()) {
+            label = "exe/main_log.txt";
+        }
+        reportLines.add(line(null, buildScenarioHeading(label)));
+        reportLines.add(line(null, ERROR_REPORT_SECTION_SEPARATOR));
+        if (utils != null && !resolvedPath.isEmpty()) {
+            ArrayList<String> csvRows = utils.generateErrorReport(resolvedPath, scenarioName);
+            boolean addedErrorDetail = appendGeneratedErrorRows(reportLines, csvRows, label, includeSummary);
+            if (!addedErrorDetail) {
+                reportLines.add(line(null, "No errors reported"));
+            }
+        } else {
+            reportLines.add(line(null, "No errors reported"));
+        }
+        return new ErrorTextReport(safeText(reportHeader).isEmpty() ? "Error Report" : reportHeader, defaultErrorFilters(), reportLines, defaultSaveFileName);
+    }
+
+    private static boolean appendScenarioErrorDetails(List<ErrorReportLine> reportLines, GLIMPSEUtils utils, File mainLog, String scenarioName) {
+        if (reportLines == null) {
+            return false;
+        }
+        ErrorTextReport scenarioReport = createSingleMainLogErrorTextReport(
+                utils,
+                mainLog == null ? "" : mainLog.getAbsolutePath(),
+                scenarioName,
+                "",
+                "scenario_errors.txt",
+                true);
+        boolean addedErrorDetail = false;
+        for (ErrorReportLine reportLine : scenarioReport.getLines()) {
+            String visibleText = formatVisibleErrorText(reportLine);
+            if (visibleText.isEmpty()) {
+                continue;
+            }
+            reportLines.add(reportLine);
+            addedErrorDetail = true;
+        }
+        if (!addedErrorDetail) {
+            reportLines.add(line(null, "No errors reported"));
+        }
+        return addedErrorDetail;
+    }
+
+    private static boolean appendGeneratedErrorRows(List<ErrorReportLine> reportLines, List<String> csvRows, String defaultScenarioName, boolean includeSummary) {
+        if (reportLines == null || csvRows == null || csvRows.isEmpty()) {
+            return false;
+        }
+        boolean addedErrorDetail = false;
+        String summaryLine = "";
+        String verdictLine = "";
+        for (String csvRow : csvRows) {
+            String[] fields = splitCsvRow(csvRow);
+            if (fields.length <= ERROR_REPORT_FIRST_FIELD_COLUMN) {
+                continue;
+            }
+            String firstField = safeCsvField(fields, ERROR_REPORT_FIRST_FIELD_COLUMN);
+            if (isSummaryRow(firstField)) {
+                summaryLine = buildReadableSummary(fields);
+                verdictLine = extractVerdictLine(fields);
+                continue;
+            }
+            String text = formatScenarioErrorDetailLine(fields, defaultScenarioName);
+            if (text.isEmpty()) {
+                continue;
+            }
+            reportLines.add(line(extractClassification(fields), text));
+            addedErrorDetail = true;
+        }
+        if (includeSummary && (!summaryLine.isEmpty() || !verdictLine.isEmpty())) {
+            reportLines.add(line(null, ERROR_REPORT_SECTION_SEPARATOR));
+            if (!summaryLine.isEmpty()) {
+                reportLines.add(line(null, summaryLine));
+            }
+            if (!verdictLine.isEmpty()) {
+                reportLines.add(line(null, verdictLine));
+            }
+        }
+        return addedErrorDetail;
+    }
+
+    private static String formatScenarioErrorDetailLine(String[] fields, String defaultScenarioName) {
+        String firstToken = safeCsvField(fields, ERROR_REPORT_FIRST_FIELD_COLUMN);
+        if (firstToken.isEmpty()) {
+            return "";
+        }
+        if ("No errors reported".equalsIgnoreCase(firstToken) || "Main log not found".equalsIgnoreCase(firstToken)) {
+            return firstToken;
+        }
+        ArrayList<String> visibleTokens = extractVisibleTokens(fields);
+        if (visibleTokens.isEmpty()) {
+            return "";
+        }
+        return joinWithSeparator(visibleTokens, "\t");
+    }
+
+    private static ArrayList<String> extractVisibleTokens(String[] fields) {
+        ArrayList<String> visibleTokens = new ArrayList<>();
+        int tokenLimit = Math.max(ERROR_REPORT_FIRST_FIELD_COLUMN, fields.length - ERROR_REPORT_CLASSIFICATION_OFFSET);
+        for (int i = ERROR_REPORT_FIRST_FIELD_COLUMN; i < tokenLimit; i++) {
+            String value = safeCsvField(fields, i);
+            if (value.isEmpty()) {
+                continue;
+            }
+            visibleTokens.add(value);
+        }
+        String classification = extractClassification(fields);
+        if (!classification.isEmpty() && isDetailedMarketRow(visibleTokens)) {
+            visibleTokens.add("[" + buildClassificationLabel(classification) + "]");
+        }
+        return visibleTokens;
+    }
+
+    private static String extractClassification(String[] fields) {
+        return safeCsvField(fields, fields.length - ERROR_REPORT_CLASSIFICATION_OFFSET);
+    }
+
+    private static String formatVisibleErrorText(ErrorReportLine line) {
+        if (line == null || line.getText() == null) {
+            return "";
+        }
+        return line.getText().trim();
+    }
+
+    private static boolean isSummaryRow(String firstField) {
+        return "Summary".equalsIgnoreCase(safeText(firstField));
+    }
+
+    private static String buildScenarioHeading(String scenarioName) {
+        return "Errors in scenario: " + safeText(scenarioName);
+    }
+
+    private static boolean isDetailedMarketRow(List<String> visibleTokens) {
+        if (visibleTokens == null || visibleTokens.size() < 12) {
+            return false;
+        }
+        String firstValue = safeText(visibleTokens.get(0));
+        return "ERROR".equalsIgnoreCase(firstValue) || "SEVERE".equalsIgnoreCase(firstValue);
+    }
+
+    private static String buildClassificationLabel(String classification) {
+        String normalizedClassification = safeText(classification).toUpperCase();
+        if ("MAJOR".equals(normalizedClassification)) {
+            return "MAJOR RED>5%";
+        }
+        if ("MODERATE".equals(normalizedClassification)) {
+            return "MODERATE 5%>RED>1%";
+        }
+        if ("MINOR".equals(normalizedClassification)) {
+            return "MINOR RED<=1%";
+        }
+        return normalizedClassification;
+    }
+
+    private static String buildReadableSummary(String[] fields) {
+        String summary = safeCsvField(fields, ERROR_REPORT_FIRST_FIELD_COLUMN + 1);
+        if (summary.isEmpty()) {
+            return "";
+        }
+        String total = extractSummaryCount(summary, SUMMARY_TOTAL_PATTERN);
+        String major = extractSummaryCount(summary, SUMMARY_MAJOR_PATTERN);
+        String moderate = extractSummaryCount(summary, SUMMARY_MODERATE_PATTERN);
+        ArrayList<String> parts = new ArrayList<>();
+        if (!total.isEmpty()) {
+            parts.add(total + " errors");
+        }
+        if (!major.isEmpty()) {
+            parts.add(major + " major");
+        }
+        if (!moderate.isEmpty()) {
+            parts.add(moderate + " moderate");
+        }
+        if (parts.isEmpty()) {
+            return "Summary: " + summary;
+        }
+        return "Summary: " + joinWithSeparator(parts, ", ") + ";";
+    }
+
+    private static String extractVerdictLine(String[] fields) {
+        String summary = safeCsvField(fields, ERROR_REPORT_FIRST_FIELD_COLUMN + 1);
+        if (summary.isEmpty()) {
+            return "";
+        }
+        Matcher matcher = SUMMARY_VERDICT_PATTERN.matcher(summary);
+        if (!matcher.find()) {
+            return "";
+        }
+        return matcher.group(1).trim();
+    }
+
+    private static String extractSummaryCount(String summary, Pattern pattern) {
+        if (summary == null || pattern == null) {
+            return "";
+        }
+        Matcher matcher = pattern.matcher(summary);
+        return matcher.find() ? safeText(matcher.group(1)) : "";
+    }
+
+    private static ArrayList<String> defaultErrorFilters() {
+        ArrayList<String> filters = new ArrayList<>();
+        filters.add(ERROR_REPORT_FILTER_ALL);
+        filters.add(ERROR_REPORT_FILTER_MAJOR);
+        filters.add(ERROR_REPORT_FILTER_MODERATE);
+        filters.add(ERROR_REPORT_FILTER_MINOR);
+        return filters;
+    }
+
+    private static ErrorReportLine line(String severity, String text) {
+        return new ErrorReportLine(severity, text);
+    }
+
+    private static String joinWithSeparator(List<String> values, String separator) {
+        if (values == null || values.isEmpty()) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder();
+        for (String value : values) {
+            if (value == null || value.trim().isEmpty()) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append(separator);
+            }
+            builder.append(value.trim());
+        }
+        return builder.toString();
+    }
+
+    private static String[] splitCsvRow(String csvRow) {
+        return csvRow == null ? new String[0] : csvRow.split(",", -1);
+    }
+
+    private static String safeCsvField(String[] fields, int index) {
+        if (fields == null || index < 0 || index >= fields.length || fields[index] == null) {
+            return "";
+        }
+        return fields[index].trim();
+    }
+
+    private static int safeSize(List<?> list) {
+        return list == null ? 0 : list.size();
+    }
+
+    private static String safeText(String text) {
+        return text == null || text.trim().isEmpty() ? "" : text.trim();
+    }
+}

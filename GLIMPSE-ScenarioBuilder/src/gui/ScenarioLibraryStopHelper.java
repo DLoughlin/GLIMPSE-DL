@@ -2,6 +2,7 @@ package gui;
 
 import java.util.Optional;
 
+import glimpseUtil.UtilsDialogs;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonType;
@@ -21,6 +22,7 @@ final class ScenarioLibraryStopHelper {
 
     static StopMode promptForStopMode() {
         Alert alert = new Alert(AlertType.CONFIRMATION);
+        UtilsDialogs.initDialogOwner(alert);
         alert.setTitle("Stop GCAM run");
         alert.setHeaderText("Stop GCAM?");
 

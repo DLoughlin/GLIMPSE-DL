@@ -38,6 +38,7 @@ package glimpseBuilder;
 import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
+import gui.ScenarioLibraryReportHelper;
 import java.io.File;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -63,9 +64,10 @@ public final class SetupMenuView {
         menuView.getItems().addAll(
             createMenuItem("Current Main Log", () -> files.showFileInTextEditor(mainLogPath)),
             createMenuItem("Errors in Main Log", () -> {
-                ArrayList<String> errors = utils.generateErrorReport(mainLogPath, null);
-                ArrayList<String> tableData = utils.buildErrorReportTable(errors);
-                utils.showPopupTableOfErrorReport("Error Report", tableData, 910, 600);
+                utils.showTextErrorReport(
+                    ScenarioLibraryReportHelper.createMainLogErrorTextReport(utils, mainLogPath, null),
+                    910,
+                    600);
             }),
             createMenuItem("Current Solver Log", () -> files.showFileInTextEditor(Paths.get(vars.getgCamExecutableDir(), "logs", "solver_log.csv").toString())),
             createMenuItem("Current Worst Market Log", () -> files.showFileInTextEditor(Paths.get(vars.getgCamExecutableDir(), "logs", "worst_market_log.txt").toString())),

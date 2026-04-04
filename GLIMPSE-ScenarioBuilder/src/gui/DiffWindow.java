@@ -12,6 +12,8 @@ import java.util.List;
 
 import com.github.difflib.text.DiffRow;
 
+import glimpseUtil.UtilsDialogs;
+
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
@@ -32,6 +34,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.text.Font;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 
 // For Save As...
 import javafx.stage.FileChooser;
@@ -65,15 +68,24 @@ public class DiffWindow {
     /**
      * Shows a modal diff window.
      */
-    public static void show(String file1, String file2, List<DiffLineRow> rows) {
+    public static void show(Stage owner, String file1, String file2, List<DiffLineRow> rows) {
         if (!Platform.isFxApplicationThread()) {
-            Platform.runLater(() -> show(file1, file2, rows));
+            Platform.runLater(() -> show(owner, file1, file2, rows));
             return;
         }
 
         Stage stage = new Stage();
         stage.initModality(Modality.NONE);
-        stage.setTitle("Diff: " + shortName(file1) + " \u001f " + shortName(file2));
+        Window resolvedOwner = owner;
+        if (resolvedOwner == null) {
+            resolvedOwner = UtilsDialogs.getPrimaryOwnerWindow();
+        }
+        if (resolvedOwner != null) {
+            try {
+                stage.initOwner(resolvedOwner);
+            } catch (Exception ignored) {}
+        }
+        stage.setTitle("Differences between configuration files");
 
         ObservableList<DiffLineRow> data = FXCollections.observableArrayList(rows);
 
@@ -369,7 +381,24 @@ public class DiffWindow {
             stage.setHeight(lastHeight);
         } catch (Exception ignored) {}
 
+        centerStageOverOwner(stage, resolvedOwner != null ? resolvedOwner : stage.getOwner());
+
         stage.show();
+    }
+
+    private static void centerStageOverOwner(Stage childStage, Window owner) {
+        if (childStage == null || owner == null || !owner.isShowing()) {
+            return;
+        }
+        try {
+            double childWidth = childStage.getWidth();
+            double childHeight = childStage.getHeight();
+            if (childWidth <= 0 || childHeight <= 0) {
+                return;
+            }
+            childStage.setX(owner.getX() + ((owner.getWidth() - childWidth) / 2.0));
+            childStage.setY(owner.getY() + ((owner.getHeight() - childHeight) / 2.0));
+        } catch (Exception ignored) {}
     }
 
     private static void installCellFactory(TableColumn<DiffLineRow, String> col, boolean isOriginalColumn, boolean isLineNumberColumn,

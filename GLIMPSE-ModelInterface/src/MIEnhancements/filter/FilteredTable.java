@@ -51,6 +51,8 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
+import graphDisplay.MapMode;
+import graphDisplay.MapModeResolver;
 import graphDisplay.Thumbnail;
 import graphDisplay.StateMapPanel;
 import graphDisplay.SankeyDiagramFromTable;
@@ -335,34 +337,16 @@ public class FilteredTable {
                     System.out.println("FilteredTable: mapping press: " + chartName + " " + Arrays.toString(unit) + " " + path + " " + doubleIndex + " " + jtable.getColumnCount() + "  " + jtable.getRowCount());
                 ModelInterfaceUtil.getMetaIndex2(jtable, doubleIndex);
                 ModelInterfaceUtil.getUnitDataFromTableByLastNamedCol(jtable);
-                boolean checkStates = checkContainAnyState(jtable);
-                boolean checkCountries = checkContainAnyCountryRegion(jtable);
-                boolean noRowSelected = jtable.getSelectionModel().isSelectionEmpty();
-                boolean containOtherColumns = checkContainOtherColumns(jtable);
-                if (checkStates & !checkCountries) {
-                    if (noRowSelected & containOtherColumns) {
-                        JOptionPane.showMessageDialog(null, "Please select a row in the table first.");
-                        return;
-                    } else {
-                        mp = new StateMapPanel(chartName, jtable);
-                    }
-                } else if (checkCountries & !checkStates) {
-                    if (noRowSelected & containOtherColumns) {
-                        JOptionPane.showMessageDialog(null, "Please select a row in the table first.");
-                        return;
-                    } else {
-                        boolean statesIncluded = false;
-                        worldMap = new WorldMapPanel(chartName, jtable, statesIncluded);
-                    }
-                } else if (checkCountries & checkStates) {
-                    if (noRowSelected & containOtherColumns) {
-                        JOptionPane.showMessageDialog(null, "Please select a row in the table first.");
-                        return;
-                    } else {
-                        boolean statesIncluded = true;
-                        worldMap = new WorldMapPanel(chartName, jtable, statesIncluded);
-                    }
+                        if (MapModeResolver.requiresRowSelection(jtable)) {
+                          JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Please select a row in the table first.");
+                    return;
                 }
+                MapMode mapMode = MapModeResolver.resolve(jtable);
+                if (mapMode == null) {
+                          JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "The query results do not contain mappable state or region data.");
+                    return;
+                }
+                MapMode.createPanel(chartName, jtable, mapMode);
         });
         if (InterfaceMain.enableMapping) {
             box.add(jb);
@@ -375,8 +359,8 @@ public class FilteredTable {
         jb.addActionListener(e -> {
                 jtable.getSelectionModel().isSelectionEmpty();
                 boolean containOtherColumns = checkContainOtherColumns(jtable);
-                if (!containOtherColumns) {
-                    JOptionPane.showMessageDialog(null, "the query results cannot generate a flow dataset.");
+                        if (!containOtherColumns) {
+                          JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "the query results cannot generate a flow dataset.");
                     return;
                 } else {
                     try {
@@ -473,11 +457,7 @@ public class FilteredTable {
      * @return true if other columns exist, false otherwise
      */
     private boolean checkContainOtherColumns(JTable jtable) {
-        int regionIdx = getColumnByName(jtable, "region");
-        ArrayList<String> yearList = getYearListFromTableData(jtable);
-        int firstYearIdx = FilteredTable.getColumnByName(jtable, yearList.get(0));
-        int idxDiff = firstYearIdx - regionIdx;
-        return idxDiff != 1;
+        return MapModeResolver.containsOtherColumns(jtable);
     }
 
     /**
@@ -504,13 +484,7 @@ public class FilteredTable {
      * @return true if any state code found
      */
     private boolean checkContainAnyState(JTable table) {
-        String stringStates = "AK,AL,AR,AZ,CA,CO,CT,DC,DE,FL,GA,HI,IA,ID,IL,IN,KS,KY,LA,MA,MD,ME,MI,MN,MO,MS,MT,NC,ND,NE,NH,NJ,NM,NV,NY,OH,OK,OR,PA,RI,SC,SD,TN,TX,UT,VA,VT,WA,WI,WV,WY";
-        int regionColIdx = getColumnByName(table, "region");
-        String[][] regionColData = getTableData(table, new Integer[]{regionColIdx});
-        String[] regions = Arrays.stream(regionColData).map(row -> row[0]).toArray(String[]::new);
-        Set<String> regionSet = new HashSet<>(Arrays.asList(regions));
-        String[] uniqueRegions = regionSet.toArray(new String[0]);
-        return stringContainsItemFromArray(stringStates, uniqueRegions);
+        return MapModeResolver.containsAnyState(table);
     }
 
     /**
@@ -519,13 +493,7 @@ public class FilteredTable {
      * @return true if any country found
      */
     private boolean checkContainAnyCountryRegion(JTable table) {
-        String[] stringCountries = {"Africa_Eastern","Africa_Northern","Africa_Southern","Africa_Western","Australia_NZ","Brazil","Canada","Central America and Caribbean","Central Asia","China","EU_12","EU_15","Europe_Eastern","Europe_Non_EU","European Free Trade Association","India","Indonesia","Japan","Mexico","Middle East","Pakistan","Russia","South Africa","South America_Northern","South America_Southern","South Asia","South Korea","Southeast Asia","Taiwan","Argentina","Colombia"};
-        int regionColIdx = getColumnByName(table, "region");
-        String[][] regionColData = getTableData(table, new Integer[]{regionColIdx});
-        String[] regions = Arrays.stream(regionColData).map(row -> row[0]).toArray(String[]::new);
-        Set<String> regionSet = new HashSet<>(Arrays.asList(regions));
-        String[] uniqueRegions = regionSet.toArray(new String[0]);
-        return arrayContainsItemFromArray(stringCountries, uniqueRegions);
+        return MapModeResolver.containsAnyCountryRegion(table);
     }
 
     /**

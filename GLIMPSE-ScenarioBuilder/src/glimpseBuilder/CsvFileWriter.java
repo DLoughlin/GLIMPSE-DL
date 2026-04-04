@@ -97,19 +97,23 @@ public class CsvFileWriter {
     public ArrayList<String> createCsvContent(ArrayList<String> colList, ArrayList<String> dataList) {
         ArrayList<String> fileContentList = new ArrayList<String>();
 
+        for (int i=0; i<dataList.size(); i++) {
+
+        String datarow= dataList.get(i);
+        	
         // Extract key scenario values from dataList using utility methods
-        String sectorText = utils.getMatch(dataList, "sector", ";", ":");
-        String subsector1Text = utils.getMatch(dataList, "subsector", ";", ":");
+        String sectorText = utils.getMatch(datarow, "sector", ";", ":");
+        String subsector1Text = utils.getMatch(datarow, "subsector", ";", ":");
         String subsector2Text = "";
-        String technologyText = utils.getMatch(dataList, "technology", ";", ":");
-        String inputText = utils.getStringUpToChar(utils.getMatch(dataList, "input", ";", ":"), ")");
-        utils.getStringUpToChar(utils.getMatch(dataList, "output", ";", ":"), ")");
-        String paramText = utils.getMatch(dataList, "param", ";", ":");
-        String param2Text = utils.getMatch(dataList, "param2", ";", ":");
-        String[] yearsText = utils.getMatches(dataList, "year", ";", ":", ",");
-        String[] valuesText = utils.getMatches(dataList, "value", ";", ":", ",");
-        String[] regionsText = utils.getMatches(dataList, "region", ";", ":", ",");
-        String dollarYearText = utils.getMatch(dataList, "dollarYear", ",");
+        String technologyText = utils.getMatch(datarow, "technology", ";", ":");
+        String inputText = utils.getStringUpToChar(utils.getMatch(datarow, "input", ";", ":"), ")");
+        utils.getStringUpToChar(utils.getMatch(datarow, "output", ";", ":"), ")");
+        String paramText = utils.getMatch(datarow, "param", ";", ":");
+        String param2Text = utils.getMatch(datarow, "param2", ";", ":");
+        String[] yearsText = utils.getMatches(datarow, "year", ";", ":", ",");
+        String[] valuesText = utils.getMatches(datarow, "value", ";", ":", ",");
+        String[] regionsText = utils.getMatches(datarow, "region", ";", ":", ",");
+        String dollarYearText = utils.getMatch(datarow, "dollarYear", ",");
 
         // Convert values to 1990 dollars if required
         if ((paramText.equals("Capital Cost"))||(paramText.equals("Levelized Non-Energy Cost"))) {
@@ -210,8 +214,10 @@ public class CsvFileWriter {
                 }
                 fileContentList.add(line);
             }
+            
         }
-
+        fileContentList.add("");
+        }
         return fileContentList;
     }
 

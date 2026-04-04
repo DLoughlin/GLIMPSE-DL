@@ -59,6 +59,7 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 
+import ModelInterface.InterfaceMain;
 import ModelInterface.ModelGUI2.DbViewer;
 import conversionUtil.ArrayConversion;
 import graphDisplay.GraphDisplayUtil;
@@ -290,8 +291,8 @@ public class FilterTreePane {
                 JButton but = (JButton) e.getSource();
                 if (but.getName().trim().equals("Ok")) {
                     // If filter all unchecked give warning message
-                    if (selOptions.isEmpty()) {
-                        JOptionPane.showMessageDialog(null, "Select filter", "Warning", JOptionPane.WARNING_MESSAGE);
+                              if (selOptions.isEmpty()) {
+                                JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Select filter", "Warning", JOptionPane.WARNING_MESSAGE);
                     } else {
                         // Apply filter and close dialog
                         FilteredTable ft = new FilteredTable(selOptions, chartName, unit, path, jtable, sp);
@@ -523,10 +524,10 @@ public class FilterTreePane {
      * Displays the filter dialog.
      */
     public void showFilter() {
-        dialog = new JDialog();
+            dialog = new JDialog(InterfaceMain.getInstance().getFrame(), chartName + " Filter", false);
         dialog.setTitle(chartName + " Filter");
         dialog.setSize(500, 500); // increased height by 50 pixels (was 450)
-        dialog.setLocationRelativeTo(jtable);
+            dialog.setLocationRelativeTo(InterfaceMain.getInstance().getFrame());
         dialog.getContentPane().setLayout(new BorderLayout());
         dialog.getContentPane().add(buildTree(buildTreeName(jtable)), BorderLayout.CENTER);
         dialog.getContentPane().add(crtBottomPanel(), BorderLayout.SOUTH);
