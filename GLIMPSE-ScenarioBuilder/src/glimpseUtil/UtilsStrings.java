@@ -186,6 +186,9 @@ public final class UtilsStrings {
 		if (line == null) {
 			line = "";
 		}
+		if (vars == null) {
+			return line.split("\\R", -1);
+		}
 		String[] lines = line.split(vars.getEol());
 		if (lines.length == 1)
 			lines = line.split("\r");
