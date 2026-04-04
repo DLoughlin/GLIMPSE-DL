@@ -2309,7 +2309,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 				box.add(field);
 
 				String[] buttons = { "Apply", "Clear", "Cancel" };
-				int returnValue = JOptionPane.showOptionDialog(null, box, "Query Filter",
+				int returnValue = JOptionPane.showOptionDialog(parentFrame, box, "Query Filter",
 						JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null, buttons, buttons[0]);
 				queries = getQueries();
 				switch (returnValue) {

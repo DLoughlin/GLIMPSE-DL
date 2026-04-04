@@ -45,6 +45,7 @@ import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEStyles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
+import glimpseUtil.UtilsDialogs;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
@@ -685,12 +686,34 @@ public class ScenarioBuilder {
 	 */
 	protected Stage createDialogStage(String title, int width, int height) {
 		Stage stage = new Stage();
+		try {
+			javafx.stage.Window owner = UtilsDialogs.getPrimaryOwnerWindow();
+			if (owner != null) {
+				stage.initOwner(owner);
+			}
+		} catch (Exception ignored) {}
 		stage.setTitle(title);
 		stage.setWidth(width);
 		stage.setHeight(height);
 		stage.initModality(Modality.APPLICATION_MODAL);
 		stage.setResizable(false);
 		stage.setAlwaysOnTop(true);
+		stage.setOnShown(e -> {
+			try {
+				javafx.stage.Window owner = stage.getOwner();
+				if (owner == null || !owner.isShowing()) {
+					owner = UtilsDialogs.getPrimaryOwnerWindow();
+				}
+				if (owner != null && owner.isShowing()) {
+					double stageWidth = stage.getWidth();
+					double stageHeight = stage.getHeight();
+					if (stageWidth > 0 && stageHeight > 0) {
+						stage.setX(owner.getX() + ((owner.getWidth() - stageWidth) / 2.0));
+						stage.setY(owner.getY() + ((owner.getHeight() - stageHeight) / 2.0));
+					}
+				}
+			} catch (Exception ignored) {}
+		});
 		return stage;
 	}
 

@@ -337,13 +337,13 @@ public class FilteredTable {
                     System.out.println("FilteredTable: mapping press: " + chartName + " " + Arrays.toString(unit) + " " + path + " " + doubleIndex + " " + jtable.getColumnCount() + "  " + jtable.getRowCount());
                 ModelInterfaceUtil.getMetaIndex2(jtable, doubleIndex);
                 ModelInterfaceUtil.getUnitDataFromTableByLastNamedCol(jtable);
-                if (MapModeResolver.requiresRowSelection(jtable)) {
-                    JOptionPane.showMessageDialog(null, "Please select a row in the table first.");
+                        if (MapModeResolver.requiresRowSelection(jtable)) {
+                          JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Please select a row in the table first.");
                     return;
                 }
                 MapMode mapMode = MapModeResolver.resolve(jtable);
                 if (mapMode == null) {
-                    JOptionPane.showMessageDialog(null, "The query results do not contain mappable state or region data.");
+                          JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "The query results do not contain mappable state or region data.");
                     return;
                 }
                 MapMode.createPanel(chartName, jtable, mapMode);
@@ -359,8 +359,8 @@ public class FilteredTable {
         jb.addActionListener(e -> {
                 jtable.getSelectionModel().isSelectionEmpty();
                 boolean containOtherColumns = checkContainOtherColumns(jtable);
-                if (!containOtherColumns) {
-                    JOptionPane.showMessageDialog(null, "the query results cannot generate a flow dataset.");
+                        if (!containOtherColumns) {
+                          JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "the query results cannot generate a flow dataset.");
                     return;
                 } else {
                     try {

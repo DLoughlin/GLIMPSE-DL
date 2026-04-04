@@ -348,10 +348,9 @@ public class FilterTreePaneYears {
     public void showFilter() {
         filterSelectedYears = new ArrayList<>(Arrays.asList(InterfaceMain.splitListProperty(
 				main.getProperties().getProperty("selectedYearList", "") )));
-        dialog = new JDialog();
-        dialog.setTitle("Year Filter");
+        dialog = new JDialog(main.getFrame(), "Year Filter", false);
         dialog.setSize(300, 500);
-        dialog.setLocationRelativeTo(jtable);
+        dialog.setLocationRelativeTo(main.getFrame());
         dialog.getContentPane().setLayout(new BorderLayout());
         dialog.getContentPane().add(buildTree(), BorderLayout.CENTER);
         dialog.getContentPane().add(crtButton(), BorderLayout.SOUTH);

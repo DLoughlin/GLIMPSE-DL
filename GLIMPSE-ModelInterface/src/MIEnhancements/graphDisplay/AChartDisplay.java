@@ -377,7 +377,7 @@ public class AChartDisplay {
 					if (curchart != null && curchart.getPlot() instanceof PiePlot
 							|| (jfreechart.getPlot().getPlotType().contains("XY")
 									&& jfreechart.getXYPlot().getDataset() instanceof IntervalXYDataset)) {
-						JOptionPane.showMessageDialog(null, "Not support for this Chart", "Information",
+						JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Not support for this Chart", "Information",
 								JOptionPane.INFORMATION_MESSAGE);
 						return;
 					} else
@@ -387,7 +387,7 @@ public class AChartDisplay {
 					if (curchart != null && curchart.getPlot() instanceof PiePlot
 							|| (jfreechart.getPlot().getPlotType().contains("XY")
 									&& jfreechart.getXYPlot().getDataset() instanceof IntervalXYDataset)) {
-						JOptionPane.showMessageDialog(null, "Not support for this Chart", "Information",
+						JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Not support for this Chart", "Information",
 								JOptionPane.INFORMATION_MESSAGE);
 						return;
 					} else {
@@ -399,7 +399,7 @@ public class AChartDisplay {
 					if (curchart != null && curchart.getPlot() instanceof PiePlot
 							|| (jfreechart.getPlot().getPlotType().contains("XY")
 									&& jfreechart.getXYPlot().getDataset() instanceof IntervalXYDataset)) {
-						JOptionPane.showMessageDialog(null, "Not support for this Chart", "Information",
+						JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Not support for this Chart", "Information",
 								JOptionPane.INFORMATION_MESSAGE);
 						return;
 					} else
@@ -414,7 +414,7 @@ public class AChartDisplay {
 					new SelectDecimalFormat(datapane);
 					break;
 				case 8: // Export Data
-					if (JOptionPane.showConfirmDialog(null, "Meta Data Also?", "choose one",
+					if (JOptionPane.showConfirmDialog(InterfaceMain.getInstance().getFrame(), "Meta Data Also?", "choose one",
 							JOptionPane.YES_NO_CANCEL_OPTION) == JOptionPane.YES_OPTION)
 						new ExportExcel("", datapane.getTableCol(), datapane.getDataValue(), chart.getTitles()[1],
 							chart.getMetaCol(), chart.getMeta(), chart.getAxis_name_unit()[1]);
@@ -444,7 +444,7 @@ public class AChartDisplay {
 				switch (Integer.valueOf(action.trim()).intValue()) {
 				case 4:
 					if (jfreechart.getPlot().getPlotType().contains("Pie"))
-						JOptionPane.showMessageDialog(null, "Show/Hide Legend Not Apply for Pie Chart", "Information",
+						JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Show/Hide Legend Not Apply for Pie Chart", "Information",
 								JOptionPane.INFORMATION_MESSAGE);
 					else {
 						jfreechart.getLegend().visible = !jfreechart.getLegend().isVisible();

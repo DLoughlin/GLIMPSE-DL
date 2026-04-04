@@ -48,6 +48,7 @@ import org.jfree.data.xy.XYDataset;
 import chart.CategoryPieChart;
 import chart.DatasetUtil;
 import chart.LegendUtil;
+import ModelInterface.InterfaceMain;
 
 /**
  * Utility functions for chart options, including pie chart display and paint management.
@@ -58,6 +59,14 @@ import chart.LegendUtil;
  * Created: 1/2/2016
  */
 public class ChartOptionsUtil {
+
+  private static java.awt.Component getDialogParent() {
+    try {
+      return InterfaceMain.getInstance().getFrame();
+    } catch (Exception ignored) {
+      return null;
+    }
+  }
 
     /**
      * Displays a pie chart based on the provided JFreeChart and options.
@@ -121,7 +130,7 @@ public class ChartOptionsUtil {
      */
     private static String chartTypeDialog() {
         String[] data = { "Pie Chart", "3D Pie Chart", "Multiple 3D Pie Chart" };
-        return (String) JOptionPane.showInputDialog(null, "Choose one", "Select a Pie Chart",
+        return (String) JOptionPane.showInputDialog(getDialogParent(), "Choose one", "Select a Pie Chart",
                 JOptionPane.INFORMATION_MESSAGE, null, data, data[0]);
     }
 
@@ -131,7 +140,7 @@ public class ChartOptionsUtil {
      */
     private static TableOrder tableOrderDialog() {
         TableOrder extract = TableOrder.BY_COLUMN;
-        if (JOptionPane.showConfirmDialog(null, "choose one", "Select a Column?",
+        if (JOptionPane.showConfirmDialog(getDialogParent(), "choose one", "Select a Column?",
                 JOptionPane.YES_NO_CANCEL_OPTION) == JOptionPane.NO_OPTION)
             extract = TableOrder.BY_ROW;
         return extract;
@@ -148,10 +157,10 @@ public class ChartOptionsUtil {
     private static int selectedDialog(String chartType, TableOrder tableOrder, String[] row, String[] column) {
         if (!chartType.equals("Multiple 3D Pie Chart")) {
             if (tableOrder == TableOrder.BY_COLUMN) {
-                return Arrays.asList(column).indexOf((String) JOptionPane.showInputDialog(null, "Choose Categories",
+                return Arrays.asList(column).indexOf((String) JOptionPane.showInputDialog(getDialogParent(), "Choose Categories",
                         "Select Categories", JOptionPane.INFORMATION_MESSAGE, null, column, column[0]));
             } else {
-                return Arrays.asList(row).indexOf((String) JOptionPane.showInputDialog(null, "Choose Categories",
+                return Arrays.asList(row).indexOf((String) JOptionPane.showInputDialog(getDialogParent(), "Choose Categories",
                         "Select Categories", JOptionPane.INFORMATION_MESSAGE, null, row, row[0]));
             }
         } else {
@@ -187,7 +196,7 @@ public class ChartOptionsUtil {
      * @param stateChange State change indicator
      */
     public static void changeChartType(TexturePaint[] tp, JFreeChart jfchart, int stateChange) {
-        JOptionPane.showMessageDialog(null, "No 3D View", "Information", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(getDialogParent(), "No 3D View", "Information", JOptionPane.INFORMATION_MESSAGE);
         return;
     }
 

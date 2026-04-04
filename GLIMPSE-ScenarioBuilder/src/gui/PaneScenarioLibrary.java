@@ -260,7 +260,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         Client.buttonArchiveScenario.setDisable(!selectionState.hasSelection);
         Client.buttonDeleteScenario.setDisable(!selectionState.hasSelection);
         Client.buttonResultsForSelected.setDisable(!selectionState.hasSingleSelection);
-        Client.buttonViewConfig.setDisable(false);
+        Client.buttonViewConfig.setDisable(!selectionState.hasSelection);
         Client.buttonDiffFiles.setDisable(!selectionState.hasTwoSelections);
         Client.buttonViewLog.setDisable(!selectionState.hasSingleSelection);
         Client.buttonViewExeErrors.setDisable(false);
@@ -383,7 +383,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 Client.buttonImportScenario.setDisable(false);
             }
             if (Client.buttonViewConfig != null) {
-                Client.buttonViewConfig.setDisable(false);
+                Client.buttonViewConfig.setDisable(!selectionState.hasSelection);
             }
             if (Client.buttonViewExeErrors != null) {
                 Client.buttonViewExeErrors.setDisable(false);
@@ -519,7 +519,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
         try {
             List<DiffLineRow> rows = utils.generateSideBySideDiffRows(file1, file2);
-            DiffWindow.show(file1, file2, rows);
+            DiffWindow.show(Client.primaryStage, file1, file2, rows);
         } catch (Exception e) {
             utils.warningMessage("Problem generating diff: " + e.getMessage());
         }
@@ -561,29 +561,24 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
         ArrayList<String> problems = new ArrayList<>();
         if (modelInterfaceDir == null || modelInterfaceDirStr == null || modelInterfaceDirStr.trim().isEmpty()) {
-            problems.add("ModelInterface directory is not set.");
+            problems.add("Set the ModelInterface directory in the options file.");
         } else if (!modelInterfaceDir.isDirectory()) {
-            problems.add("ModelInterface directory does not exist: " + modelInterfaceDir.getAbsolutePath());
+            problems.add("The ModelInterface directory was not found: " + modelInterfaceDir.getAbsolutePath());
         }
 
         File jarFile = null;
         if (jarName == null || jarName.trim().isEmpty()) {
-            problems.add("ModelInterface jar file name is not set.");
+            problems.add("Set the ModelInterface jar file name in the options file.");
         } else if (modelInterfaceDir != null) {
             jarFile = new File(modelInterfaceDir, jarName);
             if (!jarFile.isFile()) {
-                problems.add("ModelInterface jar not found: " + jarFile.getAbsolutePath());
+                problems.add("The ModelInterface jar file was not found: " + jarFile.getAbsolutePath());
             }
         }
 
         String resolvedDatabasePath = databasePath == null ? "" : databasePath.trim();
         if (resolvedDatabasePath.isEmpty()) {
-            problems.add("Output database path is not set.");
-        } else {
-            File db = new File(resolvedDatabasePath);
-            if (!db.exists()) {
-                problems.add("Database not found: " + db.getAbsolutePath());
-            }
+            problems.add("Set the output database path before opening ModelInterface.");
         }
 
         ScenarioLibraryModelInterfaceMiniHelper.validateOptionalFile(problems, "Query file", vars.getQueryFilename());
@@ -593,19 +588,24 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
         File mapsDir = null;
         if (modelInterfaceDir != null) {
-            mapsDir = new File(modelInterfaceDir, "map_resources");
-            if (!mapsDir.isDirectory()) {
-                problems.add("Map resources directory not found: " + mapsDir.getAbsolutePath());
+            File candidateMapsDir = new File(modelInterfaceDir, "map_resources");
+            if (candidateMapsDir.isDirectory()) {
+                mapsDir = candidateMapsDir;
             }
         }
 
         if (!problems.isEmpty()) {
             StringBuilder sb = new StringBuilder();
-            sb.append("Please fix:\n\n");
+            sb.append("ModelInterface could not be started because some required paths or files are missing or invalid.")
+              .append(vars.getEol())
+              .append(vars.getEol())
+              .append("Please review the following:")
+              .append(vars.getEol())
+              .append(vars.getEol());
             for (String p : problems) {
-                sb.append(" - ").append(p).append("\n");
+                sb.append(" - ").append(p).append(vars.getEol());
             }
-            utils.showInformationDialog("Notice", "Unable to start ModelInterface.", sb.toString());
+            utils.showInformationDialog("Configuration needed", "ModelInterface setup is incomplete.", sb.toString());
             System.out.println("Unable to start ModelInterface. " + sb.toString());
             return;
         }
@@ -633,6 +633,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         ConsoleManager.appendHeader(ConsoleManager.StreamSource.MODEL_INTERFACE, "Starting ModelInterface");
         ConsoleManager.appendLine(ConsoleManager.StreamSource.MODEL_INTERFACE, "cmd args: " + args);
         ConsoleManager.appendLine(ConsoleManager.StreamSource.MODEL_INTERFACE, "working dir: " + modelInterfaceDir.getAbsolutePath());
+        if (mapsDir == null) {
+            ConsoleManager.appendLine(ConsoleManager.StreamSource.MODEL_INTERFACE,
+                    "No ModelInterface map resources folder was found; launching without mapping support.");
+        }
 
         try {
             Client.modelInterfaceExecutionThread.submitCommandWithDirectory(args, modelInterfaceDir.getAbsolutePath());

@@ -100,9 +100,25 @@ public final class UtilsDialogs {
 			if (owner != null) {
 				stage.initOwner(owner);
 				stage.initModality(Modality.WINDOW_MODAL);
+				stage.setOnShown(e -> centerStageOverOwner(stage, owner));
 			}
 		} catch (Exception ignored) {
 		}
+	}
+
+	private void centerStageOverOwner(Stage stage, Window owner) {
+		if (stage == null || owner == null || !owner.isShowing()) {
+			return;
+		}
+		try {
+			double w = stage.getWidth();
+			double h = stage.getHeight();
+			if (w <= 0 || h <= 0) {
+				return;
+			}
+			stage.setX(owner.getX() + ((owner.getWidth() - w) / 2.0));
+			stage.setY(owner.getY() + ((owner.getHeight() - h) / 2.0));
+		} catch (Exception ignored) {}
 	}
 
 	private Window getVisiblePrimaryWindow() {

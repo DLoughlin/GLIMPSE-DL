@@ -29,6 +29,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import glimpseUtil.GLIMPSEVariables;
+import glimpseUtil.UtilsDialogs;
 import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
@@ -43,6 +44,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 
 /**
  * Small tabbed console window used to view stdout/stderr from external processes.
@@ -304,6 +306,7 @@ final class ConsoleManager {
 
         stage = new Stage();
         stage.setTitle("GLIMPSE Console");
+        initOwnerForConsoleStage(stage);
 
         tabPane = new TabPane();
         tabPane.getTabs().add(createTab("GLIMPSE", glimpseStdoutArea));
@@ -339,7 +342,41 @@ final class ConsoleManager {
                 flushDeferredGcamBacklogIfVisible();
             }
         });
-        stage.setOnShown(e -> flushDeferredGcamBacklogIfVisible());
+        stage.setOnShown(e -> {
+            flushDeferredGcamBacklogIfVisible();
+            centerStageOverPrimaryOwner(stage);
+        });
+    }
+
+    private static void initOwnerForConsoleStage(Stage consoleStage) {
+        if (consoleStage == null) {
+            return;
+        }
+        try {
+            Window owner = UtilsDialogs.getPrimaryOwnerWindow();
+            if (owner != null) {
+                consoleStage.initOwner(owner);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private static void centerStageOverPrimaryOwner(Stage childStage) {
+        if (childStage == null) {
+            return;
+        }
+        try {
+            Window owner = UtilsDialogs.getPrimaryOwnerWindow();
+            if (owner == null || !owner.isShowing()) {
+                return;
+            }
+            double childWidth = childStage.getWidth();
+            double childHeight = childStage.getHeight();
+            if (childWidth <= 0 || childHeight <= 0) {
+                return;
+            }
+            childStage.setX(owner.getX() + ((owner.getWidth() - childWidth) / 2.0));
+            childStage.setY(owner.getY() + ((owner.getHeight() - childHeight) / 2.0));
+        } catch (Exception ignored) {}
     }
 
     private static Tab createTab(String title, TextArea area) {

@@ -107,7 +107,7 @@ public class Breakout extends JDialog {
 			}
 			// need to determine how to handle complex datasets
 			if (transposedData.isEmpty()) {// || chart.length > 2) {
-				JOptionPane.showMessageDialog(null, "Transpose is not yet supported on complex datasets.", "Information",
+				JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Transpose is not yet supported on complex datasets.", "Information",
 						JOptionPane.INFORMATION_MESSAGE);
 				return;
 			}

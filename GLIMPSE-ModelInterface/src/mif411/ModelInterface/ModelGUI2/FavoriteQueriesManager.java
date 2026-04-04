@@ -18,6 +18,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTree;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
+import java.awt.Component;
 
 import ModelInterface.InterfaceMain;
 import ModelInterface.ModelGUI2.QueryTreeModel.QueryGroup;
@@ -33,6 +34,18 @@ public class FavoriteQueriesManager {
         this.listScrollQueries = listScrollQueries;
     }
 
+	private Component getDialogParent() {
+		Component owner = null;
+		try {
+			owner = InterfaceMain.getInstance().getFrame();
+		} catch (Exception ignored) {
+		}
+		if (owner == null) {
+			owner = listScrollQueries != null ? listScrollQueries : queryList;
+		}
+		return owner;
+	}
+
     /**
 	 * Selects favorite queries in the query tree based on the favorite queries
 	 * file.
@@ -40,7 +53,7 @@ public class FavoriteQueriesManager {
 	public void selectFavoriteQueries() {
 
 		if (queryList == null || queryList.getModel() == null) {
-			JOptionPane.showMessageDialog(null,
+			JOptionPane.showMessageDialog(getDialogParent(),
 					"Query tree is not ready yet. Please wait for startup to finish before applying favorites.",
 					"Favorite Queries", JOptionPane.INFORMATION_MESSAGE);
 			return;
@@ -50,14 +63,14 @@ public class FavoriteQueriesManager {
 		ArrayList<String> favoriteQueryNames = new ArrayList<>();
 		String favoriteQueryFilename = InterfaceMain.favoriteQueriesFileLocation;
 		if (favoriteQueryFilename == null || favoriteQueryFilename.trim().isEmpty()) {
-			JOptionPane.showMessageDialog(null,
+			JOptionPane.showMessageDialog(getDialogParent(),
 					"No favorite queries file is configured. Please load or create one first.",
 					"Favorite Queries", JOptionPane.INFORMATION_MESSAGE);
 			return;
 		}
 		File favoritesFile = new File(favoriteQueryFilename);
 		if (!favoritesFile.exists()) {
-			JOptionPane.showMessageDialog(null,
+			JOptionPane.showMessageDialog(getDialogParent(),
 					"Favorite queries file was not found:\n" + favoriteQueryFilename,
 					"Favorite Queries", JOptionPane.ERROR_MESSAGE);
 			return;
@@ -66,7 +79,7 @@ public class FavoriteQueriesManager {
 			favoriteQueryLines = getStringArrayFromFile(favoriteQueryFilename, "#");
 		} catch (Exception e) {
 			System.out.println("Could not read favorite queries file: " + e);
-			JOptionPane.showMessageDialog(null, "Unable to load favorites file, please see console for error",
+			JOptionPane.showMessageDialog(getDialogParent(), "Unable to load favorites file, please see console for error",
 					"Error Saving File", JOptionPane.ERROR_MESSAGE);
 			return;
 		}
@@ -116,7 +129,7 @@ public class FavoriteQueriesManager {
 			for (String s : notFound) {
 				errorMessage.append(s).append("\n");
 			}
-			JOptionPane.showMessageDialog(null, errorMessage.toString());
+			JOptionPane.showMessageDialog(getDialogParent(), errorMessage.toString());
 		}
 	}
 
@@ -126,7 +139,7 @@ public class FavoriteQueriesManager {
 	public void createFavoriteQueriesFile() {
 		TreePath[] selectedTreePath = queryList.getSelectionPaths();
 		if (selectedTreePath == null || selectedTreePath.length == 0) {
-			JOptionPane.showMessageDialog(null, "Please select at least one query to save.");
+			JOptionPane.showMessageDialog(getDialogParent(), "Please select at least one query to save.");
 			return;
 		}
 
@@ -136,7 +149,7 @@ public class FavoriteQueriesManager {
 				hasLeaf = true;
 		}
 		if (!hasLeaf) {
-			JOptionPane.showMessageDialog(null, "Please select at least one query to save.");
+			JOptionPane.showMessageDialog(getDialogParent(), "Please select at least one query to save.");
 			return;
 		}
 
@@ -153,7 +166,7 @@ public class FavoriteQueriesManager {
 		if (PathToUse != null) {
 			fileChooser.setCurrentDirectory(new File(PathToUse));
 		}
-		int userSelection = fileChooser.showSaveDialog(null);
+		int userSelection = fileChooser.showSaveDialog(getDialogParent());
 
 		if (userSelection == JFileChooser.APPROVE_OPTION) {
 			try {
@@ -181,14 +194,14 @@ public class FavoriteQueriesManager {
 				writer.close();
 				String messageFileSaved = fileChooser.getSelectedFile().toString()
 						+ " has been saved.\n\n Would you like to make this the active favorites file?";
-				int answer = JOptionPane.showConfirmDialog(null, messageFileSaved, "Switch?",
+				int answer = JOptionPane.showConfirmDialog(getDialogParent(), messageFileSaved, "Switch?",
 						JOptionPane.YES_NO_OPTION);
 				if (answer == JOptionPane.YES_OPTION) {
 					InterfaceMain.favoriteQueriesFileLocation = fileChooser.getSelectedFile().getAbsolutePath();
 				}
 			} catch (IOException e) {
 				System.out.println("Could not save file: " + e.toString());
-				JOptionPane.showMessageDialog(null, "Unable to save file, please see console for error",
+				JOptionPane.showMessageDialog(getDialogParent(), "Unable to save file, please see console for error",
 						"Error Saving File", JOptionPane.ERROR_MESSAGE);
 			}
 
@@ -202,12 +215,12 @@ public class FavoriteQueriesManager {
 	public void appendFavoriteQueries() {
 		TreePath[] selectedTreePath = queryList.getSelectionPaths();
 		if (selectedTreePath == null || selectedTreePath.length == 0) {
-			JOptionPane.showMessageDialog(null, "Please select at least one query to append.");
+			JOptionPane.showMessageDialog(getDialogParent(), "Please select at least one query to append.");
 			return;
 		}
 		String favoritesFilePath = InterfaceMain.favoriteQueriesFileLocation;
 		if (favoritesFilePath == null || favoritesFilePath.trim().isEmpty()) {
-			JOptionPane.showMessageDialog(null,
+			JOptionPane.showMessageDialog(getDialogParent(),
 					"No favorite queries file specified. Please load or create a file first.");
 			return;
 		}
@@ -215,7 +228,7 @@ public class FavoriteQueriesManager {
 		if (!favoritesFile.exists()) {
 			String messageFileNotFound = "Favorite queries list file " + favoritesFilePath
 					+ " could not be found to be appended to.\nPlease load or create a file first.";
-			JOptionPane.showMessageDialog(null, messageFileNotFound);
+			JOptionPane.showMessageDialog(getDialogParent(), messageFileNotFound);
 			return;
 		}
 		try (BufferedWriter writer = new BufferedWriter(
@@ -236,10 +249,10 @@ public class FavoriteQueriesManager {
 			}
 			writer.flush();
 			String messageQueriesAppended = "The selected queries have been appended to " + favoritesFilePath;
-			JOptionPane.showMessageDialog(null, messageQueriesAppended);
+			JOptionPane.showMessageDialog(getDialogParent(), messageQueriesAppended);
 		} catch (IOException e) {
 			System.out.println("Could not append to favorite queries: " + e);
-			JOptionPane.showMessageDialog(null, "Unable to append to file, please see console for error",
+			JOptionPane.showMessageDialog(getDialogParent(), "Unable to append to file, please see console for error",
 					"Error Appending File", JOptionPane.ERROR_MESSAGE);
 		}
 	}
@@ -261,13 +274,13 @@ public class FavoriteQueriesManager {
 		if (PathToUse != null) {
 			fileChooser.setCurrentDirectory(new File(PathToUse));
 		}
-		int returnVal = fileChooser.showOpenDialog(null);
+		int returnVal = fileChooser.showOpenDialog(getDialogParent());
 
 		if (returnVal == JFileChooser.APPROVE_OPTION) {
 			InterfaceMain.favoriteQueriesFileLocation = fileChooser.getSelectedFile().getAbsolutePath();
 			String messageFileSaved = fileChooser.getSelectedFile().toString()
 					+ " has been loaded.\n\n Would you like to apply it now?";
-			int answer = JOptionPane.showConfirmDialog(null, messageFileSaved, "Switch?", JOptionPane.YES_NO_OPTION);
+			int answer = JOptionPane.showConfirmDialog(getDialogParent(), messageFileSaved, "Switch?", JOptionPane.YES_NO_OPTION);
 			if (answer == JOptionPane.YES_OPTION) {
 				selectFavoriteQueries();
 			}

@@ -433,6 +433,12 @@ public class UtilsTable {
 		Runnable popupTask = () -> {
 			String usedTitle = finalTitle == null ? GLIMPSEUtils.LABEL_DISPLAY : finalTitle;
 			Stage stage = new Stage();
+			try {
+				javafx.stage.Window owner = UtilsDialogs.getPrimaryOwnerWindow();
+				if (owner != null) {
+					stage.initOwner(owner);
+				}
+			} catch (Exception ignored) {}
 			stage.setTitle(usedTitle);
 			stage.setWidth(wd);
 			stage.setHeight(ht);
@@ -495,6 +501,22 @@ public class UtilsTable {
 
 			Scene scene = new Scene(border);
 			stage.setScene(scene);
+			stage.setOnShown(e -> {
+				try {
+					javafx.stage.Window owner = stage.getOwner();
+					if (owner == null || !owner.isShowing()) {
+						owner = UtilsDialogs.getPrimaryOwnerWindow();
+					}
+					if (owner != null && owner.isShowing()) {
+						double w = stage.getWidth();
+						double h = stage.getHeight();
+						if (w > 0 && h > 0) {
+							stage.setX(owner.getX() + ((owner.getWidth() - w) / 2.0));
+							stage.setY(owner.getY() + ((owner.getHeight() - h) / 2.0));
+						}
+					}
+				} catch (Exception ignored) {}
+			});
 			stage.show();
 		};
 		popupTask.run();

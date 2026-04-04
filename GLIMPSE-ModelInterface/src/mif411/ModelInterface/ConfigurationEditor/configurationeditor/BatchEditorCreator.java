@@ -34,6 +34,7 @@ import java.io.File;
 import javax.swing.JDialog;
 import javax.swing.WindowConstants;
 
+import ModelInterface.InterfaceMain;
 import ModelInterface.ConfigurationEditor.guihelpers.WindowCloseListener;
 import ModelInterface.ConfigurationEditor.utils.Messages;
 
@@ -74,7 +75,7 @@ final class BatchEditorCreator implements Runnable {
 	 * @see java.lang.Runnable#run()
 	 */
 	public synchronized void run() {
-		final JDialog editDialog = new JDialog();
+		final JDialog editDialog = new JDialog(InterfaceMain.getInstance().getFrame());
 		// Don't use the default closer.
 		editDialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 		editDialog.addWindowListener(new WindowCloseListener());
@@ -88,6 +89,7 @@ final class BatchEditorCreator implements Runnable {
 		// Check if the batch file editor can be shown.
 		if (editorPanel.isValidEditor()) {
 			editDialog.pack();
+			editDialog.setLocationRelativeTo(InterfaceMain.getInstance().getFrame());
 			editDialog.setVisible(true);
 		}
 	}

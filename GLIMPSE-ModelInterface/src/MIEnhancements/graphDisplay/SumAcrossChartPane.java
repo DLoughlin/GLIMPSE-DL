@@ -47,6 +47,7 @@ import javax.swing.event.ListSelectionListener;
 
 import chart.Chart;
 import chart.DatasetUtil;
+import ModelInterface.InterfaceMain;
 
 /**
  * Handles the integration of two or more charts' data by summing the datasets
@@ -72,6 +73,14 @@ public class SumAcrossChartPane {
 	/** Map of region/group name to selected chart indices */
 	private Map<String, int[]> selectedMeta;
 
+	private java.awt.Component getDialogParent() {
+		try {
+			return InterfaceMain.getInstance().getFrame();
+		} catch (Exception ignored) {
+			return null;
+		}
+	}
+
 	/**
 	 * Constructor. Prompts user for region/group names and chart selections,
 	 * then creates summed charts.
@@ -95,7 +104,7 @@ public class SumAcrossChartPane {
 			JOptionPane pane = new JOptionPane("Please enter a Name", JOptionPane.PLAIN_MESSAGE,
 					JOptionPane.OK_CANCEL_OPTION);
 			pane.setWantsInput(true);
-			JDialog dialog = pane.createDialog("Input Region Name");
+			JDialog dialog = pane.createDialog(getDialogParent(), "Input Region Name");
 			dialog.setVisible(true);
 			name = (String) pane.getInputValue();
 
@@ -103,7 +112,7 @@ public class SumAcrossChartPane {
 			JComponent jc = metaSelection();
 			Object options[] = { "More", "Done" };
 			JOptionPane pane0 = new JOptionPane(new JScrollPane(jc), -1, 0, null, options, options[0]);
-			dialog = pane0.createDialog("Select charts to be grouped");
+			dialog = pane0.createDialog(getDialogParent(), "Select charts to be grouped");
 			dialog.setPreferredSize(new Dimension(600, 200));
 			dialog.setLayout(null);
 			dialog.setResizable(true);
@@ -130,7 +139,7 @@ public class SumAcrossChartPane {
 				data = null;
 			}
 			if (data == null) {
-				JOptionPane.showMessageDialog(null, "No Support for different number of technologies for each chart",
+				JOptionPane.showMessageDialog(getDialogParent(), "No Support for different number of technologies for each chart",
 						"Information", JOptionPane.INFORMATION_MESSAGE);
 				return;
 			}

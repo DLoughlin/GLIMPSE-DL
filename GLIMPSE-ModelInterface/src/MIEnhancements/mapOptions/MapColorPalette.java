@@ -12,6 +12,8 @@ import javax.swing.JOptionPane;
 import org.geotools.brewer.color.ColorBrewer;
 import org.geotools.brewer.color.BrewerPalette;
 
+import ModelInterface.InterfaceMain;
+
 /**
  * Represents a color palette for map visualizations, supporting diverging, qualitative, and sequential color schemes.
  * Provides methods for color manipulation, palette reversal, and palette selection from GeoTools ColorBrewer.
@@ -154,7 +156,7 @@ public class MapColorPalette implements Serializable {
             palette = brewer.getPalettes(ColorBrewer.DIVERGING)[nChoice];
             maxAllowed = palette.getMaxColors();
             if (nClass > maxAllowed) {
-                JOptionPane.showMessageDialog(null, "This color palette only allows a maximum of " + maxAllowed + " colors.");
+                JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "This color palette only allows a maximum of " + maxAllowed + " colors.");
                 return new MapColorPalette(palette.getColors(maxAllowed), palette.getDescription(), !reverseColors);
             } else {
                 // If odd number of classes, set center color to white
@@ -171,7 +173,7 @@ public class MapColorPalette implements Serializable {
             palette = brewer.getPalettes(ColorBrewer.QUALITATIVE)[nChoice];
             maxAllowed = palette.getMaxColors();
             if (nClass > maxAllowed) {
-                JOptionPane.showMessageDialog(null, "This color palette only allows a maximum of " + maxAllowed + " colors.");
+                JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "This color palette only allows a maximum of " + maxAllowed + " colors.");
                 return new MapColorPalette(palette.getColors(maxAllowed), palette.getDescription(), reverseColors);
             } else {
                 return new MapColorPalette(palette.getColors(nClass), palette.getDescription(), reverseColors);
@@ -180,7 +182,7 @@ public class MapColorPalette implements Serializable {
             palette = brewer.getPalettes(ColorBrewer.SEQUENTIAL)[nChoice];
             maxAllowed = palette.getMaxColors();
             if (nClass > maxAllowed) {
-                JOptionPane.showMessageDialog(null, "This color palette only allows a maximum of " + maxAllowed + " colors.");
+                JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "This color palette only allows a maximum of " + maxAllowed + " colors.");
                 return new MapColorPalette(palette.getColors(maxAllowed), palette.getDescription(), reverseColors);
             } else {
                 return new MapColorPalette(palette.getColors(nClass), palette.getDescription(), reverseColors);

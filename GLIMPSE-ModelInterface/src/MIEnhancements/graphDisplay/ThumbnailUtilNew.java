@@ -43,6 +43,7 @@ import chart.DatasetUtil;
 import chart.MyChartFactory;
 import chart.XYChart;
 import conversionUtil.ArrayConversion;
+import ModelInterface.InterfaceMain;
 import listener.IconMouseListener;
 import ModelInterface.InterfaceMain;
 
@@ -491,7 +492,7 @@ public class ThumbnailUtilNew {
 			try {
 				jb = buttonIcon(chart[i], chart.length - 1 - i, w, max, min, sameScale, transpose, iconListener);
 			} catch (OutOfMemoryError e2) {
-				JOptionPane.showMessageDialog(null, "Too many charts to be created. No enough memory ", "Information",
+				JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Too many charts to be created. No enough memory ", "Information",
 						JOptionPane.INFORMATION_MESSAGE);
 				chartPane.removeAll();
 				Runtime.getRuntime().gc();
@@ -617,7 +618,7 @@ public class ThumbnailUtilNew {
 			try {
 				jb = buttonIcon(chart[i], chart.length - 1 - i, DEFAULT_THUMBNAIL_SIZE, max, min, sameScale, false, iconListener);
 			} catch (OutOfMemoryError e2) {
-				JOptionPane.showMessageDialog(null, "Too many charts to be created. No enough memory ", "Information",
+				JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Too many charts to be created. No enough memory ", "Information",
 						JOptionPane.INFORMATION_MESSAGE);
 				chartPane.removeAll();
 				Runtime.getRuntime().gc();

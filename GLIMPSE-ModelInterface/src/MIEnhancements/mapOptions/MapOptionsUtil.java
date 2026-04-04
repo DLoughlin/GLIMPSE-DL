@@ -533,7 +533,7 @@ public class MapOptionsUtil {
                 + "  mapResourceFolder=" + InterfaceMain.shapeFileLocationPrefix + "\n"
                 + "  shapefile=" + shpFilePath;
 
-        Runnable show = () -> JOptionPane.showMessageDialog(null, msg, "Mapping not configured",
+            Runnable show = () -> JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), msg, "Mapping not configured",
                 JOptionPane.WARNING_MESSAGE);
 
         if (SwingUtilities.isEventDispatchThread()) {

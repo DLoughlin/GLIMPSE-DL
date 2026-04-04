@@ -33,6 +33,7 @@ package chart;
 
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Paint;
@@ -75,6 +76,7 @@ import org.jfree.chart.ui.RectangleInsets;
 import org.jfree.chart.ui.TextAnchor;
 
 import listener.ListMouseListener;
+import ModelInterface.InterfaceMain;
 
 /**
  * Handles creation, editing, and removal of Markers for JFreeChart.
@@ -116,6 +118,17 @@ public class ChartMarker {
         this.jfchart = chart.getChart();
         this.markerMap = chart.getMarkerMap();
         selectMarkerType();
+    }
+
+    private Component getDialogParent() {
+        if (dialog != null) {
+            return dialog;
+        }
+        try {
+            return InterfaceMain.getInstance().getFrame();
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     /**
@@ -174,7 +187,7 @@ public class ChartMarker {
                         doApply();
                         chart.setMarkerMap(markerMap);
                     } else if (jb1.getName().equals("Save")) {
-                        JOptionPane.showMessageDialog(null, "Not implemented yet", "Information",
+                        JOptionPane.showMessageDialog(getDialogParent(), "Not implemented yet", "Information",
                                 JOptionPane.INFORMATION_MESSAGE);
                     } else if (jb1.getName().equals("Done")) {
                         dialog1.dispose();
@@ -263,7 +276,7 @@ public class ChartMarker {
             if (Double.valueOf(start) != -99999)
                 selectMarkerValue("Input a End value");
             else {
-                JOptionPane.showMessageDialog(null, "Invalid data Inputted", "Information",
+                JOptionPane.showMessageDialog(getDialogParent(), "Invalid data Inputted", "Information",
                         JOptionPane.INFORMATION_MESSAGE);
                 return;
             }
@@ -285,7 +298,7 @@ public class ChartMarker {
                 }
                 markerMap.put(selectedMarkerType + "_" + intervalMarker.getLabel(), intervalMarker);
             } else {
-                JOptionPane.showMessageDialog(null, "Invalid data Inputted", "Information",
+                JOptionPane.showMessageDialog(getDialogParent(), "Invalid data Inputted", "Information",
                         JOptionPane.INFORMATION_MESSAGE);
             }
         }
@@ -314,7 +327,7 @@ public class ChartMarker {
                 }
                 markerMap.put(selectedMarkerType + "_" + valueMarker.getLabel(), valueMarker);
             } else {
-                JOptionPane.showMessageDialog(null, "Invalid data Inputted", "Information",
+                JOptionPane.showMessageDialog(getDialogParent(), "Invalid data Inputted", "Information",
                         JOptionPane.INFORMATION_MESSAGE);
             }
         }
@@ -325,20 +338,20 @@ public class ChartMarker {
      */
     private void editMarker() {
         if (markerMap == null || markerMap.isEmpty()) {
-            JOptionPane.showMessageDialog(null, "No Marker to Edit", "Information", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(getDialogParent(), "No Marker to Edit", "Information", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         String[] keys = markerMap.keySet().toArray(new String[0]);
-        String selectedMarker = (String) JOptionPane.showInputDialog(null, "Choose one", "Select a Category",
+        String selectedMarker = (String) JOptionPane.showInputDialog(getDialogParent(), "Choose one", "Select a Category",
                 JOptionPane.INFORMATION_MESSAGE, null, keys, keys[0]);
         Marker m = markerMap.get(selectedMarker);
-        if (JOptionPane.showConfirmDialog(null, "choose one", "Modify Label?",
+        if (JOptionPane.showConfirmDialog(getDialogParent(), "choose one", "Modify Label?",
                 JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION)
             getMarkerLabel(m);
-        if (JOptionPane.showConfirmDialog(null, "choose one", "Modify Label Position?",
+        if (JOptionPane.showConfirmDialog(getDialogParent(), "choose one", "Modify Label Position?",
                 JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION)
             getMarkerLabelPosition(m);
-        if (JOptionPane.showConfirmDialog(null, "choose one", "Modify Text Label Position?",
+        if (JOptionPane.showConfirmDialog(getDialogParent(), "choose one", "Modify Text Label Position?",
                 JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION)
             getMarkerTextLabelPosition(m);
     }
@@ -348,11 +361,11 @@ public class ChartMarker {
      */
     private void removeMarker() {
         if (markerMap == null || markerMap.isEmpty()) {
-            JOptionPane.showMessageDialog(null, "No Marker to Remove", "Information", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(getDialogParent(), "No Marker to Remove", "Information", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         String[] keys = markerMap.keySet().toArray(new String[0]);
-        String selectedMarker = (String) JOptionPane.showInputDialog(null, "Choose one", "Select a Category",
+        String selectedMarker = (String) JOptionPane.showInputDialog(getDialogParent(), "Choose one", "Select a Category",
                 JOptionPane.INFORMATION_MESSAGE, null, keys, keys[0]);
         Marker m = markerMap.get(selectedMarker);
         String plotType = jfchart.getPlot().getPlotType();
@@ -386,7 +399,7 @@ public class ChartMarker {
             l = Arrays.asList(x);
         }
         String[] data = conversionUtil.ArrayConversion.list2Array(l);
-        return (String) JOptionPane.showInputDialog(null, "Choose one", "Select a Category, Then Click OK",
+        return (String) JOptionPane.showInputDialog(getDialogParent(), "Choose one", "Select a Category, Then Click OK",
                 JOptionPane.INFORMATION_MESSAGE, null, data, data[0]);
     }
 
@@ -405,7 +418,7 @@ public class ChartMarker {
         tcc.setBorder(BorderFactory.createTitledBorder("Choose Marker Color"));
         Object[] options = { "Ok", "Cancel" };
         JOptionPane pane = new JOptionPane(tcc, -1, 0, null, options, options[0]);
-        JDialog dialog = pane.createDialog("Select a Marker Paint, Then Click OK");
+        JDialog dialog = pane.createDialog(getDialogParent(), "Select a Marker Paint, Then Click OK");
         dialog.setLayout(null);
         dialog.setResizable(true);
         dialog.setVisible(true);
@@ -428,7 +441,7 @@ public class ChartMarker {
                 String s = (String) valueList.getSelectedItem();
                 if (selected == -1) {
                     if (s.trim().equals("") || Double.valueOf(s.trim()).isNaN()) {
-                        JOptionPane.showMessageDialog(null, "Invalid data Inputted", "Information",
+                        JOptionPane.showMessageDialog(getDialogParent(), "Invalid data Inputted", "Information",
                                 JOptionPane.INFORMATION_MESSAGE);
                     } else {
                         selectedMarkerValue = Double.valueOf(s).doubleValue();
@@ -440,7 +453,7 @@ public class ChartMarker {
         });
         Object[] options = { "Ok", "Cancel" };
         JOptionPane pane = new JOptionPane(valueList, -1, 0, null, options, options[0]);
-        JDialog dialog = pane.createDialog(name);
+        JDialog dialog = pane.createDialog(getDialogParent(), name);
         dialog.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentShown(ComponentEvent e) {
@@ -496,14 +509,14 @@ public class ChartMarker {
                 JOptionPane.OK_CANCEL_OPTION);
         pane.setWantsInput(true);
         pane.setInitialSelectionValue("");
-        JDialog dialog = pane.createDialog("Input Marker Label");
+        JDialog dialog = pane.createDialog(getDialogParent(), "Input Marker Label");
         dialog.setVisible(true);
         String markerLabel = ((String) pane.getInputValue()).trim();
         if ((int) pane.getValue() == JOptionPane.CANCEL_OPTION)
             return JOptionPane.CANCEL_OPTION;
         else if ((int) pane.getValue() == JOptionPane.OK_OPTION) {
             if (markerLabel.equals("")) {
-                JOptionPane.showMessageDialog(null, "No Label Inputted", "Information",
+                JOptionPane.showMessageDialog(getDialogParent(), "No Label Inputted", "Information",
                         JOptionPane.INFORMATION_MESSAGE);
                 return JOptionPane.CANCEL_OPTION;
             } else {
@@ -528,7 +541,7 @@ public class ChartMarker {
      * @param m Marker to update
      */
     protected void getMarkerLabelPosition(final Marker m) {
-        String selectedPos = (String) JOptionPane.showInputDialog(null, "Choose one", "Select a Category",
+        String selectedPos = (String) JOptionPane.showInputDialog(getDialogParent(), "Choose one", "Select a Category",
                 JOptionPane.INFORMATION_MESSAGE, null, pos, pos[0]);
         m.setLabelOffset(new RectangleInsets(0, 16, 0, 16));
         m.setLabelAnchor(MarkerUtil.getMarkerLabelPosition(selectedPos));
@@ -539,7 +552,7 @@ public class ChartMarker {
      * @param m Marker to update
      */
     protected void getMarkerTextLabelPosition(final Marker m) {
-        String selectedTextPos = (String) JOptionPane.showInputDialog(null, "Choose one", "Select a Category",
+        String selectedTextPos = (String) JOptionPane.showInputDialog(getDialogParent(), "Choose one", "Select a Category",
                 JOptionPane.INFORMATION_MESSAGE, null, textPos, textPos[0]);
         m.setLabelTextAnchor(MarkerUtil.getMarkerTextLabelPosition(selectedTextPos));
     }

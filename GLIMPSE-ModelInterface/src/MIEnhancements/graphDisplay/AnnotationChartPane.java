@@ -62,6 +62,7 @@ import org.jfree.data.category.DefaultCategoryDataset;
 import chart.Chart;
 import chart.ChartUtil;
 import chart.DatasetUtil;
+import ModelInterface.InterfaceMain;
 
 /**
  * Handles adding and removing annotations on category or XY charts.
@@ -87,6 +88,14 @@ public class AnnotationChartPane {
     /** Table for annotation text input */
     private JTable table;
 
+    private java.awt.Component getDialogParent() {
+        try {
+            return InterfaceMain.getInstance().getFrame();
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
     /**
      * Constructor: prompts user to add or remove annotation, then acts accordingly.
      * @param chart Chart object to annotate
@@ -95,7 +104,7 @@ public class AnnotationChartPane {
         this.chart = chart;
         jfchart = chart.getChart();
         String[] data = { "Add", "Remove" };
-        String action = (String) JOptionPane.showInputDialog(null, "Choose one", "Select an Action",
+        String action = (String) JOptionPane.showInputDialog(getDialogParent(), "Choose one", "Select an Action",
                 JOptionPane.INFORMATION_MESSAGE, null, data, data[0]);
 
         if ("Add".equals(action))
@@ -113,7 +122,7 @@ public class AnnotationChartPane {
         TextAnnotation[] annotation = null;
 
         if (jfchart.getPlot().getPlotType().contains("Category")) {
-            if (JOptionPane.showConfirmDialog(null, "choose one", "Select an Annotation?",
+            if (JOptionPane.showConfirmDialog(getDialogParent(), "choose one", "Select an Annotation?",
                     JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
                 int n = jfchart.getCategoryPlot().getAnnotations().size();
                 annotation = new TextAnnotation[n];
@@ -127,7 +136,7 @@ public class AnnotationChartPane {
                     i++;
                 }
 
-                selected = (String) JOptionPane.showInputDialog(null, "Choose one", "Select an Annotation",
+                selected = (String) JOptionPane.showInputDialog(getDialogParent(), "Choose one", "Select an Annotation",
                         JOptionPane.INFORMATION_MESSAGE, null, name, name[0]);
             }
             // Remove the selected annotation
@@ -175,11 +184,11 @@ public class AnnotationChartPane {
         jp.add(box, BorderLayout.SOUTH);
 
         // Show dialog for annotation input
-        dialog = new JDialog();
-        dialog.setTitle("Input Annotation Text");
+        dialog = new JDialog(InterfaceMain.getInstance().getFrame(), "Input Annotation Text", false);
         dialog.setContentPane(jp);
         dialog.setSize(new Dimension(600, 200));
         dialog.setResizable(true);
+        dialog.setLocationRelativeTo(getDialogParent());
         dialog.setVisible(true);
     }
 
@@ -201,7 +210,7 @@ public class AnnotationChartPane {
                         doApply();
                         buildAnnotationText();
                     } else if (jb1.getName().equals("Save")) {
-                        JOptionPane.showMessageDialog(null, "Not implement yet", "Information",
+                        JOptionPane.showMessageDialog(getDialogParent(), "Not implement yet", "Information",
                                 JOptionPane.INFORMATION_MESSAGE);
                     } else if (jb1.getName().equals("Done")) {
                         dialog.dispose();

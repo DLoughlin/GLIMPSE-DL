@@ -55,6 +55,7 @@ import chart.Chart;
 import chart.DatasetUtil;
 import chart.MyChartFactory;
 import chart.MyDataset;
+import ModelInterface.InterfaceMain;
 
 /**
  * Handles the difference of two charts by subtracting one chart's data from another's.
@@ -76,6 +77,14 @@ public class DifferenceChartPane extends JPanel {
     private int[] pattern = null;
     private int[] lineStrokes = null;
     boolean shouldStop = false;
+
+      private java.awt.Component getDialogParent() {
+        try {
+          return InterfaceMain.getInstance().getFrame();
+        } catch (Exception ignored) {
+          return null;
+        }
+      }
 
     /**
      * Constructs a DifferenceChartPane for comparing two charts.
@@ -104,7 +113,7 @@ public class DifferenceChartPane extends JPanel {
         // First chart selection dialog
         while (!madeValidSelection) {
             JOptionPane pane0 = new JOptionPane(new JScrollPane(jc), -1, 0, null, options, options[0]);
-            JDialog dialog = pane0.createDialog("Select first chart to compare");
+                  JDialog dialog = pane0.createDialog(getDialogParent(), "Select first chart to compare");
             dialog.setPreferredSize(new Dimension(600, 200));
             dialog.setLayout(null);
             dialog.setResizable(true);
@@ -122,7 +131,7 @@ public class DifferenceChartPane extends JPanel {
                 madeValidSelection = true;
                 dialog.dispose();
             } else {
-                JOptionPane.showMessageDialog(null, "Please make a selection before pressing OK, or cancel to exit.", "Additional Selection Required", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(getDialogParent(), "Please make a selection before pressing OK, or cancel to exit.", "Additional Selection Required", JOptionPane.ERROR_MESSAGE);
             }
         }
 
@@ -132,7 +141,7 @@ public class DifferenceChartPane extends JPanel {
         // Second chart selection dialog
         while (!madeValidSelection) {
             JOptionPane pane0 = new JOptionPane(new JScrollPane(jc), -1, 0, null, options, options[0]);
-            JDialog dialog = pane0.createDialog("Select second chart to compare");
+                  JDialog dialog = pane0.createDialog(getDialogParent(), "Select second chart to compare");
             dialog.setPreferredSize(new Dimension(600, 200));
             dialog.setLayout(null);
             dialog.setResizable(true);
@@ -149,7 +158,7 @@ public class DifferenceChartPane extends JPanel {
                 madeValidSelection = true;
                 dialog.dispose();
             } else {
-                JOptionPane.showMessageDialog(null, "Please make a selection before pressing OK, or cancel to exit.", "Additional Selection Required", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(getDialogParent(), "Please make a selection before pressing OK, or cancel to exit.", "Additional Selection Required", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -161,7 +170,7 @@ public class DifferenceChartPane extends JPanel {
         String[][] data = null;
         // Error if selections are not made
         if (shouldStop || selected[0] == -1 || selected[1] == -1) {
-            JOptionPane.showMessageDialog(null, "Both dialog windows must have a selection for comparison tool to work", "Additional Selections Required", JOptionPane.ERROR_MESSAGE);
+                  JOptionPane.showMessageDialog(getDialogParent(), "Both dialog windows must have a selection for comparison tool to work", "Additional Selections Required", JOptionPane.ERROR_MESSAGE);
             return;
         }
 

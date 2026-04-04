@@ -40,6 +40,7 @@ import javax.swing.JOptionPane;
 import chart.CategoryBoxAndWhiskerChart;
 import chart.Chart;
 import chart.DatasetUtil;
+import ModelInterface.InterfaceMain;
 
 /**
  * Handles the creation and management of a box-and-whisker statistics chart pane.
@@ -72,7 +73,7 @@ public class BoxAndWhiskerChartPane {
         }
         // If no data is available, show an information dialog and exit
         if (statisticsData.isEmpty()) {
-            JOptionPane.showMessageDialog(null,
+            JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(),
                 "No Support for different number of technologies for each chart",
                 "Information", JOptionPane.INFORMATION_MESSAGE);
             return;

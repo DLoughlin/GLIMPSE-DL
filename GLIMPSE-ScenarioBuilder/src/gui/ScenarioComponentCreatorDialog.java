@@ -59,6 +59,7 @@ import glimpseElement.TabTechParam;
 import glimpseElement.TabTechTax;
 import glimpseElement.TabXMLList;
 import glimpseUtil.FileChooserPlus;
+import glimpseUtil.UtilsDialogs;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.event.EventHandler;
@@ -70,6 +71,7 @@ import javafx.scene.control.TabPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 import javafx.stage.WindowEvent;
 
 /**
@@ -210,7 +212,15 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 		addComponentTabPane.prefHeightProperty().bind(dialogPane.heightProperty().subtract(hBoxProgress.heightProperty())
 				.subtract(hBoxButtons.heightProperty()).subtract(10));
 
-		stageWithTabs.initOwner(mainStage);
+		Window dialogOwner = mainStage;
+		if (dialogOwner == null) {
+			dialogOwner = UtilsDialogs.getPrimaryOwnerWindow();
+		}
+		if (dialogOwner != null) {
+			try {
+				stageWithTabs.initOwner(dialogOwner);
+			} catch (Exception ignored) {}
+		}
 		stageWithTabs.initModality(APPLICATION_MODAL);
 		Scene scene = new Scene(dialogPane, dialogWidth, dialogHeight);
 		try {
@@ -330,6 +340,22 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 		}
 
 		stageWithTabs.setResizable(true);
+		stageWithTabs.setOnShown(e -> {
+			try {
+				Window owner = stageWithTabs.getOwner();
+				if (owner == null || !owner.isShowing()) {
+					owner = UtilsDialogs.getPrimaryOwnerWindow();
+				}
+				if (owner != null && owner.isShowing()) {
+					double w = stageWithTabs.getWidth();
+					double h = stageWithTabs.getHeight();
+					if (w > 0 && h > 0) {
+						stageWithTabs.setX(owner.getX() + ((owner.getWidth() - w) / 2.0));
+						stageWithTabs.setY(owner.getY() + ((owner.getHeight() - h) / 2.0));
+					}
+				}
+			} catch (Exception ignored) {}
+		});
 		stageWithTabs.show();
 	}
 

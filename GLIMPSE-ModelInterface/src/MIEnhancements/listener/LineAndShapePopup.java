@@ -46,6 +46,7 @@ import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 
 import chart.Chart;
 import chartOptions.SetModifyChanges;
+import ModelInterface.InterfaceMain;
 
 /**
  * Handles popup menu for toggling line and shape options on charts.
@@ -116,7 +117,7 @@ public class LineAndShapePopup implements ActionListener {
         // Check for supported chart type: Category
         if (chart.getChart().getPlot().getPlotType().contains("Category")) {
             if (!(chart.getChart().getCategoryPlot().getRenderer() instanceof LineAndShapeRenderer)) {
-                JOptionPane.showMessageDialog(null, "Support for Line Chart", "Information",
+                JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Support for Line Chart", "Information",
                         JOptionPane.INFORMATION_MESSAGE);
                 return;
             }
@@ -124,7 +125,7 @@ public class LineAndShapePopup implements ActionListener {
         // Check for supported chart type: XY
         if (chart.getChart().getPlot().getPlotType().contains("XY")) {
             if (!(chart.getChart().getXYPlot().getRenderer() instanceof XYLineAndShapeRenderer)) {
-                JOptionPane.showMessageDialog(null, "Support for Line Chart", "Information",
+                JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Support for Line Chart", "Information",
                         JOptionPane.INFORMATION_MESSAGE);
                 return;
             }

@@ -36,6 +36,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 
 import com.sun.javafx.tk.Toolkit;
 
@@ -80,6 +81,7 @@ public final class UtilsErrors {
 			BorderPane border = new BorderPane();
 			String usedTitle = finalTitle == null ? GLIMPSEUtils.LABEL_DISPLAY : finalTitle;
 			Stage stage = new Stage();
+			initializeStageOwnerAndCentering(stage);
 			stage.setTitle(usedTitle);
 			stage.setWidth(900);
 			stage.setHeight(800);
@@ -138,6 +140,7 @@ public final class UtilsErrors {
 					? GLIMPSEUtils.LABEL_DISPLAY
 					: report.getTitle();
 			Stage stage = new Stage();
+			initializeStageOwnerAndCentering(stage);
 			stage.setTitle(usedTitle);
 			stage.setWidth(wd);
 			stage.setHeight(ht);
@@ -477,6 +480,40 @@ public final class UtilsErrors {
 			sb.append(value == null ? "" : value);
 		}
 		return sb.toString();
+	}
+
+	private void initializeStageOwnerAndCentering(Stage stage) {
+		if (stage == null) {
+			return;
+		}
+		try {
+			Window owner = UtilsDialogs.getPrimaryOwnerWindow();
+			if (owner != null) {
+				stage.initOwner(owner);
+			}
+		} catch (Exception ignored) {
+		}
+		stage.setOnShown(e -> centerStageOverPrimaryOwner(stage));
+	}
+
+	private void centerStageOverPrimaryOwner(Stage stage) {
+		if (stage == null) {
+			return;
+		}
+		try {
+			Window owner = UtilsDialogs.getPrimaryOwnerWindow();
+			if (owner == null || !owner.isShowing()) {
+				return;
+			}
+			double stageWidth = stage.getWidth();
+			double stageHeight = stage.getHeight();
+			if (stageWidth <= 0 || stageHeight <= 0) {
+				return;
+			}
+			stage.setX(owner.getX() + ((owner.getWidth() - stageWidth) / 2.0));
+			stage.setY(owner.getY() + ((owner.getHeight() - stageHeight) / 2.0));
+		} catch (Exception ignored) {
+		}
 	}
 
 	public ArrayList<String> generateErrorReport(String mainLogFile, String scenario) {
