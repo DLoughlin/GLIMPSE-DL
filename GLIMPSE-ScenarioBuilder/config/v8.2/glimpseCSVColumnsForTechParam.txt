@@ -1,9 +1,9 @@
-all/Levelized Non-Energy Cost;GLIMPSEStubTechCost:region,sector,subsector1=>subsector2,technology,year,data
-all/Efficiency;GLIMPSEStubTechEff:region,sector,subsector1=>subsector2,technology,year,input,data
-all/Coefficient;GLIMPSEStubTechCoef:region,sector,subsector1=>subsector2,technology,year,input,data
-all/Fixed Output;GLIMPSEStubTechFixOut:region,sector,subsector1=>subsector2,technology,year,data
-all/Shareweight;GLIMPSEStubTechShrwt:region,sector,subsector1=>subsector2,technology,year,data
-all/Subsector Shareweight;GLIMPSESubsectorShrwt:region,sector,subsector1=>subsector2,year,data
+all/Levelized Non-Energy Cost;GLIMPSEStubTechCost:region,sector,subsector,technology,year,data
+all/Efficiency;GLIMPSEStubTechEff:region,sector,subsector,technology,year,input,data
+all/Coefficient;GLIMPSEStubTechCoef:region,sector,subsector,technology,year,input,data
+all/Fixed Output;GLIMPSEStubTechFixOut:region,sector,subsector,technology,year,data
+all/Shareweight;GLIMPSEStubTechShrwt:region,sector,subsector,technology,year,data
+all/Subsector Shareweight;GLIMPSESubsectorShrwt:region,sector,subsector,year,data
 all/Lifetime;GLIMPSEStubTechLifetime:region,sector,subsector1=>subsector2,technology,year,data
 all/Halflife;GLIMPSEStubTechHalflife:region,sector,subsector1=>subsector2,technology,year,data
 all/InputEmissCoef;GLIMPSEInputEmissCoef:region,sector,subsector1=>subsector2,technology,year,species,data
@@ -14,8 +14,8 @@ egu/Efficiency;GLIMPSEStubTechEff:region,sector,subsector1=>subsector2,technolog
 egu/Coefficient;GLIMPSEStubTechCoef:region,sector,subsector1=>subsector2,technology,year,input,data
 egu/Fixed Output;GLIMPSEStubTechFixOut:region,sector,subsector1=>subsector2,technology,year,data
 egu/Shareweight;GLIMPSEStubTechShrwt:region,sector,subsector1=>subsector2,technology,year,data
-egu/Subsector Shareweight;GLIMPSESubsectorShrwt:region,sector,subsector1=>subsector2,year,data
-egu/Nested-Subsector Shareweight;GLIMPSENestedSubsectorShrwt:region,sector,subsector1,year,data
+egu/Subsector Shareweight;GLIMPSESubsectorShrwt:region,sector,subsector,year,data
+egu/Nested-Subsector Shareweight;GLIMPSENestedSubsectorShrwt:region,sector,subsector1=>subsector2,year,data
 egu/Lifetime;GLIMPSEStubTechLifetime:region,sector,subsector1=>subsector2,technology,year,data
 egu/Halflife;GLIMPSEStubTechHalflife:region,sector,subsector1=>subsector2,technology,year,data
 egu/InputEmissCoef;GLIMPSEInputEmissCoef:region,sector,subsector1=>subsector2,technology,year,species,data
@@ -31,4 +31,5 @@ trn/Subsector Shareweight;GLIMPSETranSubsectorShrwt:region,sector,subsector1,yea
 trn/Fixed Output;GLIMPSETranTechFixOut:region,sector,subsector1,technology,year,data
 trn/InputEmissCoef;GLIMPSETranTechInputEmissCoef:region,sector,subsector1,technology,year,species,data
 trn/OutputEmissCoef;GLIMPSTranTechOutputEmissCoef:region,sector,subsector1,technology,year,species,data
+
 

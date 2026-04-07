@@ -216,6 +216,7 @@ final class GcamRunController {
         public ProcessResult call() throws Exception {
             ProcessRunner.RunningProcess run = null;
             ProcessResult result = null;
+            long startMillis = System.currentTimeMillis();
             try {
                 run = ProcessRunner.start(
                         request.command,
@@ -236,6 +237,16 @@ final class GcamRunController {
                     lifecycleListener.onRunStarted(request.scenarioName);
                 }
                 result = run.waitForResult(null);
+                return result;
+            } catch (Exception ex) {
+                String errorText = "GLIMPSE failed to start GCAM for scenario '" + request.scenarioName + "': " + ex;
+                if (lineListener != null) {
+                    try {
+                        lineListener.onLine(request.scenarioName, errorText, true);
+                    } catch (Exception ignored) {}
+                }
+                long durationMillis = Math.max(0L, System.currentTimeMillis() - startMillis);
+                result = new ProcessResult(-1, "", errorText, false, durationMillis);
                 return result;
             } finally {
                 controller.markRunFinished(request.scenarioName, result);

@@ -100,6 +100,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             "Model run completed.",
             "Finished printing output."
     };
+    private static final String STARTUP_FAILURE_PREFIX = "GLIMPSE failed to start GCAM";
+    private static final String WINDOWS_POLICY_BLOCK_ERROR_CODE = "createprocess error=4551";
+    private static final String WINDOWS_POLICY_BLOCK_TEXT = "application control policy has blocked this file";
 
     private static final String LOADING_SCENARIOS_MESSAGE = "Loading scenario status...";
     private static final String NO_SCENARIOS_MESSAGE = "No scenarios found.";
@@ -196,6 +199,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private final AtomicBoolean scenarioRefreshInProgress = new AtomicBoolean(false);
     private ScenarioLibraryViewStateHelper.RefreshViewState pendingRefreshViewState = ScenarioLibraryViewStateHelper.RefreshViewState.empty();
     private final ConcurrentHashMap<String, Boolean> liveSuccessMarkedByScenario = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Boolean> windowsPolicyBlockPromptShownByScenario = new ConcurrentHashMap<>();
 
     // --- Constructors ---
     PaneScenarioLibrary(Stage stage) {
@@ -778,6 +782,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                                     persistStoppedStatusMarker(finishedScenarioName);
                                     markScenarioStopped(finishedScenarioName);
                                 } else {
+                                    maybePromptWindowsPolicyBlockOnStartupFailure(finishedScenarioName, result);
                                     markScenarioDnF(finishedScenarioName);
                                 }
                             }
@@ -795,6 +800,66 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
         startLiveStatusRefresh();
         refreshScenarioActionButtons();
+    }
+
+    private void maybePromptWindowsPolicyBlockOnStartupFailure(String scenarioName, ProcessResult result) {
+        if (!isWindowsPolicyBlockStartupFailure(result)) {
+            return;
+        }
+        String normalizedScenarioName = scenarioName == null ? "" : scenarioName.trim();
+        if (normalizedScenarioName.isEmpty()) {
+            normalizedScenarioName = "(unknown scenario)";
+        }
+        if (windowsPolicyBlockPromptShownByScenario.putIfAbsent(normalizedScenarioName, Boolean.TRUE) != null) {
+            return;
+        }
+        final String scenarioLabel = normalizedScenarioName;
+        Platform.runLater(() -> {
+            try {
+                StringBuilder details = new StringBuilder();
+                details.append("Windows blocked GCAM from launching for scenario '")
+                        .append(scenarioLabel)
+                        .append("'.")
+                        .append(vars.getEol())
+                        .append(vars.getEol())
+                        .append("Detected message:")
+                        .append(vars.getEol())
+                        .append(" - CreateProcess error=4551 (Application Control policy block)")
+                        .append(vars.getEol())
+                        .append(vars.getEol())
+                        .append("Suggested next steps:")
+                        .append(vars.getEol())
+                        .append(" 1) Ask IT/security to allow this GCAM executable path or signer.")
+                        .append(vars.getEol())
+                        .append(" 2) Run GCAM from a trusted/approved install location.")
+                        .append(vars.getEol())
+                        .append(" 3) Check policy logs (WDAC/AppLocker/Defender) for the block record.")
+                        .append(vars.getEol())
+                        .append(vars.getEol())
+                        .append("The full startup error is available in the GCAM Console tab.");
+                utils.showInformationDialog(
+                        "GCAM blocked by Windows policy",
+                        "GCAM launch was blocked by Application Control.",
+                        details.toString());
+            } catch (Exception ignored) {}
+        });
+    }
+
+    private boolean isWindowsPolicyBlockStartupFailure(ProcessResult result) {
+        String os = System.getProperty("os.name", "");
+        if (!os.toLowerCase(Locale.ENGLISH).startsWith("windows") || result == null) {
+            return false;
+        }
+        String stderr = result.getStderr();
+        if (stderr == null || stderr.trim().isEmpty()) {
+            return false;
+        }
+        String normalized = stderr.toLowerCase(Locale.ENGLISH);
+        if (!normalized.contains(STARTUP_FAILURE_PREFIX.toLowerCase(Locale.ENGLISH))) {
+            return false;
+        }
+        return normalized.contains(WINDOWS_POLICY_BLOCK_ERROR_CODE)
+                || normalized.contains(WINDOWS_POLICY_BLOCK_TEXT);
     }
 
     /** Stops the current GCAM run. "Stop All" also clears queued scenarios while leaving existing output untouched. */
@@ -1529,6 +1594,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         runController.clearStoppedScenario(scenarioName);
         clearLiveStdoutError(scenarioName);
         liveSuccessMarkedByScenario.remove(scenarioName.trim());
+        windowsPolicyBlockPromptShownByScenario.remove(scenarioName.trim());
         if (ScenarioRunStateClearMode.DELETE.equals(effectiveMode)) {
             return;
         }
