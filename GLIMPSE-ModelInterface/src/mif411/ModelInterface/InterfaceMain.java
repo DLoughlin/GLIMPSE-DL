@@ -290,6 +290,13 @@ public class InterfaceMain implements ActionListener {
 	public static boolean enableMapping = false; // YD added,August-2024
 	public static boolean enableSankey = false; // YD added,August-2024
 	public static boolean autoGenerateGraphics = false; // DPL added, Feb-2026
+	/**
+	 * When true (default), the query tree is shown collapsed to the second group
+	 * level on startup (e.g., queries -&gt; GLIMPSE queries -&gt; 1.Primary and final
+	 * energy). When false, the full tree is expanded. Controlled by the
+	 * "compress_tree" property in model_interface.properties.
+	 */
+	public static boolean compressTree = true; // DPL added, April-2026
 	public static String shapeFileLocationPrefix = null;
 	public static String legendBundlesLoc = null;
 
@@ -662,7 +669,14 @@ public class InterfaceMain implements ActionListener {
 				autoGenerateGraphics = false;
 			}
 		}
-		
+
+		// compress_tree precedence (no CLI flag; properties file only)
+		{
+			String propCompressTree = bootProps.getProperty("compress_tree", "true").trim();
+			compressTree = !"false".equalsIgnoreCase(propCompressTree);
+			System.out.println("InterfaceMain: compress_tree = " + compressTree);
+		}
+
 		// Mapping folder precedence (-m)
 		if (opts.has("m")) {
 			shapeFileLocationPrefix = (String) opts.valueOf("m");
@@ -1669,6 +1683,9 @@ public class InterfaceMain implements ActionListener {
 		if (!savedProperties.containsKey("legendBundlesLoc")) {
 			savedProperties.setProperty("legendBundlesLoc", "config/LegendBundle.properties");
 		}
+		if (!savedProperties.containsKey("compress_tree")) {
+			savedProperties.setProperty("compress_tree", "true");
+		}
 		// Persist if any defaults were added
 		persistProperties();
 
@@ -2206,6 +2223,7 @@ public class InterfaceMain implements ActionListener {
 	private javax.swing.JTextField mapResourceFolderField;
 	private javax.swing.JComboBox<String> sigDigitsCombo;
 	private javax.swing.JCheckBox zipExportedScenariosCheckbox;
+	private javax.swing.JCheckBox compressTreeCheckbox;
 
 	private void showPreferencesDialog() {
 		javax.swing.JDialog dlg = new javax.swing.JDialog(mainFrame, "Preferences", true);
@@ -2331,6 +2349,23 @@ public class InterfaceMain implements ActionListener {
 		zipExportedScenariosCheckbox.setSelected(zipExportedScenariosSelected);
 		generalPanel.add(zipExportedScenariosCheckbox, gc);
 
+		// Compress Query Tree preference
+		gc.gridy++;
+		gc.gridx = 0;
+		gc.gridwidth = 2;
+		gc.weightx = 1.0;
+		compressTreeCheckbox = new javax.swing.JCheckBox("Compress Query Tree at startup");
+		String compressTreeValue = savedProperties.getProperty("compress_tree", "true");
+		boolean compressTreeSelected;
+		if ("true".equalsIgnoreCase(compressTreeValue) || "false".equalsIgnoreCase(compressTreeValue)) {
+			compressTreeSelected = Boolean.parseBoolean(compressTreeValue);
+		} else {
+			compressTreeSelected = true;
+			savedProperties.setProperty("compress_tree", "true");
+		}
+		compressTreeCheckbox.setSelected(compressTreeSelected);
+		generalPanel.add(compressTreeCheckbox, gc);
+
 		// Significant digits preference
 		gc.gridy++;
 		gc.gridx = 0;
@@ -2454,6 +2489,9 @@ public class InterfaceMain implements ActionListener {
 				}
 				if (zipExportedScenariosCheckbox != null) {
 					p.setProperty("zipExportedScenarios", Boolean.toString(zipExportedScenariosCheckbox.isSelected()));
+				}
+				if (compressTreeCheckbox != null) {
+					p.setProperty("compress_tree", Boolean.toString(compressTreeCheckbox.isSelected()));
 				}
 				// persist latest optional paths too (in case user typed directly)
 				if (unitsFileField != null) { p.setProperty("unitsFile", safeTrim(unitsFileField.getText())); }
@@ -2860,4 +2898,4 @@ public class InterfaceMain implements ActionListener {
 			}
 		}
 	}
-}
+}

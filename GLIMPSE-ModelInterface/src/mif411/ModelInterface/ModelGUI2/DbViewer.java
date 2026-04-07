@@ -2013,7 +2013,15 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		if (queryList.getRowCount() > 0) {
 			queryList.setSelectionRow(0);
 		}
-		expandQueryTreeRows(queryList, STARTUP_QUERY_TREE_EXPANSION_ROW_LIMIT);
+		// Expand the tree according to the compress_tree property.
+		// compress_tree=true  → show only down to the second group level (sub-groups
+		//                       visible but collapsed); faster and less cluttered.
+		// compress_tree=false → expand the full tree (up to the row cap).
+		if (InterfaceMain.compressTree) {
+			expandQueryTreeToDepth(queryList, 2);
+		} else {
+			expandQueryTreeRows(queryList, STARTUP_QUERY_TREE_EXPANSION_ROW_LIMIT);
+		}
 		queryList.setRowHeight(queryList.getFont().getSize() + 5);
 		ToolTipManager.sharedInstance().registerComponent(queryList);
 		ToolTipManager.sharedInstance().setInitialDelay(1200); // set tooltip delay
@@ -2047,6 +2055,36 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		if (maxRowsToExpand != Integer.MAX_VALUE && tree.getRowCount() > maxRowsToExpand) {
 			if (DEBUG) System.out.println("DbViewer: query tree startup expansion capped at " + maxRowsToExpand
 					+ " rows to keep the UI responsive.");
+		}
+	}
+
+	/**
+	 * Expands the query tree only down to the specified depth, leaving deeper
+	 * nodes collapsed. For example, {@code maxDepth=2} expands the root (depth 0)
+	 * and the first-level groups (depth 1), making second-level sub-groups
+	 * (depth 2) visible but collapsed. This corresponds to the
+	 * {@code compress_tree=true} behavior.
+	 *
+	 * @param tree     the JTree to expand
+	 * @param maxDepth the deepest node depth whose children will be revealed
+	 *                 (0 = root level only, 1 = first groups, 2 = sub-groups)
+	 */
+	private void expandQueryTreeToDepth(JTree tree, int maxDepth) {
+		if (tree == null || maxDepth < 0) {
+			return;
+		}
+		// Iterate row-by-row; expanding a row inserts new rows after it, so we
+		// must re-check tree.getRowCount() on every iteration.
+		int row = 0;
+		while (row < tree.getRowCount()) {
+			TreePath path = tree.getPathForRow(row);
+			if (path != null) {
+				int depth = path.getPathCount() - 1; // root has depth 0
+				if (depth < maxDepth) {
+					tree.expandRow(row);
+				}
+			}
+			row++;
 		}
 	}
 

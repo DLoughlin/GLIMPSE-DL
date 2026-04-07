@@ -92,6 +92,7 @@ public class ShowOptionalFeaturesAction extends AbstractAction {
         // Initialize the properties object before setting up the input fields.
         final JDialog preferenceDialog = createPreferencesDialog();
         preferenceDialog.pack();
+        preferenceDialog.setSize((int)(preferenceDialog.getWidth() * 2.0 / 3.0), preferenceDialog.getHeight());
         preferenceDialog.setVisible(true);
     }
 
