@@ -252,6 +252,7 @@ public class ManageDatabaseDialog extends JDialog {
                     SwingUtilities.invokeLater(() -> {
                         list.setListData(scns);
                         statusField.setText("Add complete");
+						main.refreshActiveDatabaseStatus();
                     });
                 }).start();
             }
@@ -683,6 +684,7 @@ public class ManageDatabaseDialog extends JDialog {
                     getGlassPane().setCursor(Cursor.getDefaultCursor());
                     restoreAllButtons.run();
                     if (rebuildSuccess.get()) {
+						main.refreshActiveDatabaseStatus();
                         JOptionPane.showMessageDialog(this, "Database rebuild is complete.",
                                 "Rebuild Complete", JOptionPane.INFORMATION_MESSAGE);
                     }

@@ -61,6 +61,7 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.Vector;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.swing.JFrame;
 import javax.swing.JMenu;
@@ -365,6 +366,13 @@ public class InterfaceMain implements ActionListener {
 	private JLabel queryProgressLabel;
 	private javax.swing.JProgressBar queryProgressBar;
 	private StatusBarProgressMode statusBarProgressMode = StatusBarProgressMode.NONE;
+	private final AtomicInteger activeDbStatusVersion = new AtomicInteger(0);
+	private static final long DB_SIZE_KB = 1024L;
+	private static final long DB_SIZE_MB = DB_SIZE_KB * 1024L;
+	private static final long DB_SIZE_GB = DB_SIZE_MB * 1024L;
+	private static final long DB_SIZE_TB = DB_SIZE_GB * 1024L;
+	// Databases >= 0.1 GB are displayed in GB (avoids "432 MB" for a fraction-of-a-GB DB).
+	private static final long DB_SIZE_GB_THRESHOLD = DB_SIZE_GB / 10L;
 
 	/**
 	 * Main function, creates a new thread for the gui and runs it.
@@ -1465,12 +1473,38 @@ public class InterfaceMain implements ActionListener {
 	 */
 	public void updateActiveDatabaseStatus(final String dbPath) {
 		ensureStatusBarInstalled();
-		final String text;
-		if (dbPath == null || dbPath.trim().isEmpty()) {
-			text = "Database: (none)";
-		} else {
-			text = "Database: " + dbPath;
+		final String normalizedPath = dbPath == null ? null : dbPath.trim();
+		final String text = (normalizedPath == null || normalizedPath.isEmpty())
+				? "Database: (none)"
+				: "Database: " + normalizedPath;
+		final int requestVersion = activeDbStatusVersion.incrementAndGet();
+		setActiveDatabaseStatusText(text);
+		if (normalizedPath == null || normalizedPath.isEmpty()) {
+			return;
 		}
+		final File dbDirectory = new File(normalizedPath);
+		if (!dbDirectory.exists() || !dbDirectory.isDirectory()) {
+			return;
+		}
+		Thread sizeLookupThread = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				String sizeSuffix = buildDatabaseSizeSuffix(dbDirectory);
+				if (sizeSuffix == null || requestVersion != activeDbStatusVersion.get()) {
+					return;
+				}
+				setActiveDatabaseStatusText(text + sizeSuffix);
+			}
+		}, "ModelInterface-DbStatusSize");
+		sizeLookupThread.setDaemon(true);
+		sizeLookupThread.start();
+	}
+
+	public void refreshActiveDatabaseStatus() {
+		updateActiveDatabaseStatus(path);
+	}
+
+	private void setActiveDatabaseStatusText(final String text) {
 		if (activeDbStatusLabel == null) {
 			return;
 		}
@@ -1484,6 +1518,62 @@ public class InterfaceMain implements ActionListener {
 				}
 			});
 		}
+	}
+
+	private static String buildDatabaseSizeSuffix(File dbDirectory) {
+		long sizeBytes = calculateSizeBytes(dbDirectory);
+		if (sizeBytes < 0L) {
+			return null;
+		}
+		return " | Size: " + formatDatabaseSize(sizeBytes);
+	}
+
+	private static String formatDatabaseSize(long sizeBytes) {
+		if (sizeBytes <= 0L) {
+			return "0 bytes";
+		}
+		// ≥ 1 TB → TB
+		if (sizeBytes >= DB_SIZE_TB) {
+			double tb = sizeBytes / (double) DB_SIZE_TB;
+			return String.format(tb < 10d ? "%,.1f" : "%,.0f", tb) + " TB";
+		}
+		// ≥ 0.1 GB (GB_THRESHOLD) → GB  — keeps "0.4 GB" instead of "432 MB"
+		if (sizeBytes >= DB_SIZE_GB_THRESHOLD) {
+			double gb = sizeBytes / (double) DB_SIZE_GB;
+			return String.format(gb < 10d ? "%,.1f" : "%,.0f", gb) + " GB";
+		}
+		// ≥ 1 MB → MB
+		if (sizeBytes >= DB_SIZE_MB) {
+			double mb = sizeBytes / (double) DB_SIZE_MB;
+			return String.format(mb < 10d ? "%,.1f" : "%,.0f", mb) + " MB";
+		}
+		// ≥ 1 KB → KB
+		if (sizeBytes >= DB_SIZE_KB) {
+			double kb = sizeBytes / (double) DB_SIZE_KB;
+			return String.format(kb < 10d ? "%,.1f" : "%,.0f", kb) + " KB";
+		}
+		return sizeBytes + " bytes";
+	}
+
+	private static long calculateSizeBytes(File file) {
+		if (file == null || !file.exists()) {
+			return -1L;
+		}
+		if (file.isFile()) {
+			return file.length();
+		}
+		long total = 0L;
+		File[] children = file.listFiles();
+		if (children == null) {
+			return total;
+		}
+		for (File child : children) {
+			long childSize = calculateSizeBytes(child);
+			if (childSize > 0L) {
+				total += childSize;
+			}
+		}
+		return total;
 	}
 
 	private static void showGUI() {
@@ -2577,6 +2667,9 @@ public class InterfaceMain implements ActionListener {
 
 	public void setProperty(String key, String value) {
 		if (savedProperties != null) {
+			if ("paramPath".equals(key)) {
+				path = value;
+			}
 			savedProperties.setProperty(key, value);
 			persistProperties();
 		}
@@ -2584,6 +2677,9 @@ public class InterfaceMain implements ActionListener {
 
 	public void removeProperty(String key) {
 		if (savedProperties != null) {
+			if ("paramPath".equals(key)) {
+				path = null;
+			}
 			savedProperties.remove(key);
 			persistProperties();
 		}
@@ -2764,4 +2860,4 @@ public class InterfaceMain implements ActionListener {
 			}
 		}
 	}
-}
+}
