@@ -264,8 +264,8 @@ public class ManageDatabaseDialog extends JDialog {
         if (remList == null || remList.length == 0) return;
 
         int ans = main.showConfirmDialog(
-                "Remove scenario? This removes the scenario index but does not decrease database size.\nAfter removing, click on Rebuild DB to reclaim space.\nRebuild DB may take as long as an hour or two.",
-                "Click on Optimize to reclaim space.", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
+                "Remove scenario? This removes the scenario index but does not decrease database size.\nAfter removing, click on Rebuild DB to reclaim space.\nNote: Rebuilding is expected to take several minutes (or more).",
+                "Click on Yes to reclaim space.", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,
                 JOptionPane.NO_OPTION);
         if (ans != JOptionPane.YES_OPTION) return;
 
@@ -500,7 +500,7 @@ public class ManageDatabaseDialog extends JDialog {
         }
 
         int ans = main.showConfirmDialog(
-                "Rebuild database? This will export all scemarops, create a fresh database and re-import the scenarios.\nRebuilding is expected to require as long as an hour or two.",
+                "Rebuild database? This will export all scemarops, create a fresh database and re-import the scenarios.\nRebuilding is expected to require several minutes or more.",
                 "Confirm Rebuild", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, JOptionPane.NO_OPTION);
         if (ans != JOptionPane.YES_OPTION) return;
 
