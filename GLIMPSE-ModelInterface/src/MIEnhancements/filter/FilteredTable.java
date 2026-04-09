@@ -97,6 +97,8 @@ public class FilteredTable {
     private boolean debug = false;
     /** Significant figures for numeric display */
     private int sigfigs = 3;
+    /** Query name (chart name) used optionally as the first line when copying to clipboard */
+    private String chartName;
 	/** List of selected years to display */
     private List<String> selectedYears;
 	private static final int MAX_AUTO_CHARTS = 125; // Max number of charts to auto-generate before skipping auto-graphics
@@ -130,6 +132,7 @@ public class FilteredTable {
 			JSplitPane sp, List<String> selectedYears) {
         this.sp = sp;
         this.selectedYears = selectedYears;
+        this.chartName = chartName;
         JPanel jp = new JPanel(new BorderLayout());
         Component c = sp.getRightComponent();
         if (c != null) sp.remove(c);
@@ -281,6 +284,14 @@ public class FilteredTable {
             @Override
             protected Void doInBackground() throws Exception {
                 StringBuilder sb = new StringBuilder(Math.min(1024, colCount * 32));
+                // Optionally prepend the query name as the first line
+                boolean includeQueryName = Boolean.parseBoolean(
+                    InterfaceMain.getInstance() != null
+                        ? InterfaceMain.getInstance().getProperties().getProperty("copyIncludeQueryName", "false")
+                        : "false");
+                if (includeQueryName && chartName != null && !chartName.isEmpty()) {
+                    sb.append(chartName).append('\n');
+                }
                 // header
                 for (int colIdx = 0; colIdx < colCount; colIdx++) {
                     sb.append(colNames[colIdx]);

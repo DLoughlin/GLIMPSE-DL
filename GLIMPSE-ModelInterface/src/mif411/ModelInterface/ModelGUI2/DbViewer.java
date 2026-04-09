@@ -213,6 +213,33 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		return value == null ? "null" : String.valueOf(value);
 	}
 
+	private static String normalizeControlName(Object controlValue) {
+		if (controlValue == null) {
+			return "";
+		}
+		String normalized = String.valueOf(controlValue).trim();
+		if (normalized.endsWith("Same")) {
+			normalized = normalized.substring(0, normalized.length() - "Same".length());
+		}
+		return normalized;
+	}
+
+	private String determineControlToRestore(Object oldControlValue) {
+		String oldControlName = normalizeControlName(oldControlValue);
+		if (oldControlName.isEmpty() || oldControlName.equals(controlStr)) {
+			return "ModelInterface";
+		}
+		return oldControlName;
+	}
+
+	private static final class StartupQuerySelectionCancelledException extends RuntimeException {
+		private static final long serialVersionUID = 1L;
+
+		private StartupQuerySelectionCancelledException(String message) {
+			super(message);
+		}
+	}
+
 	private void updateLastControlTransition(Object oldValue, Object newValue) {
 		lastControlOldValue = safeControlValue(oldValue);
 		lastControlNewValue = safeControlValue(newValue);
@@ -417,20 +444,8 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		return queryFile == null ? "(none)" : queryFile.getAbsolutePath();
 	}
 
-	private File findDefaultStartupQueryFile() {
-		String[] candidates = new String[] {
-				"config" + File.separator + "Main_queries_GLIMPSE-8.2.xml",
-				"config" + File.separator + "Main_queries_GLIMPSE-7p0.xml",
-				"config" + File.separator + "Main_queries.xml",
-				"Main_queries.xml"
-		};
-		for (String candidate : candidates) {
-			File file = new File(candidate);
-			if (file.exists() && file.isFile()) {
-				return file.getAbsoluteFile();
-			}
-		}
-		return null;
+	private boolean canPromptForStartupQueryFile(JFrame parentFrame) {
+		return parentFrame != null && !java.awt.GraphicsEnvironment.isHeadless();
 	}
 
 	private File resolveStartupQueryFile(Properties prop, JFrame parentFrame) {
@@ -439,34 +454,43 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		}
 		String queryFileName = prop.getProperty("queryFile", null);
 		File queryFile = queryFileName != null && !queryFileName.trim().isEmpty() ? new File(queryFileName) : null;
-		if (queryFile == null) {
-			System.out.println("No query file specified in properties. Select query file via ModelInterface file menu.");
+		if (queryFile != null && queryFile.exists() && queryFile.isFile()) {
+			return queryFile;
 		}
-		if (queryFile == null || !queryFile.exists()) {
-			File defaultQueryFile = findDefaultStartupQueryFile();
-			if (defaultQueryFile != null) {
-				queryFile = defaultQueryFile;
-				queryFileName = defaultQueryFile.getAbsolutePath();
-				System.out.println("Using default startup query file: " + queryFileName);
-			} else {
-				FileChooser fc = FileChooserFactory.getFileChooser();
-				final FileFilter xmlFilter = new XMLFilter();
-				File startDir = new File(prop.getProperty("lastDirectory", "."));
-				File[] xmlFiles = fc.doFilePrompt(parentFrame,
-						"Could not find query file. Please select one to continue startup.", FileChooser.LOAD_DIALOG,
-						startDir, xmlFilter);
-				if (xmlFiles != null && xmlFiles.length > 0 && xmlFiles[0] != null) {
-					queryFile = xmlFiles[0];
-					queryFileName = queryFile.getAbsolutePath();
-				}
-			}
-			if (queryFile == null) {
+
+		if (!canPromptForStartupQueryFile(parentFrame)) {
+			if (queryFileName == null || queryFileName.trim().isEmpty()) {
 				throw new IllegalStateException(
-						"No startup query file could be resolved. Configure 'queryFile' or place a default query file under 'config'.");
+						"No startup query file is configured, and interactive file selection is not available. "
+						+ "Provide -q <query-file> or set 'queryFile' in model_interface.properties.");
 			}
-			prop.setProperty("queryFile", queryFileName);
+			throw new IllegalStateException(
+					"Configured query file does not exist: " + queryFileName + ". "
+					+ "Update 'queryFile' in model_interface.properties or launch with -q <query-file>.");
 		}
-		return queryFile;
+
+		FileChooser fc = FileChooserFactory.getFileChooser();
+		final FileFilter xmlFilter = new XMLFilter();
+		File startDir;
+		if (queryFile != null && queryFile.getParentFile() != null) {
+			startDir = queryFile.getParentFile();
+		} else {
+			startDir = new File(prop.getProperty("lastDirectory", "."));
+		}
+
+		String promptMessage = (queryFileName == null || queryFileName.trim().isEmpty())
+				? "No query file is configured. Please select one to continue startup."
+				: "Configured query file was not found. Please select a query file to continue startup.";
+		File[] xmlFiles = fc.doFilePrompt(parentFrame, promptMessage, FileChooser.LOAD_DIALOG, startDir, xmlFilter);
+		if (xmlFiles != null && xmlFiles.length > 0 && xmlFiles[0] != null) {
+			queryFile = xmlFiles[0];
+			queryFileName = queryFile.getAbsolutePath();
+			prop.setProperty("queryFile", queryFileName);
+			return queryFile;
+		}
+
+		throw new StartupQuerySelectionCancelledException(
+				"No query file was selected. Startup was canceled.");
 	}
 
 	private void ensureQueriesDocumentLoaded(File queryFile) {
@@ -750,7 +774,27 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 						resetDbViewInitialized("control-transition-enter");
 						setStartupState(StartupLifecycleState.PREPARING);
 						Properties prop = main.getProperties();
-						File queryFile = resolveStartupQueryFile(prop, parentFrame);
+						File queryFile;
+						try {
+							queryFile = resolveStartupQueryFile(prop, parentFrame);
+						} catch (StartupQuerySelectionCancelledException startupCanceled) {
+							setStartupState(StartupLifecycleState.FAILED);
+							resetDbViewInitialized("control-transition-query-selection-canceled");
+							invalidateQueriesDocument("control-transition-query-selection-canceled");
+							InterfaceMain.getInstance().showMessageDialog(
+									startupCanceled.getMessage() + "\nUse Open DB to try again.",
+									"Startup Canceled", JOptionPane.INFORMATION_MESSAGE);
+							final String restoreControl = determineControlToRestore(evt.getOldValue());
+							SwingUtilities.invokeLater(() -> InterfaceMain.getInstance().fireControlChange(restoreControl));
+							return;
+						} catch (IllegalStateException startupQueryError) {
+							setStartupState(StartupLifecycleState.FAILED);
+							resetDbViewInitialized("control-transition-missing-query-file");
+							invalidateQueriesDocument("control-transition-missing-query-file");
+							InterfaceMain.getInstance().showMessageDialog(startupQueryError.getMessage(),
+									"Startup Query File Required", JOptionPane.ERROR_MESSAGE);
+							return;
+						}
 
 						// TODO: move to load preferences
 						scenarioRegionSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true);

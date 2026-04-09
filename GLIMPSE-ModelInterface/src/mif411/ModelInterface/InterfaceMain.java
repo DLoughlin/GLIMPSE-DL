@@ -1674,6 +1674,9 @@ public class InterfaceMain implements ActionListener {
 		if (!savedProperties.containsKey("zipExportedScenarios")) {
 			savedProperties.setProperty("zipExportedScenarios", "false");
 		}
+		if (!savedProperties.containsKey("copyIncludeQueryName")) {
+			savedProperties.setProperty("copyIncludeQueryName", "false");
+		}
 		if (!savedProperties.containsKey("presetRegionList")) {
 			savedProperties.setProperty("presetRegionList", ".\\config\\preset_region_list.txt");
 		}
@@ -2223,6 +2226,7 @@ public class InterfaceMain implements ActionListener {
 	private javax.swing.JTextField mapResourceFolderField;
 	private javax.swing.JComboBox<String> sigDigitsCombo;
 	private javax.swing.JCheckBox zipExportedScenariosCheckbox;
+	private javax.swing.JCheckBox copyIncludeQueryNameCheckbox;
 	private javax.swing.JCheckBox compressTreeCheckbox;
 
 	private void showPreferencesDialog() {
@@ -2348,6 +2352,25 @@ public class InterfaceMain implements ActionListener {
 		}
 		zipExportedScenariosCheckbox.setSelected(zipExportedScenariosSelected);
 		generalPanel.add(zipExportedScenariosCheckbox, gc);
+
+		// Copy behavior preference
+		gc.gridy++;
+		gc.gridx = 0;
+		gc.gridwidth = 2;
+		gc.weightx = 1.0;
+		copyIncludeQueryNameCheckbox = new javax.swing.JCheckBox("Include query name when copying tab data");
+		String copyIncludeQueryNameValue = savedProperties.getProperty("copyIncludeQueryName", "false");
+		boolean copyIncludeQueryNameSelected;
+		if ("true".equalsIgnoreCase(copyIncludeQueryNameValue)
+				|| "false".equalsIgnoreCase(copyIncludeQueryNameValue)) {
+			copyIncludeQueryNameSelected = Boolean.parseBoolean(copyIncludeQueryNameValue);
+			savedProperties.setProperty("copyIncludeQueryName", Boolean.toString(copyIncludeQueryNameSelected));
+		} else {
+			copyIncludeQueryNameSelected = false;
+			savedProperties.setProperty("copyIncludeQueryName", "false");
+		}
+		copyIncludeQueryNameCheckbox.setSelected(copyIncludeQueryNameSelected);
+		generalPanel.add(copyIncludeQueryNameCheckbox, gc);
 
 		// Compress Query Tree preference
 		gc.gridy++;
@@ -2489,6 +2512,9 @@ public class InterfaceMain implements ActionListener {
 				}
 				if (zipExportedScenariosCheckbox != null) {
 					p.setProperty("zipExportedScenarios", Boolean.toString(zipExportedScenariosCheckbox.isSelected()));
+				}
+				if (copyIncludeQueryNameCheckbox != null) {
+					p.setProperty("copyIncludeQueryName", Boolean.toString(copyIncludeQueryNameCheckbox.isSelected()));
 				}
 				if (compressTreeCheckbox != null) {
 					p.setProperty("compress_tree", Boolean.toString(compressTreeCheckbox.isSelected()));
@@ -2898,4 +2924,4 @@ public class InterfaceMain implements ActionListener {
 			}
 		}
 	}
-}
+}
