@@ -565,6 +565,8 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	ArrayList<String> subregion_list = new ArrayList<String>();
 	ArrayList<String> preset_region_list = new ArrayList<String>();
 	private JComboBox<String> comboBoxPresetRegions;
+	private boolean suppressPresetComboAction = false;
+	private boolean applyingPresetRegionSelection = false;
 	private String[] preset_choices;
 	private JScrollPane listScrollRegions;
 	private JScrollPane listScrollQueries;
@@ -2129,7 +2131,11 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			presetRegionsPanel.add(Box.createHorizontalStrut(5));
 			presetRegionsPanel.add(comboBoxPresetRegions);
 			// Add to region panel
-			comboBoxPresetRegions.addActionListener(e -> selectPresetRegions());
+			comboBoxPresetRegions.addActionListener(e -> {
+				if (!suppressPresetComboAction) {
+					selectPresetRegions();
+				}
+			});
 		}
 			// Add the preset panel to BorderLayout.SOUTH of the right wrapper.
 		// getRightComponent() returns the rightWrapper (BorderLayout) we set in setupSplitPanes.
@@ -2168,8 +2174,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		favoriteQueryButton = new JButton("Favorites");
 		
 		queriesEditMenu.setEnabled(false);
-		runQueryButton.setEnabled(false);
-		diffQueryButton.setEnabled(false);
+		updateQueryActionButtonsEnabledState();
 
 		// Let SwingButtonSizer + the Look & Feel determine button size; don't squash.
 		JButton[] buttons = new JButton[] { runQueryButton, diffQueryButton, listCollapseButton, queryFilterButton, favoriteQueryButton };
@@ -2188,26 +2193,44 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		this.favoriteQueryButton = favoriteQueryButton;
 	}
 
-	/**
-	 * Sets up the panel that contains the query tree view.
-	 */
-	private void setupQueryPanel() {
-		scenarioRegionSplit.getRightComponent();
-		// Use BorderLayout to allow button panel to sit at SOUTH and list in CENTER
-		JPanel queryPanel = new JPanel(new BorderLayout());
-		
-		JLabel queryListLabel = new JLabel("Queries");
-		queryListLabel.setHorizontalAlignment(SwingConstants.CENTER);
-		queryListLabel.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
-		queryPanel.add(queryListLabel, BorderLayout.NORTH);
-		
-		listScrollQueries = new JScrollPane(queryList);
-		listScrollQueries.setPreferredSize(new Dimension(150, 100));
-		queryPanel.add(listScrollQueries, BorderLayout.CENTER);
-		
-		queriesSplit.setRightComponent(queryPanel);
+	private boolean hasRunnableQuerySelection() {
+		if (queryList == null) {
+			return false;
+		}
+		TreePath[] selectedPaths = queryList.getSelectionPaths();
+		if (selectedPaths == null || selectedPaths.length == 0) {
+			return false;
+		}
+		for (TreePath tp : selectedPaths) {
+			Object selectedNode = tp.getLastPathComponent();
+			if (selectedNode instanceof QueryGenerator || selectedNode instanceof SingleQueryExtension.SingleQueryValue) {
+				return true;
+			}
+		}
+		return false;
 	}
-	
+
+	private boolean hasMinimumSelectionsForRunQuery() {
+		return scnList != null && regionList != null && hasRunnableQuerySelection()
+				&& scnList.getSelectedIndices().length > 0
+				&& regionList.getSelectedIndices().length > 0;
+	}
+
+	private boolean hasMinimumSelectionsForDiffQuery() {
+		return scnList != null && regionList != null && hasRunnableQuerySelection()
+				&& scnList.getSelectedIndices().length > 1
+				&& regionList.getSelectedIndices().length > 0;
+	}
+
+	private void updateQueryActionButtonsEnabledState() {
+		if (runQueryButton != null) {
+			runQueryButton.setEnabled(hasMinimumSelectionsForRunQuery());
+		}
+		if (diffQueryButton != null) {
+			diffQueryButton.setEnabled(hasMinimumSelectionsForDiffQuery());
+		}
+	}
+
 	/**
 	 * Install listeners on the results tabbed pane so when a tab is closed we count
 	 * that query as completed for the status bar progress UI.
@@ -2302,12 +2325,12 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		scenListPane.add(scenListLabel);
 		listScrollRegions = new JScrollPane(regionList);
 		scenListPane.add(listScrollRegions);
-		// Wrap listPane in a BorderLayout panel (rightWrapper) and put the listPane 
+		// Wrap listPane in a BorderLayout panel (rightWrapper) and put the listPane
 		// in the CENTER so we can put preset panel in SOUTH later.
 		JPanel rightWrapper = new JPanel(new BorderLayout());
 		rightWrapper.add(scenListPane, BorderLayout.CENTER);
 		scenarioRegionSplit.setRightComponent(rightWrapper);
-		
+
 		queriesSplit.setLeftComponent(scenarioRegionSplit);
 		tableCreatorSplit.setLeftComponent(queriesSplit);
 		tableCreatorSplit.setRightComponent(tablesTabs);
@@ -2319,12 +2342,27 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		int frameHeight = currentParentFrame.getHeight();
 		tableCreatorSplit.setDividerLocation((int) (frameHeight * 0.4));
 	}
-	
+
 	/**
-	 * Sets up all the event listeners for the UI components, such as buttons and
-	 * the query list. This includes actions for running queries, filtering,
-	 * managing favorites, and handling tree selections.
+	 * Sets up the panel that contains the query tree view.
 	 */
+	private void setupQueryPanel() {
+		scenarioRegionSplit.getRightComponent();
+		// Use BorderLayout to allow button panel to sit at SOUTH and list in CENTER
+		JPanel queryPanel = new JPanel(new BorderLayout());
+
+		JLabel queryListLabel = new JLabel("Queries");
+		queryListLabel.setHorizontalAlignment(SwingConstants.CENTER);
+		queryListLabel.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
+		queryPanel.add(queryListLabel, BorderLayout.NORTH);
+
+		listScrollQueries = new JScrollPane(queryList);
+		listScrollQueries.setPreferredSize(new Dimension(150, 100));
+		queryPanel.add(listScrollQueries, BorderLayout.CENTER);
+
+		queriesSplit.setRightComponent(queryPanel);
+	}
+
 	private void setupListeners() {
 		if (queryList == null || scnList == null || regionList == null || runQueryButton == null || diffQueryButton == null
 				|| queryFilterButton == null || favoriteQueryButton == null || favoriteQueriesManager == null) {
@@ -2367,6 +2405,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 				queryList.setModel(queries);
 				queryList.setSelectionRow(0);
 				expandQueryTreeRows(queryList, STARTUP_QUERY_TREE_EXPANSION_ROW_LIMIT);
+				updateQueryActionButtonsEnabledState();
 			}
 		});
 
@@ -2399,22 +2438,17 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		});
 
 		// Add TreeSelectionListener to enable/disable Run Query and Diff Query buttons
-		queryList.addTreeSelectionListener(e -> {
-			if (DEBUG) System.out.println("DbViewer.setupListeners: TreeSelectionListener fired. selectionCount=" + queryList.getSelectionCount());
-			boolean hasQuerySelected = false;
-			TreePath[] selectedPaths = queryList.getSelectionPaths();
-			if (selectedPaths != null) {
-				for (TreePath tp : selectedPaths) {
-					if (tp.getLastPathComponent() instanceof QueryGenerator) {
-						hasQuerySelected = true;
-						break;
-					}
-				}
+		queryList.addTreeSelectionListener(e -> updateQueryActionButtonsEnabledState());
+		scnList.addListSelectionListener(e -> {
+			if (!e.getValueIsAdjusting()) {
+				updateQueryActionButtonsEnabledState();
 			}
-			if (runQueryButton != null)
-				runQueryButton.setEnabled(hasQuerySelected);
-			if (diffQueryButton != null)
-				diffQueryButton.setEnabled(hasQuerySelected);
+		});
+		regionList.addListSelectionListener(e -> {
+			if (!e.getValueIsAdjusting()) {
+				updateQueryActionButtonsEnabledState();
+				resetPresetRegionsComboOnManualSelection();
+			}
 		});
 
 		runQueryButton.addActionListener(new ActionListener() {
@@ -2430,7 +2464,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 				} else if (regionSel.length == 0) {
 					InterfaceMain.getInstance().showMessageDialog("Please select Regions to run the query against",
 							"Run Query Error", JOptionPane.ERROR_MESSAGE);
-				} else if (queryList.getSelectionCount() == 0) {
+				} else if (!hasRunnableQuerySelection()) {
 					InterfaceMain.getInstance().showMessageDialog("Please select a query to run", "Run Query Error",
 							JOptionPane.ERROR_MESSAGE);
 				} else {
@@ -2488,15 +2522,16 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			public void actionPerformed(ActionEvent e) {
 				int[] scnSel = scnList.getSelectedIndices();
 				int[] regionSel = regionList.getSelectedIndices();
-				// Checks to make sure at least one scenaro, region, and query has been selected
-				if (scnSel.length == 0) {
-					InterfaceMain.getInstance().showMessageDialog("Please select Scenarios to run the query against",
-							"Run Query Error", JOptionPane.ERROR_MESSAGE);
+				// Checks to make sure at least two scenarios, one region, and one query has been selected.
+				if (scnSel.length < 2) {
+					InterfaceMain.getInstance().showMessageDialog(
+							"Please select at least two Scenarios to run a diff query against", "Diff Query Error",
+							JOptionPane.ERROR_MESSAGE);
 				} else if (regionSel.length == 0) {
 					InterfaceMain.getInstance().showMessageDialog("Please select Regions to run the query against",
-							"Run Query Error", JOptionPane.ERROR_MESSAGE);
-				} else if (queryList.getSelectionCount() == 0) {
-					InterfaceMain.getInstance().showMessageDialog("Please select a query to run", "Run Query Error",
+							"Diff Query Error", JOptionPane.ERROR_MESSAGE);
+				} else if (!hasRunnableQuerySelection()) {
+					InterfaceMain.getInstance().showMessageDialog("Please select a query to run", "Diff Query Error",
 							JOptionPane.ERROR_MESSAGE);
 				} else {
 					// selection criteria met
@@ -2563,11 +2598,12 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			}
 		}); // listener end
 		if (DEBUG) System.out.println("DbViewer.setupListeners: listener registration complete, beginning main-view activation...");
-		
+
 		JFrame parentFrame = InterfaceMain.getInstance().getFrame();
 		if (DEBUG) System.out.println("DbViewer.setupListeners: parentFrame acquired? " + (parentFrame != null));
 		parentFrame.getContentPane();
 		if (DEBUG) System.out.println("DbViewer.setupListeners: calling InterfaceMain.setMainView(tableCreatorSplit)...");
+
 		// Use InterfaceMain.setMainView to replace the CENTER component while keeping the
 		// global status bar (installed in InterfaceMain.SOUTH) intact.
 		InterfaceMain.getInstance().setMainView(tableCreatorSplit);
@@ -2579,8 +2615,25 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		if (DEBUG) System.out.println("DbViewer.setupListeners: glass pane hidden.");
 
 		if (DEBUG) System.out.println("DbViewer.setupListeners: calling parentFrame.setVisible(true)...");
+
 		parentFrame.setVisible(true);
 		if (DEBUG) System.out.println("DbViewer.setupListeners: parentFrame.setVisible(true) returned.");
+	}
+
+	private void resetPresetRegionsComboOnManualSelection() {
+		if (comboBoxPresetRegions == null || comboBoxPresetRegions.getSelectedIndex() <= 0) {
+			return;
+		}
+		// Skip resets while a preset is actively applying programmatic region changes.
+		if (applyingPresetRegionSelection) {
+			return;
+		}
+		suppressPresetComboAction = true;
+		try {
+			comboBoxPresetRegions.setSelectedIndex(0);
+		} finally {
+			suppressPresetComboAction = false;
+		}
 	}
 
 	/**
@@ -2736,6 +2789,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			if (queryList != null) {
 				queryList.setModel(queries);
 				expandQueryTreeRows(queryList, STARTUP_QUERY_TREE_EXPANSION_ROW_LIMIT);
+				updateQueryActionButtonsEnabledState();
 			}
 		}
 	}
@@ -3488,21 +3542,24 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		if (verbose)
 			System.out.println("this is my selection: " + selection);
 		if (idx > 0) {
-			for (int i = 0; i < preset_region_list.size(); i++) {
-				String line = preset_region_list.get(i);
-				int index = line.indexOf(":");
-				if (index > 0) {
-					String name = line.substring(0, index).toLowerCase();
-					if (selection.toLowerCase().equals(name)) {
-						String[] subregions = splitString(line.substring(index + 1), ",");
-						if (verbose)
-							System.out.println("number of items in this subregion is: " + subregions.length);
-						selectItemsFromRegionList(subregions);
+			applyingPresetRegionSelection = true;
+			try {
+				for (int i = 0; i < preset_region_list.size(); i++) {
+					String line = preset_region_list.get(i);
+					int index = line.indexOf(":");
+					if (index > 0) {
+						String name = line.substring(0, index).toLowerCase();
+						if (selection.toLowerCase().equals(name)) {
+							String[] subregions = splitString(line.substring(index + 1), ",");
+							if (verbose)
+								System.out.println("number of items in this subregion is: " + subregions.length);
+							selectItemsFromRegionList(subregions);
+						}
 					}
 				}
+			} finally {
+				applyingPresetRegionSelection = false;
 			}
-		} else {
-			regionList.setSelectedIndex(0);
 		}
 	}
 
