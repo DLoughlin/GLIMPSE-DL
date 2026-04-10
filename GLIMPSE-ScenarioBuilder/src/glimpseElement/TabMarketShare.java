@@ -119,6 +119,8 @@ public class TabMarketShare extends PolicyTab implements Runnable {
     private static final String METADATA_MARKET_NAME = "#Market name: ";
     private static final String METADATA_REGIONS = "#Regions: ";
     private static final String METADATA_TABLE_DATA = "#Table data:";
+    private static final String NOTICE_RPS_CES_HEADER = "RPS/CES Auto-Selection";
+    private static final String NOTICE_RPS_CES_CONTENT = "For RPS and CES options:\nTechnology selections are chosen automatically. Modify as needed.";
 
     private boolean isEditing = false;
 
@@ -330,10 +332,8 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 				checkComboBoxSubset.setDisable(false);
 				checkComboBoxSuperset.setDisable(false);
 				if ((selectedItem.contains("RPS")) || (selectedItem.contains("CES"))) {
-					//showInfo("For RPS and CES options:\nTechnology selections chosen automatically. Modify as needed.",
-					//		"Information");
 					if (!isEditing) {
-						utils.warningMessage("For RPS and CES options:\nTechnology selections chosen automatically. Modify as needed");
+						utils.showInformationDialog("Notice", NOTICE_RPS_CES_HEADER, NOTICE_RPS_CES_CONTENT);
 					}
 					this.comboBoxAppliedTo.getSelectionModel().select("All Stock");
 					this.comboBoxTreatment.getSelectionModel().select("Across Selected Regions");

@@ -408,6 +408,10 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 		for (Tab t : tp.getTabs()) {
 			if (t instanceof PolicyTab && t.getText().equals(whichTab)) {
 				PolicyTab policyTab = (PolicyTab) t;
+				// Suppress new-component notices while restoring an existing Market Share/Flex Share component.
+				if (policyTab instanceof TabMarketShare) {
+					((TabMarketShare) policyTab).setEditing(true);
+				}
 				policyTab.loadContent(contentToLoad);
 				tp.getSelectionModel().select(policyTab);
 				break;
