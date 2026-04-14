@@ -111,41 +111,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
-public class InterfaceMain implements ActionListener {
-	private static final class ViewportWidthPanel extends javax.swing.JPanel implements javax.swing.Scrollable {
-		ViewportWidthPanel(java.awt.LayoutManager layout) {
-			super(layout);
-		}
-
-		@Override
-		public java.awt.Dimension getPreferredScrollableViewportSize() {
-			return getPreferredSize();
-		}
-
-		@Override
-		public int getScrollableUnitIncrement(java.awt.Rectangle visibleRect, int orientation, int direction) {
-			return 16;
-		}
-
-		@Override
-		public int getScrollableBlockIncrement(java.awt.Rectangle visibleRect, int orientation, int direction) {
-			if (orientation == javax.swing.SwingConstants.VERTICAL) {
-				return Math.max(visibleRect.height - 16, 16);
-			}
-			return Math.max(visibleRect.width - 16, 16);
-		}
-
-		@Override
-		public boolean getScrollableTracksViewportWidth() {
-			return true;
-		}
-
-		@Override
-		public boolean getScrollableTracksViewportHeight() {
-			return false;
-		}
-	}
-
+public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks {
 	private enum StatusBarProgressMode {
 		NONE,
 		QUERY,
@@ -224,7 +190,7 @@ public class InterfaceMain implements ActionListener {
 	}
 
 	private static final String STARTUP_TIMING_PROPERTY = "do_output_timings";
-	private static final String FONT_SIZE_PROPERTY = "fontSize";
+	public static final String FONT_SIZE_PROPERTY = "fontSize";
 	public static final String GRAPHICS_TITLE_FONT_SIZE_PROPERTY = "graphicsTitleFontSize";
 	public static final String GRAPHICS_SUBTITLE_FONT_SIZE_PROPERTY = "graphicsSubtitleFontSize";
 	public static final String GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY = "graphicsAxisLabelFontSize";
@@ -255,7 +221,7 @@ public class InterfaceMain implements ActionListener {
 		return Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, fontSize));
 	}
 
-	private static int parseFontSizeValue(final String rawValue, final int fallback) {
+	public static int parseFontSizeValue(final String rawValue, final int fallback) {
 		if (rawValue == null || rawValue.trim().isEmpty()) {
 			return clampFontSize(fallback);
 		}
@@ -266,7 +232,7 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
-	private static int parseBoundedIntValue(final String rawValue, final int fallback, final int min, final int max) {
+	public static int parseBoundedIntValue(final String rawValue, final int fallback, final int min, final int max) {
 		int boundedFallback = Math.max(min, Math.min(max, fallback));
 		if (rawValue == null || rawValue.trim().isEmpty()) {
 			return boundedFallback;
@@ -279,7 +245,7 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
-	private static double parseBoundedDoubleValue(final String rawValue, final double fallback, final double min,
+	public static double parseBoundedDoubleValue(final String rawValue, final double fallback, final double min,
 			final double max) {
 		double boundedFallback = Math.max(min, Math.min(max, fallback));
 		if (rawValue == null || rawValue.trim().isEmpty()) {
@@ -293,7 +259,7 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
-	private static int resolveConfiguredFontSize(final Properties props) {
+	public static int resolveConfiguredFontSize(final Properties props) {
 		if (props == null) {
 			return clampFontSize(configuredFontSize);
 		}
@@ -344,7 +310,7 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
-	private void applyConfiguredFontSizeNow(final int newFontSize) {
+	public void applyConfiguredFontSizeNow(final int newFontSize) {
 		configuredFontSize = clampFontSize(newFontSize);
 		applyConfiguredUIFontDefaults();
 		Runnable applyTask = new Runnable() {
@@ -2064,6 +2030,20 @@ public class InterfaceMain implements ActionListener {
 		return mainFrame;
 	}
 
+	// ---- PreferenceDialogCallbacks implementation ----
+
+	@Override
+	public JFrame getOwnerFrame() { return mainFrame; }
+
+	@Override
+	public void applyFontSize(int newSize) { applyConfiguredFontSizeNow(newSize); }
+
+	@Override
+	public int getCurrentFontSize() { return configuredFontSize; }
+
+	@Override
+	public void dispatchMenuAction(java.awt.event.ActionEvent e) { actionPerformed(e); }
+
 	private void addMenuItems(MenuManager menuMan) {
 		addFileMenu(menuMan);
 		addEditMenu(menuMan);
@@ -2438,7 +2418,7 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
-	private void openEditorForFile(File file, String type) {
+	public void openEditorForFile(File file, String type) {
 		if (file == null || !file.exists()) {
 			showMessageDialog("File does not exist: " + (file != null ? file.getAbsolutePath() : "(null)"),
 					"Open Editor", JOptionPane.ERROR_MESSAGE);
@@ -2466,617 +2446,8 @@ public class InterfaceMain implements ActionListener {
 		}
 	}
 
-	private javax.swing.JTextField xmlEditorField;
-	private javax.swing.JTextField csvEditorField;
-	private javax.swing.JTextField txtEditorField;
-	private javax.swing.JTextField unitsFileField;
-	private javax.swing.JTextField regionsFileField;
-	private javax.swing.JTextField mapResourceFolderField;
-	private javax.swing.JComboBox<String> sigDigitsCombo;
-	private javax.swing.JComboBox<String> fontSizeCombo;
-	private javax.swing.JSpinner graphicsTitleFontSizeSpinner;
-	private javax.swing.JSpinner graphicsSubtitleFontSizeSpinner;
-	private javax.swing.JSpinner graphicsAxisLabelFontSizeSpinner;
-	private javax.swing.JSpinner graphicsAxisTickFontSizeSpinner;
-	private javax.swing.JSpinner graphicsLegendFontSizeSpinner;
-	private javax.swing.JSpinner graphicsLineWidthScaleSpinner;
-	private javax.swing.JSpinner graphicsThumbnailFontSizeSpinner;
-	private javax.swing.JSpinner graphicsThumbnailLineWidthSpinner;
-	private javax.swing.JCheckBox zipExportedScenariosCheckbox;
-	private javax.swing.JCheckBox copyIncludeQueryNameCheckbox;
-	private javax.swing.JCheckBox compressTreeCheckbox;
-
 	private void showPreferencesDialog() {
-		javax.swing.JDialog dlg = new javax.swing.JDialog(mainFrame, "Preferences", true);
-		dlg.setDefaultCloseOperation(javax.swing.JDialog.DISPOSE_ON_CLOSE);
-		final int initialFontSize = configuredFontSize;
-		final java.util.concurrent.atomic.AtomicBoolean fontSizeSaved = new java.util.concurrent.atomic.AtomicBoolean(false);
-		final Runnable rollbackFontPreviewIfNeeded = new Runnable() {
-			@Override
-			public void run() {
-				if (!fontSizeSaved.get() && configuredFontSize != initialFontSize) {
-					applyConfiguredFontSizeNow(initialFontSize);
-				}
-			}
-		};
-		dlg.addWindowListener(new java.awt.event.WindowAdapter() {
-			@Override
-			public void windowClosing(java.awt.event.WindowEvent e) {
-				rollbackFontPreviewIfNeeded.run();
-			}
-		});
-		javax.swing.JTabbedPane tabs = new javax.swing.JTabbedPane();
-
-		// -----------------
-		// General tab
-		// -----------------
-		javax.swing.JPanel generalPanel = new ViewportWidthPanel(new java.awt.GridBagLayout());
-		generalPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
-		java.awt.GridBagConstraints gc = new java.awt.GridBagConstraints();
-		gc.gridx = 0;
-		gc.gridy = 0;
-		gc.anchor = java.awt.GridBagConstraints.WEST;
-		gc.fill = java.awt.GridBagConstraints.HORIZONTAL;
-		gc.weightx = 0.0;
-		gc.insets = new java.awt.Insets(6, 6, 6, 6);
-
-		// Section label
-		javax.swing.JLabel fileEditorsLbl = new javax.swing.JLabel("File editors:");
-		fileEditorsLbl.setFont(fileEditorsLbl.getFont().deriveFont(java.awt.Font.BOLD));
-		gc.gridx = 0;
-		gc.gridwidth = 3;
-		gc.weightx = 1.0;
-		generalPanel.add(fileEditorsLbl, gc);
-		gc.gridwidth = 1;
-
-		gc.gridy++;
-		gc.weightx = 0.0;
-		javax.swing.JLabel xmlLbl = new javax.swing.JLabel("XML editor command:");
-		generalPanel.add(xmlLbl, gc);
-		gc.gridx = 1;
-		gc.weightx = 1.0;
-		xmlEditorField = new javax.swing.JTextField(savedProperties.getProperty("xmlEditor", ""));
-		generalPanel.add(xmlEditorField, gc);
-		gc.gridx = 2;
-		gc.weightx = 0.0;
-		javax.swing.JButton xmlBrowse = new javax.swing.JButton("Browse…");
-		xmlBrowse.addActionListener(ev -> {
-			File exe = promptForExecutable("Select XML editor executable");
-			if (exe != null) {
-				xmlEditorField.setText(exe.getAbsolutePath());
-			}
-		});
-		generalPanel.add(xmlBrowse, gc);
-
-		gc.gridy++;
-		gc.gridx = 0;
-		javax.swing.JLabel csvLbl = new javax.swing.JLabel("CSV editor command:");
-		generalPanel.add(csvLbl, gc);
-		gc.gridx = 1;
-		gc.weightx = 1.0;
-		csvEditorField = new javax.swing.JTextField(savedProperties.getProperty("csvEditor", ""));
-		generalPanel.add(csvEditorField, gc);
-		gc.gridx = 2;
-		gc.weightx = 0.0;
-		javax.swing.JButton csvBrowse = new javax.swing.JButton("Browse…");
-		csvBrowse.addActionListener(ev -> {
-			File exe = promptForExecutable("Select CSV editor executable");
-			if (exe != null) {
-				csvEditorField.setText(exe.getAbsolutePath());
-			}
-		});
-		generalPanel.add(csvBrowse, gc);
-
-		gc.gridy++;
-		gc.gridx = 0;
-		javax.swing.JLabel txtLbl = new javax.swing.JLabel("TXT editor command:");
-		generalPanel.add(txtLbl, gc);
-		gc.gridx = 1;
-		gc.weightx = 1.0;
-		txtEditorField = new javax.swing.JTextField(savedProperties.getProperty("txtEditor", ""));
-		generalPanel.add(txtEditorField, gc);
-		gc.gridx = 2;
-		gc.weightx = 0.0;
-		javax.swing.JButton txtBrowse = new javax.swing.JButton("Browse…");
-		txtBrowse.addActionListener(ev -> {
-			File exe = promptForExecutable("Select TXT editor executable");
-			if (exe != null) {
-				txtEditorField.setText(exe.getAbsolutePath());
-			}
-		});
-		generalPanel.add(txtBrowse, gc);
-
-		gc.gridy++;
-		gc.gridx = 0;
-		gc.gridwidth = 3;
-		gc.weightx = 1.0;
-		javax.swing.JLabel hint = new javax.swing.JLabel(
-				"<html>Tip: leave blank to use the default system editor, or enter a command such as<br>"
-				+ "<i>notepad.exe</i>, <i>code</i>, or <i>\"C:\\Program Files\\editor.exe\" --arg</i>.<br>"
-				+ "Arguments are supported; quote paths that contain spaces.</html>");
-		generalPanel.add(hint, gc);
-
-		// Horizontal separator
-		gc.gridy++;
-		gc.gridx = 0;
-		gc.gridwidth = 3;
-		gc.weightx = 1.0;
-		generalPanel.add(new javax.swing.JSeparator(javax.swing.SwingConstants.HORIZONTAL), gc);
-		gc.gridwidth = 1;
-
-		// Zip exported scenarios preference
-		gc.gridy++;
-		gc.gridx = 0;
-		gc.gridwidth = 2;
-		gc.weightx = 1.0;
-		zipExportedScenariosCheckbox = new javax.swing.JCheckBox("Automatically zip scenarios when exported");
-		String zipExportedScenariosValue = savedProperties.getProperty("zipExportedScenarios");
-		boolean zipExportedScenariosSelected;
-		if (zipExportedScenariosValue == null) {
-			zipExportedScenariosSelected = false;
-		} else if ("true".equalsIgnoreCase(zipExportedScenariosValue) || "false".equalsIgnoreCase(zipExportedScenariosValue)) {
-			zipExportedScenariosSelected = Boolean.parseBoolean(zipExportedScenariosValue);
-			// Normalize the stored value to a lowercase canonical form.
-			savedProperties.setProperty("zipExportedScenarios", Boolean.toString(zipExportedScenariosSelected));
-		} else {
-			// Invalid value encountered; fall back to a safe default and sanitize the property.
-			zipExportedScenariosSelected = false;
-			savedProperties.setProperty("zipExportedScenarios", "false");
-		}
-		zipExportedScenariosCheckbox.setSelected(zipExportedScenariosSelected);
-		generalPanel.add(zipExportedScenariosCheckbox, gc);
-
-		// Copy behavior preference
-		gc.gridy++;
-		gc.gridx = 0;
-		gc.gridwidth = 2;
-		gc.weightx = 1.0;
-		copyIncludeQueryNameCheckbox = new javax.swing.JCheckBox("Include query name when copying tab data");
-		String copyIncludeQueryNameValue = savedProperties.getProperty("copyIncludeQueryName", "false");
-		boolean copyIncludeQueryNameSelected;
-		if ("true".equalsIgnoreCase(copyIncludeQueryNameValue)
-				|| "false".equalsIgnoreCase(copyIncludeQueryNameValue)) {
-			copyIncludeQueryNameSelected = Boolean.parseBoolean(copyIncludeQueryNameValue);
-			savedProperties.setProperty("copyIncludeQueryName", Boolean.toString(copyIncludeQueryNameSelected));
-		} else {
-			copyIncludeQueryNameSelected = false;
-			savedProperties.setProperty("copyIncludeQueryName", "false");
-		}
-		copyIncludeQueryNameCheckbox.setSelected(copyIncludeQueryNameSelected);
-		generalPanel.add(copyIncludeQueryNameCheckbox, gc);
-
-		// Compress Query Tree preference
-		gc.gridy++;
-		gc.gridx = 0;
-		gc.gridwidth = 2;
-		gc.weightx = 1.0;
-		compressTreeCheckbox = new javax.swing.JCheckBox("Compress Query Tree at startup");
-		String compressTreeValue = savedProperties.getProperty("compress_tree", "true");
-		boolean compressTreeSelected;
-		if ("true".equalsIgnoreCase(compressTreeValue) || "false".equalsIgnoreCase(compressTreeValue)) {
-			compressTreeSelected = Boolean.parseBoolean(compressTreeValue);
-		} else {
-			compressTreeSelected = true;
-			savedProperties.setProperty("compress_tree", "true");
-		}
-		compressTreeCheckbox.setSelected(compressTreeSelected);
-		generalPanel.add(compressTreeCheckbox, gc);
-
-		// Significant digits preference
-		gc.gridy++;
-		gc.gridx = 0;
-		gc.gridwidth = 1;
-		gc.weightx = 0.0;
-		generalPanel.add(new javax.swing.JLabel("Significant digits for results:"), gc);
-		gc.gridx = 1;
-		gc.weightx = 1.0;
-		gc.gridwidth = 2;
-		sigDigitsCombo = new javax.swing.JComboBox<>(new String[] { "2", "3", "4", "5" });
-		sigDigitsCombo.setSelectedItem(savedProperties.getProperty("significantDigits", "3"));
-		generalPanel.add(sigDigitsCombo, gc);
-
-		// Font size preference
-		gc.gridy++;
-		gc.gridx = 0;
-		gc.gridwidth = 1;
-		gc.weightx = 0.0;
-		generalPanel.add(new javax.swing.JLabel("Font size:"), gc);
-		gc.gridx = 1;
-		gc.weightx = 1.0;
-		gc.gridwidth = 2;
-		fontSizeCombo = new javax.swing.JComboBox<>(new String[] {
-				"8", "9", "10", "11", "12", "13", "14", "15", "16", "18", "20", "22", "24"
-		});
-		fontSizeCombo.setEditable(true);
-		fontSizeCombo.setSelectedItem(Integer.toString(resolveConfiguredFontSize(savedProperties)));
-		fontSizeCombo.addActionListener(ev -> {
-			Object selected = fontSizeCombo.getSelectedItem();
-			int previewSize = parseFontSizeValue(selected == null ? null : selected.toString(), configuredFontSize);
-			if (previewSize != configuredFontSize) {
-				applyConfiguredFontSizeNow(previewSize);
-			}
-		});
-		generalPanel.add(fontSizeCombo, gc);
-
-		javax.swing.JScrollPane generalScroll = new javax.swing.JScrollPane(
-				generalPanel,
-				javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
-				javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		generalScroll.setBorder(javax.swing.BorderFactory.createEmptyBorder());
-		tabs.addTab("General", generalScroll);
-
-		// -----------------
-		// Graphics tab
-		// -----------------
-		javax.swing.JPanel graphicsPanel = new ViewportWidthPanel(new java.awt.GridBagLayout());
-		graphicsPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
-		java.awt.GridBagConstraints gcGraphics = new java.awt.GridBagConstraints();
-		gcGraphics.gridx = 0;
-		gcGraphics.gridy = 0;
-		gcGraphics.anchor = java.awt.GridBagConstraints.WEST;
-		gcGraphics.fill = java.awt.GridBagConstraints.HORIZONTAL;
-		gcGraphics.insets = new java.awt.Insets(6, 6, 6, 6);
-		gcGraphics.weightx = 0.0;
-
-		java.util.function.IntSupplier readTitleFontSize = () -> parseBoundedIntValue(
-				savedProperties.getProperty(GRAPHICS_TITLE_FONT_SIZE_PROPERTY),
-				DEFAULT_GRAPHICS_TITLE_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE);
-		java.util.function.IntSupplier readSubtitleFontSize = () -> parseBoundedIntValue(
-				savedProperties.getProperty(GRAPHICS_SUBTITLE_FONT_SIZE_PROPERTY),
-				DEFAULT_GRAPHICS_SUBTITLE_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE);
-		java.util.function.IntSupplier readAxisLabelFontSize = () -> parseBoundedIntValue(
-				savedProperties.getProperty(GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY),
-				DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE);
-		java.util.function.IntSupplier readAxisTickFontSize = () -> parseBoundedIntValue(
-				savedProperties.getProperty(GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY),
-				DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE);
-		java.util.function.IntSupplier readLegendFontSize = () -> parseBoundedIntValue(
-				savedProperties.getProperty(GRAPHICS_LEGEND_FONT_SIZE_PROPERTY),
-				DEFAULT_GRAPHICS_LEGEND_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE);
-		java.util.function.DoubleSupplier readLineWidthScale = () -> parseBoundedDoubleValue(
-				savedProperties.getProperty(GRAPHICS_LINE_WIDTH_SCALE_PROPERTY),
-				DEFAULT_GRAPHICS_LINE_WIDTH_SCALE, MIN_GRAPHICS_LINE_WIDTH_SCALE, MAX_GRAPHICS_LINE_WIDTH_SCALE);
-		java.util.function.IntSupplier readThumbnailFontSize = () -> parseBoundedIntValue(
-				savedProperties.getProperty(GRAPHICS_THUMBNAIL_FONT_SIZE_PROPERTY),
-				DEFAULT_GRAPHICS_THUMBNAIL_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE);
-		java.util.function.DoubleSupplier readThumbnailLineWidth = () -> parseBoundedDoubleValue(
-				savedProperties.getProperty(GRAPHICS_THUMBNAIL_LINE_WIDTH_PROPERTY),
-				DEFAULT_GRAPHICS_THUMBNAIL_LINE_WIDTH, MIN_GRAPHICS_LINE_WIDTH_SCALE,
-				MAX_GRAPHICS_LINE_WIDTH_SCALE);
-
-		graphicsPanel.add(new javax.swing.JLabel("Default title font size:"), gcGraphics);
-		gcGraphics.gridx = 1;
-		gcGraphics.weightx = 1.0;
-		graphicsTitleFontSizeSpinner = new javax.swing.JSpinner(
-				new javax.swing.SpinnerNumberModel(readTitleFontSize.getAsInt(), MIN_GRAPHICS_FONT_SIZE,
-						MAX_GRAPHICS_FONT_SIZE, 1));
-		graphicsPanel.add(graphicsTitleFontSizeSpinner, gcGraphics);
-
-		gcGraphics.gridy++;
-		gcGraphics.gridx = 0;
-		gcGraphics.weightx = 0.0;
-		graphicsPanel.add(new javax.swing.JLabel("Default subtitle font size:"), gcGraphics);
-		gcGraphics.gridx = 1;
-		gcGraphics.weightx = 1.0;
-		graphicsSubtitleFontSizeSpinner = new javax.swing.JSpinner(
-				new javax.swing.SpinnerNumberModel(readSubtitleFontSize.getAsInt(), MIN_GRAPHICS_FONT_SIZE,
-						MAX_GRAPHICS_FONT_SIZE, 1));
-		graphicsPanel.add(graphicsSubtitleFontSizeSpinner, gcGraphics);
-
-		gcGraphics.gridy++;
-		gcGraphics.gridx = 0;
-		gcGraphics.weightx = 0.0;
-		graphicsPanel.add(new javax.swing.JLabel("Axis label font size:"), gcGraphics);
-		gcGraphics.gridx = 1;
-		gcGraphics.weightx = 1.0;
-		graphicsAxisLabelFontSizeSpinner = new javax.swing.JSpinner(
-				new javax.swing.SpinnerNumberModel(readAxisLabelFontSize.getAsInt(), MIN_GRAPHICS_FONT_SIZE,
-						MAX_GRAPHICS_FONT_SIZE, 1));
-		graphicsPanel.add(graphicsAxisLabelFontSizeSpinner, gcGraphics);
-
-		gcGraphics.gridy++;
-		gcGraphics.gridx = 0;
-		gcGraphics.weightx = 0.0;
-		graphicsPanel.add(new javax.swing.JLabel("Axis tick/value font size:"), gcGraphics);
-		gcGraphics.gridx = 1;
-		gcGraphics.weightx = 1.0;
-		graphicsAxisTickFontSizeSpinner = new javax.swing.JSpinner(
-				new javax.swing.SpinnerNumberModel(readAxisTickFontSize.getAsInt(), MIN_GRAPHICS_FONT_SIZE,
-						MAX_GRAPHICS_FONT_SIZE, 1));
-		graphicsPanel.add(graphicsAxisTickFontSizeSpinner, gcGraphics);
-
-		gcGraphics.gridy++;
-		gcGraphics.gridx = 0;
-		gcGraphics.weightx = 0.0;
-		graphicsPanel.add(new javax.swing.JLabel("Legend label font size:"), gcGraphics);
-		gcGraphics.gridx = 1;
-		gcGraphics.weightx = 1.0;
-		graphicsLegendFontSizeSpinner = new javax.swing.JSpinner(
-				new javax.swing.SpinnerNumberModel(readLegendFontSize.getAsInt(), MIN_GRAPHICS_FONT_SIZE,
-						MAX_GRAPHICS_FONT_SIZE, 1));
-		graphicsPanel.add(graphicsLegendFontSizeSpinner, gcGraphics);
-
-		gcGraphics.gridy++;
-		gcGraphics.gridx = 0;
-		gcGraphics.weightx = 0.0;
-		graphicsPanel.add(new javax.swing.JLabel("Line width:"), gcGraphics);
-		gcGraphics.gridx = 1;
-		gcGraphics.weightx = 1.0;
-		graphicsLineWidthScaleSpinner = new javax.swing.JSpinner(
-				new javax.swing.SpinnerNumberModel(readLineWidthScale.getAsDouble(), MIN_GRAPHICS_LINE_WIDTH_SCALE,
-						MAX_GRAPHICS_LINE_WIDTH_SCALE, 0.1d));
-		graphicsPanel.add(graphicsLineWidthScaleSpinner, gcGraphics);
-
-		gcGraphics.gridy++;
-		gcGraphics.gridx = 0;
-		gcGraphics.gridwidth = 2;
-		gcGraphics.weightx = 1.0;
-		graphicsPanel.add(new javax.swing.JSeparator(javax.swing.SwingConstants.HORIZONTAL), gcGraphics);
-		graphicsPanel.add(new javax.swing.JLabel("Thumbnail settings"), gcGraphics);
-
-		gcGraphics.gridy++;
-		gcGraphics.gridx = 0;
-		gcGraphics.gridwidth = 1;
-		gcGraphics.weightx = 0.0;
-		graphicsPanel.add(new javax.swing.JLabel("Thumbnail font size:"), gcGraphics);
-		gcGraphics.gridx = 1;
-		gcGraphics.weightx = 1.0;
-		graphicsThumbnailFontSizeSpinner = new javax.swing.JSpinner(
-				new javax.swing.SpinnerNumberModel(readThumbnailFontSize.getAsInt(), MIN_GRAPHICS_FONT_SIZE,
-						MAX_GRAPHICS_FONT_SIZE, 1));
-		graphicsPanel.add(graphicsThumbnailFontSizeSpinner, gcGraphics);
-
-		gcGraphics.gridy++;
-		gcGraphics.gridx = 0;
-		gcGraphics.weightx = 0.0;
-		graphicsPanel.add(new javax.swing.JLabel("Thumbnail line width:"), gcGraphics);
-		gcGraphics.gridx = 1;
-		gcGraphics.weightx = 1.0;
-		graphicsThumbnailLineWidthSpinner = new javax.swing.JSpinner(
-				new javax.swing.SpinnerNumberModel(readThumbnailLineWidth.getAsDouble(), MIN_GRAPHICS_LINE_WIDTH_SCALE,
-						MAX_GRAPHICS_LINE_WIDTH_SCALE, 0.1d));
-		graphicsPanel.add(graphicsThumbnailLineWidthSpinner, gcGraphics);
-
-		gcGraphics.gridy++;
-		gcGraphics.gridx = 1;
-		gcGraphics.anchor = java.awt.GridBagConstraints.EAST;
-		javax.swing.JButton resetGraphicsDefaultsButton = new javax.swing.JButton("Reset Graphics Defaults");
-		resetGraphicsDefaultsButton.addActionListener(ev -> {
-			graphicsTitleFontSizeSpinner.setValue(Integer.valueOf(DEFAULT_GRAPHICS_TITLE_FONT_SIZE));
-			graphicsSubtitleFontSizeSpinner.setValue(Integer.valueOf(DEFAULT_GRAPHICS_SUBTITLE_FONT_SIZE));
-			graphicsAxisLabelFontSizeSpinner.setValue(Integer.valueOf(DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE));
-			graphicsAxisTickFontSizeSpinner.setValue(Integer.valueOf(DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE));
-			graphicsLegendFontSizeSpinner.setValue(Integer.valueOf(DEFAULT_GRAPHICS_LEGEND_FONT_SIZE));
-			graphicsLineWidthScaleSpinner.setValue(Double.valueOf(DEFAULT_GRAPHICS_LINE_WIDTH_SCALE));
-			graphicsThumbnailFontSizeSpinner.setValue(Integer.valueOf(DEFAULT_GRAPHICS_THUMBNAIL_FONT_SIZE));
-			graphicsThumbnailLineWidthSpinner.setValue(Double.valueOf(DEFAULT_GRAPHICS_THUMBNAIL_LINE_WIDTH));
-		});
-		graphicsPanel.add(resetGraphicsDefaultsButton, gcGraphics);
-
-		javax.swing.JScrollPane graphicsScroll = new javax.swing.JScrollPane(
-				graphicsPanel,
-				javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
-				javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		graphicsScroll.setBorder(javax.swing.BorderFactory.createEmptyBorder());
-		tabs.addTab("Graphics", graphicsScroll);
-
-		// -----------------
-		// Optional Features tab
-		// -----------------
-		javax.swing.JPanel optionalPanel = new ViewportWidthPanel(new java.awt.GridBagLayout());
-		optionalPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
-		java.awt.GridBagConstraints oc = new java.awt.GridBagConstraints();
-		oc.gridx = 0;
-		oc.gridy = 0;
-		oc.anchor = java.awt.GridBagConstraints.WEST;
-		oc.fill = java.awt.GridBagConstraints.HORIZONTAL;
-		oc.insets = new java.awt.Insets(6, 6, 6, 6);
-		oc.weightx = 0.0;
-
-		// Convert Units
-		javax.swing.JLabel unitsLbl = new javax.swing.JLabel("Convert Units (CSV):");
-		optionalPanel.add(unitsLbl, oc);
-		oc.gridx = 1;
-		oc.weightx = 1.0;
-		unitsFileField = new javax.swing.JTextField(savedProperties.getProperty("unitsFile", ""));
-		optionalPanel.add(unitsFileField, oc);
-		oc.gridx = 2;
-		oc.weightx = 0.0;
-		javax.swing.JButton unitsBrowse = new javax.swing.JButton("Browse…");
-		unitsBrowse.addActionListener(ev -> {
-			actionPerformed(new ActionEvent(unitsBrowse, ActionEvent.ACTION_PERFORMED, "Select Units File"));
-			unitsFileField.setText(savedProperties.getProperty("unitsFile", ""));
-		});
-		optionalPanel.add(unitsBrowse, oc);
-		oc.gridx = 3;
-		javax.swing.JButton unitsEdit = new javax.swing.JButton("Edit");
-		unitsEdit.addActionListener(ev -> openEditorForFile(new File(unitsFileField.getText()), "csv"));
-		optionalPanel.add(unitsEdit, oc);
-
-		// Preset Regions
-		oc.gridy++;
-		oc.gridx = 0;
-		javax.swing.JLabel regionsLbl = new javax.swing.JLabel("Preset Regions:");
-		optionalPanel.add(regionsLbl, oc);
-		oc.gridx = 1;
-		oc.weightx = 1.0;
-		regionsFileField = new javax.swing.JTextField(savedProperties.getProperty("presetRegionList", ""));
-		optionalPanel.add(regionsFileField, oc);
-		oc.gridx = 2;
-		oc.weightx = 0.0;
-		javax.swing.JButton regionsBrowse = new javax.swing.JButton("Browse…");
-		regionsBrowse.addActionListener(ev -> {
-			actionPerformed(new ActionEvent(regionsBrowse, ActionEvent.ACTION_PERFORMED, "Select Regions File"));
-			regionsFileField.setText(savedProperties.getProperty("presetRegionList", ""));
-		});
-		optionalPanel.add(regionsBrowse, oc);
-		oc.gridx = 3;
-		javax.swing.JButton regionsEdit = new javax.swing.JButton("Edit");
-		regionsEdit.addActionListener(ev -> openEditorForFile(new File(regionsFileField.getText()), "txt"));
-		optionalPanel.add(regionsEdit, oc);
-
-		// Mapping Resources
-		oc.gridy++;
-					oc.gridx = 0;
-		javax.swing.JLabel mapLbl = new javax.swing.JLabel("Mapping Resources:");
-		optionalPanel.add(mapLbl, oc);
-		oc.gridx = 1;
-		oc.weightx = 1.0;
-		mapResourceFolderField = new javax.swing.JTextField(savedProperties.getProperty("mapResourceFolder", ""));
-		optionalPanel.add(mapResourceFolderField, oc);
-		oc.gridx = 2;
-		oc.weightx = 0.0;
-		javax.swing.JButton mapBrowse = new javax.swing.JButton("Browse…");
-		mapBrowse.addActionListener(ev -> {
-			actionPerformed(new ActionEvent(mapBrowse, ActionEvent.ACTION_PERFORMED, "Select Map Resource Folder"));
-			mapResourceFolderField.setText(savedProperties.getProperty("mapResourceFolder", ""));
-		});
-		optionalPanel.add(mapBrowse, oc);
-		oc.gridx = 3;
-		optionalPanel.add(new javax.swing.JLabel(""), oc);
-
-		// Make column 1 grow; keep buttons compact
-		oc.gridy++;
-		oc.gridx = 0;
-		oc.gridwidth = 4;
-		oc.weightx = 1.0;
-		optionalPanel.add(new javax.swing.JLabel(""), oc);
-
-		javax.swing.JScrollPane optionalScroll = new javax.swing.JScrollPane(
-				optionalPanel,
-				javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
-				javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		optionalScroll.setBorder(javax.swing.BorderFactory.createEmptyBorder());
-		tabs.addTab("Optional Features", optionalScroll);
-		int optionalTabIndex = tabs.indexOfTab("Optional Features");
-		if (optionalTabIndex > -1 && optionalTabIndex != tabs.getTabCount() - 1) {
-			java.awt.Component optionalComp = tabs.getComponentAt(optionalTabIndex);
-			javax.swing.Icon optionalIcon = tabs.getIconAt(optionalTabIndex);
-			String optionalTip = tabs.getToolTipTextAt(optionalTabIndex);
-			tabs.removeTabAt(optionalTabIndex);
-			tabs.addTab("Optional Features", optionalIcon, optionalComp, optionalTip);
-		}
-		for (int tabIndex = 0; tabIndex < tabs.getTabCount(); tabIndex++) {
-			javax.swing.JLabel tabLabel = new javax.swing.JLabel(tabs.getTitleAt(tabIndex));
-			tabLabel.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 6, 0, 6));
-			tabs.setTabComponentAt(tabIndex, tabLabel);
-		}
-
-		// Main content
-		javax.swing.JPanel content = new javax.swing.JPanel(new java.awt.BorderLayout());
-		content.add(tabs, java.awt.BorderLayout.CENTER);
-
-		// Bottom buttons: Save / Close
-		javax.swing.JPanel bottom = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 8));
-		javax.swing.JButton save = new javax.swing.JButton("Save");
-		save.addActionListener(ev -> {
-			final int selectedFontSize = parseFontSizeValue(
-					fontSizeCombo == null || fontSizeCombo.getSelectedItem() == null
-							? Integer.toString(configuredFontSize)
-							: fontSizeCombo.getSelectedItem().toString(),
-					configuredFontSize);
-			final boolean fontSizeChanged = selectedFontSize != initialFontSize;
-			updateProperties(p -> {
-				p.setProperty("xmlEditor", safeTrim(xmlEditorField.getText()));
-				p.setProperty("csvEditor", safeTrim(csvEditorField.getText()));
-				if (txtEditorField != null) { p.setProperty("txtEditor", safeTrim(txtEditorField.getText())); }
-				if (sigDigitsCombo != null && sigDigitsCombo.getSelectedItem() != null) {
-					p.setProperty("significantDigits", sigDigitsCombo.getSelectedItem().toString());
-				}
-				if (zipExportedScenariosCheckbox != null) {
-					p.setProperty("zipExportedScenarios", Boolean.toString(zipExportedScenariosCheckbox.isSelected()));
-				}
-				if (copyIncludeQueryNameCheckbox != null) {
-					p.setProperty("copyIncludeQueryName", Boolean.toString(copyIncludeQueryNameCheckbox.isSelected()));
-				}
-				if (compressTreeCheckbox != null) {
-					p.setProperty("compress_tree", Boolean.toString(compressTreeCheckbox.isSelected()));
-				}
-				// persist latest optional paths too (in case user typed directly)
-				if (unitsFileField != null) { p.setProperty("unitsFile", safeTrim(unitsFileField.getText())); }
-				if (regionsFileField != null) { p.setProperty("presetRegionList", safeTrim(regionsFileField.getText())); }
-				if (mapResourceFolderField != null) { p.setProperty("mapResourceFolder", safeTrim(mapResourceFolderField.getText())); }
-				if (graphicsTitleFontSizeSpinner != null) {
-					int value = ((Number) graphicsTitleFontSizeSpinner.getValue()).intValue();
-					p.setProperty(GRAPHICS_TITLE_FONT_SIZE_PROPERTY,
-							Integer.toString(parseBoundedIntValue(Integer.toString(value), DEFAULT_GRAPHICS_TITLE_FONT_SIZE,
-									MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE)));
-				}
-				if (graphicsSubtitleFontSizeSpinner != null) {
-					int value = ((Number) graphicsSubtitleFontSizeSpinner.getValue()).intValue();
-					p.setProperty(GRAPHICS_SUBTITLE_FONT_SIZE_PROPERTY,
-							Integer.toString(parseBoundedIntValue(Integer.toString(value), DEFAULT_GRAPHICS_SUBTITLE_FONT_SIZE,
-									MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE)));
-				}
-				if (graphicsAxisLabelFontSizeSpinner != null) {
-					int value = ((Number) graphicsAxisLabelFontSizeSpinner.getValue()).intValue();
-					p.setProperty(GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY,
-							Integer.toString(parseBoundedIntValue(Integer.toString(value),
-									DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE,
-									MAX_GRAPHICS_FONT_SIZE)));
-				}
-				if (graphicsAxisTickFontSizeSpinner != null) {
-					int value = ((Number) graphicsAxisTickFontSizeSpinner.getValue()).intValue();
-					p.setProperty(GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY,
-							Integer.toString(parseBoundedIntValue(Integer.toString(value),
-									DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE,
-									MAX_GRAPHICS_FONT_SIZE)));
-				}
-				if (graphicsLegendFontSizeSpinner != null) {
-					int value = ((Number) graphicsLegendFontSizeSpinner.getValue()).intValue();
-					p.setProperty(GRAPHICS_LEGEND_FONT_SIZE_PROPERTY,
-							Integer.toString(parseBoundedIntValue(Integer.toString(value), DEFAULT_GRAPHICS_LEGEND_FONT_SIZE,
-									MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE)));
-				}
-				if (graphicsLineWidthScaleSpinner != null) {
-					double value = ((Number) graphicsLineWidthScaleSpinner.getValue()).doubleValue();
-					double bounded = parseBoundedDoubleValue(Double.toString(value), DEFAULT_GRAPHICS_LINE_WIDTH_SCALE,
-							MIN_GRAPHICS_LINE_WIDTH_SCALE, MAX_GRAPHICS_LINE_WIDTH_SCALE);
-					p.setProperty(GRAPHICS_LINE_WIDTH_SCALE_PROPERTY, Double.toString(bounded));
-				}
-				if (graphicsThumbnailFontSizeSpinner != null) {
-					int value = ((Number) graphicsThumbnailFontSizeSpinner.getValue()).intValue();
-					p.setProperty(GRAPHICS_THUMBNAIL_FONT_SIZE_PROPERTY,
-							Integer.toString(parseBoundedIntValue(Integer.toString(value),
-									DEFAULT_GRAPHICS_THUMBNAIL_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE,
-									MAX_GRAPHICS_FONT_SIZE)));
-				}
-				if (graphicsThumbnailLineWidthSpinner != null) {
-					double value = ((Number) graphicsThumbnailLineWidthSpinner.getValue()).doubleValue();
-					double bounded = parseBoundedDoubleValue(Double.toString(value),
-							DEFAULT_GRAPHICS_THUMBNAIL_LINE_WIDTH, MIN_GRAPHICS_LINE_WIDTH_SCALE,
-							MAX_GRAPHICS_LINE_WIDTH_SCALE);
-					p.setProperty(GRAPHICS_THUMBNAIL_LINE_WIDTH_PROPERTY, Double.toString(bounded));
-				}
-				p.setProperty(FONT_SIZE_PROPERTY, Integer.toString(selectedFontSize));
-			});
-			fontSizeSaved.set(true);
-			applyConfiguredFontSizeNow(selectedFontSize);
-			if (fontSizeChanged) {
-				showMessageDialog("Font size updated and applied to open views.",
-						"Preferences", JOptionPane.INFORMATION_MESSAGE);
-			}
-			dlg.dispose();
-		});
-		javax.swing.JButton close = new javax.swing.JButton("Close");
-		close.addActionListener(ev -> {
-			rollbackFontPreviewIfNeeded.run();
-			dlg.dispose();
-		});
-		bottom.add(save);
-		bottom.add(close);
-		javax.swing.JPanel bottomArea = new javax.swing.JPanel(new java.awt.BorderLayout());
-		bottomArea.add(new javax.swing.JSeparator(javax.swing.SwingConstants.HORIZONTAL), java.awt.BorderLayout.NORTH);
-		bottomArea.add(bottom, java.awt.BorderLayout.CENTER);
-		content.add(bottomArea, java.awt.BorderLayout.SOUTH);
-
-		dlg.setContentPane(content);
-		dlg.pack();
-		int defaultWidth = (int) Math.round(dlg.getWidth() * (2.0 / 3.0));
-		int minWidth = 560;
-		dlg.setSize(Math.max(minWidth, defaultWidth), dlg.getHeight() + 20);
-		dlg.setLocationRelativeTo(mainFrame);
-		dlg.setVisible(true);
+		new PreferenceDialog(this).showDialog();
 	}
 
 	/**
@@ -3464,4 +2835,4 @@ public class InterfaceMain implements ActionListener {
 			}
 		}
 	}
-}
+}
