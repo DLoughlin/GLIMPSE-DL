@@ -58,6 +58,7 @@ public class FavoriteQueriesManager {
 					"Favorite Queries", JOptionPane.INFORMATION_MESSAGE);
 			return;
 		}
+		expandAllRows(queryList);
 		ArrayList<String> favoriteQueryLines = new ArrayList<>();
 		ArrayList<TreePath> favoriteQueryPaths = new ArrayList<>();
 		ArrayList<String> favoriteQueryNames = new ArrayList<>();
@@ -456,5 +457,14 @@ public class FavoriteQueriesManager {
 		String lastPart = "\"" + queryName.toString() + "\"";
 		String myLine = myStr + lastPart;
 		return (myLine);
+	}
+
+	private void expandAllRows(JTree tree) {
+		if (tree == null) {
+			return;
+		}
+		for (int row = 0; row < tree.getRowCount(); row++) {
+			tree.expandRow(row);
+		}
 	}
 }

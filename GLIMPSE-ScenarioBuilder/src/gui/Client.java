@@ -76,6 +76,8 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
 import org.controlsfx.control.StatusBar;
+import javafx.scene.Node;
+import javafx.scene.Parent;
 
 /**
  * The main entry point and controller for the GLIMPSE Scenario Builder GUI application.
@@ -114,6 +116,8 @@ public class Client extends Application {
 
 	// version
 	private static final String VERSION = "GLIMPSE-CE ScenarioBuilder";
+	private static final int MIN_RUNTIME_FONT_SIZE = 8;
+	private static final int MAX_RUNTIME_FONT_SIZE = 24;
 	private static final String STATUS_BAR_BASE_STYLE = " -fx-padding: 6 10 6 10; -fx-border-color: #e0e0e0 transparent transparent transparent; -fx-border-width: 1 0 0 0;";
 	private static final String STATUS_BAR_DEFAULT_TEXT_STYLE = "-fx-text-fill: black;";
 	private static final String STATUS_BAR_ALERT_TEXT_STYLE = "-fx-text-fill: red;";
@@ -703,7 +707,6 @@ public class Client extends Application {
         applyDeferredStatusBarTextIfReady();
     }
 
-    // ...existing code...
     private VBox createStartupOverlay() {
         Label headingLabel = new Label(STARTUP_DIALOG_HEADING);
         headingLabel.setStyle("-fx-font-size: 17px; -fx-font-weight: bold; -fx-text-fill: #465060;");
@@ -1033,6 +1036,80 @@ public class Client extends Application {
         final long msSinceT0 = (now - t0Nanos) / 1_000_000L;
         final long msSinceProcessStart = (now - STARTUP_T0_NANOS) / 1_000_000L;
         System.out.println("[startup] " + label + " | +" + msSinceT0 + "ms | total=" + msSinceProcessStart + "ms");
+    }
+
+    private static int clampRuntimeFontSize(int requestedFontSize) {
+        return Math.max(MIN_RUNTIME_FONT_SIZE, Math.min(MAX_RUNTIME_FONT_SIZE, requestedFontSize));
+    }
+
+    private static String mergeFontStyle(String style, int fontSize) {
+        String baseStyle = style == null ? "" : style;
+        String fontStyle = "-fx-font-size: " + fontSize + "px;";
+        if (baseStyle.matches("(?s).*?-fx-font-size\\s*:.*")) {
+            return baseStyle.replaceAll("-fx-font-size\\s*:\\s*[-+]?[0-9]*\\.?[0-9]+px\\s*;?", fontStyle);
+        }
+        return (baseStyle + " " + fontStyle).trim();
+    }
+
+    private static void applyFontSizeRecursively(Node node, int fontSize) {
+        if (node == null) {
+            return;
+        }
+        try {
+            node.setStyle(mergeFontStyle(node.getStyle(), fontSize));
+        } catch (Exception ignored) {
+        }
+        if (node instanceof Parent) {
+            for (Node child : ((Parent) node).getChildrenUnmodifiable()) {
+                applyFontSizeRecursively(child, fontSize);
+            }
+        }
+    }
+
+    /**
+     * Applies font size immediately across the visible JavaFX window without persisting to disk.
+     */
+    public static void applyRuntimeFontSize(int requestedFontSize) {
+        Runnable applyTask = () -> {
+            int fontSize = clampRuntimeFontSize(requestedFontSize);
+            GLIMPSEVariables vars = GLIMPSEVariables.getInstance();
+            vars.setPreferredFontSize(Integer.toString(fontSize));
+
+            Stage stage = primaryStage;
+            if (stage == null) {
+                return;
+            }
+            Scene scene = stage.getScene();
+            if (scene == null || scene.getRoot() == null) {
+                return;
+            }
+
+            applyFontSizeRecursively(scene.getRoot(), fontSize);
+            scene.getRoot().requestLayout();
+        };
+
+        if (Platform.isFxApplicationThread()) {
+            applyTask.run();
+        } else {
+            Platform.runLater(applyTask);
+        }
+    }
+
+    public static int getRuntimeFontSize() {
+        try {
+            String raw = GLIMPSEVariables.getInstance().getPreferredFontSize();
+            return clampRuntimeFontSize(Integer.parseInt(raw));
+        } catch (Exception ignored) {
+            return clampRuntimeFontSize(GLIMPSEStyles.getInstance().getFontSize());
+        }
+    }
+
+    public static int getMinRuntimeFontSize() {
+        return MIN_RUNTIME_FONT_SIZE;
+    }
+
+    public static int getMaxRuntimeFontSize() {
+        return MAX_RUNTIME_FONT_SIZE;
     }
 
     public static Stage getPrimaryStage() { return primaryStage; }

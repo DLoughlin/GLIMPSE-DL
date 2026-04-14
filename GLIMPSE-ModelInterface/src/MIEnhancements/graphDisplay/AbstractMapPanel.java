@@ -36,6 +36,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -67,6 +68,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
 import javax.swing.SwingConstants;
+import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
@@ -75,18 +77,24 @@ import javax.swing.JScrollPane;
 import javax.swing.JToggleButton;
 import javax.swing.UIManager;
 
-import org.geotools.data.Query;
 import org.geotools.factory.CommonFactoryFinder;
 import org.geotools.feature.FeatureCollection;
 import org.geotools.feature.FeatureIterator;
 import org.geotools.map.FeatureLayer;
 import org.geotools.map.MapContent;
 import org.geotools.styling.SLD;
+import org.geotools.styling.FeatureTypeStyle;
+import org.geotools.styling.Fill;
+import org.geotools.styling.PolygonSymbolizer;
+import org.geotools.styling.Rule;
+import org.geotools.styling.Stroke;
+import org.geotools.styling.Style;
+import org.geotools.styling.StyleFactory;
 import org.opengis.feature.Property;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.filter.Filter;
-import org.opengis.filter.FilterFactory;
+import org.opengis.filter.FilterFactory2;
 import org.geotools.swing.JMapPane;
 import org.geotools.swing.tool.PanTool;
 import org.geotools.swing.tool.ZoomInTool;
@@ -158,6 +166,8 @@ public abstract class AbstractMapPanel extends JFrame implements ComponentListen
     protected boolean reverseColors;
     protected boolean normalizeScale;
     protected final MapMode mapMode;
+    private SwingWorker<MapContent, Void> initialMapLoadWorker;
+    private JLabel mapLoadingLabel;
 
     private static final Logger LOGGER = Logger.getLogger(AbstractMapPanel.class.getName());
     private static final int LEGEND_PANEL_WIDTH = 160;
@@ -205,7 +215,7 @@ public abstract class AbstractMapPanel extends JFrame implements ComponentListen
         reverseColors = false;
         usePalette = MapColorPalette.getMapColorPalette("DIVERGING", 4, 10, reverseColors);
         useMapColor = new MapColor(usePalette, minMaxFromTable[0], minMaxFromTable[1]);
-        frame.getContentPane().add(createMapContent(), BorderLayout.CENTER);
+        frame.getContentPane().add(createLoadingMapContent("Loading map data..."), BorderLayout.CENTER);
         frame.getContentPane().add(createFooter(), BorderLayout.PAGE_END);
         frame.getContentPane().add(addLegendPanel(), BorderLayout.EAST);
         frame.pack();
@@ -218,6 +228,56 @@ public abstract class AbstractMapPanel extends JFrame implements ComponentListen
         if (!DbViewer.openWindows.contains(frame)) {
             DbViewer.openWindows.add(frame);
         }
+        beginInitialMapLoad();
+    }
+
+    private JComponent createLoadingMapContent(String message) {
+        addMapPanel = new JPanel(new BorderLayout());
+        addMapPanel.setBorder(new EmptyBorder(6, 6, 6, 6));
+        mapLoadingLabel = new JLabel(message, SwingConstants.CENTER);
+        mapLoadingLabel.setFont(MAP_FIELD_FONT);
+        addMapPanel.add(mapLoadingLabel, BorderLayout.CENTER);
+        return addMapPanel;
+    }
+
+    private void beginInitialMapLoad() {
+        if (initialMapLoadWorker != null && !initialMapLoadWorker.isDone()) {
+            initialMapLoadWorker.cancel(true);
+        }
+        initialMapLoadWorker = new SwingWorker<MapContent, Void>() {
+            @Override
+            protected MapContent doInBackground() {
+                MapContent loadedMap = createBoundaryMapLayer();
+                return loadedMap == null ? new MapContent() : loadedMap;
+            }
+
+            @Override
+            protected void done() {
+                if (isCancelled() || frame == null || !frame.isDisplayable()) {
+                    return;
+                }
+                try {
+                    MapContent loadedMap = get();
+                    if (stateMap != null) {
+                        stateMap.dispose();
+                    }
+                    stateMap = loadedMap;
+                    Container contentPane = frame.getContentPane();
+                    if (addMapPanel != null) {
+                        contentPane.remove(addMapPanel);
+                    }
+                    contentPane.add(createMapContentFromStateMap(), BorderLayout.CENTER);
+                    contentPane.revalidate();
+                    contentPane.repaint();
+                } catch (Exception ex) {
+                    if (mapLoadingLabel != null) {
+                        mapLoadingLabel.setText("Unable to load map data. See console for details.");
+                    }
+                    ex.printStackTrace();
+                }
+            }
+        };
+        initialMapLoadWorker.execute();
     }
 
     protected JComponent createToolBar() {
@@ -435,10 +495,6 @@ public abstract class AbstractMapPanel extends JFrame implements ComponentListen
     }
 
     protected JComponent createMapContent() {
-        addMapPanel = new JPanel();
-        addMapPanel.setLayout(new BoxLayout(addMapPanel, BoxLayout.X_AXIS));
-        addMapPanel.setBorder(new EmptyBorder(6, 6, 6, 6));
-        addMapPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
         if (stateMap != null) {
             stateMap.dispose();
         }
@@ -446,6 +502,14 @@ public abstract class AbstractMapPanel extends JFrame implements ComponentListen
         if (stateMap == null) {
             stateMap = new MapContent();
         }
+        return createMapContentFromStateMap();
+    }
+
+    private JComponent createMapContentFromStateMap() {
+        addMapPanel = new JPanel();
+        addMapPanel.setLayout(new BoxLayout(addMapPanel, BoxLayout.X_AXIS));
+        addMapPanel.setBorder(new EmptyBorder(6, 6, 6, 6));
+        addMapPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
         jmap = new JMapPane(stateMap);
         jmap.setBorder(new EmptyBorder(10, 10, 10, 10));
         installMapContextMenu(jmap);
@@ -982,17 +1046,49 @@ public abstract class AbstractMapPanel extends JFrame implements ComponentListen
         }
 
         HashMap<String, Double> selectedTableData = getSelectedTableData();
-        FilterFactory filterFactory = CommonFactoryFinder.getFilterFactory(null);
+        Style boundaryStyle = buildBoundaryStyle(featureCollection, selectedTableData);
+        FeatureLayer boundaryLayer = new FeatureLayer(featureCollection, boundaryStyle);
+        boundaryLayer.setVisible(true);
+        map.addLayer(boundaryLayer);
+        return map;
+    }
+
+    private Style buildBoundaryStyle(FeatureCollection<SimpleFeatureType, SimpleFeature> featureCollection,
+            HashMap<String, Double> selectedTableData) {
+        FilterFactory2 filterFactory = CommonFactoryFinder.getFilterFactory2(null);
+        StyleFactory styleFactory = CommonFactoryFinder.getStyleFactory(null);
+        Map<Integer, List<String>> regionBucketsByColor = new HashMap<>();
         FeatureIterator<SimpleFeature> iterator = featureCollection.features();
         try {
             while (iterator.hasNext()) {
                 SimpleFeature feature = iterator.next();
-                addFeatureLayer(map, featureCollection, feature, selectedTableData, filterFactory);
+                String regionPropertyValue = getRegionPropertyValue(feature);
+                if (regionPropertyValue == null) {
+                    continue;
+                }
+                logRegionProperty(regionPropertyValue);
+                Color fillColor = resolveFillColor(selectedTableData, regionPropertyValue);
+                if (fillColor == null) {
+                    continue;
+                }
+                regionBucketsByColor.computeIfAbsent(fillColor.getRGB(), ignored -> new ArrayList<>()).add(regionPropertyValue);
             }
         } finally {
             iterator.close();
         }
-        return map;
+
+        FeatureTypeStyle featureTypeStyle = styleFactory.createFeatureTypeStyle();
+        for (Map.Entry<Integer, List<String>> entry : regionBucketsByColor.entrySet()) {
+            Rule colorRule = createBoundaryRule(styleFactory, filterFactory, new Color(entry.getKey(), true), entry.getValue());
+            if (colorRule != null) {
+                featureTypeStyle.rules().add(colorRule);
+            }
+        }
+        featureTypeStyle.rules().add(createDefaultBoundaryRule(styleFactory, filterFactory));
+
+        Style style = styleFactory.createStyle();
+        style.featureTypeStyles().add(featureTypeStyle);
+        return style;
     }
 
     protected FeatureCollection<SimpleFeatureType, SimpleFeature> loadBoundaryFeatures(String mapLabel, String shpFilePath) {
@@ -1018,25 +1114,50 @@ public abstract class AbstractMapPanel extends JFrame implements ComponentListen
         }
     }
 
-    protected void addFeatureLayer(MapContent map,
-            FeatureCollection<SimpleFeatureType, SimpleFeature> featureCollection,
-            SimpleFeature feature,
-            HashMap<String, Double> selectedTableData,
-            FilterFactory filterFactory) {
-        String regionPropertyValue = getRegionPropertyValue(feature);
-        if (regionPropertyValue == null) {
-            return;
+    private Rule createBoundaryRule(StyleFactory styleFactory, FilterFactory2 filterFactory, Color fillColor,
+            List<String> regionValues) {
+        Filter regionFilter = createRegionFilter(filterFactory, regionValues);
+        if (Filter.EXCLUDE.equals(regionFilter)) {
+            return null;
         }
-        logRegionProperty(regionPropertyValue);
-        Color fillerColor = resolveFillColor(selectedTableData, regionPropertyValue);
-        SimpleFeatureType type = feature.getType();
-        FeatureLayer boundaryLayer = new FeatureLayer(featureCollection,
-                SLD.createPolygonStyle(new Color(1, 1, 1), fillerColor, 0.9f));
-        Filter filter = filterFactory.equals(filterFactory.property(getRegionPropertyName()),
-                filterFactory.literal(feature.getProperty(getRegionPropertyName()).getValue()));
-        boundaryLayer.setQuery(new Query(type.getName().getLocalPart(), filter));
-        boundaryLayer.setVisible(true);
-        map.addLayer(boundaryLayer);
+        Rule rule = styleFactory.createRule();
+        rule.setFilter(regionFilter);
+        rule.symbolizers().add(createPolygonSymbolizer(styleFactory, filterFactory, fillColor, 0.9));
+        return rule;
+    }
+
+    private Rule createDefaultBoundaryRule(StyleFactory styleFactory, FilterFactory2 filterFactory) {
+        Rule defaultRule = styleFactory.createRule();
+        defaultRule.setElseFilter(true);
+        defaultRule.symbolizers().add(createPolygonSymbolizer(styleFactory, filterFactory, new Color(224, 224, 224), 0.25));
+        return defaultRule;
+    }
+
+    private PolygonSymbolizer createPolygonSymbolizer(StyleFactory styleFactory, FilterFactory2 filterFactory,
+            Color fillColor, double fillOpacity) {
+        Stroke stroke = styleFactory.createStroke(filterFactory.literal(new Color(1, 1, 1)),
+                filterFactory.literal(0.6));
+        Fill fill = styleFactory.createFill(filterFactory.literal(fillColor),
+                filterFactory.literal(fillOpacity));
+        return styleFactory.createPolygonSymbolizer(stroke, fill, null);
+    }
+
+    private Filter createRegionFilter(FilterFactory2 filterFactory, List<String> regionValues) {
+        if (regionValues == null || regionValues.isEmpty()) {
+            return Filter.EXCLUDE;
+        }
+        List<Filter> regionFilters = new ArrayList<>();
+        for (String regionValue : regionValues) {
+            if (regionValue == null) {
+                continue;
+            }
+            regionFilters.add(filterFactory.equals(filterFactory.property(getRegionPropertyName()),
+                    filterFactory.literal(regionValue)));
+        }
+        if (regionFilters.isEmpty()) {
+            return Filter.EXCLUDE;
+        }
+        return regionFilters.size() == 1 ? regionFilters.get(0) : filterFactory.or(regionFilters);
     }
 
     protected String getRegionPropertyValue(SimpleFeature feature) {

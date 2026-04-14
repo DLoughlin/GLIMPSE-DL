@@ -2422,7 +2422,8 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 				box.setBackground(Color.GRAY);
 				box.setLayout(new BoxLayout(box, BoxLayout.Y_AXIS));
 				JLabel keyLabel = new JLabel("Please type the filtering text here:");
-				keyLabel.setFont(new Font("Arial", Font.BOLD, 16));
+				keyLabel.setFont(keyLabel.getFont().deriveFont(Font.BOLD,
+						(float) (InterfaceMain.getConfiguredFontSize() + 2)));
 				keyLabel.setForeground(Color.white);
 				JTextField field = new JTextField(20);
 				box.add(keyLabel);

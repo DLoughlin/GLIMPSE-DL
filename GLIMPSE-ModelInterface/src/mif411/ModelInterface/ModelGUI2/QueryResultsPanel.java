@@ -29,6 +29,7 @@
 */
 package ModelInterface.ModelGUI2;
 
+import java.awt.Font;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -333,6 +334,7 @@ public class QueryResultsPanel extends JPanel {
 			final Object[] regionListValues) throws Exception {
 		BaseTableModel bt = new MultiTableModel(qg, scnListValues, regionListValues, context);
 		JTable jTable = new JTable(bt);
+		applyConfiguredTableFont(jTable);
 		jTable.setCellSelectionEnabled(true);
 		jTable.getColumnModel().getColumn(0).setCellRenderer(((MultiTableModel) bt).getCellRenderer(0, 0));
 		jTable.getColumnModel().getColumn(0).setCellEditor(((MultiTableModel) bt).getCellEditor(0, 0));
@@ -376,6 +378,7 @@ public class QueryResultsPanel extends JPanel {
 		}
 
 		new CopyPaste(jTable);
+		applyConfiguredTableFont(jTable);
 		jTable.setCellSelectionEnabled(true);
 
 		javax.swing.table.TableColumn col;
@@ -420,6 +423,22 @@ public class QueryResultsPanel extends JPanel {
 
 		main.fireProperty("Query", null, bt); // @1
 		return sp;
+	}
+
+	private void applyConfiguredTableFont(final JTable table) {
+		if (table == null) {
+			return;
+		}
+		final int fontSize = InterfaceMain.getConfiguredFontSize();
+		Font tableFont = table.getFont();
+		if (tableFont != null && tableFont.getSize() != fontSize) {
+			table.setFont(tableFont.deriveFont((float) fontSize));
+		}
+		Font headerFont = table.getTableHeader() == null ? null : table.getTableHeader().getFont();
+		if (headerFont != null && headerFont.getSize() != fontSize && table.getTableHeader() != null) {
+			table.getTableHeader().setFont(headerFont.deriveFont((float) fontSize));
+		}
+		table.setRowHeight(Math.max(table.getRowHeight(), fontSize + 8));
 	}
 	
 	private void convertUnits(QueryGenerator qg, JTable table) {

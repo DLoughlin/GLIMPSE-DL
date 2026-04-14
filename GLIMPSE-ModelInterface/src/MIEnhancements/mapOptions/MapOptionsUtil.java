@@ -10,7 +10,9 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -25,6 +27,7 @@ import org.geotools.data.collection.ListFeatureCollection;
 import org.geotools.data.shapefile.ShapefileDataStore;
 import org.geotools.factory.CommonFactoryFinder;
 import org.geotools.feature.FeatureCollection;
+import org.geotools.feature.FeatureIterator;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.filter.Filter;
@@ -42,6 +45,7 @@ public class MapOptionsUtil {
 
     private static final AtomicBoolean mappingWarningShown = new AtomicBoolean(false);
     private static final SimpleFeatureType EMPTY_FEATURE_TYPE = null;
+    private static final Map<String, FeatureCollection<SimpleFeatureType, SimpleFeature>> shapeCollectionCache = new ConcurrentHashMap<>();
 
     /**
      * Returns the text of the selected button in a ButtonGroup.
@@ -438,11 +442,25 @@ public class MapOptionsUtil {
                 return emptyFeatureCollection();
             }
 
+            String cacheKey = shpFile.getAbsolutePath();
+            FeatureCollection<SimpleFeatureType, SimpleFeature> cached = shapeCollectionCache.get(cacheKey);
+            if (cached != null && cached.size() > 0) {
+                return cached;
+            }
+
             shpFile.setReadOnly();
             store = new ShapefileDataStore(shpFile.toURI().toURL());
             String typeName = store.getTypeNames()[0];
             FeatureSource<SimpleFeatureType, SimpleFeature> featureSource = store.getFeatureSource(typeName);
-            featureCollection = featureSource.getFeatures();
+            FeatureCollection<SimpleFeatureType, SimpleFeature> loadedCollection = featureSource.getFeatures();
+            List<SimpleFeature> features = new ArrayList<>();
+            try (FeatureIterator<SimpleFeature> iterator = loadedCollection.features()) {
+                while (iterator.hasNext()) {
+                    features.add(iterator.next());
+                }
+            }
+            featureCollection = new ListFeatureCollection(loadedCollection.getSchema(), features);
+            shapeCollectionCache.put(cacheKey, featureCollection);
         } catch (IOException e1) { // IOException covers MalformedURLException
             e1.printStackTrace();
         } finally {
@@ -546,5 +564,10 @@ public class MapOptionsUtil {
     /** Reset the one-time mapping warning latch (useful for tests). */
     public static void resetOneTimeMappingWarningForTests() {
         mappingWarningShown.set(false);
+    }
+
+    /** Clears cached in-memory shape collections (useful after changing map resources). */
+    public static void clearShapeCollectionCache() {
+        shapeCollectionCache.clear();
     }
 }

@@ -112,6 +112,40 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 public class InterfaceMain implements ActionListener {
+	private static final class ViewportWidthPanel extends javax.swing.JPanel implements javax.swing.Scrollable {
+		ViewportWidthPanel(java.awt.LayoutManager layout) {
+			super(layout);
+		}
+
+		@Override
+		public java.awt.Dimension getPreferredScrollableViewportSize() {
+			return getPreferredSize();
+		}
+
+		@Override
+		public int getScrollableUnitIncrement(java.awt.Rectangle visibleRect, int orientation, int direction) {
+			return 16;
+		}
+
+		@Override
+		public int getScrollableBlockIncrement(java.awt.Rectangle visibleRect, int orientation, int direction) {
+			if (orientation == javax.swing.SwingConstants.VERTICAL) {
+				return Math.max(visibleRect.height - 16, 16);
+			}
+			return Math.max(visibleRect.width - 16, 16);
+		}
+
+		@Override
+		public boolean getScrollableTracksViewportWidth() {
+			return true;
+		}
+
+		@Override
+		public boolean getScrollableTracksViewportHeight() {
+			return false;
+		}
+	}
+
 	private enum StatusBarProgressMode {
 		NONE,
 		QUERY,
@@ -190,7 +224,107 @@ public class InterfaceMain implements ActionListener {
 	}
 
 	private static final String STARTUP_TIMING_PROPERTY = "do_output_timings";
+	private static final String FONT_SIZE_PROPERTY = "fontSize";
+	private static final int DEFAULT_FONT_SIZE = 12;
+	private static final int MIN_FONT_SIZE = 8;
+	private static final int MAX_FONT_SIZE = 32;
 	private static volatile boolean outputStartupTimings = false;
+	private static volatile int configuredFontSize = DEFAULT_FONT_SIZE;
+
+	private static int clampFontSize(final int fontSize) {
+		return Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, fontSize));
+	}
+
+	private static int parseFontSizeValue(final String rawValue, final int fallback) {
+		if (rawValue == null || rawValue.trim().isEmpty()) {
+			return clampFontSize(fallback);
+		}
+		try {
+			return clampFontSize(Integer.parseInt(rawValue.trim()));
+		} catch (NumberFormatException nfe) {
+			return clampFontSize(fallback);
+		}
+	}
+
+	private static int resolveConfiguredFontSize(final Properties props) {
+		if (props == null) {
+			return clampFontSize(configuredFontSize);
+		}
+		return parseFontSizeValue(props.getProperty(FONT_SIZE_PROPERTY), DEFAULT_FONT_SIZE);
+	}
+
+	public static int getConfiguredFontSize() {
+		return configuredFontSize;
+	}
+
+	private static void applyConfiguredUIFontDefaults() {
+		java.util.Enumeration<Object> keys = UIManager.getDefaults().keys();
+		while (keys.hasMoreElements()) {
+			Object key = keys.nextElement();
+			Object value = UIManager.get(key);
+			if (value instanceof javax.swing.plaf.FontUIResource) {
+				java.awt.Font baseFont = (java.awt.Font) value;
+				if (baseFont.getSize() != configuredFontSize) {
+					UIManager.put(key, new javax.swing.plaf.FontUIResource(
+							baseFont.getName(), baseFont.getStyle(), configuredFontSize));
+				}
+			}
+		}
+	}
+
+	private static void refreshFontSensitiveComponentMetrics(java.awt.Component comp) {
+		if (comp == null) {
+			return;
+		}
+		if (comp instanceof javax.swing.JTable) {
+			javax.swing.JTable table = (javax.swing.JTable) comp;
+			java.awt.Font tableFont = table.getFont();
+			if (tableFont != null) {
+				table.setRowHeight(Math.max(table.getRowHeight(), tableFont.getSize() + 8));
+			}
+		}
+		if (comp instanceof javax.swing.JTree) {
+			javax.swing.JTree tree = (javax.swing.JTree) comp;
+			java.awt.Font treeFont = tree.getFont();
+			if (treeFont != null) {
+				tree.setRowHeight(treeFont.getSize() + 5);
+			}
+		}
+		if (comp instanceof java.awt.Container) {
+			for (java.awt.Component child : ((java.awt.Container) comp).getComponents()) {
+				refreshFontSensitiveComponentMetrics(child);
+			}
+		}
+	}
+
+	private void applyConfiguredFontSizeNow(final int newFontSize) {
+		configuredFontSize = clampFontSize(newFontSize);
+		applyConfiguredUIFontDefaults();
+		Runnable applyTask = new Runnable() {
+			@Override
+			public void run() {
+				for (java.awt.Window window : java.awt.Window.getWindows()) {
+					if (!window.isDisplayable()) {
+						continue;
+					}
+					javax.swing.SwingUtilities.updateComponentTreeUI(window);
+					refreshFontSensitiveComponentMetrics(window);
+					window.invalidate();
+					window.validate();
+					window.repaint();
+				}
+				if (startupLoadingLabel != null) {
+					startupLoadingLabel.setFont(startupLoadingLabel.getFont().deriveFont(java.awt.Font.BOLD,
+							(float) (configuredFontSize + 7)));
+				}
+			};
+		};
+		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+			applyTask.run();
+		} else {
+			javax.swing.SwingUtilities.invokeLater(applyTask);
+		}
+	}
 
 	public static boolean shouldOutputStartupTimings() {
 		return outputStartupTimings;
@@ -418,6 +552,8 @@ public class InterfaceMain implements ActionListener {
 			}
 		}
 		configureStartupTimingOutput(bootProps);
+		configuredFontSize = resolveConfiguredFontSize(bootProps);
+		bootProps.setProperty(FONT_SIZE_PROPERTY, Integer.toString(configuredFontSize));
 
 		Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
 			public void uncaughtException(Thread t, Throwable e) {
@@ -746,6 +882,7 @@ public class InterfaceMain implements ActionListener {
 
 		try {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+			applyConfiguredUIFontDefaults();
 		} catch (Exception e) {
 			// warn the user... should be ok to keep going
 			System.out.println("Error setting look and feel: " + e);
@@ -1049,7 +1186,8 @@ public class InterfaceMain implements ActionListener {
 		startupLoadingLabel = new JLabel("Loading...", SwingConstants.CENTER);
 		startupLoadingLabel.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
 		startupLoadingLabel.setForeground(new Color(70, 76, 96));
-		startupLoadingLabel.setFont(startupLoadingLabel.getFont().deriveFont(java.awt.Font.BOLD, 19f));
+		startupLoadingLabel.setFont(startupLoadingLabel.getFont().deriveFont(java.awt.Font.BOLD,
+				(float) (getConfiguredFontSize() + 7)));
 		startupLoadingLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
 
 		startupLoadingBar = new JProgressBar(0, STARTUP_PROGRESS_MAX);
@@ -1689,6 +1827,11 @@ public class InterfaceMain implements ActionListener {
 		if (!savedProperties.containsKey("compress_tree")) {
 			savedProperties.setProperty("compress_tree", "true");
 		}
+		if (!savedProperties.containsKey(FONT_SIZE_PROPERTY)) {
+			savedProperties.setProperty(FONT_SIZE_PROPERTY, Integer.toString(configuredFontSize));
+		}
+		configuredFontSize = resolveConfiguredFontSize(savedProperties);
+		savedProperties.setProperty(FONT_SIZE_PROPERTY, Integer.toString(configuredFontSize));
 		// Persist if any defaults were added
 		persistProperties();
 
@@ -2225,6 +2368,7 @@ public class InterfaceMain implements ActionListener {
 	private javax.swing.JTextField regionsFileField;
 	private javax.swing.JTextField mapResourceFolderField;
 	private javax.swing.JComboBox<String> sigDigitsCombo;
+	private javax.swing.JComboBox<String> fontSizeCombo;
 	private javax.swing.JCheckBox zipExportedScenariosCheckbox;
 	private javax.swing.JCheckBox copyIncludeQueryNameCheckbox;
 	private javax.swing.JCheckBox compressTreeCheckbox;
@@ -2232,12 +2376,28 @@ public class InterfaceMain implements ActionListener {
 	private void showPreferencesDialog() {
 		javax.swing.JDialog dlg = new javax.swing.JDialog(mainFrame, "Preferences", true);
 		dlg.setDefaultCloseOperation(javax.swing.JDialog.DISPOSE_ON_CLOSE);
+		final int initialFontSize = configuredFontSize;
+		final java.util.concurrent.atomic.AtomicBoolean fontSizeSaved = new java.util.concurrent.atomic.AtomicBoolean(false);
+		final Runnable rollbackFontPreviewIfNeeded = new Runnable() {
+			@Override
+			public void run() {
+				if (!fontSizeSaved.get() && configuredFontSize != initialFontSize) {
+					applyConfiguredFontSizeNow(initialFontSize);
+				}
+			}
+		};
+		dlg.addWindowListener(new java.awt.event.WindowAdapter() {
+			@Override
+			public void windowClosing(java.awt.event.WindowEvent e) {
+				rollbackFontPreviewIfNeeded.run();
+			}
+		});
 		javax.swing.JTabbedPane tabs = new javax.swing.JTabbedPane();
 
 		// -----------------
 		// General tab
 		// -----------------
-		javax.swing.JPanel generalPanel = new javax.swing.JPanel(new java.awt.GridBagLayout());
+		javax.swing.JPanel generalPanel = new ViewportWidthPanel(new java.awt.GridBagLayout());
 		generalPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
 		java.awt.GridBagConstraints gc = new java.awt.GridBagConstraints();
 		gc.gridx = 0;
@@ -2400,21 +2560,42 @@ public class InterfaceMain implements ActionListener {
 		gc.gridwidth = 2;
 		sigDigitsCombo = new javax.swing.JComboBox<>(new String[] { "2", "3", "4", "5" });
 		sigDigitsCombo.setSelectedItem(savedProperties.getProperty("significantDigits", "3"));
-		// Size the pulldown like a button so it doesn't look oddly narrow.
-		final javax.swing.JButton sigWidthRefButton = new javax.swing.JButton("Save");
-		final java.awt.Dimension sigBtnPref = sigWidthRefButton.getPreferredSize();
-		java.awt.Dimension sigComboPref = sigDigitsCombo.getPreferredSize();
-		sigComboPref = new java.awt.Dimension(sigBtnPref.width, sigComboPref.height);
-		sigDigitsCombo.setPreferredSize(sigComboPref);
-		sigDigitsCombo.setMaximumSize(sigComboPref);
 		generalPanel.add(sigDigitsCombo, gc);
 
-		tabs.addTab("General", generalPanel);
+		// Font size preference
+		gc.gridy++;
+		gc.gridx = 0;
+		gc.gridwidth = 1;
+		gc.weightx = 0.0;
+		generalPanel.add(new javax.swing.JLabel("Font size:"), gc);
+		gc.gridx = 1;
+		gc.weightx = 1.0;
+		gc.gridwidth = 2;
+		fontSizeCombo = new javax.swing.JComboBox<>(new String[] {
+				"8", "9", "10", "11", "12", "13", "14", "15", "16", "18", "20", "22", "24"
+		});
+		fontSizeCombo.setEditable(true);
+		fontSizeCombo.setSelectedItem(Integer.toString(resolveConfiguredFontSize(savedProperties)));
+		fontSizeCombo.addActionListener(ev -> {
+			Object selected = fontSizeCombo.getSelectedItem();
+			int previewSize = parseFontSizeValue(selected == null ? null : selected.toString(), configuredFontSize);
+			if (previewSize != configuredFontSize) {
+				applyConfiguredFontSizeNow(previewSize);
+			}
+		});
+		generalPanel.add(fontSizeCombo, gc);
+
+		javax.swing.JScrollPane generalScroll = new javax.swing.JScrollPane(
+				generalPanel,
+				javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+				javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		generalScroll.setBorder(javax.swing.BorderFactory.createEmptyBorder());
+		tabs.addTab("General", generalScroll);
 
 		// -----------------
 		// Optional Features tab
 		// -----------------
-		javax.swing.JPanel optionalPanel = new javax.swing.JPanel(new java.awt.GridBagLayout());
+		javax.swing.JPanel optionalPanel = new ViewportWidthPanel(new java.awt.GridBagLayout());
 		optionalPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
 		java.awt.GridBagConstraints oc = new java.awt.GridBagConstraints();
 		oc.gridx = 0;
@@ -2493,7 +2674,12 @@ public class InterfaceMain implements ActionListener {
 		oc.weightx = 1.0;
 		optionalPanel.add(new javax.swing.JLabel(""), oc);
 
-		tabs.addTab("Optional Features", optionalPanel);
+		javax.swing.JScrollPane optionalScroll = new javax.swing.JScrollPane(
+				optionalPanel,
+				javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+				javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		optionalScroll.setBorder(javax.swing.BorderFactory.createEmptyBorder());
+		tabs.addTab("Optional Features", optionalScroll);
 
 		// Main content
 		javax.swing.JPanel content = new javax.swing.JPanel(new java.awt.BorderLayout());
@@ -2503,6 +2689,12 @@ public class InterfaceMain implements ActionListener {
 		javax.swing.JPanel bottom = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 8));
 		javax.swing.JButton save = new javax.swing.JButton("Save");
 		save.addActionListener(ev -> {
+			final int selectedFontSize = parseFontSizeValue(
+					fontSizeCombo == null || fontSizeCombo.getSelectedItem() == null
+							? Integer.toString(configuredFontSize)
+							: fontSizeCombo.getSelectedItem().toString(),
+					configuredFontSize);
+			final boolean fontSizeChanged = selectedFontSize != initialFontSize;
 			updateProperties(p -> {
 				p.setProperty("xmlEditor", safeTrim(xmlEditorField.getText()));
 				p.setProperty("csvEditor", safeTrim(csvEditorField.getText()));
@@ -2523,18 +2715,33 @@ public class InterfaceMain implements ActionListener {
 				if (unitsFileField != null) { p.setProperty("unitsFile", safeTrim(unitsFileField.getText())); }
 				if (regionsFileField != null) { p.setProperty("presetRegionList", safeTrim(regionsFileField.getText())); }
 				if (mapResourceFolderField != null) { p.setProperty("mapResourceFolder", safeTrim(mapResourceFolderField.getText())); }
+				p.setProperty(FONT_SIZE_PROPERTY, Integer.toString(selectedFontSize));
 			});
+			fontSizeSaved.set(true);
+			applyConfiguredFontSizeNow(selectedFontSize);
+			if (fontSizeChanged) {
+				showMessageDialog("Font size updated and applied to open views.",
+						"Preferences", JOptionPane.INFORMATION_MESSAGE);
+			}
 			dlg.dispose();
 		});
 		javax.swing.JButton close = new javax.swing.JButton("Close");
-		close.addActionListener(ev -> dlg.dispose());
+		close.addActionListener(ev -> {
+			rollbackFontPreviewIfNeeded.run();
+			dlg.dispose();
+		});
 		bottom.add(save);
 		bottom.add(close);
-		content.add(bottom, java.awt.BorderLayout.SOUTH);
+		javax.swing.JPanel bottomArea = new javax.swing.JPanel(new java.awt.BorderLayout());
+		bottomArea.add(new javax.swing.JSeparator(javax.swing.SwingConstants.HORIZONTAL), java.awt.BorderLayout.NORTH);
+		bottomArea.add(bottom, java.awt.BorderLayout.CENTER);
+		content.add(bottomArea, java.awt.BorderLayout.SOUTH);
 
 		dlg.setContentPane(content);
 		dlg.pack();
-		dlg.setSize(dlg.getWidth(), dlg.getHeight() + 20);
+		int defaultWidth = (int) Math.round(dlg.getWidth() * (2.0 / 3.0));
+		int minWidth = 560;
+		dlg.setSize(Math.max(minWidth, defaultWidth), dlg.getHeight() + 20);
 		dlg.setLocationRelativeTo(mainFrame);
 		dlg.setVisible(true);
 	}
@@ -2924,4 +3131,4 @@ public class InterfaceMain implements ActionListener {
 			}
 		}
 	}
-}
+}
