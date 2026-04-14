@@ -798,6 +798,6 @@ public class LegendUtil {
 		default:
 			stroke = new BasicStroke(2.0F);
 		}
-		return stroke;
+		return ChartUtil.scaleStroke(stroke);
 	}
 }

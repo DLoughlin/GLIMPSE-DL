@@ -46,9 +46,12 @@ import org.jfree.chart.LegendItem;
 import org.jfree.chart.LegendItemCollection;
 import org.jfree.chart.annotations.CategoryPointerAnnotation;
 import org.jfree.chart.annotations.XYPointerAnnotation;
+import org.jfree.chart.axis.Axis;
 import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.plot.PiePlot;
 import org.jfree.chart.plot.DefaultDrawingSupplier;
+import org.jfree.chart.plot.Plot;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.AbstractRenderer;
 import org.jfree.chart.renderer.category.CategoryItemRenderer;
@@ -59,6 +62,8 @@ import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.category.CategoryDataset;
 import org.jfree.data.xy.XYDataset;
 
+import ModelInterface.InterfaceMain;
+
 /**
  * Utility functions for JFreeChart operations, including dataset/series lookup, annotation creation,
  * legend handling, and series painting. Designed for use in GLIMPSE Model Interface enhancements.
@@ -68,6 +73,194 @@ import org.jfree.data.xy.XYDataset;
  */
 public class ChartUtil {
     private static boolean debug = false;
+
+    public static final class GraphicsPreferences {
+        public final int titleFontSize;
+        public final int subtitleFontSize;
+        public final int axisLabelFontSize;
+        public final int axisTickFontSize;
+        public final int legendFontSize;
+        public final float lineWidthScale;
+
+        private GraphicsPreferences(int titleFontSize, int subtitleFontSize, int axisLabelFontSize,
+                int axisTickFontSize, int legendFontSize, float lineWidthScale) {
+            this.titleFontSize = titleFontSize;
+            this.subtitleFontSize = subtitleFontSize;
+            this.axisLabelFontSize = axisLabelFontSize;
+            this.axisTickFontSize = axisTickFontSize;
+            this.legendFontSize = legendFontSize;
+            this.lineWidthScale = lineWidthScale;
+        }
+    }
+
+    public static final class ThumbnailGraphicsPreferences {
+        public final int fontSize;
+        public final float lineWidth;
+
+        private ThumbnailGraphicsPreferences(int fontSize, float lineWidth) {
+            this.fontSize = fontSize;
+            this.lineWidth = lineWidth;
+        }
+    }
+
+    private static int parseBoundedInt(String rawValue, int fallback, int min, int max) {
+        int boundedFallback = Math.max(min, Math.min(max, fallback));
+        if (rawValue == null || rawValue.trim().isEmpty()) {
+            return boundedFallback;
+        }
+        try {
+            int parsed = Integer.parseInt(rawValue.trim());
+            return Math.max(min, Math.min(max, parsed));
+        } catch (NumberFormatException nfe) {
+            return boundedFallback;
+        }
+    }
+
+    private static float parseBoundedFloat(String rawValue, double fallback, double min, double max) {
+        double boundedFallback = Math.max(min, Math.min(max, fallback));
+        if (rawValue == null || rawValue.trim().isEmpty()) {
+            return (float) boundedFallback;
+        }
+        try {
+            double parsed = Double.parseDouble(rawValue.trim());
+            return (float) Math.max(min, Math.min(max, parsed));
+        } catch (NumberFormatException nfe) {
+            return (float) boundedFallback;
+        }
+    }
+
+    public static GraphicsPreferences getGraphicsPreferences() {
+        java.util.Properties props = null;
+        try {
+            InterfaceMain instance = InterfaceMain.getInstance();
+            if (instance != null) {
+                props = instance.getProperties();
+            }
+        } catch (Throwable ignored) {
+            // Preserve chart rendering in headless or early-start contexts.
+        }
+        return new GraphicsPreferences(
+                parseBoundedInt(props == null ? null : props.getProperty(InterfaceMain.GRAPHICS_TITLE_FONT_SIZE_PROPERTY),
+                        InterfaceMain.DEFAULT_GRAPHICS_TITLE_FONT_SIZE,
+                        InterfaceMain.MIN_GRAPHICS_FONT_SIZE,
+                        InterfaceMain.MAX_GRAPHICS_FONT_SIZE),
+                parseBoundedInt(props == null ? null : props.getProperty(InterfaceMain.GRAPHICS_SUBTITLE_FONT_SIZE_PROPERTY),
+                        InterfaceMain.DEFAULT_GRAPHICS_SUBTITLE_FONT_SIZE,
+                        InterfaceMain.MIN_GRAPHICS_FONT_SIZE,
+                        InterfaceMain.MAX_GRAPHICS_FONT_SIZE),
+                parseBoundedInt(props == null ? null : props.getProperty(InterfaceMain.GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY),
+                        InterfaceMain.DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE,
+                        InterfaceMain.MIN_GRAPHICS_FONT_SIZE,
+                        InterfaceMain.MAX_GRAPHICS_FONT_SIZE),
+                parseBoundedInt(props == null ? null : props.getProperty(InterfaceMain.GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY),
+                        InterfaceMain.DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE,
+                        InterfaceMain.MIN_GRAPHICS_FONT_SIZE,
+                        InterfaceMain.MAX_GRAPHICS_FONT_SIZE),
+                parseBoundedInt(props == null ? null : props.getProperty(InterfaceMain.GRAPHICS_LEGEND_FONT_SIZE_PROPERTY),
+                        InterfaceMain.DEFAULT_GRAPHICS_LEGEND_FONT_SIZE,
+                        InterfaceMain.MIN_GRAPHICS_FONT_SIZE,
+                        InterfaceMain.MAX_GRAPHICS_FONT_SIZE),
+                parseBoundedFloat(props == null ? null : props.getProperty(InterfaceMain.GRAPHICS_LINE_WIDTH_SCALE_PROPERTY),
+                        InterfaceMain.DEFAULT_GRAPHICS_LINE_WIDTH_SCALE,
+                        InterfaceMain.MIN_GRAPHICS_LINE_WIDTH_SCALE,
+                        InterfaceMain.MAX_GRAPHICS_LINE_WIDTH_SCALE));
+    }
+
+    public static float getLineWidthScale() {
+        return getGraphicsPreferences().lineWidthScale;
+    }
+
+    public static ThumbnailGraphicsPreferences getThumbnailGraphicsPreferences() {
+        java.util.Properties props = null;
+        try {
+            InterfaceMain instance = InterfaceMain.getInstance();
+            if (instance != null) {
+                props = instance.getProperties();
+            }
+        } catch (Throwable ignored) {
+            // Keep thumbnail rendering resilient in startup/headless contexts.
+        }
+        return new ThumbnailGraphicsPreferences(
+                parseBoundedInt(props == null ? null : props.getProperty(InterfaceMain.GRAPHICS_THUMBNAIL_FONT_SIZE_PROPERTY),
+                        InterfaceMain.DEFAULT_GRAPHICS_THUMBNAIL_FONT_SIZE,
+                        InterfaceMain.MIN_GRAPHICS_FONT_SIZE,
+                        InterfaceMain.MAX_GRAPHICS_FONT_SIZE),
+                parseBoundedFloat(props == null ? null : props.getProperty(InterfaceMain.GRAPHICS_THUMBNAIL_LINE_WIDTH_PROPERTY),
+                        InterfaceMain.DEFAULT_GRAPHICS_THUMBNAIL_LINE_WIDTH,
+                        InterfaceMain.MIN_GRAPHICS_LINE_WIDTH_SCALE,
+                        InterfaceMain.MAX_GRAPHICS_LINE_WIDTH_SCALE));
+    }
+
+    public static BasicStroke scaleStroke(BasicStroke stroke) {
+        return scaleStroke(stroke, getLineWidthScale());
+    }
+
+    public static BasicStroke scaleStroke(BasicStroke stroke, float scale) {
+        if (stroke == null) {
+            return null;
+        }
+        if (Math.abs(scale - 1.0f) < 0.0001f) {
+            return stroke;
+        }
+        float width = Math.max(0.1f, stroke.getLineWidth() * scale);
+        float[] dash = stroke.getDashArray();
+        float[] scaledDash = null;
+        if (dash != null) {
+            scaledDash = new float[dash.length];
+            for (int i = 0; i < dash.length; i++) {
+                scaledDash[i] = dash[i] * scale;
+            }
+        }
+        return new BasicStroke(width, stroke.getEndCap(), stroke.getLineJoin(),
+                stroke.getMiterLimit(), scaledDash, stroke.getDashPhase() * scale);
+    }
+
+    private static Font deriveFont(Font base, int style, int size) {
+        Font template = base == null ? new Font("SansSerif", style, size) : base;
+        return template.deriveFont(style, (float) size);
+    }
+
+    private static void applyAxisDefaults(Axis axis, GraphicsPreferences prefs) {
+        if (axis == null || prefs == null) {
+            return;
+        }
+        axis.setLabelFont(deriveFont(axis.getLabelFont(), Font.PLAIN, prefs.axisLabelFontSize));
+        axis.setTickLabelFont(deriveFont(axis.getTickLabelFont(), Font.PLAIN, prefs.axisTickFontSize));
+    }
+
+    public static void applyGraphicsDefaults(JFreeChart chart) {
+        if (chart == null) {
+            return;
+        }
+        GraphicsPreferences prefs = getGraphicsPreferences();
+        if (chart.getTitle() != null) {
+            chart.getTitle().setFont(deriveFont(chart.getTitle().getFont(), Font.BOLD, prefs.titleFontSize));
+            chart.getTitle().setVisible(true);
+        }
+        for (Object subtitleObj : chart.getSubtitles()) {
+            if (subtitleObj instanceof TextTitle) {
+                TextTitle textTitle = (TextTitle) subtitleObj;
+                textTitle.setFont(deriveFont(textTitle.getFont(), Font.BOLD, prefs.subtitleFontSize));
+                textTitle.setVisible(true);
+            }
+        }
+        if (chart.getLegend() != null) {
+            chart.getLegend().setItemFont(deriveFont(chart.getLegend().getItemFont(), Font.PLAIN, prefs.legendFontSize));
+        }
+        Plot plot = chart.getPlot();
+        if (plot instanceof CategoryPlot) {
+            CategoryPlot categoryPlot = (CategoryPlot) plot;
+            applyAxisDefaults(categoryPlot.getDomainAxis(), prefs);
+            applyAxisDefaults(categoryPlot.getRangeAxis(), prefs);
+        } else if (plot instanceof XYPlot) {
+            XYPlot xyPlot = (XYPlot) plot;
+            applyAxisDefaults(xyPlot.getDomainAxis(), prefs);
+            applyAxisDefaults(xyPlot.getRangeAxis(), prefs);
+        } else if (plot instanceof PiePlot) {
+            PiePlot piePlot = (PiePlot) plot;
+            piePlot.setLabelFont(deriveFont(piePlot.getLabelFont(), Font.PLAIN, prefs.axisLabelFontSize));
+        }
+    }
 
     /**
      * Creates a DefaultDrawingSupplier with custom colors and line strokes.
@@ -365,8 +558,9 @@ public class ChartUtil {
     public static void setSubTitle(JFreeChart chart, String[] subTitle) {
         if (subTitle[0] != null)
             chart.setTitle(subTitle[0]);
+        GraphicsPreferences prefs = getGraphicsPreferences();
         for (int i = 1; subTitle != null && i < subTitle.length; i++) {
-            TextTitle title = new TextTitle(subTitle[i], new Font("SansSerif", Font.BOLD, 14));
+            TextTitle title = new TextTitle(subTitle[i], new Font("SansSerif", Font.BOLD, prefs.subtitleFontSize));
             title.visible = true;
             chart.addSubtitle(i - 1, title);
         }

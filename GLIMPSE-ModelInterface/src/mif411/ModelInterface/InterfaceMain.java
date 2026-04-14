@@ -225,9 +225,29 @@ public class InterfaceMain implements ActionListener {
 
 	private static final String STARTUP_TIMING_PROPERTY = "do_output_timings";
 	private static final String FONT_SIZE_PROPERTY = "fontSize";
+	public static final String GRAPHICS_TITLE_FONT_SIZE_PROPERTY = "graphicsTitleFontSize";
+	public static final String GRAPHICS_SUBTITLE_FONT_SIZE_PROPERTY = "graphicsSubtitleFontSize";
+	public static final String GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY = "graphicsAxisLabelFontSize";
+	public static final String GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY = "graphicsAxisTickFontSize";
+	public static final String GRAPHICS_LEGEND_FONT_SIZE_PROPERTY = "graphicsLegendFontSize";
+	public static final String GRAPHICS_LINE_WIDTH_SCALE_PROPERTY = "graphicsLineWidthScale";
+	public static final String GRAPHICS_THUMBNAIL_FONT_SIZE_PROPERTY = "graphicsThumbnailFontSize";
+	public static final String GRAPHICS_THUMBNAIL_LINE_WIDTH_PROPERTY = "graphicsThumbnailLineWidth";
 	private static final int DEFAULT_FONT_SIZE = 12;
 	private static final int MIN_FONT_SIZE = 8;
 	private static final int MAX_FONT_SIZE = 32;
+	public static final int DEFAULT_GRAPHICS_TITLE_FONT_SIZE = 17;
+	public static final int DEFAULT_GRAPHICS_SUBTITLE_FONT_SIZE = 14;
+	public static final int DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE = 17;
+	public static final int DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE = 17;
+	public static final int DEFAULT_GRAPHICS_LEGEND_FONT_SIZE = 17;
+	public static final double DEFAULT_GRAPHICS_LINE_WIDTH_SCALE = 1.0d;
+	public static final int DEFAULT_GRAPHICS_THUMBNAIL_FONT_SIZE = 11;
+	public static final double DEFAULT_GRAPHICS_THUMBNAIL_LINE_WIDTH = 1.5d;
+	public static final int MIN_GRAPHICS_FONT_SIZE = 8;
+	public static final int MAX_GRAPHICS_FONT_SIZE = 48;
+	public static final double MIN_GRAPHICS_LINE_WIDTH_SCALE = 0.25d;
+	public static final double MAX_GRAPHICS_LINE_WIDTH_SCALE = 5.0d;
 	private static volatile boolean outputStartupTimings = false;
 	private static volatile int configuredFontSize = DEFAULT_FONT_SIZE;
 
@@ -243,6 +263,33 @@ public class InterfaceMain implements ActionListener {
 			return clampFontSize(Integer.parseInt(rawValue.trim()));
 		} catch (NumberFormatException nfe) {
 			return clampFontSize(fallback);
+		}
+	}
+
+	private static int parseBoundedIntValue(final String rawValue, final int fallback, final int min, final int max) {
+		int boundedFallback = Math.max(min, Math.min(max, fallback));
+		if (rawValue == null || rawValue.trim().isEmpty()) {
+			return boundedFallback;
+		}
+		try {
+			int parsed = Integer.parseInt(rawValue.trim());
+			return Math.max(min, Math.min(max, parsed));
+		} catch (NumberFormatException nfe) {
+			return boundedFallback;
+		}
+	}
+
+	private static double parseBoundedDoubleValue(final String rawValue, final double fallback, final double min,
+			final double max) {
+		double boundedFallback = Math.max(min, Math.min(max, fallback));
+		if (rawValue == null || rawValue.trim().isEmpty()) {
+			return boundedFallback;
+		}
+		try {
+			double parsed = Double.parseDouble(rawValue.trim());
+			return Math.max(min, Math.min(max, parsed));
+		} catch (NumberFormatException nfe) {
+			return boundedFallback;
 		}
 	}
 
@@ -1830,8 +1877,66 @@ public class InterfaceMain implements ActionListener {
 		if (!savedProperties.containsKey(FONT_SIZE_PROPERTY)) {
 			savedProperties.setProperty(FONT_SIZE_PROPERTY, Integer.toString(configuredFontSize));
 		}
+		if (!savedProperties.containsKey(GRAPHICS_TITLE_FONT_SIZE_PROPERTY)) {
+			savedProperties.setProperty(GRAPHICS_TITLE_FONT_SIZE_PROPERTY,
+					Integer.toString(DEFAULT_GRAPHICS_TITLE_FONT_SIZE));
+		}
+		if (!savedProperties.containsKey(GRAPHICS_SUBTITLE_FONT_SIZE_PROPERTY)) {
+			savedProperties.setProperty(GRAPHICS_SUBTITLE_FONT_SIZE_PROPERTY,
+					Integer.toString(DEFAULT_GRAPHICS_SUBTITLE_FONT_SIZE));
+		}
+		if (!savedProperties.containsKey(GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY)) {
+			savedProperties.setProperty(GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY,
+					Integer.toString(DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE));
+		}
+		if (!savedProperties.containsKey(GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY)) {
+			savedProperties.setProperty(GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY,
+					Integer.toString(DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE));
+		}
+		if (!savedProperties.containsKey(GRAPHICS_LEGEND_FONT_SIZE_PROPERTY)) {
+			savedProperties.setProperty(GRAPHICS_LEGEND_FONT_SIZE_PROPERTY,
+					Integer.toString(DEFAULT_GRAPHICS_LEGEND_FONT_SIZE));
+		}
+		if (!savedProperties.containsKey(GRAPHICS_LINE_WIDTH_SCALE_PROPERTY)) {
+			savedProperties.setProperty(GRAPHICS_LINE_WIDTH_SCALE_PROPERTY,
+					Double.toString(DEFAULT_GRAPHICS_LINE_WIDTH_SCALE));
+		}
+		if (!savedProperties.containsKey(GRAPHICS_THUMBNAIL_FONT_SIZE_PROPERTY)) {
+			savedProperties.setProperty(GRAPHICS_THUMBNAIL_FONT_SIZE_PROPERTY,
+					Integer.toString(DEFAULT_GRAPHICS_THUMBNAIL_FONT_SIZE));
+		}
+		if (!savedProperties.containsKey(GRAPHICS_THUMBNAIL_LINE_WIDTH_PROPERTY)) {
+			savedProperties.setProperty(GRAPHICS_THUMBNAIL_LINE_WIDTH_PROPERTY,
+					Double.toString(DEFAULT_GRAPHICS_THUMBNAIL_LINE_WIDTH));
+		}
 		configuredFontSize = resolveConfiguredFontSize(savedProperties);
 		savedProperties.setProperty(FONT_SIZE_PROPERTY, Integer.toString(configuredFontSize));
+		savedProperties.setProperty(GRAPHICS_TITLE_FONT_SIZE_PROPERTY,
+				Integer.toString(parseBoundedIntValue(savedProperties.getProperty(GRAPHICS_TITLE_FONT_SIZE_PROPERTY),
+						DEFAULT_GRAPHICS_TITLE_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE)));
+		savedProperties.setProperty(GRAPHICS_SUBTITLE_FONT_SIZE_PROPERTY,
+				Integer.toString(parseBoundedIntValue(savedProperties.getProperty(GRAPHICS_SUBTITLE_FONT_SIZE_PROPERTY),
+						DEFAULT_GRAPHICS_SUBTITLE_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE)));
+		savedProperties.setProperty(GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY,
+				Integer.toString(parseBoundedIntValue(savedProperties.getProperty(GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY),
+						DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE)));
+		savedProperties.setProperty(GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY,
+				Integer.toString(parseBoundedIntValue(savedProperties.getProperty(GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY),
+						DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE)));
+		savedProperties.setProperty(GRAPHICS_LEGEND_FONT_SIZE_PROPERTY,
+				Integer.toString(parseBoundedIntValue(savedProperties.getProperty(GRAPHICS_LEGEND_FONT_SIZE_PROPERTY),
+						DEFAULT_GRAPHICS_LEGEND_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE)));
+		savedProperties.setProperty(GRAPHICS_LINE_WIDTH_SCALE_PROPERTY,
+				Double.toString(parseBoundedDoubleValue(savedProperties.getProperty(GRAPHICS_LINE_WIDTH_SCALE_PROPERTY),
+						DEFAULT_GRAPHICS_LINE_WIDTH_SCALE, MIN_GRAPHICS_LINE_WIDTH_SCALE,
+						MAX_GRAPHICS_LINE_WIDTH_SCALE)));
+		savedProperties.setProperty(GRAPHICS_THUMBNAIL_FONT_SIZE_PROPERTY,
+				Integer.toString(parseBoundedIntValue(savedProperties.getProperty(GRAPHICS_THUMBNAIL_FONT_SIZE_PROPERTY),
+						DEFAULT_GRAPHICS_THUMBNAIL_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE)));
+		savedProperties.setProperty(GRAPHICS_THUMBNAIL_LINE_WIDTH_PROPERTY,
+				Double.toString(parseBoundedDoubleValue(savedProperties.getProperty(GRAPHICS_THUMBNAIL_LINE_WIDTH_PROPERTY),
+						DEFAULT_GRAPHICS_THUMBNAIL_LINE_WIDTH, MIN_GRAPHICS_LINE_WIDTH_SCALE,
+						MAX_GRAPHICS_LINE_WIDTH_SCALE)));
 		// Persist if any defaults were added
 		persistProperties();
 
@@ -2369,6 +2474,14 @@ public class InterfaceMain implements ActionListener {
 	private javax.swing.JTextField mapResourceFolderField;
 	private javax.swing.JComboBox<String> sigDigitsCombo;
 	private javax.swing.JComboBox<String> fontSizeCombo;
+	private javax.swing.JSpinner graphicsTitleFontSizeSpinner;
+	private javax.swing.JSpinner graphicsSubtitleFontSizeSpinner;
+	private javax.swing.JSpinner graphicsAxisLabelFontSizeSpinner;
+	private javax.swing.JSpinner graphicsAxisTickFontSizeSpinner;
+	private javax.swing.JSpinner graphicsLegendFontSizeSpinner;
+	private javax.swing.JSpinner graphicsLineWidthScaleSpinner;
+	private javax.swing.JSpinner graphicsThumbnailFontSizeSpinner;
+	private javax.swing.JSpinner graphicsThumbnailLineWidthSpinner;
 	private javax.swing.JCheckBox zipExportedScenariosCheckbox;
 	private javax.swing.JCheckBox copyIncludeQueryNameCheckbox;
 	private javax.swing.JCheckBox compressTreeCheckbox;
@@ -2593,6 +2706,161 @@ public class InterfaceMain implements ActionListener {
 		tabs.addTab("General", generalScroll);
 
 		// -----------------
+		// Graphics tab
+		// -----------------
+		javax.swing.JPanel graphicsPanel = new ViewportWidthPanel(new java.awt.GridBagLayout());
+		graphicsPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+		java.awt.GridBagConstraints gcGraphics = new java.awt.GridBagConstraints();
+		gcGraphics.gridx = 0;
+		gcGraphics.gridy = 0;
+		gcGraphics.anchor = java.awt.GridBagConstraints.WEST;
+		gcGraphics.fill = java.awt.GridBagConstraints.HORIZONTAL;
+		gcGraphics.insets = new java.awt.Insets(6, 6, 6, 6);
+		gcGraphics.weightx = 0.0;
+
+		java.util.function.IntSupplier readTitleFontSize = () -> parseBoundedIntValue(
+				savedProperties.getProperty(GRAPHICS_TITLE_FONT_SIZE_PROPERTY),
+				DEFAULT_GRAPHICS_TITLE_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE);
+		java.util.function.IntSupplier readSubtitleFontSize = () -> parseBoundedIntValue(
+				savedProperties.getProperty(GRAPHICS_SUBTITLE_FONT_SIZE_PROPERTY),
+				DEFAULT_GRAPHICS_SUBTITLE_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE);
+		java.util.function.IntSupplier readAxisLabelFontSize = () -> parseBoundedIntValue(
+				savedProperties.getProperty(GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY),
+				DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE);
+		java.util.function.IntSupplier readAxisTickFontSize = () -> parseBoundedIntValue(
+				savedProperties.getProperty(GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY),
+				DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE);
+		java.util.function.IntSupplier readLegendFontSize = () -> parseBoundedIntValue(
+				savedProperties.getProperty(GRAPHICS_LEGEND_FONT_SIZE_PROPERTY),
+				DEFAULT_GRAPHICS_LEGEND_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE);
+		java.util.function.DoubleSupplier readLineWidthScale = () -> parseBoundedDoubleValue(
+				savedProperties.getProperty(GRAPHICS_LINE_WIDTH_SCALE_PROPERTY),
+				DEFAULT_GRAPHICS_LINE_WIDTH_SCALE, MIN_GRAPHICS_LINE_WIDTH_SCALE, MAX_GRAPHICS_LINE_WIDTH_SCALE);
+		java.util.function.IntSupplier readThumbnailFontSize = () -> parseBoundedIntValue(
+				savedProperties.getProperty(GRAPHICS_THUMBNAIL_FONT_SIZE_PROPERTY),
+				DEFAULT_GRAPHICS_THUMBNAIL_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE);
+		java.util.function.DoubleSupplier readThumbnailLineWidth = () -> parseBoundedDoubleValue(
+				savedProperties.getProperty(GRAPHICS_THUMBNAIL_LINE_WIDTH_PROPERTY),
+				DEFAULT_GRAPHICS_THUMBNAIL_LINE_WIDTH, MIN_GRAPHICS_LINE_WIDTH_SCALE,
+				MAX_GRAPHICS_LINE_WIDTH_SCALE);
+
+		graphicsPanel.add(new javax.swing.JLabel("Default title font size:"), gcGraphics);
+		gcGraphics.gridx = 1;
+		gcGraphics.weightx = 1.0;
+		graphicsTitleFontSizeSpinner = new javax.swing.JSpinner(
+				new javax.swing.SpinnerNumberModel(readTitleFontSize.getAsInt(), MIN_GRAPHICS_FONT_SIZE,
+						MAX_GRAPHICS_FONT_SIZE, 1));
+		graphicsPanel.add(graphicsTitleFontSizeSpinner, gcGraphics);
+
+		gcGraphics.gridy++;
+		gcGraphics.gridx = 0;
+		gcGraphics.weightx = 0.0;
+		graphicsPanel.add(new javax.swing.JLabel("Default subtitle font size:"), gcGraphics);
+		gcGraphics.gridx = 1;
+		gcGraphics.weightx = 1.0;
+		graphicsSubtitleFontSizeSpinner = new javax.swing.JSpinner(
+				new javax.swing.SpinnerNumberModel(readSubtitleFontSize.getAsInt(), MIN_GRAPHICS_FONT_SIZE,
+						MAX_GRAPHICS_FONT_SIZE, 1));
+		graphicsPanel.add(graphicsSubtitleFontSizeSpinner, gcGraphics);
+
+		gcGraphics.gridy++;
+		gcGraphics.gridx = 0;
+		gcGraphics.weightx = 0.0;
+		graphicsPanel.add(new javax.swing.JLabel("Axis label font size:"), gcGraphics);
+		gcGraphics.gridx = 1;
+		gcGraphics.weightx = 1.0;
+		graphicsAxisLabelFontSizeSpinner = new javax.swing.JSpinner(
+				new javax.swing.SpinnerNumberModel(readAxisLabelFontSize.getAsInt(), MIN_GRAPHICS_FONT_SIZE,
+						MAX_GRAPHICS_FONT_SIZE, 1));
+		graphicsPanel.add(graphicsAxisLabelFontSizeSpinner, gcGraphics);
+
+		gcGraphics.gridy++;
+		gcGraphics.gridx = 0;
+		gcGraphics.weightx = 0.0;
+		graphicsPanel.add(new javax.swing.JLabel("Axis tick/value font size:"), gcGraphics);
+		gcGraphics.gridx = 1;
+		gcGraphics.weightx = 1.0;
+		graphicsAxisTickFontSizeSpinner = new javax.swing.JSpinner(
+				new javax.swing.SpinnerNumberModel(readAxisTickFontSize.getAsInt(), MIN_GRAPHICS_FONT_SIZE,
+						MAX_GRAPHICS_FONT_SIZE, 1));
+		graphicsPanel.add(graphicsAxisTickFontSizeSpinner, gcGraphics);
+
+		gcGraphics.gridy++;
+		gcGraphics.gridx = 0;
+		gcGraphics.weightx = 0.0;
+		graphicsPanel.add(new javax.swing.JLabel("Legend label font size:"), gcGraphics);
+		gcGraphics.gridx = 1;
+		gcGraphics.weightx = 1.0;
+		graphicsLegendFontSizeSpinner = new javax.swing.JSpinner(
+				new javax.swing.SpinnerNumberModel(readLegendFontSize.getAsInt(), MIN_GRAPHICS_FONT_SIZE,
+						MAX_GRAPHICS_FONT_SIZE, 1));
+		graphicsPanel.add(graphicsLegendFontSizeSpinner, gcGraphics);
+
+		gcGraphics.gridy++;
+		gcGraphics.gridx = 0;
+		gcGraphics.weightx = 0.0;
+		graphicsPanel.add(new javax.swing.JLabel("Line width:"), gcGraphics);
+		gcGraphics.gridx = 1;
+		gcGraphics.weightx = 1.0;
+		graphicsLineWidthScaleSpinner = new javax.swing.JSpinner(
+				new javax.swing.SpinnerNumberModel(readLineWidthScale.getAsDouble(), MIN_GRAPHICS_LINE_WIDTH_SCALE,
+						MAX_GRAPHICS_LINE_WIDTH_SCALE, 0.1d));
+		graphicsPanel.add(graphicsLineWidthScaleSpinner, gcGraphics);
+
+		gcGraphics.gridy++;
+		gcGraphics.gridx = 0;
+		gcGraphics.gridwidth = 2;
+		gcGraphics.weightx = 1.0;
+		graphicsPanel.add(new javax.swing.JSeparator(javax.swing.SwingConstants.HORIZONTAL), gcGraphics);
+		graphicsPanel.add(new javax.swing.JLabel("Thumbnail settings"), gcGraphics);
+
+		gcGraphics.gridy++;
+		gcGraphics.gridx = 0;
+		gcGraphics.gridwidth = 1;
+		gcGraphics.weightx = 0.0;
+		graphicsPanel.add(new javax.swing.JLabel("Thumbnail font size:"), gcGraphics);
+		gcGraphics.gridx = 1;
+		gcGraphics.weightx = 1.0;
+		graphicsThumbnailFontSizeSpinner = new javax.swing.JSpinner(
+				new javax.swing.SpinnerNumberModel(readThumbnailFontSize.getAsInt(), MIN_GRAPHICS_FONT_SIZE,
+						MAX_GRAPHICS_FONT_SIZE, 1));
+		graphicsPanel.add(graphicsThumbnailFontSizeSpinner, gcGraphics);
+
+		gcGraphics.gridy++;
+		gcGraphics.gridx = 0;
+		gcGraphics.weightx = 0.0;
+		graphicsPanel.add(new javax.swing.JLabel("Thumbnail line width:"), gcGraphics);
+		gcGraphics.gridx = 1;
+		gcGraphics.weightx = 1.0;
+		graphicsThumbnailLineWidthSpinner = new javax.swing.JSpinner(
+				new javax.swing.SpinnerNumberModel(readThumbnailLineWidth.getAsDouble(), MIN_GRAPHICS_LINE_WIDTH_SCALE,
+						MAX_GRAPHICS_LINE_WIDTH_SCALE, 0.1d));
+		graphicsPanel.add(graphicsThumbnailLineWidthSpinner, gcGraphics);
+
+		gcGraphics.gridy++;
+		gcGraphics.gridx = 1;
+		gcGraphics.anchor = java.awt.GridBagConstraints.EAST;
+		javax.swing.JButton resetGraphicsDefaultsButton = new javax.swing.JButton("Reset Graphics Defaults");
+		resetGraphicsDefaultsButton.addActionListener(ev -> {
+			graphicsTitleFontSizeSpinner.setValue(Integer.valueOf(DEFAULT_GRAPHICS_TITLE_FONT_SIZE));
+			graphicsSubtitleFontSizeSpinner.setValue(Integer.valueOf(DEFAULT_GRAPHICS_SUBTITLE_FONT_SIZE));
+			graphicsAxisLabelFontSizeSpinner.setValue(Integer.valueOf(DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE));
+			graphicsAxisTickFontSizeSpinner.setValue(Integer.valueOf(DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE));
+			graphicsLegendFontSizeSpinner.setValue(Integer.valueOf(DEFAULT_GRAPHICS_LEGEND_FONT_SIZE));
+			graphicsLineWidthScaleSpinner.setValue(Double.valueOf(DEFAULT_GRAPHICS_LINE_WIDTH_SCALE));
+			graphicsThumbnailFontSizeSpinner.setValue(Integer.valueOf(DEFAULT_GRAPHICS_THUMBNAIL_FONT_SIZE));
+			graphicsThumbnailLineWidthSpinner.setValue(Double.valueOf(DEFAULT_GRAPHICS_THUMBNAIL_LINE_WIDTH));
+		});
+		graphicsPanel.add(resetGraphicsDefaultsButton, gcGraphics);
+
+		javax.swing.JScrollPane graphicsScroll = new javax.swing.JScrollPane(
+				graphicsPanel,
+				javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+				javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		graphicsScroll.setBorder(javax.swing.BorderFactory.createEmptyBorder());
+		tabs.addTab("Graphics", graphicsScroll);
+
+		// -----------------
 		// Optional Features tab
 		// -----------------
 		javax.swing.JPanel optionalPanel = new ViewportWidthPanel(new java.awt.GridBagLayout());
@@ -2680,6 +2948,19 @@ public class InterfaceMain implements ActionListener {
 				javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 		optionalScroll.setBorder(javax.swing.BorderFactory.createEmptyBorder());
 		tabs.addTab("Optional Features", optionalScroll);
+		int optionalTabIndex = tabs.indexOfTab("Optional Features");
+		if (optionalTabIndex > -1 && optionalTabIndex != tabs.getTabCount() - 1) {
+			java.awt.Component optionalComp = tabs.getComponentAt(optionalTabIndex);
+			javax.swing.Icon optionalIcon = tabs.getIconAt(optionalTabIndex);
+			String optionalTip = tabs.getToolTipTextAt(optionalTabIndex);
+			tabs.removeTabAt(optionalTabIndex);
+			tabs.addTab("Optional Features", optionalIcon, optionalComp, optionalTip);
+		}
+		for (int tabIndex = 0; tabIndex < tabs.getTabCount(); tabIndex++) {
+			javax.swing.JLabel tabLabel = new javax.swing.JLabel(tabs.getTitleAt(tabIndex));
+			tabLabel.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 6, 0, 6));
+			tabs.setTabComponentAt(tabIndex, tabLabel);
+		}
 
 		// Main content
 		javax.swing.JPanel content = new javax.swing.JPanel(new java.awt.BorderLayout());
@@ -2715,6 +2996,58 @@ public class InterfaceMain implements ActionListener {
 				if (unitsFileField != null) { p.setProperty("unitsFile", safeTrim(unitsFileField.getText())); }
 				if (regionsFileField != null) { p.setProperty("presetRegionList", safeTrim(regionsFileField.getText())); }
 				if (mapResourceFolderField != null) { p.setProperty("mapResourceFolder", safeTrim(mapResourceFolderField.getText())); }
+				if (graphicsTitleFontSizeSpinner != null) {
+					int value = ((Number) graphicsTitleFontSizeSpinner.getValue()).intValue();
+					p.setProperty(GRAPHICS_TITLE_FONT_SIZE_PROPERTY,
+							Integer.toString(parseBoundedIntValue(Integer.toString(value), DEFAULT_GRAPHICS_TITLE_FONT_SIZE,
+									MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE)));
+				}
+				if (graphicsSubtitleFontSizeSpinner != null) {
+					int value = ((Number) graphicsSubtitleFontSizeSpinner.getValue()).intValue();
+					p.setProperty(GRAPHICS_SUBTITLE_FONT_SIZE_PROPERTY,
+							Integer.toString(parseBoundedIntValue(Integer.toString(value), DEFAULT_GRAPHICS_SUBTITLE_FONT_SIZE,
+									MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE)));
+				}
+				if (graphicsAxisLabelFontSizeSpinner != null) {
+					int value = ((Number) graphicsAxisLabelFontSizeSpinner.getValue()).intValue();
+					p.setProperty(GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY,
+							Integer.toString(parseBoundedIntValue(Integer.toString(value),
+									DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE,
+									MAX_GRAPHICS_FONT_SIZE)));
+				}
+				if (graphicsAxisTickFontSizeSpinner != null) {
+					int value = ((Number) graphicsAxisTickFontSizeSpinner.getValue()).intValue();
+					p.setProperty(GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY,
+							Integer.toString(parseBoundedIntValue(Integer.toString(value),
+									DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE,
+									MAX_GRAPHICS_FONT_SIZE)));
+				}
+				if (graphicsLegendFontSizeSpinner != null) {
+					int value = ((Number) graphicsLegendFontSizeSpinner.getValue()).intValue();
+					p.setProperty(GRAPHICS_LEGEND_FONT_SIZE_PROPERTY,
+							Integer.toString(parseBoundedIntValue(Integer.toString(value), DEFAULT_GRAPHICS_LEGEND_FONT_SIZE,
+									MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE)));
+				}
+				if (graphicsLineWidthScaleSpinner != null) {
+					double value = ((Number) graphicsLineWidthScaleSpinner.getValue()).doubleValue();
+					double bounded = parseBoundedDoubleValue(Double.toString(value), DEFAULT_GRAPHICS_LINE_WIDTH_SCALE,
+							MIN_GRAPHICS_LINE_WIDTH_SCALE, MAX_GRAPHICS_LINE_WIDTH_SCALE);
+					p.setProperty(GRAPHICS_LINE_WIDTH_SCALE_PROPERTY, Double.toString(bounded));
+				}
+				if (graphicsThumbnailFontSizeSpinner != null) {
+					int value = ((Number) graphicsThumbnailFontSizeSpinner.getValue()).intValue();
+					p.setProperty(GRAPHICS_THUMBNAIL_FONT_SIZE_PROPERTY,
+							Integer.toString(parseBoundedIntValue(Integer.toString(value),
+									DEFAULT_GRAPHICS_THUMBNAIL_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE,
+									MAX_GRAPHICS_FONT_SIZE)));
+				}
+				if (graphicsThumbnailLineWidthSpinner != null) {
+					double value = ((Number) graphicsThumbnailLineWidthSpinner.getValue()).doubleValue();
+					double bounded = parseBoundedDoubleValue(Double.toString(value),
+							DEFAULT_GRAPHICS_THUMBNAIL_LINE_WIDTH, MIN_GRAPHICS_LINE_WIDTH_SCALE,
+							MAX_GRAPHICS_LINE_WIDTH_SCALE);
+					p.setProperty(GRAPHICS_THUMBNAIL_LINE_WIDTH_PROPERTY, Double.toString(bounded));
+				}
 				p.setProperty(FONT_SIZE_PROPERTY, Integer.toString(selectedFontSize));
 			});
 			fontSizeSaved.set(true);
@@ -3131,4 +3464,4 @@ public class InterfaceMain implements ActionListener {
 			}
 		}
 	}
-}
+}

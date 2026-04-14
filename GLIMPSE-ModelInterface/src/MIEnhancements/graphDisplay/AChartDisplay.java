@@ -34,7 +34,6 @@ package graphDisplay;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.Frame;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -64,6 +63,7 @@ import ModelInterface.ModelGUI2.DbViewer;
 import ModelInterface.InterfaceMain;
 import chart.Chart;
 import chart.ChartMarker;
+import chart.ChartUtil;
 import chartOptions.ChartOptionsUtil;
 import chartOptions.ExportExcel;
 import chartOptions.ModifyLegend;
@@ -145,19 +145,7 @@ public class AChartDisplay {
 		}
 		JFreeChart jf = chart.getChart();
 		if (jf != null) {
-			// Set fonts for axis labels and title
-			Font axisLableFont = new Font("Arial", Font.PLAIN, 17);
-			jf.getCategoryPlot().getRangeAxis().setTickLabelFont(axisLableFont);
-			jf.getCategoryPlot().getRangeAxis().setLabelFont(axisLableFont);
-			jf.getCategoryPlot().getDomainAxis().setTickLabelFont(axisLableFont);
-			jf.getCategoryPlot().getDomainAxis().setLabelFont(axisLableFont);
-			Font titleFont = new Font("Arial", Font.BOLD, 17);
-			if (jf.getTitle() != null) {
-				jf.getTitle().setFont(titleFont);
-			}
-			if (jf.getLegend() != null) {
-				jf.getLegend().setItemFont(axisLableFont);
-			}
+			ChartUtil.applyGraphicsDefaults(jf);
 			for (int j = 0; j < jf.getSubtitleCount(); j++) {
 				jf.getSubtitle(j).setVisible(true);
 			}
@@ -431,6 +419,7 @@ public class AChartDisplay {
 
 		private void refreshChart(JFreeChart jf) {
 			ChartUtils.applyCurrentTheme(jf);
+			ChartUtil.applyGraphicsDefaults(jf);
 			ThumbnailUtilNew.validateChartPane(jp);
 			jp.add(new ChartPanel(jf), BorderLayout.CENTER);
 			jp.updateUI();
@@ -461,6 +450,7 @@ public class AChartDisplay {
 				this.dispose();
 			}
 			ChartUtils.applyCurrentTheme(jfreechart);
+			ChartUtil.applyGraphicsDefaults(jfreechart);
 			ThumbnailUtilNew.validateChartPane(jp);
 			jp.add(new ChartPanel(jfreechart), BorderLayout.CENTER);
 			jp.updateUI();

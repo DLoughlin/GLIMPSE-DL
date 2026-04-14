@@ -34,7 +34,6 @@ package graphDisplay;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -48,10 +47,10 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import org.jfree.chart.plot.CategoryPlot;
-import org.jfree.chart.title.TextTitle;
 import org.jfree.data.category.DefaultCategoryDataset;
 
 import chart.Chart;
+import chart.ChartUtil;
 import chart.DatasetUtil;
 import chart.MyChartFactory;
 import chart.MyDataset;
@@ -222,12 +221,7 @@ public class DifferenceChartPane extends JPanel {
                             charts[selected[0]].isShowLineAndShape(), "");
                     chart.setUnitsLookup(charts[selected[0]].getUnitsLookup());
                 }
-                // Set subtitle font and visibility
-                for (int j = 0; j < chart.getChart().getSubtitleCount()
-                        && !(chart.getChart().getSubtitle(j) instanceof org.jfree.chart.title.LegendTitle); j++) {
-                    ((TextTitle) chart.getChart().getSubtitle(j)).setFont(new Font("Arial", 1, 12));
-                    chart.getChart().getSubtitle(j).setVisible(true);
-                }
+                        ChartUtil.applyGraphicsDefaults(chart.getChart());
             } catch (ClassNotFoundException e) {
                 System.out.println("Experiencing ClassNotFoundException in creating DifferencePlot!");
             }

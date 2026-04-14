@@ -60,7 +60,7 @@ public class GLIMPSEVariables {
     private GLIMPSEStyles styles;
 
     // --- Constants ---
-    private final String DEFAULT_GLIMPSE_VERSION = "GLIMPSE-CE v2.0";
+    private final String DEFAULT_GLIMPSE_VERSION = "GLIMPSE-CE v2.1";
     public final int DEFAULT_SCENARIO_BUILDER_WIDTH = 1600;
     public final int DEFAULT_SCENARIO_BUILDER_HEIGHT = 900;
     private final float DEFAULT_MAX_DATABASE_SIZE_GB = 40f;

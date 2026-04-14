@@ -33,19 +33,23 @@ import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.LegendItem;
 import org.jfree.chart.axis.CategoryLabelPositions;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.category.CategoryItemRenderer;
+import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.chart.title.TextTitle;
 import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.data.xy.DefaultXYDataset;
 
 import chart.CategoryChart;
 import chart.Chart;
+import chart.ChartUtil;
 import chart.DatasetUtil;
 import chart.MyChartFactory;
 import chart.XYChart;
 import conversionUtil.ArrayConversion;
 import ModelInterface.InterfaceMain;
 import listener.IconMouseListener;
-import ModelInterface.InterfaceMain;
 
 /**
  * Utility class for creating and displaying thumbnail charts in a grid layout.
@@ -66,8 +70,6 @@ public class ThumbnailUtilNew {
 	private static final int DEFAULT_PANEL_MIN_WIDTH = 330;
 	private static final Color DEFAULT_PANEL_BG_COLOR = Color.GREEN;
 	private static final int SCROLL_BAR_WIDTH = 65;
-	private static final Font THUMBNAIL_TITLE_FONT = new Font("Arial", Font.BOLD, 12);
-	private static final Font THUMBNAIL_SUBTITLE_FONT = new Font("Arial", Font.BOLD, 11);
 	private static final String CATEGORY_LINE_CHART = "chart.CategoryLineChart";
 	private static final String NO_DATA_HTML_STYLE = "<style type='text/css'> p{font-family: Verdana;font-size:10;font-weight: plan;}</style>";
 
@@ -530,15 +532,24 @@ public class ThumbnailUtilNew {
 			boolean transpose, IconMouseListener iconListener) {
 		JButton jb = new JButton();
 		JFreeChart freeChart = null;
+		ChartUtil.ThumbnailGraphicsPreferences thumbnailPrefs = ChartUtil.getThumbnailGraphicsPreferences();
 		boolean category = false;
 		try {
 			if (chart.getChartClassName().contains("Category"))
 				category = true;
-			freeChart = chart.getChart();
+			JFreeChart sourceChart = chart.getChart();
+			if (sourceChart != null) {
+				try {
+					freeChart = (JFreeChart) sourceChart.clone();
+				} catch (CloneNotSupportedException cloneEx) {
+					freeChart = sourceChart;
+				}
+			}
 		} catch (IllegalStateException | NullPointerException e) {
 			// ignore
 		}
 		if (freeChart != null) {
+			ChartUtils.applyCurrentTheme(freeChart);
 			// Remove chart padding/whitespace for thumbnails.
 			freeChart.setPadding(org.jfree.chart.ui.RectangleInsets.ZERO_INSETS);
 			// Keep default background/border behavior (do not force transparency or hide borders).
@@ -550,9 +561,17 @@ public class ThumbnailUtilNew {
 			if (category) {
 				freeChart.getCategoryPlot().getDomainAxis().setCategoryLabelPositions(CategoryLabelPositions.DOWN_90);
 				freeChart.getCategoryPlot().getDomainAxis().setLabel(null);
+				Font axisFont = new Font("Arial", Font.PLAIN, thumbnailPrefs.fontSize);
+				freeChart.getCategoryPlot().getDomainAxis().setTickLabelFont(axisFont);
+				freeChart.getCategoryPlot().getRangeAxis().setTickLabelFont(axisFont);
+				freeChart.getCategoryPlot().getRangeAxis().setLabelFont(axisFont);
 			} else {
 				freeChart.getXYPlot().getDomainAxis().setLabelAngle(90);
 				freeChart.getXYPlot().getDomainAxis().setLabel(null);
+				Font axisFont = new Font("Arial", Font.PLAIN, thumbnailPrefs.fontSize);
+				freeChart.getXYPlot().getDomainAxis().setTickLabelFont(axisFont);
+				freeChart.getXYPlot().getRangeAxis().setTickLabelFont(axisFont);
+				freeChart.getXYPlot().getRangeAxis().setLabelFont(axisFont);
 			}
 			if (sameScale) {
 				if (category) {
@@ -572,15 +591,15 @@ public class ThumbnailUtilNew {
 			if (freeChart.getLegend() != null) {
 				freeChart.getLegend().visible = false;
 			}
-			freeChart.getTitle().setFont(THUMBNAIL_TITLE_FONT);
+			freeChart.getTitle().setFont(new Font("Arial", Font.BOLD, Math.max(8, thumbnailPrefs.fontSize + 1)));
 			freeChart.getTitle().setVisible(false);
 			// Set subtitle font and visibility
 			for (int j = 0; j < freeChart.getSubtitleCount()
 					&& !(freeChart.getSubtitle(j) instanceof org.jfree.chart.title.LegendTitle); j++) {
-				((TextTitle) freeChart.getSubtitle(j)).setFont(THUMBNAIL_SUBTITLE_FONT);
+				((TextTitle) freeChart.getSubtitle(j)).setFont(new Font("Arial", Font.BOLD, thumbnailPrefs.fontSize));
 				freeChart.getSubtitle(j).setVisible(true);
 			}
-			ChartUtils.applyCurrentTheme(freeChart);
+			applyThumbnailLineWidth(freeChart, thumbnailPrefs.lineWidth);
 			try {
 				// Create thumbnail image (no artificial shrink)
 				int imageSize = Math.max(1, w);
@@ -599,6 +618,58 @@ public class ThumbnailUtilNew {
 				jb.setText(getEmptyChartDesc(chart.getTitles()));
 		}
 		return jb;
+	}
+
+	private static void applyThumbnailLineWidth(JFreeChart chart, float width) {
+		if (chart == null) {
+			return;
+		}
+		float boundedWidth = Math.max(0.1f, width);
+		if (chart.getPlot() instanceof CategoryPlot) {
+			CategoryPlot plot = chart.getCategoryPlot();
+			for (int i = 0; i < plot.getRendererCount(); i++) {
+				CategoryItemRenderer renderer = plot.getRenderer(i);
+				if (renderer == null || plot.getDataset(i) == null) {
+					continue;
+				}
+				int seriesCount = plot.getDataset(i).getRowCount();
+				for (int s = 0; s < seriesCount; s++) {
+					java.awt.Stroke stroke = renderer.getSeriesStroke(s);
+					java.awt.BasicStroke baseStroke = stroke instanceof java.awt.BasicStroke
+							? (java.awt.BasicStroke) stroke
+							: new java.awt.BasicStroke(2.0f);
+					renderer.setSeriesStroke(s, new java.awt.BasicStroke(
+							boundedWidth,
+							baseStroke.getEndCap(),
+							baseStroke.getLineJoin(),
+							baseStroke.getMiterLimit(),
+							baseStroke.getDashArray(),
+							baseStroke.getDashPhase()));
+				}
+			}
+		} else if (chart.getPlot() instanceof XYPlot) {
+			XYPlot plot = chart.getXYPlot();
+			for (int i = 0; i < plot.getRendererCount(); i++) {
+				XYItemRenderer renderer = plot.getRenderer(i);
+				if (renderer == null || plot.getDataset(i) == null) {
+					continue;
+				}
+				int seriesCount = plot.getDataset(i).getSeriesCount();
+				for (int s = 0; s < seriesCount; s++) {
+					java.awt.Stroke stroke = renderer.getSeriesStroke(s);
+					java.awt.BasicStroke baseStroke = stroke instanceof java.awt.BasicStroke
+							? (java.awt.BasicStroke) stroke
+							: new java.awt.BasicStroke(2.0f);
+					renderer.setSeriesStroke(s, new java.awt.BasicStroke(
+							boundedWidth,
+							baseStroke.getEndCap(),
+							baseStroke.getLineJoin(),
+							baseStroke.getMiterLimit(),
+							baseStroke.getDashArray(),
+							baseStroke.getDashPhase()));
+				}
+			}
+		}
 	}
 
 	public static JPanel createFlowChartPane(Chart[] chart, boolean sameScale) {
