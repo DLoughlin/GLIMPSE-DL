@@ -135,15 +135,15 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 	private TabCafeStd cafeStdTab;
 	private TabXMLList xmlListTab;
 
-	// Callbacks
-	private final Runnable afterSaveOrClose;
+	// Callback fired only after a successful component save.
+	private final Runnable onSaveSuccess;
 
 	/** Last size used for this dialog in the current session. */
 	private static double lastDialogWidth = 1190;
 	private static double lastDialogHeight = 750;
 
-	public ScenarioComponentCreatorDialog(Runnable afterSaveOrClose) {
-		this.afterSaveOrClose = (afterSaveOrClose != null) ? afterSaveOrClose : () -> {};
+	public ScenarioComponentCreatorDialog(Runnable onSaveSuccess) {
+		this.onSaveSuccess = (onSaveSuccess != null) ? onSaveSuccess : () -> {};
 	}
 
 	public void showNew(Stage ownerStage) {
@@ -371,7 +371,6 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 			stageWithTabs.hide();
 			stageWithTabs.setOnCloseRequest(null);
 			stageWithTabs = null;
-			afterSaveOrClose.run();
 		}
 	}
 
@@ -475,10 +474,10 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 				ComponentRow p1 = new ComponentRow(file.getName(), file.getPath(), new Date());
 				ComponentRow[] fileArr = { p1 };
 				ComponentLibraryTable.addOrUpdateFiles(fileArr);
+				onSaveSuccess.run();
 			}
 		}
 		setSaveButtonDisabled(false);
-		afterSaveOrClose.run();
 	}
 
 	private void setSaveButtonDisabled(boolean disabled) {

@@ -49,7 +49,10 @@ import glimpseElement.ComponentLibraryTable;
 import glimpseElement.ComponentRow;
 import glimpseElement.ScenarioRow;
 import glimpseElement.ScenarioTable;
+import javafx.application.Platform;
 import javafx.collections.ObservableList;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 
@@ -127,6 +130,7 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 		try {
 			if (ComponentLibraryTable.getTableComponents() != null) {
 				ComponentLibraryTable.getTableComponents().setPlaceholder(utils.createLabel(LOADING_COMPONENTS_MESSAGE));
+				applyDefaultCreatedSortAndScrollToTop();
 			}
 		} catch (Exception exception) {
 			utils.warningMessage(ERROR_LOADING_COMPONENTS);
@@ -267,6 +271,7 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 				}
 				javafx.application.Platform.runLater(() -> {
 					ComponentLibraryTable.createListOfFiles(fileArr);
+					applyDefaultCreatedSortAndScrollToTop();
 					if (ComponentLibraryTable.getTableComponents() != null && fileArr.length == 0) {
 						ComponentLibraryTable.getTableComponents().setPlaceholder(utils.createLabel(NO_COMPONENTS_MESSAGE));
 					}
@@ -294,6 +299,42 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 		}, "component-library-refresh");
 		thread.setDaemon(true);
 		thread.start();
+	}
+
+	private void applyDefaultCreatedSortAndScrollToTop() {
+		if (Platform.isFxApplicationThread()) {
+			applyDefaultCreatedSortAndScrollToTopNow();
+			return;
+		}
+		Platform.runLater(this::applyDefaultCreatedSortAndScrollToTopNow);
+	}
+
+	private void applyDefaultCreatedSortAndScrollToTopNow() {
+		TableView<ComponentRow> table = ComponentLibraryTable.getTableComponents();
+		if (table == null) {
+			return;
+		}
+		TableColumn<ComponentRow, ?> createdColumn = findCreatedColumn(table);
+		if (createdColumn != null) {
+			createdColumn.setSortType(TableColumn.SortType.DESCENDING);
+			table.getSortOrder().setAll(createdColumn);
+			table.sort();
+		}
+		if (table.getItems() != null && !table.getItems().isEmpty()) {
+			table.scrollTo(0);
+		}
+	}
+
+	private TableColumn<ComponentRow, ?> findCreatedColumn(TableView<ComponentRow> table) {
+		if (table == null || table.getColumns() == null) {
+			return null;
+		}
+		for (TableColumn<ComponentRow, ?> column : table.getColumns()) {
+			if (column != null && "Created".equals(column.getText())) {
+				return column;
+			}
+		}
+		return null;
 	}
 
 	public ArrayList<File> buildFileList(Path path) {

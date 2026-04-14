@@ -231,8 +231,13 @@ class PaneCreateScenario extends ScenarioBuilder {
         Client.buttonMoveComponentUp.setOnAction(e -> moveComponent(-1));
         Client.buttonMoveComponentDown.setOnAction(e -> moveComponent(1));
         Client.buttonCreateScenarioConfigFile.setOnAction(e -> {
-            processScenarioComponentList(Client.getPrimaryStage(), false);
-            Client.buttonRefreshScenarioStatus.fire();
+            boolean created = processScenarioComponentList(Client.getPrimaryStage(), false);
+            if (created && Client.paneScenarioLibrary != null) {
+                Client.paneScenarioLibrary.requestDefaultCreatedSortAndScrollToBottomOnNextRefresh();
+            }
+            if (created) {
+                Client.buttonRefreshScenarioStatus.fire();
+            }
         });
         // Set up event handlers for button actions and table interactions
         ComponentLibraryTable.getTableCreateScenario().setOnMouseClicked(e -> setArrowAndButtonStatus());
@@ -287,7 +292,7 @@ class PaneCreateScenario extends ScenarioBuilder {
      * @param stage The JavaFX stage.
      * @param b Whether to execute the scenario after creation.
      */
-    public void processScenarioComponentList(Stage stage, boolean b) {
+    public boolean processScenarioComponentList(Stage stage, boolean b) {
         // Get and sanitize scenario name
         String scenName = textFieldScenarioName.getText().replace("/", "-").replace("\\", "-").replace(" ", "_");
         boolean fixName = false;
@@ -296,7 +301,7 @@ class PaneCreateScenario extends ScenarioBuilder {
         // Validate scenario name
         if ((scenName.length() < 1) || (fixName)) {
             utils.warningMessage(WARNING_INVALID_NAME);
-            return;
+            return false;
         }
         // Copy component list
         ObservableList<ComponentRow> copy1 = FXCollections.observableArrayList();
@@ -307,11 +312,12 @@ class PaneCreateScenario extends ScenarioBuilder {
         }
         try {
             // Process scenario
-            processScenario(scenName, copy1, copy2, scenName, scenName, b);
+            return processScenario(scenName, copy1, copy2, scenName, scenName, b);
         } catch (Exception e1) {
             e1.printStackTrace();
             utils.exitOnException();
         }
+        return false;
     }
 
     /**
@@ -327,7 +333,7 @@ class PaneCreateScenario extends ScenarioBuilder {
      * @throws IOException if file operations fail
      */
     @SuppressWarnings("static-access")
-    protected void processScenario(String scenName, ObservableList<ComponentRow> list, ObservableList<ComponentRow> list1,
+    protected boolean processScenario(String scenName, ObservableList<ComponentRow> list, ObservableList<ComponentRow> list1,
                                    String runName, String scenarioName, boolean execute) throws IOException {
         boolean overwritingScenario = checkInList(scenName, ScenarioTable.tableScenariosLibrary);
  
@@ -336,15 +342,16 @@ class PaneCreateScenario extends ScenarioBuilder {
             String s = SCENARIO_OVERWRITE_PROMPT + scenName + "?";
             boolean overwrite = utils.confirmAction(s);
             if (!overwrite) {
-                return;
+                return false;
             }
         }
  
         // Create scenario dialog and collect metadata
         ScenarioDialogResult dialogResult = createScenarioDialog(scenName, list, list1, runName, scenarioName, execute, overwritingScenario);
         if (dialogResult == null || !dialogResult.isConfirmed()) {
-            return;
+            return false;
         }
+        return true;
     }
 
     @SuppressWarnings("static-access")

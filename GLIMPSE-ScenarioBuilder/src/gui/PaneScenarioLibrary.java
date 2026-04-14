@@ -75,6 +75,8 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -200,6 +202,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private ScenarioLibraryViewStateHelper.RefreshViewState pendingRefreshViewState = ScenarioLibraryViewStateHelper.RefreshViewState.empty();
     private final ConcurrentHashMap<String, Boolean> liveSuccessMarkedByScenario = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Boolean> windowsPolicyBlockPromptShownByScenario = new ConcurrentHashMap<>();
+    private final AtomicBoolean resetToDefaultCreatedSortAndScroll = new AtomicBoolean(true);
 
     // --- Constructors ---
     PaneScenarioLibrary(Stage stage) {
@@ -216,6 +219,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         if (ScenarioTable.tableScenariosLibrary != null) {
             ScenarioTable.tableScenariosLibrary.setPlaceholder(utils.createLabel(LOADING_SCENARIOS_MESSAGE));
         }
+        requestDefaultCreatedSortAndScrollToBottomOnNextRefresh();
         refreshScenarioActionButtons();
         if (startupTime == 0) {
             startupTime = (new Date()).getTime();
@@ -492,6 +496,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             }
             ScenarioRow[] newRun = { importResult.getScenarioRow() };
             ScenarioTable.addToListOfRunFiles(newRun);
+            requestDefaultCreatedSortAndScrollToBottomOnNextRefresh();
         } finally {
             Client.endScenarioOperationProgress();
         }
@@ -1144,7 +1149,49 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         applyLiveStdoutErrorPeriods();
         applyLiveRuntimeForActiveScenario();
         pendingRefreshViewState = ScenarioLibraryViewStateHelper.RefreshViewState.empty();
+        applyDefaultCreatedSortAndScrollIfRequested();
         refreshScenarioActionButtons();
+    }
+
+    void requestDefaultCreatedSortAndScrollToBottomOnNextRefresh() {
+        resetToDefaultCreatedSortAndScroll.set(true);
+        if (Platform.isFxApplicationThread()) {
+            applyDefaultCreatedSortAndScrollIfRequested();
+            return;
+        }
+        Platform.runLater(this::applyDefaultCreatedSortAndScrollIfRequested);
+    }
+
+    private void applyDefaultCreatedSortAndScrollIfRequested() {
+        if (!resetToDefaultCreatedSortAndScroll.compareAndSet(true, false)) {
+            return;
+        }
+        TableView<ScenarioRow> table = ScenarioTable.tableScenariosLibrary;
+        if (table == null) {
+            return;
+        }
+        TableColumn<ScenarioRow, ?> createdColumn = findCreatedColumn(table);
+        if (createdColumn != null) {
+            createdColumn.setSortType(TableColumn.SortType.ASCENDING);
+            table.getSortOrder().setAll(createdColumn);
+            table.sort();
+        }
+        int lastIndex = table.getItems() == null ? -1 : table.getItems().size() - 1;
+        if (lastIndex >= 0) {
+            table.scrollTo(lastIndex);
+        }
+    }
+
+    private TableColumn<ScenarioRow, ?> findCreatedColumn(TableView<ScenarioRow> table) {
+        if (table == null || table.getColumns() == null) {
+            return null;
+        }
+        for (TableColumn<ScenarioRow, ?> column : table.getColumns()) {
+            if (column != null && "Created".equals(column.getText())) {
+                return column;
+            }
+        }
+        return null;
     }
 
     private void applyLiveStdoutErrorPeriods() {
