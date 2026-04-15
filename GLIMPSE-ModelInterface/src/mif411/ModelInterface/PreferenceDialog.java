@@ -258,7 +258,7 @@ final class PreferenceDialog {
 		panel.add(new javax.swing.JLabel("Font size:"), gc);
 		gc.gridx = 1; gc.weightx = 0.0; gc.gridwidth = 1;
 		gc.fill = java.awt.GridBagConstraints.NONE;
-		fontSizeCombo = new JComboBox<>(new String[] { "8","9","10","11","12","13","14","15","16","18","20","22","24" });
+		fontSizeCombo = new JComboBox<>(InterfaceMain.getGeneralFontSizeOptions());
 		fontSizeCombo.setEditable(true);
 		fontSizeCombo.setPrototypeDisplayValue("24"); // prevents the editable text field from inflating the width
 		fontSizeCombo.setSelectedItem(Integer.toString(InterfaceMain.resolveConfiguredFontSize(props)));

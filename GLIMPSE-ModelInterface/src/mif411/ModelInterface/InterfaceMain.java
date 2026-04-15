@@ -202,6 +202,8 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 	private static final int DEFAULT_FONT_SIZE = 12;
 	private static final int MIN_FONT_SIZE = 8;
 	private static final int MAX_FONT_SIZE = 32;
+	private static final int[] GENERAL_FONT_SIZE_OPTIONS =
+			new int[] { 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24 };
 	public static final int DEFAULT_GRAPHICS_TITLE_FONT_SIZE = 17;
 	public static final int DEFAULT_GRAPHICS_SUBTITLE_FONT_SIZE = 14;
 	public static final int DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE = 17;
@@ -219,6 +221,39 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 
 	private static int clampFontSize(final int fontSize) {
 		return Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, fontSize));
+	}
+
+	public static String[] getGeneralFontSizeOptions() {
+		String[] options = new String[GENERAL_FONT_SIZE_OPTIONS.length];
+		for (int i = 0; i < GENERAL_FONT_SIZE_OPTIONS.length; i++) {
+			options[i] = Integer.toString(GENERAL_FONT_SIZE_OPTIONS[i]);
+		}
+		return options;
+	}
+
+	private static boolean isGeneralFontSizeOption(final int fontSize) {
+		for (int option : GENERAL_FONT_SIZE_OPTIONS) {
+			if (option == fontSize) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static Integer parseGeneralFontSizeOption(final String rawValue) {
+		if (rawValue == null || rawValue.trim().isEmpty()) {
+			return null;
+		}
+		try {
+			int parsed = Integer.parseInt(rawValue.trim());
+			return isGeneralFontSizeOption(parsed) ? Integer.valueOf(parsed) : null;
+		} catch (NumberFormatException nfe) {
+			return null;
+		}
+	}
+
+	private static String getGeneralFontSizeOptionsForLog() {
+		return Arrays.toString(getGeneralFontSizeOptions());
 	}
 
 	public static int parseFontSizeValue(final String rawValue, final int fallback) {
@@ -603,6 +638,8 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 		parser.accepts("p", "Path to preset region list").withOptionalArg(); // YD added,Feb-2024
 		parser.accepts("f", "Path to favorite queries file").withOptionalArg(); // YD added,Feb-2024
 		parser.accepts("m", "Path to mapping directory").withOptionalArg();// YD added,May-2024
+		parser.accepts("s", "General UI font size (allowed values: " + getGeneralFontSizeOptionsForLog() + ")")
+				.withRequiredArg();
 		parser.accepts("legend_bundle", "Path to the LegendBundle.properties file").withOptionalArg();
 		parser.accepts("auto-generate-graphics", "Automatically generate graphics when a scenario is run.");
 		parser.accepts("init-db", "Initialize a new XML database at the path given by -o and exit.");
@@ -637,6 +674,20 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 				System.exit(1);
 			}
 			System.exit(1);
+		}
+
+		if (opts.has("s")) {
+			String rawFontSize = String.valueOf(opts.valueOf("s"));
+			Integer parsedCliFontSize = parseGeneralFontSizeOption(rawFontSize);
+			if (parsedCliFontSize != null) {
+				configuredFontSize = parsedCliFontSize.intValue();
+				bootProps.setProperty(FONT_SIZE_PROPERTY, Integer.toString(configuredFontSize));
+				System.out.println("InterfaceMain: font size set from command line (-s): " + configuredFontSize);
+			} else {
+				System.out.println("InterfaceMain: ignoring invalid -s font size '" + rawFontSize
+						+ "'. Allowed values are " + getGeneralFontSizeOptionsForLog()
+						+ ". Keeping font size " + configuredFontSize + ".");
+			}
 		}
 
 		// if the -l option is set then we will redirect standard output to the
@@ -2835,4 +2886,4 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			}
 		}
 	}
-}
+}

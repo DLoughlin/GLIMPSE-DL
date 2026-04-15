@@ -9,6 +9,8 @@ UNITS="./config/units_rules.csv"
 FAVORITES="./config/favorite_queries_list.txt"
 REGIONS="./config/preset_region_list.txt"
 MAPS="./map_resources"
+# Optional UI font size override (must match Preferences > General allowed values)
+# Example: FONT_SIZE="14"
 
 # Checking JAVA_HOME setup
 if [ ! -f "$JAVA_HOME/bin/java" ]; then
@@ -20,6 +22,7 @@ fi
 JAVA_JVM_PATH="$JAVA_HOME/bin/server"
 export PATH=".:$JAVA_JVM_PATH:$JAVA_HOME:$JAVA_HOME/bin:$PATH"
 
+# To pass font size at launch, append: -s "$FONT_SIZE"
 java -jar ./GLIMPSE-ModelInterface.jar -q $QUERY_FILE -o $DATABASE -u $UNITS -f $FAVORITES -p $REGIONS -m $MAPS
 
 exit 0

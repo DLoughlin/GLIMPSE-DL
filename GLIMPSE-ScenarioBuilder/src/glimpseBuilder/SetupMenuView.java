@@ -38,11 +38,11 @@ package glimpseBuilder;
 import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
+import glimpseUtil.ModelInterfaceFontSizeOptions;
 import gui.Client;
 import gui.ScenarioLibraryReportHelper;
 import java.io.File;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.List;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -65,7 +65,7 @@ import javafx.stage.Stage;
  */
 public final class SetupMenuView {
 
-    private static final List<Integer> ALLOWED_FONT_SIZES = Arrays.asList(8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24);
+    private static final List<Integer> ALLOWED_FONT_SIZES = ModelInterfaceFontSizeOptions.getAllowedFontSizes();
 
     private final GLIMPSEVariables vars = GLIMPSEVariables.getInstance();
     private final GLIMPSEUtils utils = GLIMPSEUtils.getInstance();

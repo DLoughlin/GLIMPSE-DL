@@ -1,5 +1,6 @@
 package gui;
 
+import glimpseUtil.ModelInterfaceFontSizeOptions;
 import java.io.File;
 import java.util.List;
 import javafx.scene.control.ButtonBar;
@@ -32,6 +33,27 @@ final class ScenarioLibraryModelInterfaceMiniHelper {
         args.add(flag);
         args.add(trimmed);
     }
+
+    // TODO: Re-enable once JavaFX (ScenarioBuilder) and Swing (ModelInterface) font-size scaling
+    //       can be reconciled (Windows HiDPI / toolkit mismatch). Call site is in
+    //       PaneScenarioLibrary.runModelInterfaceWhich(); the -s option is implemented in
+    //       InterfaceMain.main() and validated against ModelInterfaceFontSizeOptions.
+    //
+    // static void appendModelInterfaceFontSizeArgIfValid(List<String> args, String preferredFontSize) {
+    //     if (args == null || preferredFontSize == null) { return; }
+    //     String trimmed = preferredFontSize.trim();
+    //     if (trimmed.isEmpty()) { return; }
+    //     try {
+    //         int parsedFontSize = Integer.parseInt(trimmed);
+    //         if (ModelInterfaceFontSizeOptions.isAllowedFontSize(parsedFontSize)) {
+    //             args.add("-s");
+    //             args.add(Integer.toString(parsedFontSize));
+    //             return;
+    //         }
+    //     } catch (NumberFormatException ignored) { }
+    //     System.out.println("Skipping ModelInterface -s launch argument due to invalid preferredFontSize: '"
+    //             + preferredFontSize + "'.");
+    // }
 
     static void setDefaultButton(DialogPane dialogPane, ButtonType buttonType) {
         if (dialogPane == null || buttonType == null) {

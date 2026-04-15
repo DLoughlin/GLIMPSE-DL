@@ -626,6 +626,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         args.add(jarFile.getAbsolutePath());
         args.add("-o");
         args.add(resolvedDatabasePath);
+        // TODO: Re-enable font size pass-through once JavaFX (ScenarioBuilder) and Swing (ModelInterface)
+        //       font-size scaling can be reconciled (Windows HiDPI / toolkit mismatch).
+        // ScenarioLibraryModelInterfaceMiniHelper.appendModelInterfaceFontSizeArgIfValid(args, vars.getPreferredFontSize());
 
         ScenarioLibraryModelInterfaceMiniHelper.appendArgIfPresent(args, "-q", vars.getQueryFilename());
         ScenarioLibraryModelInterfaceMiniHelper.appendArgIfPresent(args, "-u", vars.getUnitConversionsFilename());
