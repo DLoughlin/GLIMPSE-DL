@@ -115,6 +115,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private static final String DIFF_TOOLTIP = "Diff: Compare first two selected configurations";
     private static final String REFRESH_LABEL = "Refresh";
     private static final String REFRESH_TOOLTIP = "Refresh: Update scenario run status";
+    private static final String CONSOLE_LABEL = "Console";
     private static final String CONSOLE_TOOLTIP = "Console: View GCAM and ModelInterface output";
     private static final String RESULTS_LABEL = "Results";
     private static final String RESULTS_TOOLTIP = "Results: Open the ModelInterface to view results";
@@ -241,7 +242,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private void createScenarioLibraryButtonInstances() {
         Client.buttonDiffFiles = utils.createButton(DIFF_LABEL, styles.getBigButtonWidth(), DIFF_TOOLTIP, "compare");
         Client.buttonRefreshScenarioStatus = utils.createButton(REFRESH_LABEL, styles.getBigButtonWidth(), REFRESH_TOOLTIP, "refresh1");
-        Client.buttonConsole = utils.createButton(null, styles.getBigButtonWidth(), CONSOLE_TOOLTIP, "console");
+        Client.buttonConsole = utils.createButton(CONSOLE_LABEL, styles.getBigButtonWidth(), CONSOLE_TOOLTIP, "console");
         Client.buttonResults = utils.createButton(RESULTS_LABEL, styles.getBigButtonWidth(), RESULTS_TOOLTIP, "results");
         Client.buttonResultsForSelected = utils.createButton(RESULTS_SELECTED_LABEL, styles.getBigButtonWidth(), RESULTS_SELECTED_TOOLTIP, "results-selected");
         Client.buttonRunScenario = utils.createButton(PLAY_LABEL, styles.getBigButtonWidth(), PLAY_TOOLTIP, "play");

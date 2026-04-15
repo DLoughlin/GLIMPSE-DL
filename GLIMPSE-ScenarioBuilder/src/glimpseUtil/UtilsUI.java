@@ -164,9 +164,11 @@ public class UtilsUI {
         } else {
             button.setPadding(new Insets(2, 2, 2, 2));
         }
-        if (tt != null && styles != null) {
+        if (tt != null) {
             Tooltip tooltip = new Tooltip(tt);
-            tooltip.setFont(Font.font(styles.getFontStyle()));
+            if (styles != null) {
+                tooltip.setFont(Font.font(styles.getFontStyle()));
+            }
             button.setTooltip(tooltip);
         }
         if (text != null) {
@@ -178,6 +180,9 @@ public class UtilsUI {
                 double size = styles.getSmallButtonWidth();
                 String imagePath = "file:" + vars.getResourceDir() + File.separator + imageName + ".png";
                 Image image = new Image(imagePath, size, size, false, true);
+                if (image.isError() || image.getWidth() <= 0 || image.getHeight() <= 0) {
+                    throw new IllegalArgumentException("Could not load image: " + imagePath);
+                }
                 ImageView imageView = new ImageView(image);
                 imageView.autosize();
                 button.setGraphic(imageView);
