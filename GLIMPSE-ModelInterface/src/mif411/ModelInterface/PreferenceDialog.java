@@ -165,7 +165,7 @@ final class PreferenceDialog {
 		dlg.setContentPane(content);
 		dlg.pack();
 		int defaultWidth = (int) Math.round(dlg.getWidth() * (2.0 / 3.0));
-		dlg.setSize(Math.max(560, defaultWidth), dlg.getHeight() + 20);
+		dlg.setSize(Math.max(560, defaultWidth), (int) Math.round(dlg.getHeight() * 1.2));
 		dlg.setLocationRelativeTo(callbacks.getOwnerFrame());
 		dlg.setVisible(true);
 	}
