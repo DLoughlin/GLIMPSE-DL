@@ -1167,11 +1167,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     private void applyDefaultCreatedSortAndScrollIfRequested() {
-        if (!resetToDefaultCreatedSortAndScroll.compareAndSet(true, false)) {
+        if (!resetToDefaultCreatedSortAndScroll.get()) {
             return;
         }
         TableView<ScenarioRow> table = ScenarioTable.tableScenariosLibrary;
-        if (table == null) {
+        if (table == null || table.getItems() == null || table.getItems().isEmpty()) {
+            // Keep the request armed until the first real snapshot populates the table.
             return;
         }
         TableColumn<ScenarioRow, ?> createdColumn = findCreatedColumn(table);
@@ -1180,10 +1181,16 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             table.getSortOrder().setAll(createdColumn);
             table.sort();
         }
-        int lastIndex = table.getItems() == null ? -1 : table.getItems().size() - 1;
+        int lastIndex = table.getItems().size() - 1;
         if (lastIndex >= 0) {
-            table.scrollTo(lastIndex);
+            final int targetIndex = lastIndex;
+            Platform.runLater(() -> {
+                if (table.getItems() != null && targetIndex >= 0 && targetIndex < table.getItems().size()) {
+                    table.scrollTo(targetIndex);
+                }
+            });
         }
+        resetToDefaultCreatedSortAndScroll.set(false);
     }
 
     private TableColumn<ScenarioRow, ?> findCreatedColumn(TableView<ScenarioRow> table) {
