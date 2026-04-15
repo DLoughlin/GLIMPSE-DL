@@ -274,6 +274,10 @@ public final class UtilsDialogs {
 	}
 
 	public boolean showInformationDialog(String title, String header, String content) {
+		return showInformationDialog(title, header, content, 1.0);
+	}
+
+	public boolean showInformationDialog(String title, String header, String content, double widthScale) {
 		if (title == null || header == null || content == null)
 			return false;
 		Alert alert = new Alert(AlertType.INFORMATION);
@@ -282,8 +286,30 @@ public final class UtilsDialogs {
 		alert.setTitle(title);
 		alert.setHeaderText(header);
 		alert.setContentText(content);
+		if (widthScale > 1.0) {
+			applyDialogWidthScale(alert, widthScale);
+		}
 		alert.showAndWait();
 		return true;
+	}
+
+	private void applyDialogWidthScale(Alert alert, double widthScale) {
+		try {
+			javafx.scene.control.DialogPane pane = alert.getDialogPane();
+			if (pane == null) {
+				return;
+			}
+			pane.applyCss();
+			double baseWidth = pane.prefWidth(-1);
+			if (baseWidth <= 0) {
+				baseWidth = pane.getPrefWidth();
+			}
+			if (baseWidth <= 0) {
+				baseWidth = 420.0;
+			}
+			pane.setPrefWidth(baseWidth * widthScale);
+		} catch (Exception ignored) {
+		}
 	}
 
 	public boolean confirmArchiveScenario() {

@@ -119,6 +119,7 @@ base load generation : solar : PV_base_storage=>PV_base_storage : PV_resource : 
 base load generation : wind : wind_base=>wind_base : onshore wind resource : EJ : base load generation : EJ : EGU-USA
 base load generation : wind : wind_base_offshore=>wind_base_offshore : offshore wind resource : EJ : base load generation : EJ : EGU-USA
 base load generation : wind : wind_base_storage=>wind_base_storage : onshore wind resource : EJ : base load generation : EJ : EGU-USA
+base load generation : hydro : hydro_base : NA : NA : base load generation : EJ : EGU-USA
 intermediate generation : biomass : biomass_int_conv=>biomass (conv) (cooling pond) : regional biomass : EJ : intermediate generation : EJ : EGU-USA
 intermediate generation : biomass : biomass_int_conv=>biomass (conv) (dry cooling) : regional biomass : EJ : intermediate generation : EJ : EGU-USA
 intermediate generation : biomass : biomass_int_conv=>biomass (conv) (once through) : regional biomass : EJ : intermediate generation : EJ : EGU-USA
@@ -232,6 +233,7 @@ intermediate generation : solar : CSP_int=>CSP_int (dry_hybrid) : CSP_resource :
 intermediate generation : solar : CSP_int=>CSP_int (recirculating) : CSP_resource : EJ : intermediate generation : EJ : EGU-USA
 intermediate generation : solar : PV_int=>PV_int : PV_resource : EJ : intermediate generation : EJ : EGU-USA
 intermediate generation : wind : wind_int=>wind_int : onshore wind resource : EJ : intermediate generation : EJ : EGU-USA
+intermediate generation : hydro : hydro_int : NA : NA : intermediate generation : EJ : EGU-USA
 subpeak generation : coal : coal_subpeak_conv pul=>coal (conv pul) (cooling pond) : regional coal : EJ : subpeak generation : EJ : EGU-USA
 subpeak generation : coal : coal_subpeak_conv pul=>coal (conv pul) (dry cooling) : regional coal : EJ : subpeak generation : EJ : EGU-USA
 subpeak generation : coal : coal_subpeak_conv pul=>coal (conv pul) (once through) : regional coal : EJ : subpeak generation : EJ : EGU-USA

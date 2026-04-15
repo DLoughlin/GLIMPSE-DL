@@ -753,6 +753,10 @@ public class GLIMPSEUtils {
 		return UtilsDialogs.getInstance().showInformationDialog(title, header, content);
 	}
 
+	public boolean showInformationDialog(String title, String header, String content, double widthScale) {
+		return UtilsDialogs.getInstance().showInformationDialog(title, header, content, widthScale);
+	}
+
 	public boolean confirmArchiveScenario() {
 		if (vars == null)
 			return false;

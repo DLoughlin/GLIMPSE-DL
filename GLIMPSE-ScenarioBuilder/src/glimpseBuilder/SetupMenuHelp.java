@@ -52,6 +52,8 @@ import javafx.scene.control.SeparatorMenuItem;
  */
 public final class SetupMenuHelp {
 
+    private static final double ABOUT_DIALOG_WIDTH_SCALE = 1.5;
+
     private final GLIMPSEVariables vars = GLIMPSEVariables.getInstance();
     private final GLIMPSEUtils utils = GLIMPSEUtils.getInstance();
     private final GLIMPSEFiles files = GLIMPSEFiles.getInstance();
@@ -61,12 +63,12 @@ public final class SetupMenuHelp {
             createWebMenuItem("GCAM Docs (web)", "http://jgcri.github.io/gcam-doc/"),
             createWebMenuItem("GCAM-USA Docs (web)", "http://jgcri.github.io/gcam-doc/gcam-usa.html"),
             new SeparatorMenuItem(),
-            createWebMenuItem("GLIMPSE Information (web)", "https://epa.gov/glimpse"),
-            createMenuItem("GLIMPSE Document Folder", () -> files.openFileExplorer(vars.getGlimpseDocDir())),
+            createWebMenuItem("GLIMPSE-CE GitHub site (web)", "https://github.com/DLoughlin/GLIMPSE-CE"),
+            createWebMenuItem("GLIMPSE-CE GitHub documentation (web)", "https://dloughlin.github.io/GLIMPSE-CE"),
             new SeparatorMenuItem(),
-            createMenuItem("About GLIMPSE", this::showAboutDialog),
-            new SeparatorMenuItem(),
-            new MenuItem(vars.getGLIMPSEVersion()) // Version display item
+            createMenuItem("About GLIMPSE-CE 2.1", this::showAboutDialog)
+            //new SeparatorMenuItem(),
+            //new MenuItem(vars.getGLIMPSEVersion()) // Version display item
         );
     }
 
@@ -74,7 +76,7 @@ public final class SetupMenuHelp {
         try {
             String filename = Paths.get(vars.getGlimpseResourceDir(), "About-text.txt").toString();
             ArrayList<String> aboutLines = files.getStringArrayFromFile(filename, "#");
-            utils.showInformationDialog("About GLIMPSE", "Information about the GLIMPSE prototype", utils.createStringFromArrayList(aboutLines));
+            utils.showInformationDialog("About GLIMPSE-CE 2.1", "Information about the GLIMPSE-CE software", utils.createStringFromArrayList(aboutLines), ABOUT_DIALOG_WIDTH_SCALE);
         } catch (Exception e) {
             utils.warningMessage("Problem trying to display the About information.");
             System.err.println("Error trying to display About information.");
