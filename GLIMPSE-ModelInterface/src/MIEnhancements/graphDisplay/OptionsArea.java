@@ -45,15 +45,20 @@ import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.JDialog;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.UIManager;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+
+import ModelInterface.InterfaceMain;
 
 import chart.Chart;
 import chart.LegendUtil;
@@ -77,12 +82,12 @@ public class OptionsArea {
 	private boolean hideOptions;
 	//private int typeLineChart = 2;
 	//private int typeRelativeLineChart = 3;
-	public static String LINE_CHART="LineChart";
-	public static String STACKED_BAR_CHART="StackedBarChart";
-	public static String STACKED_AREA_CHART="StackedAreaChart";
-	public static String REL_RATIO_LINE ="RelativeRatio(Line)";
-	public static String REL_DIFF_LINE="RelativeDiff(Line)";
-	public static String REL_DIFF_BAR="RelativeDiff(bar)";
+	public static String LINE_CHART="Line Chart";
+	public static String STACKED_BAR_CHART="Stacked Bar Chart";
+	public static String STACKED_AREA_CHART="Stacked Area Chart";
+	public static String REL_RATIO_LINE ="Relative Ratio (Line)";
+	public static String REL_DIFF_LINE="Relative Diff (Line)";
+	public static String REL_DIFF_BAR="Relative Diff (Bar)";
 
 	public OptionsArea(JPanel jp, Chart[] chart, int gridWidth, boolean sameScale, JSplitPane sp) {
 		this(jp, chart, gridWidth, sameScale, sp, false);
@@ -163,7 +168,13 @@ public class OptionsArea {
 		final String c[] = { "1", "2", "3", "4", "5", "6" };
 		JList<String> list = new JList<String>(c);
 		list.setName("dispCol");
-		list.setFont(new Font("Verdana", 0, 10));
+		Font listFont = UIManager.getFont("List.font");
+		if (listFont == null) {
+			listFont = list.getFont();
+		}
+		if (listFont != null) {
+			list.setFont(listFont.deriveFont((float) InterfaceMain.getConfiguredFontSize()));
+		}
 		list.setVisibleRowCount(3);
 		list.setSelectionMode(0);
 		ListSelectionListener lsl = new ListSelectionListener() {
@@ -238,10 +249,81 @@ public class OptionsArea {
 			setName("GraphOptionPane");
 			// Dan: Using modified version (2)
 			setSelectedIndex(getIndex(chart[ThumbnailUtilNew.getFirstNonNullChart(chart)]));
-			setFont(new Font("Verdana", 0, 12));
-			setPreferredSize(new Dimension(120, 30));
+			Font comboFont = resolveComboFont();
+			setFont(comboFont);
+			setPrototypeDisplayValue(OptionsArea.STACKED_AREA_CHART);
+			setMaximumRowCount(graphType.length);
+			// Keep popup list items in sync with combo font and apply clipping with tooltip fallback.
+			setRenderer(new DefaultListCellRenderer() {
+				private static final long serialVersionUID = 1L;
+				@Override
+				public java.awt.Component getListCellRendererComponent(JList<?> list, Object value, int index,
+						boolean isSelected, boolean cellHasFocus) {
+					JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+					String fullText = value == null ? "" : value.toString();
+					label.setFont(GraphOptionPane.this.getFont());
+					int availableWidth = index < 0
+							? Math.max(80, GraphOptionPane.this.getWidth() - 30)
+							: Math.max(80, list.getWidth() - 16);
+					String displayText = ellipsizeToWidth(fullText, label.getFontMetrics(label.getFont()), availableWidth);
+					label.setText(displayText);
+					label.setToolTipText(displayText.equals(fullText) ? null : fullText);
+					if (index == getFirstRelativeGraphIndex()) {
+						label.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.GRAY));
+					} else {
+						label.setBorder(BorderFactory.createEmptyBorder(1, 1, 1, 1));
+					}
+					return label;
+				}
+			});
+			setPreferredSize(new Dimension(computePreferredComboWidth(comboFont), 30));
 			addActionListener(this);
-			setBorder(BorderFactory.createEmptyBorder(0, 30, 20, 540));
+			setBorder(BorderFactory.createEmptyBorder(0, 6, 0, 6));
+		}
+
+		private Font resolveComboFont() {
+			Font uiComboFont = UIManager.getFont("ComboBox.font");
+			if (uiComboFont == null) {
+				uiComboFont = getFont();
+			}
+			if (uiComboFont == null) {
+				uiComboFont = new Font(Font.DIALOG, Font.PLAIN, InterfaceMain.getConfiguredFontSize());
+			}
+			return uiComboFont.deriveFont((float) InterfaceMain.getConfiguredFontSize());
+		}
+
+		private int computePreferredComboWidth(Font comboFont) {
+			java.awt.FontMetrics metrics = getFontMetrics(comboFont);
+			int maxTextWidth = 0;
+			for (String option : graphType) {
+				maxTextWidth = Math.max(maxTextWidth, metrics.stringWidth(option));
+			}
+			return Math.max(170, maxTextWidth + 42);
+		}
+
+		private int getFirstRelativeGraphIndex() {
+			for (int i = 0; i < graphType.length; i++) {
+				if (OptionsArea.REL_RATIO_LINE.equals(graphType[i])) {
+					return i;
+				}
+			}
+			return -1;
+		}
+
+		private String ellipsizeToWidth(String text, java.awt.FontMetrics metrics, int maxWidth) {
+			if (text == null || maxWidth <= 0 || metrics.stringWidth(text) <= maxWidth) {
+				return text == null ? "" : text;
+			}
+			String dots = "...";
+			int dotsWidth = metrics.stringWidth(dots);
+			int end = text.length();
+			while (end > 0 && metrics.stringWidth(text.substring(0, end)) + dotsWidth > maxWidth) {
+				end--;
+			}
+			if (end <= 0) {
+				return dots;
+			}
+			return text.substring(0, end) + dots;
 		}
 
 		private int getIndex(Chart ch) {

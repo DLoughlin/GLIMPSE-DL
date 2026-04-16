@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.UIManager;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -152,9 +153,22 @@ public class DataPanel extends JPanel implements ListSelectionListener {
 		renderer = new DefaultTableCellRenderer();
 		renderer.setHorizontalAlignment(4); // Center alignment
 		renderer.setBorder(null);
-		table.getTableHeader().setFont(new Font("Verdana", 0, 15));
+		Font headerFont = UIManager.getFont("TableHeader.font");
+		if (headerFont == null) {
+			headerFont = table.getTableHeader().getFont();
+		}
+		if (headerFont != null) {
+			table.getTableHeader().setFont(headerFont.deriveFont(Font.PLAIN,
+					(float) Math.max(8, InterfaceMain.getConfiguredFontSize() + 3)));
+		}
 		table.setAutoCreateRowSorter(false);
-		table.setFont(new Font("Verdana", 0, 14));
+		Font tableFont = UIManager.getFont("Table.font");
+		if (tableFont == null) {
+			tableFont = table.getFont();
+		}
+		if (tableFont != null) {
+			table.setFont(tableFont.deriveFont((float) Math.max(8, InterfaceMain.getConfiguredFontSize() + 2)));
+		}
 		table.setRowHeight(table.getFont().getSize() + 10);
 		table.setRowSelectionAllowed(true);
 		table.setColumnSelectionAllowed(false);

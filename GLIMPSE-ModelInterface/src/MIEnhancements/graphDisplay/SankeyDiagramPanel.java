@@ -149,7 +149,7 @@ public class SankeyDiagramPanel extends JFrame implements ComponentListener {
 		endUseEnergyPanel.setLayout(new BoxLayout(endUseEnergyPanel,BoxLayout.Y_AXIS));
 		endUseEnergyPanel.setAlignmentX(JPanel.LEFT_ALIGNMENT);
 		endUseListLabel = new JLabel("End-use energy consumption:",SwingConstants.LEFT);
-		endUseListLabel.setFont(new Font("Arial",Font.BOLD,16));
+		endUseListLabel.setFont(resolveUiFont("Label.font", Font.BOLD, 4));
 		endUseListLabel.setAlignmentX(JLabel.LEFT_ALIGNMENT);
 		DefaultComboBoxModel<String> dmlForEndUse = new DefaultComboBoxModel<String>();
 		for (int i=0;i< endUseEnergyList.length;i++) {
@@ -158,7 +158,7 @@ public class SankeyDiagramPanel extends JFrame implements ComponentListener {
 	    endUseEnergyMenu = new JComboBox<String>();
 	    endUseEnergyMenu.setModel(dmlForEndUse);
 	    endUseEnergyMenu.setVisible(true);
-	    endUseEnergyMenu.setFont(new Font("Arial",Font.BOLD,14));
+	    endUseEnergyMenu.setFont(resolveUiFont("ComboBox.font", Font.BOLD, 2));
 		endUseEnergyMenu.setMaximumSize(new Dimension(300,25));
 		endUseEnergyMenu.setAlignmentX(JPanel.LEFT_ALIGNMENT);
 		endUseEnergyMenu.addActionListener(new UpdateSelectedQueries());
@@ -173,7 +173,7 @@ public class SankeyDiagramPanel extends JFrame implements ComponentListener {
 		scenarioMenuPanel.setLayout(new BoxLayout(scenarioMenuPanel,BoxLayout.Y_AXIS));
 		scenarioMenuPanel.setAlignmentX(JPanel.LEFT_ALIGNMENT);
 		scenarioListLabel = new JLabel("Scenario:",SwingConstants.LEFT);
-		scenarioListLabel.setFont(new Font("Arial",Font.BOLD,16));
+		scenarioListLabel.setFont(resolveUiFont("Label.font", Font.BOLD, 4));
 		scenarioListLabel.setAlignmentX(JLabel.LEFT_ALIGNMENT);
 		List selectedScenarios = scnList.getSelectedValuesList();
 		DefaultComboBoxModel<String> dmlScenario = new DefaultComboBoxModel<String>();
@@ -183,7 +183,7 @@ public class SankeyDiagramPanel extends JFrame implements ComponentListener {
 		scenarioListMenu = new JComboBox<String>();
 		scenarioListMenu.setModel(dmlScenario);
 		scenarioListMenu.setVisible(true);
-		scenarioListMenu.setFont(new Font("Arial",Font.BOLD,14));
+		scenarioListMenu.setFont(resolveUiFont("ComboBox.font", Font.BOLD, 2));
 		scenarioListMenu.setAlignmentX(JPanel.LEFT_ALIGNMENT);
 		scenarioListMenu.setMaximumSize(new Dimension(300,25));
 		//scenarioListMenu.addActionListener();
@@ -197,7 +197,7 @@ public class SankeyDiagramPanel extends JFrame implements ComponentListener {
 		regionMenuPanel.setLayout(new BoxLayout(regionMenuPanel,BoxLayout.X_AXIS));
 		regionMenuPanel.setAlignmentX(JPanel.LEFT_ALIGNMENT);
 		regionListLabel = new JLabel("Region:",SwingConstants.LEFT);
-		regionListLabel.setFont(new Font("Arial",Font.BOLD,16));
+		regionListLabel.setFont(resolveUiFont("Label.font", Font.BOLD, 4));
 		regionListLabel.setAlignmentX(JLabel.LEFT_ALIGNMENT);
 		DefaultComboBoxModel<String> dmlRegion = new DefaultComboBoxModel<String>();
 		List selectedRegions = regionList.getSelectedValuesList();
@@ -207,7 +207,7 @@ public class SankeyDiagramPanel extends JFrame implements ComponentListener {
 		regionListMenu = new JComboBox<String>();
 		regionListMenu.setModel(dmlRegion);
 		regionListMenu.setVisible(true);
-		regionListMenu.setFont(new Font("Arial",Font.BOLD,14));
+		regionListMenu.setFont(resolveUiFont("ComboBox.font", Font.BOLD, 2));
 		regionListMenu.setMaximumSize(new Dimension(200,25));
 		regionListMenu.addActionListener(new UpdateSankeyChart());
 		regionMenuPanel.add(regionListLabel);
@@ -219,7 +219,7 @@ public class SankeyDiagramPanel extends JFrame implements ComponentListener {
 		yearMenuPanel.setLayout(new BoxLayout(yearMenuPanel,BoxLayout.X_AXIS));
 		yearMenuPanel.setAlignmentX(JPanel.LEFT_ALIGNMENT);
 		listLabel = new JLabel("Year:",SwingConstants.LEFT);
-		listLabel.setFont(new Font("Arial",Font.BOLD,16));
+		listLabel.setFont(resolveUiFont("Label.font", Font.BOLD, 4));
 		listLabel.setAlignmentX(JLabel.LEFT_ALIGNMENT);
 		String[] yearList = {"2015","2020","2025","2030","2035","2040","2045","2050","aaaa"};
 		
@@ -231,7 +231,7 @@ public class SankeyDiagramPanel extends JFrame implements ComponentListener {
 		yearListMenu.setModel(dml);
 		yearListMenu.setVisible(true);
 		//yearListMenu.setMaximumSize(yearListMenu.getPreferredSize());
-		yearListMenu.setFont(new Font("Arial",Font.BOLD,14));
+		yearListMenu.setFont(resolveUiFont("ComboBox.font", Font.BOLD, 2));
 		yearListMenu.setMaximumSize(new Dimension(150,25));
 		yearListMenu.addActionListener(new UpdateSankeyChart());
 		yearMenuPanel.add(listLabel);
@@ -285,7 +285,7 @@ public class SankeyDiagramPanel extends JFrame implements ComponentListener {
 		myPlot.setNodeLabelOffsetY(-170.0);
 		myPlot.setNodeWidth(200.0);
 		myPlot.setNodeMargin(0.015);
-		myPlot.setDefaultNodeLabelFont(new Font("Arial",Font.BOLD,16));
+		myPlot.setDefaultNodeLabelFont(resolveUiFont("Label.font", Font.BOLD, 4));
 		myPlot.setOutlineVisible(true);
 		myPlot.setOutlinePaint(new Color(0,0,0));
 		String chartTitle = "Energy Flow for "+ selectedRegion +" in year "+selectedYear;
@@ -632,6 +632,18 @@ public class SankeyDiagramPanel extends JFrame implements ComponentListener {
 	public void componentShown(ComponentEvent e) {}
 	@Override
 	public void componentHidden(ComponentEvent e) {}
+
+	private Font resolveUiFont(String uiKey, int style, int sizeOffset) {
+		Font baseFont = UIManager.getFont(uiKey);
+		if (baseFont == null) {
+			baseFont = getFont();
+		}
+		if (baseFont == null) {
+			baseFont = new Font(Font.DIALOG, style, InterfaceMain.getConfiguredFontSize());
+		}
+		int size = Math.max(8, InterfaceMain.getConfiguredFontSize() + sizeOffset);
+		return baseFont.deriveFont(style, (float) size);
+	}
 	
 	
 }

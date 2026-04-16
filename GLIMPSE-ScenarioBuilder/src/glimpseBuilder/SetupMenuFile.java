@@ -85,10 +85,7 @@ public final class SetupMenuFile {
                     java.io.File selectedFile = fileChooser.showOpenDialog(null);
                     if (selectedFile != null) {
                         vars.setOptionsFilename(selectedFile.getAbsolutePath());
-                        vars.loadOptions();
-                        // Refresh scenario and component tables after loading new options
-                        Client.getPaneScenarioLibrary().clearAndRefreshScenarioTable();
-                        Client.getPaneComponentLibrary().refreshComponentLibraryTable();
+                        reloadOptionsAndRefreshUi(true);
                     }
                 }),
                 new SeparatorMenuItem(),
@@ -101,7 +98,7 @@ public final class SetupMenuFile {
                 createMenuItem("Edit Current Options File", () -> files.showFileInTextEditor(vars.getOptionsFilename())),
                 // Menu item to reload the current options file
                 createMenuItem("Reload Options File", () -> {
-                    vars.loadOptions();
+                    reloadOptionsAndRefreshUi(false);
                     utils.showInformationDialog("Information", "Caution",
                         "Existing scenarios must be re-created (+) for changes in the options file to be reflected in their configuration file.");
                 }),
@@ -112,6 +109,41 @@ public final class SetupMenuFile {
                 // Menu item to exit the application
                 createMenuItem("Exit", () -> Platform.exit())
         );
+    }
+
+    /**
+     * Reload options and update visible UI state that depends on options.
+     */
+    private void reloadOptionsAndRefreshUi(boolean refreshTables) {
+        final int oldEffectiveFontSize = getEffectiveFontSizeFromOptions();
+        vars.loadOptions();
+        final int newEffectiveFontSize = getEffectiveFontSizeFromOptions();
+
+        // Re-apply runtime font only when the effective size changed.
+        if (newEffectiveFontSize != oldEffectiveFontSize) {
+            Client.applyRuntimeFontSize(newEffectiveFontSize);
+        }
+
+        if (refreshTables) {
+            if (Client.getPaneScenarioLibrary() != null) {
+                Client.getPaneScenarioLibrary().clearAndRefreshScenarioTable();
+            }
+            if (Client.getPaneComponentLibrary() != null) {
+                Client.getPaneComponentLibrary().refreshComponentLibraryTable();
+            }
+        }
+    }
+
+    /**
+     * Returns the effective runtime font size after clamping to supported bounds.
+     */
+    private int getEffectiveFontSizeFromOptions() {
+        try {
+            int parsed = Integer.parseInt(vars.getPreferredFontSize());
+            return Math.max(Client.getMinRuntimeFontSize(), Math.min(Client.getMaxRuntimeFontSize(), parsed));
+        } catch (Exception ignored) {
+            return Client.getRuntimeFontSize();
+        }
     }
 
     /**

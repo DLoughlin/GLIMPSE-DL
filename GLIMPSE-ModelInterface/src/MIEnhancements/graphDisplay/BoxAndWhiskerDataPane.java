@@ -44,6 +44,7 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JScrollPane;
+import javax.swing.UIManager;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
@@ -107,7 +108,7 @@ public class BoxAndWhiskerDataPane extends DataPanel {
     private void crtFootBox() {
         JButton jb = new JButton("Restore");
         jb.setAlignmentX(0.0F);
-        jb.setFont(new Font("Verdana", Font.BOLD, 11));
+        jb.setFont(resolveUiFont("Button.font", Font.BOLD, -1));
         jb.setName("Restore");
         jb.setPreferredSize(new Dimension(200, 20));
         // Mouse listener to restore chart and table to original state
@@ -200,7 +201,7 @@ public class BoxAndWhiskerDataPane extends DataPanel {
     private Box getStatisticsListBox(String name, String objects[]) {
         Box box = Box.createVerticalBox();
         JLabel jl = new JLabel(name, JLabel.CENTER);
-        jl.setFont(new Font("Verdana", Font.BOLD, 12));
+        jl.setFont(resolveUiFont("Label.font", Font.BOLD, 0));
         box.add(jl);
         box.add(Box.createHorizontalStrut(80));
         JList<String> list = getStatisticsList(name, objects);
@@ -221,7 +222,7 @@ public class BoxAndWhiskerDataPane extends DataPanel {
     private JList<String> getStatisticsList(String name, String objects[]) {
         JList<String> list = new JList<String>(objects);
         list.setName(name);
-        list.setFont(new Font("Verdana", Font.PLAIN, 10));
+        list.setFont(resolveUiFont("List.font", Font.PLAIN, -2));
         list.setVisibleRowCount(3);
         list.setSelectionMode(0); // Single selection
         // Listener for selection changes
@@ -305,4 +306,15 @@ public class BoxAndWhiskerDataPane extends DataPanel {
         dataValue[j][8] = String.valueOf(item.getMinOutlier()); // Should this be MaxOutlier?
     }
 
+    private Font resolveUiFont(String uiKey, int style, int sizeOffset) {
+        Font baseFont = UIManager.getFont(uiKey);
+        if (baseFont == null) {
+            baseFont = getFont();
+        }
+        if (baseFont == null) {
+            baseFont = new Font(Font.DIALOG, style, ModelInterface.InterfaceMain.getConfiguredFontSize());
+        }
+        int size = Math.max(8, ModelInterface.InterfaceMain.getConfiguredFontSize() + sizeOffset);
+        return baseFont.deriveFont(style, (float) size);
+    }
 }

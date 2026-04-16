@@ -106,6 +106,9 @@ public class QueryTransferHandler extends TransferHandler {
 		}
 	}
 	public boolean importData(JComponent comp, Transferable t) {
+		if (DbViewer.queryTreeLocked) {
+			return false;
+		}
 		DataFlavor[] transFlavors = t.getTransferDataFlavors();
 		if(!canImport(comp, transFlavors)) {
 			return false;
@@ -211,6 +214,9 @@ public class QueryTransferHandler extends TransferHandler {
 		}
 	}
 	public boolean canImport(JComponent comp, DataFlavor[] transFlavors) {
+		if (DbViewer.queryTreeLocked) {
+			return false;
+		}
 		for(DataFlavor tranFlav : transFlavors) {
 			if(localQueryGeneratorFlavor.equals(tranFlav) ||
 				serialQueryGeneratorFlavor.equals(tranFlav) ||
@@ -228,6 +234,9 @@ public class QueryTransferHandler extends TransferHandler {
 		return new TransferableQuery((JTree)comp);
 	}
 	public void exportAsDrag(JComponent comp, InputEvent e, int action) {
+		if (DbViewer.queryTreeLocked) {
+			return;
+		}
 		dragPaths = ((JTree)comp).getSelectionPaths();
 		super.exportAsDrag(comp, e, action);
 	}
@@ -252,6 +261,9 @@ public class QueryTransferHandler extends TransferHandler {
 		}
 	}
 	public int getSourceActions(JComponent c) {
+		if (DbViewer.queryTreeLocked) {
+			return NONE;
+		}
 		return COPY_OR_MOVE;
 	}
 

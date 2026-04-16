@@ -35,6 +35,9 @@ import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Insets;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.event.ActionEvent;
@@ -95,7 +98,11 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 import javax.swing.TransferHandler;
+import javax.swing.UIManager;
+import javax.swing.event.ListDataEvent;
+import javax.swing.event.ListDataListener;
 import javax.swing.filechooser.FileFilter;
+import javax.swing.plaf.basic.BasicTabbedPaneUI;
 import javax.swing.table.TableModel;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.TreeModel;
@@ -171,6 +178,8 @@ import filter.FilterTreePaneYears;
 public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	private static final boolean DEBUG = false;
 	private JPanel loadingPanel;
+	private boolean resultsTabSelectionStylingInstalled = false;
+	private boolean resultsTabCustomUiInstalled = false;
 	private JLabel loadingLabel;
 	private volatile boolean dbViewInitialized = false;
 	private javax.swing.SwingWorker<StartupData, Void> startupLoader;
@@ -673,6 +682,131 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		});
 		timer.setRepeats(false);
 		timer.start();
+	}
+
+	private static int clampColor(int value) {
+		return Math.max(0, Math.min(255, value));
+	}
+
+	private static Color shiftColor(Color source, int delta) {
+		if (source == null) {
+			return null;
+		}
+		return new Color(clampColor(source.getRed() + delta), clampColor(source.getGreen() + delta),
+				clampColor(source.getBlue() + delta));
+	}
+
+	private Color resolveResultsTabBaseColor() {
+		Color base = UIManager.getColor("TabbedPane.unselectedBackground");
+		if (base == null) {
+			base = UIManager.getColor("TabbedPane.background");
+		}
+		if (base == null) {
+			base = tablesTabs.getBackground();
+		}
+		if (base == null) {
+			base = new Color(220, 220, 220);
+		}
+		return base;
+	}
+
+	private Color resolveResultsTabSelectedColor() {
+		Color selected = UIManager.getColor("List.selectionBackground");
+		if (selected == null) {
+			selected = UIManager.getColor("Tree.selectionBackground");
+		}
+		if (selected == null) {
+			selected = UIManager.getColor("Table.selectionBackground");
+		}
+		if (selected == null) {
+			selected = new Color(57, 105, 138);
+		}
+		return selected;
+	}
+
+	private Color resolveResultsTabSelectedForeground() {
+		Color fg = UIManager.getColor("List.selectionForeground");
+		if (fg == null) {
+			fg = UIManager.getColor("Tree.selectionForeground");
+		}
+		if (fg == null) {
+			fg = UIManager.getColor("Table.selectionForeground");
+		}
+		if (fg == null) {
+			fg = Color.WHITE;
+		}
+		return fg;
+	}
+
+	private static final class ResultsTabsBackgroundUI extends BasicTabbedPaneUI {
+		@Override
+		protected void paintTabBackground(Graphics g, int tabPlacement, int tabIndex,
+				int x, int y, int w, int h, boolean isSelected) {
+			Color tabColor = tabPane.getBackgroundAt(tabIndex);
+			if (tabColor == null) {
+				tabColor = tabPane.getBackground();
+			}
+			if (tabColor == null) {
+				tabColor = Color.LIGHT_GRAY;
+			}
+			g.setColor(tabColor);
+			g.fillRect(x, y, w, h);
+		}
+	}
+
+	private void ensureResultsTabSelectionStylingInstalled() {
+		ensureResultsTabCustomUiInstalled();
+		if (resultsTabSelectionStylingInstalled) {
+			refreshResultsTabSelectionStyling();
+			return;
+		}
+		tablesTabs.addChangeListener(e -> refreshResultsTabSelectionStyling());
+		resultsTabSelectionStylingInstalled = true;
+		refreshResultsTabSelectionStyling();
+	}
+
+	private void refreshResultsTabSelectionStyling() {
+		ensureResultsTabCustomUiInstalled();
+		if (tablesTabs == null) {
+			return;
+		}
+		int tabCount = tablesTabs.getTabCount();
+		if (tabCount <= 0) {
+			return;
+		}
+		int selectedIndex = tablesTabs.getSelectedIndex();
+		if (selectedIndex < 0 || selectedIndex >= tabCount) {
+			return;
+		}
+		Color baseColor = resolveResultsTabBaseColor();
+		Color selectedColor = resolveResultsTabSelectedColor();
+		Color unselectedColor = shiftColor(baseColor, 16);
+		Color selectedForeground = resolveResultsTabSelectedForeground();
+		Color defaultForeground = UIManager.getColor("TabbedPane.foreground");
+		if (defaultForeground == null) {
+			defaultForeground = tablesTabs.getForeground();
+		}
+		if (defaultForeground == null) {
+			defaultForeground = Color.BLACK;
+		}
+		for (int i = 0; i < tabCount; ++i) {
+			boolean isSelected = i == selectedIndex;
+			tablesTabs.setBackgroundAt(i, isSelected ? selectedColor : unselectedColor);
+			tablesTabs.setForegroundAt(i, isSelected ? selectedForeground : defaultForeground);
+		}
+		tablesTabs.repaint();
+	}
+
+	private void ensureResultsTabCustomUiInstalled() {
+		if (tablesTabs == null) {
+			return;
+		}
+		if (resultsTabCustomUiInstalled && tablesTabs.getUI() instanceof ResultsTabsBackgroundUI) {
+			return;
+		}
+		tablesTabs.setUI(new ResultsTabsBackgroundUI());
+		tablesTabs.setOpaque(true);
+		resultsTabCustomUiInstalled = true;
 	}
 
 	public DbViewer() {
@@ -1515,6 +1649,9 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		main.getUndoMenu().setEnabled(false);
 		main.getRedoMenu().setEnabled(false);
 		queryTreeLocked = true;
+		if (queryList != null) {
+			queryList.setDragEnabled(false);
+		}
 		queriesLockMenu.setText("Unlock Query Tree");
 	}
 
@@ -1528,6 +1665,9 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		queriesCreateMenu.setEnabled(true);
 		queriesRemoveMenu.setEnabled(true);
 		queryTreeLocked = false;
+		if (queryList != null) {
+			queryList.setDragEnabled(true);
+		}
 		queriesLockMenu.setText("Lock Query Tree");
 		// Enable Queries menu Save items when unlocked
 		if (queriesSaveMenu != null) queriesSaveMenu.setEnabled(true);
@@ -1619,6 +1759,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		parentFrame.getGlassPane().setVisible(true);
 
 		tablesTabs.setTransferHandler(new TableTransferHandler());
+		ensureResultsTabSelectionStylingInstalled();
 		TabDragListener dragListener = new TabDragListener();
 		tablesTabs.addMouseListener(dragListener);
 		tablesTabs.addMouseMotionListener(dragListener);
@@ -1719,7 +1860,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 						throw new IllegalStateException("Startup data was unexpectedly unavailable on the EDT after background load completed. workerDone="
 								+ startupLoader.isDone() + " workerCancelled=" + startupLoader.isCancelled());
 					}
-					if (DEBUG) System.out.println("DbViewer.done(): validating startup data...");
+				 if (DEBUG) System.out.println("DbViewer.done(): validating startup data...");
 					data = validateStartupData(data);
 					if (DEBUG) System.out.println("DbViewer.done(): startup data validated.");
 					if (DEBUG) System.out.println("DbViewer.done(): startupDataResult cleared; creating table selector UI next...");
@@ -2053,7 +2194,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		final Icon singleQueryIcon = loadQueryTreeIcon("icons/single-query.png", "single query");
 		queryList = new JTree(queries);
 		queryList.setTransferHandler(new QueryTransferHandler(queriesDoc, implls));
-		queryList.setDragEnabled(true);
+		queryList.setDragEnabled(!queryTreeLocked);
 		queryList.getSelectionModel()
 				.setSelectionMode(javax.swing.tree.TreeSelectionModel.DISCONTIGUOUS_TREE_SELECTION);
 		if (queryList.getRowCount() > 0) {
@@ -2146,7 +2287,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		JPanel presetRegionsPanel = new JPanel();
 		presetRegionsPanel.setLayout(new BoxLayout(presetRegionsPanel, BoxLayout.X_AXIS));
 		presetRegionsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-		
+
 		presetRegionsPanel.setBorder(BorderFactory.createEmptyBorder(3, 0, 3, 0));
 		presetRegionsPanel.setPreferredSize(new Dimension(0, bottomStripHeight));
 		presetRegionsPanel.setMinimumSize(new Dimension(0, bottomStripHeight));
@@ -2154,7 +2295,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 
 		// Add initial spacing
 		presetRegionsPanel.add(Box.createHorizontalStrut(5));
-		
+
 		// Move doTotalCheckBox here from setupButtonPanel
 		doTotalCheckBox = new JCheckBox("Total  ");
 		doTotalCheckBox.setOpaque(true);
@@ -2168,8 +2309,24 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			listLabel.setAlignmentY(Component.CENTER_ALIGNMENT);
 			comboBoxPresetRegions = new JComboBox<String>(preset_choices);
 			comboBoxPresetRegions.setVisible(true);
-			comboBoxPresetRegions.setMaximumSize(comboBoxPresetRegions.getPreferredSize());
 			comboBoxPresetRegions.setAlignmentY(Component.CENTER_ALIGNMENT);
+			updatePresetRegionsDropdownWidth();
+			comboBoxPresetRegions.getModel().addListDataListener(new ListDataListener() {
+				@Override
+				public void intervalAdded(ListDataEvent e) {
+					updatePresetRegionsDropdownWidth();
+				}
+
+				@Override
+				public void intervalRemoved(ListDataEvent e) {
+					updatePresetRegionsDropdownWidth();
+				}
+
+				@Override
+				public void contentsChanged(ListDataEvent e) {
+					updatePresetRegionsDropdownWidth();
+				}
+			});
 
 			presetRegionsPanel.add(listLabel);
 			presetRegionsPanel.add(Box.createHorizontalStrut(5));
@@ -2185,6 +2342,32 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		// getRightComponent() returns the rightWrapper (BorderLayout) we set in setupSplitPanes.
 		((JPanel) scenarioRegionSplit.getRightComponent()).add(presetRegionsPanel, BorderLayout.SOUTH);
 
+	}
+
+	/**
+	 * Ensures the preset-regions combo box is wide enough to show its longest item.
+	 */
+	private void updatePresetRegionsDropdownWidth() {
+		if (comboBoxPresetRegions == null) {
+			return;
+		}
+		FontMetrics fm = comboBoxPresetRegions.getFontMetrics(comboBoxPresetRegions.getFont());
+		int widestText = 0;
+		for (int i = 0; i < comboBoxPresetRegions.getItemCount(); i++) {
+			String item = comboBoxPresetRegions.getItemAt(i);
+			if (item != null) {
+				widestText = Math.max(widestText, fm.stringWidth(item));
+			}
+		}
+		Insets insets = comboBoxPresetRegions.getInsets();
+		int horizontalInsets = insets != null ? insets.left + insets.right : 0;
+		int arrowAndPadding = 36;
+		int dynamicWidth = Math.max(comboBoxPresetRegions.getPreferredSize().width, widestText + horizontalInsets + arrowAndPadding);
+		int height = comboBoxPresetRegions.getPreferredSize().height;
+		Dimension size = new Dimension(dynamicWidth, height);
+		comboBoxPresetRegions.setPreferredSize(size);
+		comboBoxPresetRegions.setMinimumSize(size);
+		comboBoxPresetRegions.setMaximumSize(size);
 	}
 
 	/**
@@ -2283,6 +2466,11 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		// This will be called after tablesTabs is created.
 		tablesTabs.addContainerListener(new ContainerAdapter() {
 			@Override
+			public void componentAdded(ContainerEvent e) {
+				SwingUtilities.invokeLater(() -> refreshResultsTabSelectionStyling());
+			}
+
+			@Override
 			public void componentRemoved(ContainerEvent e) {
 				java.awt.Component removed = e.getChild();
 				// Only track and clean up tabs we registered as query/diff results.
@@ -2296,6 +2484,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 						activeQueryTabs.clear();
 					}
 				}
+				SwingUtilities.invokeLater(() -> refreshResultsTabSelectionStyling());
 			}
 		});
 	}

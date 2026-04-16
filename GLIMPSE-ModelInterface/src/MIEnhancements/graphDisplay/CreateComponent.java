@@ -39,6 +39,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowStateListener;
 
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -48,6 +49,7 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JRadioButton;
 import javax.swing.JTextField;
+import javax.swing.UIManager;
 
 import ModelInterface.InterfaceMain;
 
@@ -117,7 +119,7 @@ public class CreateComponent {
     public static JTextField crtJTextField(String name, String text, int index) {
         JTextField Jtf = new JTextField(text);
         Jtf.setName(name);
-        Jtf.setFont(new Font("Verdana", 0, 9));
+        Jtf.setFont(resolveConfiguredUIBasedFont("TextField.font", Jtf.getFont()));
         Jtf.getDocument().putProperty("colIndex", Integer.valueOf(index));
         Jtf.setMaximumSize(new Dimension(300, 20));
         Jtf.setMinimumSize(new Dimension(80, 20));
@@ -137,7 +139,8 @@ public class CreateComponent {
     public static JLabel crtJLabel(String name, String text, int fontSize) {
         JLabel jl = new JLabel(text);
         jl.setName(name);
-        jl.setFont(new Font("Arial", 0, fontSize));
+        int offset = fontSize - InterfaceMain.getConfiguredFontSize();
+        jl.setFont(resolveConfiguredUIBasedFont("Label.font", jl.getFont(), Font.PLAIN, offset));
         return jl;
     }
 
@@ -154,7 +157,8 @@ public class CreateComponent {
     public static JLabel crtJLabel(String name, String text, int fontSize, int orintation, Dimension labSize) {
         JLabel jl = new JLabel(text, orintation);
         jl.setName(name);
-        jl.setFont(new Font("Arial", 0, fontSize));
+        int offset = fontSize - InterfaceMain.getConfiguredFontSize();
+        jl.setFont(resolveConfiguredUIBasedFont("Label.font", jl.getFont(), Font.PLAIN, offset));
         // labSize is not used, but could be set with jl.setPreferredSize(labSize);
         return jl;
     }
@@ -171,7 +175,7 @@ public class CreateComponent {
     public static JList<?> dataList(String name, String data[], int selectionMode, Dimension listSize) {
         JList<?> list = new JList<Object>(data);
         list.setName(name);
-        list.setFont(new Font("Verdana", 0, 10));
+        list.setFont(resolveConfiguredUIBasedFont("List.font", list.getFont()));
         list.setVisibleRowCount(3);
         list.setSelectionMode(selectionMode);
         // listSize is not used, but could be set with list.setPreferredSize(listSize);
@@ -188,10 +192,35 @@ public class CreateComponent {
      * @return Configured JComboBox instance
      */
     public static JComboBox<?> dataCombo(String name, String data[], int selIndex, Dimension comboSize) {
-        JComboBox<?> cb = new JComboBox<Object>(data);
+        JComboBox<String> cb = new JComboBox<String>(data);
         cb.setName(name);
-        cb.setFont(new Font("Verdana", 0, 12));
-        cb.setSize(comboSize);
+        cb.setFont(resolveConfiguredUIBasedFont("ComboBox.font", cb.getFont()));
+        if (data != null && data.length > 0) {
+            cb.setPrototypeDisplayValue(longestValue(data));
+        }
+        cb.setRenderer(new DefaultListCellRenderer() {
+            private static final long serialVersionUID = 1L;
+            @Override
+            public java.awt.Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                    boolean isSelected, boolean cellHasFocus) {
+                JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                String fullText = value == null ? "" : value.toString();
+                label.setFont(cb.getFont());
+                int availableWidth = index < 0
+                        ? Math.max(80, cb.getWidth() - 30)
+                        : Math.max(80, list.getWidth() - 16);
+                String displayText = ellipsizeToWidth(fullText, label.getFontMetrics(label.getFont()), availableWidth);
+                label.setText(displayText);
+                label.setToolTipText(displayText.equals(fullText) ? null : fullText);
+                return label;
+            }
+        });
+        if (comboSize != null) {
+            cb.setPreferredSize(comboSize);
+            cb.setMinimumSize(comboSize);
+            cb.setMaximumSize(comboSize);
+            cb.setSize(comboSize);
+        }
         cb.setSelectedIndex(selIndex);
         return cb;
     }
@@ -268,5 +297,50 @@ public class CreateComponent {
     dialog.setLocationRelativeTo(InterfaceMain.getInstance().getFrame());
         dialog.setVisible(true);
         return dialog;
+    }
+
+    private static Font resolveConfiguredUIBasedFont(String uiKey, Font fallback) {
+        return resolveConfiguredUIBasedFont(uiKey, fallback, Font.PLAIN, 0);
+    }
+
+    private static Font resolveConfiguredUIBasedFont(String uiKey, Font fallback, int style, int sizeOffset) {
+        Font uiFont = UIManager.getFont(uiKey);
+        if (uiFont == null) {
+            uiFont = fallback;
+        }
+        if (uiFont == null) {
+            uiFont = new Font(Font.DIALOG, style, InterfaceMain.getConfiguredFontSize());
+        }
+        int resolvedSize = Math.max(8, InterfaceMain.getConfiguredFontSize() + sizeOffset);
+        return uiFont.deriveFont(style, (float) resolvedSize);
+    }
+
+    private static String longestValue(String[] values) {
+        String longest = "";
+        if (values == null) {
+            return longest;
+        }
+        for (String value : values) {
+            if (value != null && value.length() > longest.length()) {
+                longest = value;
+            }
+        }
+        return longest;
+    }
+
+    private static String ellipsizeToWidth(String text, java.awt.FontMetrics metrics, int maxWidth) {
+        if (text == null || maxWidth <= 0 || metrics.stringWidth(text) <= maxWidth) {
+            return text == null ? "" : text;
+        }
+        String dots = "...";
+        int dotsWidth = metrics.stringWidth(dots);
+        int end = text.length();
+        while (end > 0 && metrics.stringWidth(text.substring(0, end)) + dotsWidth > maxWidth) {
+            end--;
+        }
+        if (end <= 0) {
+            return dots;
+        }
+        return text.substring(0, end) + dots;
     }
 }

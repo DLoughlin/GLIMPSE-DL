@@ -199,7 +199,7 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 	public static final String GRAPHICS_LINE_WIDTH_SCALE_PROPERTY = "graphicsLineWidthScale";
 	public static final String GRAPHICS_THUMBNAIL_FONT_SIZE_PROPERTY = "graphicsThumbnailFontSize";
 	public static final String GRAPHICS_THUMBNAIL_LINE_WIDTH_PROPERTY = "graphicsThumbnailLineWidth";
-	private static final int DEFAULT_FONT_SIZE = 12;
+	private static final int DEFAULT_FONT_SIZE = 20;
 	private static final int MIN_FONT_SIZE = 8;
 	private static final int MAX_FONT_SIZE = 32;
 	private static final int[] GENERAL_FONT_SIZE_OPTIONS =
@@ -2886,4 +2886,4 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			}
 		}
 	}
-}
+}

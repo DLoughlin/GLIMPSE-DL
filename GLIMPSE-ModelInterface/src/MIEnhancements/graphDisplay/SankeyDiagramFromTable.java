@@ -162,7 +162,7 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
         scenarioMenuPanel.setLayout(new BoxLayout(scenarioMenuPanel, BoxLayout.Y_AXIS));
         scenarioMenuPanel.setAlignmentX(JPanel.LEFT_ALIGNMENT);
         scenarioListLabel = new JLabel("Scenario:", SwingConstants.LEFT);
-        scenarioListLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        scenarioListLabel.setFont(resolveUiFont("Label.font", Font.BOLD, 4));
         scenarioListLabel.setAlignmentX(JLabel.LEFT_ALIGNMENT);
         List<String> scenarioListFromTable = MapOptionsUtil.getScenarioListFromTableData(jtable);
         DefaultComboBoxModel<String> dmlScenario = new DefaultComboBoxModel<String>();
@@ -172,7 +172,7 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
         scenarioListMenu = new JComboBox<String>();
         scenarioListMenu.setModel(dmlScenario);
         scenarioListMenu.setVisible(true);
-        scenarioListMenu.setFont(new Font("Arial", Font.BOLD, 14));
+        scenarioListMenu.setFont(resolveUiFont("ComboBox.font", Font.BOLD, 2));
         scenarioListMenu.setAlignmentX(JPanel.LEFT_ALIGNMENT);
         scenarioListMenu.setMaximumSize(new Dimension(300, 25));
         scenarioListMenu.addActionListener(new UpdateSankeyOrBarChart());
@@ -186,7 +186,7 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
         regionMenuPanel.setLayout(new BoxLayout(regionMenuPanel, BoxLayout.X_AXIS));
         regionMenuPanel.setAlignmentX(JPanel.LEFT_ALIGNMENT);
         regionListLabel = new JLabel("Region:", SwingConstants.LEFT);
-        regionListLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        regionListLabel.setFont(resolveUiFont("Label.font", Font.BOLD, 4));
         regionListLabel.setAlignmentX(JLabel.LEFT_ALIGNMENT);
         List<String> regionListFromTable = MapOptionsUtil.getUniqueRegionsInTable(jtable);
         DefaultComboBoxModel<String> dmlRegion = new DefaultComboBoxModel<String>();
@@ -196,7 +196,7 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
         regionListMenu = new JComboBox<String>();
         regionListMenu.setModel(dmlRegion);
         regionListMenu.setVisible(true);
-        regionListMenu.setFont(new Font("Arial", Font.BOLD, 14));
+        regionListMenu.setFont(resolveUiFont("ComboBox.font", Font.BOLD, 2));
         regionListMenu.setMaximumSize(new Dimension(100, 25));
         regionListMenu.addActionListener(new UpdateSankeyOrBarChart());
         regionMenuPanel.add(regionListLabel);
@@ -209,7 +209,7 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
         yearMenuPanel.setLayout(new BoxLayout(yearMenuPanel, BoxLayout.X_AXIS));
         yearMenuPanel.setAlignmentX(JPanel.LEFT_ALIGNMENT);
         listLabel = new JLabel("Year:", SwingConstants.LEFT);
-        listLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        listLabel.setFont(resolveUiFont("Label.font", Font.BOLD, 4));
         listLabel.setAlignmentX(JLabel.LEFT_ALIGNMENT);
         ArrayList<String> yearListFromTable = MapOptionsUtil.getYearListFromTableData(jtable);
         DefaultComboBoxModel<String> dml = new DefaultComboBoxModel<String>();
@@ -219,7 +219,7 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
         yearListMenu = new JComboBox<String>();
         yearListMenu.setModel(dml);
         yearListMenu.setVisible(true);
-        yearListMenu.setFont(new Font("Arial", Font.BOLD, 14));
+        yearListMenu.setFont(resolveUiFont("ComboBox.font", Font.BOLD, 2));
         yearListMenu.setMaximumSize(new Dimension(150, 25));
         yearListMenu.addActionListener(new UpdateSankeyOrBarChart());
 
@@ -270,7 +270,7 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
         myPlot.setNodeLabelOffsetY(-170.0);
         myPlot.setNodeWidth(defaultNodeWidth);
         myPlot.setNodeMargin(defaultNodeMargin);
-        myPlot.setDefaultNodeLabelFont(new Font("Arial", Font.BOLD, 16));
+        myPlot.setDefaultNodeLabelFont(resolveUiFont("Label.font", Font.BOLD, 4));
         myPlot.setOutlineVisible(true);
 
         setFlowPlotColorFromBundle();
@@ -311,7 +311,7 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
         for (int i = 0; i < totalNodes; i++) {
             String nextNode = jtable.getColumnName(firstYearIdx - i - 1);
             JTextField nextNodeFromColumn = new JTextField(nextNode);
-            nextNodeFromColumn.setFont(new Font("Arial", Font.BOLD, 16));
+            nextNodeFromColumn.setFont(resolveUiFont("TextField.font", Font.BOLD, 4));
             nextNodeFromColumn.setPreferredSize(new Dimension(labelWidth, 30));
             nextNodeFromColumn.setMaximumSize(new Dimension(labelWidth, 30));
             nextNodeFromColumn.setHorizontalAlignment(JTextField.CENTER);
@@ -340,14 +340,14 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
         DefaultCategoryDataset myDataset = createCategoryDatasetFromTable(jtable, selectedScenario, selectedRegion, selectedYear);
         JFreeChart barChart = ChartFactory.createStackedBarChart("", "", unitForYAxis, myDataset, PlotOrientation.VERTICAL, true, true, false);
         LegendTitle legend = barChart.getLegend();
-        legend.setItemFont(new Font("Arial", Font.BOLD, 14));
+        legend.setItemFont(resolveUiFont("Label.font", Font.BOLD, 2));
 
         barPlot = (CategoryPlot) barChart.getPlot();
         barPlot.setDataset(0, myDataset);
         barRenderer = (StackedBarRenderer) barPlot.getRenderer();
         barRenderer.setMaximumBarWidth(0.2);
-        barRenderer.setDefaultItemLabelFont(new Font("Arial", Font.BOLD, 16));
-        barRenderer.setSeriesItemLabelFont(0, new Font("Arial", Font.BOLD, 16));
+        barRenderer.setDefaultItemLabelFont(resolveUiFont("Label.font", Font.BOLD, 4));
+        barRenderer.setSeriesItemLabelFont(0, resolveUiFont("Label.font", Font.BOLD, 4));
         barRenderer.setBarPainter(new StandardBarPainter()); // Remove shine
 
         if (bundlePath != null) {
@@ -685,4 +685,16 @@ public class SankeyDiagramFromTable extends JFrame implements ComponentListener 
     public void componentShown(ComponentEvent e) {}
     @Override
     public void componentHidden(ComponentEvent e) {}
+
+    private Font resolveUiFont(String uiKey, int style, int sizeOffset) {
+        Font baseFont = javax.swing.UIManager.getFont(uiKey);
+        if (baseFont == null) {
+            baseFont = getFont();
+        }
+        if (baseFont == null) {
+            baseFont = new Font(Font.DIALOG, style, InterfaceMain.getConfiguredFontSize());
+        }
+        int size = Math.max(8, InterfaceMain.getConfiguredFontSize() + sizeOffset);
+        return baseFont.deriveFont(style, (float) size);
+    }
 }

@@ -28,6 +28,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
@@ -71,7 +72,7 @@ public class ThumbnailUtilNew {
 	private static final Color DEFAULT_PANEL_BG_COLOR = Color.GREEN;
 	private static final int SCROLL_BAR_WIDTH = 65;
 	private static final String CATEGORY_LINE_CHART = "chart.CategoryLineChart";
-	private static final String NO_DATA_HTML_STYLE = "<style type='text/css'> p{font-family: Verdana;font-size:10;font-weight: plan;}</style>";
+	private static final String NO_DATA_HTML_STYLE = "<style type='text/css'> p{font-family: sans-serif;font-size:10;font-weight: normal;}</style>";
 
 	// --- Chart Creation ---
 	/**
@@ -561,14 +562,14 @@ public class ThumbnailUtilNew {
 			if (category) {
 				freeChart.getCategoryPlot().getDomainAxis().setCategoryLabelPositions(CategoryLabelPositions.DOWN_90);
 				freeChart.getCategoryPlot().getDomainAxis().setLabel(null);
-				Font axisFont = new Font("Arial", Font.PLAIN, thumbnailPrefs.fontSize);
+				Font axisFont = getUiFontForThumbnail(Font.PLAIN, thumbnailPrefs.fontSize);
 				freeChart.getCategoryPlot().getDomainAxis().setTickLabelFont(axisFont);
 				freeChart.getCategoryPlot().getRangeAxis().setTickLabelFont(axisFont);
 				freeChart.getCategoryPlot().getRangeAxis().setLabelFont(axisFont);
 			} else {
 				freeChart.getXYPlot().getDomainAxis().setLabelAngle(90);
 				freeChart.getXYPlot().getDomainAxis().setLabel(null);
-				Font axisFont = new Font("Arial", Font.PLAIN, thumbnailPrefs.fontSize);
+				Font axisFont = getUiFontForThumbnail(Font.PLAIN, thumbnailPrefs.fontSize);
 				freeChart.getXYPlot().getDomainAxis().setTickLabelFont(axisFont);
 				freeChart.getXYPlot().getRangeAxis().setTickLabelFont(axisFont);
 				freeChart.getXYPlot().getRangeAxis().setLabelFont(axisFont);
@@ -591,12 +592,12 @@ public class ThumbnailUtilNew {
 			if (freeChart.getLegend() != null) {
 				freeChart.getLegend().visible = false;
 			}
-			freeChart.getTitle().setFont(new Font("Arial", Font.BOLD, Math.max(8, thumbnailPrefs.fontSize + 1)));
+			freeChart.getTitle().setFont(getUiFontForThumbnail(Font.BOLD, Math.max(8, thumbnailPrefs.fontSize + 1)));
 			freeChart.getTitle().setVisible(false);
 			// Set subtitle font and visibility
 			for (int j = 0; j < freeChart.getSubtitleCount()
 					&& !(freeChart.getSubtitle(j) instanceof org.jfree.chart.title.LegendTitle); j++) {
-				((TextTitle) freeChart.getSubtitle(j)).setFont(new Font("Arial", Font.BOLD, thumbnailPrefs.fontSize));
+				((TextTitle) freeChart.getSubtitle(j)).setFont(getUiFontForThumbnail(Font.BOLD, thumbnailPrefs.fontSize));
 				freeChart.getSubtitle(j).setVisible(true);
 			}
 			applyThumbnailLineWidth(freeChart, thumbnailPrefs.lineWidth);
@@ -618,6 +619,14 @@ public class ThumbnailUtilNew {
 				jb.setText(getEmptyChartDesc(chart.getTitles()));
 		}
 		return jb;
+	}
+
+	private static Font getUiFontForThumbnail(int style, int size) {
+		Font baseFont = UIManager.getFont("Label.font");
+		if (baseFont == null) {
+			baseFont = new Font(Font.DIALOG, style, InterfaceMain.getConfiguredFontSize());
+		}
+		return baseFont.deriveFont(style, (float) Math.max(8, size));
 	}
 
 	private static void applyThumbnailLineWidth(JFreeChart chart, float width) {

@@ -111,6 +111,7 @@ final class PreferenceDialog {
 			lbl.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 6, 0, 6));
 			tabs.setTabComponentAt(i, lbl);
 		}
+		installPreferencesTabStyling(tabs);
 
 		// Save / Close buttons
 		javax.swing.JPanel bottom = new javax.swing.JPanel(
@@ -579,5 +580,118 @@ final class PreferenceDialog {
 
 	private static String safeTrim(String value) {
 		return value == null ? "" : value.trim();
+	}
+
+	private static int clampColor(int value) {
+		return Math.max(0, Math.min(255, value));
+	}
+
+	private static java.awt.Color shiftColor(java.awt.Color source, int delta) {
+		if (source == null) {
+			return null;
+		}
+		return new java.awt.Color(
+				clampColor(source.getRed() + delta),
+				clampColor(source.getGreen() + delta),
+				clampColor(source.getBlue() + delta));
+	}
+
+	private static java.awt.Color resolvePreferencesTabBaseColor(javax.swing.JTabbedPane tabs) {
+		java.awt.Color base = javax.swing.UIManager.getColor("TabbedPane.unselectedBackground");
+		if (base == null) {
+			base = javax.swing.UIManager.getColor("TabbedPane.background");
+		}
+		if (base == null && tabs != null) {
+			base = tabs.getBackground();
+		}
+		if (base == null) {
+			base = new java.awt.Color(220, 220, 220);
+		}
+		return base;
+	}
+
+	private static java.awt.Color resolvePreferencesTabSelectedColor() {
+		java.awt.Color selected = javax.swing.UIManager.getColor("List.selectionBackground");
+		if (selected == null) {
+			selected = javax.swing.UIManager.getColor("Tree.selectionBackground");
+		}
+		if (selected == null) {
+			selected = javax.swing.UIManager.getColor("Table.selectionBackground");
+		}
+		if (selected == null) {
+			selected = new java.awt.Color(57, 105, 138);
+		}
+		return selected;
+	}
+
+	private static java.awt.Color resolvePreferencesTabSelectedForeground() {
+		java.awt.Color fg = javax.swing.UIManager.getColor("List.selectionForeground");
+		if (fg == null) {
+			fg = javax.swing.UIManager.getColor("Tree.selectionForeground");
+		}
+		if (fg == null) {
+			fg = javax.swing.UIManager.getColor("Table.selectionForeground");
+		}
+		if (fg == null) {
+			fg = java.awt.Color.WHITE;
+		}
+		return fg;
+	}
+
+	private static final class PreferencesTabsBackgroundUI extends javax.swing.plaf.basic.BasicTabbedPaneUI {
+		@Override
+		protected void paintTabBackground(java.awt.Graphics g, int tabPlacement, int tabIndex,
+				int x, int y, int w, int h, boolean isSelected) {
+			java.awt.Color tabColor = tabPane.getBackgroundAt(tabIndex);
+			if (tabColor == null) {
+				tabColor = tabPane.getBackground();
+			}
+			if (tabColor == null) {
+				tabColor = java.awt.Color.LIGHT_GRAY;
+			}
+			g.setColor(tabColor);
+			g.fillRect(x, y, w, h);
+		}
+	}
+
+	private static void refreshPreferencesTabSelectionStyling(javax.swing.JTabbedPane tabs) {
+		if (tabs == null) {
+			return;
+		}
+		int tabCount = tabs.getTabCount();
+		if (tabCount <= 0) {
+			return;
+		}
+		int selectedIndex = tabs.getSelectedIndex();
+		if (selectedIndex < 0 || selectedIndex >= tabCount) {
+			return;
+		}
+		java.awt.Color baseColor = resolvePreferencesTabBaseColor(tabs);
+		java.awt.Color selectedColor = resolvePreferencesTabSelectedColor();
+		java.awt.Color unselectedColor = shiftColor(baseColor, 16);
+		java.awt.Color selectedForeground = resolvePreferencesTabSelectedForeground();
+		java.awt.Color defaultForeground = javax.swing.UIManager.getColor("TabbedPane.foreground");
+		if (defaultForeground == null) {
+			defaultForeground = tabs.getForeground();
+		}
+		if (defaultForeground == null) {
+			defaultForeground = java.awt.Color.BLACK;
+		}
+		for (int i = 0; i < tabCount; ++i) {
+			boolean isSelected = i == selectedIndex;
+			tabs.setBackgroundAt(i, isSelected ? selectedColor : unselectedColor);
+			tabs.setForegroundAt(i, isSelected ? selectedForeground : defaultForeground);
+		}
+		tabs.repaint();
+	}
+
+	private static void installPreferencesTabStyling(javax.swing.JTabbedPane tabs) {
+		if (tabs == null) {
+			return;
+		}
+		tabs.setUI(new PreferencesTabsBackgroundUI());
+		tabs.setOpaque(true);
+		tabs.addChangeListener(e -> refreshPreferencesTabSelectionStyling(tabs));
+		refreshPreferencesTabSelectionStyling(tabs);
 	}
 }

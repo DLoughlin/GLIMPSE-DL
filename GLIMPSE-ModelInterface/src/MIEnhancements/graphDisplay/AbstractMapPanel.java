@@ -1263,7 +1263,7 @@ public abstract class AbstractMapPanel extends JFrame implements ComponentListen
     private static Font resolveUiFont(int style, int fallbackSize) {
         Font baseFont = UIManager.getFont("Label.font");
         if (baseFont == null) {
-            return new Font("Dialog", style, fallbackSize);
+            return new Font(Font.DIALOG, style, fallbackSize);
         }
         return baseFont.deriveFont(style, fallbackSize);
     }

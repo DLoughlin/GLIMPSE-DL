@@ -52,6 +52,8 @@ import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.stream.Stream;
 
+import javax.swing.UIManager;
+
 /**
  * Utility class for handling component and screen sizing, font metrics, and text rendering.
  * Provides methods for multi-monitor setups, font sizing, and text dimension calculations.
@@ -389,7 +391,13 @@ public class ComponentSizeUtil {
      */
     public static int getStringWidth(Component c, String s) {
         Graphics g = c.getGraphics();
-        g.setFont(new Font("Serif", Font.BOLD, 24));
+        Font baseFont = UIManager.getFont("Label.font");
+        if (baseFont == null) {
+            baseFont = g.getFont();
+        }
+        if (baseFont != null) {
+            g.setFont(baseFont.deriveFont(Font.BOLD, 24f));
+        }
         return g.getFontMetrics().stringWidth(s);
     }
 }
