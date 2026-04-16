@@ -54,6 +54,8 @@ public class CategoryDatasetDataPane extends DataPanel {
     private static final long serialVersionUID = 1L;
     /** Lookup for units by series name */
     private HashMap<String, String> unitLookup = null;
+    /** Normalized index for resilient key matching when exact lookup misses. */
+    private HashMap<String, String> normalizedUnitLookup = null;
 
     /**
      * Constructor for a single chart.
@@ -74,6 +76,7 @@ public class CategoryDatasetDataPane extends DataPanel {
     public CategoryDatasetDataPane(Chart[] charts, int id, HashMap<String, String> unitLookup) {
         super(charts, id);
         this.unitLookup = unitLookup;
+        this.normalizedUnitLookup = buildNormalizedUnitLookup(unitLookup);
         CategoryDatasetData();
     }
 
@@ -119,10 +122,42 @@ public class CategoryDatasetDataPane extends DataPanel {
         for (int i = 0; i < rc; i++) {
             dataValue[i][0] = (String) chart[id].getCategoryPlot().getDataset().getRowKey(i);
             if (unitLookup != null) {
-                dataValue[i][dataValue[0].length - 1] = unitLookup.get(dataValue[i][0]);
+                dataValue[i][dataValue[0].length - 1] = resolveUnitForSeries(dataValue[i][0]);
             }
         }
 		setDigit(cds, 3);
+    }
+
+    private String resolveUnitForSeries(String seriesKey) {
+        String unit = unitLookup.get(seriesKey);
+        if (unit != null) {
+            return unit;
+        }
+        if (normalizedUnitLookup == null || seriesKey == null) {
+            return null;
+        }
+        return normalizedUnitLookup.get(normalizeUnitLookupKey(seriesKey));
+    }
+
+    private HashMap<String, String> buildNormalizedUnitLookup(HashMap<String, String> lookup) {
+        if (lookup == null) {
+            return null;
+        }
+        HashMap<String, String> normalized = new HashMap<>();
+        for (String key : lookup.keySet()) {
+            if (key == null) {
+                continue;
+            }
+            String normalizedKey = normalizeUnitLookupKey(key);
+            if (!normalized.containsKey(normalizedKey)) {
+                normalized.put(normalizedKey, lookup.get(key));
+            }
+        }
+        return normalized;
+    }
+
+    private String normalizeUnitLookupKey(String key) {
+        return key.trim().replace(',', '-').replaceAll("\\s+", " ");
     }
 
     /**

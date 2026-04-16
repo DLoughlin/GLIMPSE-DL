@@ -36,6 +36,8 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -85,6 +87,7 @@ public class OptionsArea {
 	public static String LINE_CHART="Line Chart";
 	public static String STACKED_BAR_CHART="Stacked Bar Chart";
 	public static String STACKED_AREA_CHART="Stacked Area Chart";
+	public static String STACKED_PERCENT="Stacked Percent";
 	public static String REL_RATIO_LINE ="Relative Ratio (Line)";
 	public static String REL_DIFF_LINE="Relative Diff (Line)";
 	public static String REL_DIFF_BAR="Relative Diff (Bar)";
@@ -142,8 +145,9 @@ public class OptionsArea {
 		box.add(dspCol); */
 
 		GraphOptionPane gPane = new GraphOptionPane();
-		gPane.setMaximumSize(new Dimension(150, 30));
-		gPane.setMinimumSize(new Dimension(90, 30));
+		Dimension graphDropdownSize = gPane.getPreferredSize();
+		gPane.setMinimumSize(graphDropdownSize);
+		gPane.setMaximumSize(graphDropdownSize);
 		gPane.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
 		gPane.setBackground(Color.green);
 		box.add(gPane);
@@ -221,8 +225,8 @@ public class OptionsArea {
 
 		private static final long serialVersionUID = 1L;
 
-		private String graphType[] = {OptionsArea.LINE_CHART, OptionsArea.STACKED_BAR_CHART, OptionsArea.STACKED_AREA_CHART,OptionsArea.REL_RATIO_LINE,OptionsArea.REL_DIFF_LINE,OptionsArea.REL_DIFF_BAR };
-		private String graphClassName[] = {"chart.CategoryLineChart","chart.CategoryStackedBarChart","chart.CategoryStackedAreaChart","chart.CategoryLineChart","chart.CategoryLineChart","chart.CategoryStackedBarChart" };
+		private String graphType[] = {OptionsArea.LINE_CHART, OptionsArea.STACKED_BAR_CHART, OptionsArea.STACKED_AREA_CHART, OptionsArea.STACKED_PERCENT, OptionsArea.REL_RATIO_LINE,OptionsArea.REL_DIFF_LINE,OptionsArea.REL_DIFF_BAR };
+		private String graphClassName[] = {"chart.CategoryLineChart","chart.CategoryStackedBarChart","chart.CategoryStackedAreaChart","chart.CategoryStackedPercentBarChart","chart.CategoryLineChart","chart.CategoryLineChart","chart.CategoryStackedBarChart" };
 
 		
 		private int idx;
@@ -251,9 +255,9 @@ public class OptionsArea {
 			setSelectedIndex(getIndex(chart[ThumbnailUtilNew.getFirstNonNullChart(chart)]));
 			Font comboFont = resolveComboFont();
 			setFont(comboFont);
-			setPrototypeDisplayValue(OptionsArea.STACKED_AREA_CHART);
+			setPrototypeDisplayValue(getWidestGraphType());
 			setMaximumRowCount(graphType.length);
-			// Keep popup list items in sync with combo font and apply clipping with tooltip fallback.
+			// Keep popup list items in sync with combo font and preserve the full option text.
 			setRenderer(new DefaultListCellRenderer() {
 				private static final long serialVersionUID = 1L;
 				@Override
@@ -262,23 +266,42 @@ public class OptionsArea {
 					JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
 					String fullText = value == null ? "" : value.toString();
 					label.setFont(GraphOptionPane.this.getFont());
-					int availableWidth = index < 0
-							? Math.max(80, GraphOptionPane.this.getWidth() - 30)
-							: Math.max(80, list.getWidth() - 16);
-					String displayText = ellipsizeToWidth(fullText, label.getFontMetrics(label.getFont()), availableWidth);
-					label.setText(displayText);
-					label.setToolTipText(displayText.equals(fullText) ? null : fullText);
-					if (index == getFirstRelativeGraphIndex()) {
-						label.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.GRAY));
+					label.setText(fullText);
+					label.setToolTipText(null);
+					int firstRelativeIndex = getFirstRelativeGraphIndex();
+					Color separatorColor = UIManager.getColor("Separator.foreground");
+					if (separatorColor == null) {
+						separatorColor = new Color(140, 140, 140);
+					}
+					if (index == firstRelativeIndex) {
+						label.setBorder(BorderFactory.createCompoundBorder(
+								BorderFactory.createMatteBorder(1, 0, 0, 0, separatorColor),
+								BorderFactory.createEmptyBorder(4, 1, 1, 1)));
+					} else if (index == firstRelativeIndex - 1) {
+						label.setBorder(BorderFactory.createEmptyBorder(1, 1, 4, 1));
 					} else {
 						label.setBorder(BorderFactory.createEmptyBorder(1, 1, 1, 1));
 					}
 					return label;
 				}
 			});
-			setPreferredSize(new Dimension(computePreferredComboWidth(comboFont), 30));
+			Dimension comboSize = new Dimension(computePreferredComboWidth(comboFont), 30);
+			setPreferredSize(comboSize);
+			setMinimumSize(comboSize);
+			setMaximumSize(comboSize);
 			addActionListener(this);
 			setBorder(BorderFactory.createEmptyBorder(0, 6, 0, 6));
+		}
+
+		private String getWidestGraphType() {
+			String widest = "";
+			FontMetrics metrics = getFontMetrics(resolveComboFont());
+			for (String option : graphType) {
+				if (metrics.stringWidth(option) > metrics.stringWidth(widest)) {
+					widest = option;
+				}
+			}
+			return widest;
 		}
 
 		private Font resolveComboFont() {
@@ -298,7 +321,11 @@ public class OptionsArea {
 			for (String option : graphType) {
 				maxTextWidth = Math.max(maxTextWidth, metrics.stringWidth(option));
 			}
-			return Math.max(170, maxTextWidth + 42);
+			Insets insets = getInsets();
+			int horizontalInsets = insets != null ? insets.left + insets.right : 0;
+			int arrowAndPadding = 36;
+			int dynamicWidth = maxTextWidth + horizontalInsets + arrowAndPadding;
+			return Math.max(super.getPreferredSize().width, dynamicWidth);
 		}
 
 		private int getFirstRelativeGraphIndex() {
@@ -308,22 +335,6 @@ public class OptionsArea {
 				}
 			}
 			return -1;
-		}
-
-		private String ellipsizeToWidth(String text, java.awt.FontMetrics metrics, int maxWidth) {
-			if (text == null || maxWidth <= 0 || metrics.stringWidth(text) <= maxWidth) {
-				return text == null ? "" : text;
-			}
-			String dots = "...";
-			int dotsWidth = metrics.stringWidth(dots);
-			int end = text.length();
-			while (end > 0 && metrics.stringWidth(text.substring(0, end)) + dotsWidth > maxWidth) {
-				end--;
-			}
-			if (end <= 0) {
-				return dots;
-			}
-			return text.substring(0, end) + dots;
 		}
 
 		private int getIndex(Chart ch) {

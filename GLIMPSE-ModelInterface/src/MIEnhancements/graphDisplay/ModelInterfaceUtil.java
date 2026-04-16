@@ -169,9 +169,18 @@ public class ModelInterfaceUtil {
             String key = (keyObj == null) ? "" : keyObj.toString();
             String unit = (unitObj == null) ? "NA" : unitObj.toString();
             if (unit.trim().isEmpty()) unit = "NA";
+            // Preserve the original key and also index by normalized key for resilient downstream lookups.
             toReturn.put(key, unit);
+            toReturn.put(normalizeUnitLookupKey(key), unit);
         }
         return toReturn;
+    }
+
+    private static String normalizeUnitLookupKey(String key) {
+        if (key == null) {
+            return "";
+        }
+        return key.trim().replace(',', '-').replaceAll("\\s+", " ");
     }
 
     /**

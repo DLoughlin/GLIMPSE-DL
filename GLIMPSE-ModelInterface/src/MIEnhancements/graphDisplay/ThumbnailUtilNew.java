@@ -431,6 +431,8 @@ public class ThumbnailUtilNew {
 			String[] axis = chart[i].getAxis_name_unit().clone();
 			if (relativeIndex > -1)
 				axis[1] = "Relative (" + axis[1] + ")";
+			else if (OptionsArea.STACKED_PERCENT.equals(chartType))
+				axis[1] = "Percent";
 			try {
 				if (cn.contains("Category")) {
 					DefaultCategoryDataset dataset = null;
@@ -457,6 +459,9 @@ public class ThumbnailUtilNew {
 							chart[i].getLegend(), chart[i].getColor(), chart[i].getpColor(), chart[i].getPattern(),
 							chart[i].getLineStrokes(), chart[i].getAnnotationText(), dataset, relativeIndex,
 							chart[i].isShowLineAndShape());
+				}
+				if (chart1[i] != null && chart[i].getUnitsLookup() != null) {
+					chart1[i].setUnitsLookup(new HashMap<>(chart[i].getUnitsLookup()));
 				}
 			} catch (ClassNotFoundException e) {
 				e.printStackTrace();
