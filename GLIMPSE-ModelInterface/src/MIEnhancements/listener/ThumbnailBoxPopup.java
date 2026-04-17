@@ -115,7 +115,7 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
      */
     private void createMenuItems() {
         for (String option : menuOptions) {
-            if (hideOptions && (option.equals("Transpose") || option.equals("Breakout"))) {
+            if (hideOptions && option.equals("Breakout")) {
                 continue;
             }
             JMenuItem menuItem = new JMenuItem(option);

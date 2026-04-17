@@ -160,7 +160,15 @@ public class Breakout extends JDialog {
 			setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 			pack();
 			setSize(800, 600);
-			setLocation(InterfaceMain.getInstance().getFrame().getLocation());
+			java.awt.Point baseLoc = InterfaceMain.getInstance().getFrame().getLocation();
+			// If this transpose is launched from within an existing Breakout dialog, offset from that dialog instead
+			if (sp != null) {
+				java.awt.Container spTop = javax.swing.SwingUtilities.getWindowAncestor(sp);
+				if (spTop instanceof Breakout) {
+					baseLoc = spTop.getLocation();
+				}
+			}
+			setLocation(baseLoc.x + 40, baseLoc.y + 40);
 			setVisible(true);
 		}
 	}
