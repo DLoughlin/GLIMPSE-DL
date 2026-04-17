@@ -220,7 +220,7 @@ public class PaneForCountryStateTree extends VBox {
                 "Africa_Northern", "Africa_Southern", "Africa_Western", "South Africa", "Brazil",
                 "Central America and Caribbean", "Mexico", "South America_Northern", "South America_Southern",
                 "Argentina", "Colombia", "Indonesia", "Pakistan", "South Asia", "Southeast Asia", "Taiwan",
-                "Europe_Eastern", "EU-12", "South Korea", "India"
+                "Europe_Eastern", "EU-12", "South Korea", "India", "Ukraine"
             };
             for (String region : fallback) regionList.add(region);
         }
@@ -240,8 +240,8 @@ public class PaneForCountryStateTree extends VBox {
                 "South America:Argentina,Brazil,Colombia,South America_Northern,South America_Southern",
                 "Africa:Africa_Northern,Africa_Southern,Africa_Eastern,Africa_Western",
                 "EU:EU-15,EU-12",
-                "Europe:EU-15,EU-12,Europe_Eastern,European Free Trade Association,Europe_Non_EGU",
-                "Asia:Japan,Central Asia,Russia,China,Middle East,Indonesia,Pakistan,South Asia,Southeast Asia,Taiwan,South Korea,India",
+                "Europe:EU-15,EU-12,Europe_Eastern,European Free Trade Association,Europe_Non_EGU,Ukraine",
+                "Asia:Japan,Central Asia,Russia,Ukraine,China,Middle East,Indonesia,Pakistan,South Asia,Southeast Asia,Taiwan,South Korea,India",
                 "East Asia:Japan,China,Taiwan,South Korea",
                 "Southeast Asia:Indonesia,Southeast Asia",
                 "South Asia:Pakistan,India,South Asia",

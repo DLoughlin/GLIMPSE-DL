@@ -35,16 +35,23 @@ package graphDisplay;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Insets;
+import java.awt.Toolkit;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.swing.JPanel;
+import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.UIManager;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.event.TableModelEvent;
+import javax.swing.event.TableModelListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
@@ -71,6 +78,7 @@ import conversionUtil.ArrayConversion;
  */
 public class DataPanel extends JPanel implements ListSelectionListener {
 	private static final long serialVersionUID = 1L;
+	private static final int MAX_VISIBLE_TABLE_ROWS = 10;
 	protected DefaultTableModel tableModel;
 	protected TableColumnModel cmodel;
 	protected DefaultTableCellRenderer renderer;
@@ -85,6 +93,7 @@ public class DataPanel extends JPanel implements ListSelectionListener {
 	protected XYDataset ds;
 	protected String dataValue[][];
 	protected boolean addRow = true;
+	protected JScrollPane tableScrollPane;
 	/** Cached significant-digits preference; -1 means not yet loaded. Thread-safe via AtomicInteger. */
 	private final AtomicInteger cachedSignificantDigits = new AtomicInteger(-1);
 
@@ -149,6 +158,12 @@ public class DataPanel extends JPanel implements ListSelectionListener {
 	private void crtTable(final JFreeChart chart) {
 		table = new JTable();
 		tableModel = (DefaultTableModel) table.getModel();
+		tableModel.addTableModelListener(new TableModelListener() {
+			@Override
+			public void tableChanged(TableModelEvent e) {
+				applyTableViewportSizing();
+			}
+		});
 		cmodel = table.getColumnModel();
 		renderer = new DefaultTableCellRenderer();
 		renderer.setHorizontalAlignment(4); // Center alignment
@@ -173,9 +188,53 @@ public class DataPanel extends JPanel implements ListSelectionListener {
 		table.setRowSelectionAllowed(true);
 		table.setColumnSelectionAllowed(false);
 		table.setDefaultEditor(Object.class, null); // Make table non-editable
-		JScrollPane jsp = new JScrollPane(table);
-		jsp.setPreferredSize(new Dimension(700, 100));
-		add(jsp, "Center");
+		tableScrollPane = new JScrollPane(table);
+		tableScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+		tableScrollPane.setPreferredSize(new Dimension(700, 100));
+		add(tableScrollPane, "Center");
+		applyTableViewportSizing();
+	}
+
+	/**
+	 * Sizes the table viewport to show up to MAX_VISIBLE_TABLE_ROWS rows,
+	 * adding a vertical scrollbar only when there are more rows.
+	 */
+	protected void applyTableViewportSizing() {
+		if (table == null || tableScrollPane == null) {
+			return;
+		}
+		int rowCount = table.getRowCount();
+		int visibleRows = Math.min(Math.max(1, rowCount), MAX_VISIBLE_TABLE_ROWS);
+		int headerHeight = table.getTableHeader() == null ? 0 : table.getTableHeader().getPreferredSize().height;
+		int rowHeight = Math.max(1, table.getRowHeight());
+		int preferredHeight = headerHeight + (visibleRows * rowHeight) + 2;
+		int preferredWidth = Math.max(700, tableScrollPane.getPreferredSize().width);
+
+		tableScrollPane.setVerticalScrollBarPolicy(
+				rowCount > MAX_VISIBLE_TABLE_ROWS ? JScrollPane.VERTICAL_SCROLLBAR_ALWAYS : JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+		tableScrollPane.setPreferredSize(new Dimension(preferredWidth, preferredHeight));
+		tableScrollPane.revalidate();
+		revalidate();
+	}
+
+	/**
+	 * Returns a stable preferred height for displaying this data pane with
+	 * up to MAX_VISIBLE_TABLE_ROWS rows visible in the table viewport.
+	 */
+	public int getPreferredDisplayHeight() {
+		int preferred = getPreferredSize().height;
+		if (table == null || tableScrollPane == null) {
+			return preferred;
+		}
+		Insets panelInsets = getInsets();
+		Insets scrollInsets = tableScrollPane.getInsets();
+		int rowCount = table.getRowCount();
+		int visibleRows = Math.min(Math.max(1, rowCount), MAX_VISIBLE_TABLE_ROWS);
+		int headerHeight = table.getTableHeader() == null ? 0 : table.getTableHeader().getPreferredSize().height;
+		int viewportHeight = headerHeight + (visibleRows * Math.max(1, table.getRowHeight())) + 2;
+		int tableHeight = viewportHeight + scrollInsets.top + scrollInsets.bottom;
+		int contentHeight = tableHeight + panelInsets.top + panelInsets.bottom;
+		return Math.max(preferred, contentHeight);
 	}
 
 	/**
@@ -422,6 +481,55 @@ public class DataPanel extends JPanel implements ListSelectionListener {
 
 	public XYDataset getDs() {
 		return ds;
+	}
+
+	/**
+	 * Copies the full table contents to the system clipboard as tab-delimited text,
+	 * including the header row and all visible rows.
+	 */
+	public boolean copyTableToClipboard() {
+		String clipboardText = buildTableClipboardText();
+		if (clipboardText == null || clipboardText.isEmpty()) {
+			return false;
+		}
+		try {
+			StringSelection selection = new StringSelection(clipboardText);
+			Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+			clipboard.setContents(selection, selection);
+			return true;
+		} catch (IllegalStateException ex) {
+			JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(),
+					"Unable to access clipboard. Please try again.",
+					"Clipboard Busy", JOptionPane.WARNING_MESSAGE);
+			return false;
+		}
+	}
+
+	private String buildTableClipboardText() {
+		if (table == null || table.getColumnCount() == 0) {
+			return "";
+		}
+		StringBuilder builder = new StringBuilder();
+		for (int col = 0; col < table.getColumnCount(); col++) {
+			if (col > 0) {
+				builder.append('\t');
+			}
+			String header = table.getColumnName(col);
+			builder.append(header == null ? "" : header);
+		}
+		builder.append(System.lineSeparator());
+
+		for (int row = 0; row < table.getRowCount(); row++) {
+			for (int col = 0; col < table.getColumnCount(); col++) {
+				if (col > 0) {
+					builder.append('\t');
+				}
+				Object value = table.getValueAt(row, col);
+				builder.append(value == null ? "" : value.toString());
+			}
+			builder.append(System.lineSeparator());
+		}
+		return builder.toString();
 	}
 
 }

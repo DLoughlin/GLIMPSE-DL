@@ -33,27 +33,40 @@
 package graphDisplay;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
-import java.awt.Frame;
+import java.awt.GraphicsConfiguration;
+import java.awt.Insets;
+import java.awt.Rectangle;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.HashMap;
 
+import java.awt.Frame;
+
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
+import javax.swing.SwingUtilities;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.editor.ChartEditor;
+import org.jfree.chart.editor.ChartEditorManager;
 import org.jfree.chart.plot.PiePlot;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.statistics.DefaultBoxAndWhiskerCategoryDataset;
@@ -94,20 +107,113 @@ public class AChartDisplay {
 	private JDialog dialog;
 	/** Scroll pane for chart panel */
 	private JScrollPane chartPaneScroll = null;
+	/** Active chart panel instance so preferred chart size can drive dialog sizing. */
+	private ChartPanel chartPanel = null;
+	/** Container that keeps the chart buttons visible below the chart area. */
+	private JPanel chartPaneContainer = null;
 	/** Default dialog size X */
 	private int smallSizeX = 540;
 	/** Default dialog size Y */
 	private int smallSizeY = 480;
+	/** Small extra height for split-pane/dialog chrome around the table area. */
+	private static final int TABLE_CHROME_ALLOWANCE = 12;
+	/** Preserved chart viewport size used to keep chart geometry stable across toggles. */
+	private Dimension preservedChartViewportSize = null;
+	/** Stable chart-options strip height captured once to avoid layout-dependent drift. */
+	private int chartOptionsHeight = 36;
+	/** True while this class is mutating dialog layout (not a user resize). */
+	private boolean updatingLayout = false;
+	/** Emits chart/table layout sizing diagnostics for toggle troubleshooting. */
+	private static final boolean DEBUG_LAYOUT = false;
 	/** Button to show/hide table */
 	JButton jb_table = new JButton("Show Table");
 	/** Button to show/hide legend */
 	JButton jb_legend = new JButton("Show Legend");
-	/** Chart options dialog */
-	ChartOptions myOpts = null;
 	/** Flag for table visibility */
 	private boolean tableShowing = false;
 	/** Flag for legend visibility */
 	private boolean legendShowing = false;
+
+	/**
+	 * ChartPanel override that injects the Series (legend) tab in the
+	 * "Customize" dialog and renames the right-click "Properties" item.
+	 */
+	private class SeriesChartPanel extends ChartPanel {
+		private static final long serialVersionUID = 1L;
+
+		SeriesChartPanel(JFreeChart chartToDisplay) {
+			super(chartToDisplay);
+		}
+
+		/** Opens the Customize dialog (also called by the toolbar button). */
+		@Override
+		public void doEditChartProperties() {
+			ChartEditor editor = ChartEditorManager.getChartEditor(getChart());
+			JTabbedPane editorTabs = null;
+			if (editor instanceof Component) {
+				insertSeriesTab((Component) editor, getChart());
+				editorTabs = findTabbedPane((Container) editor);
+			}
+
+			// Build a custom dialog so we can control its size (50% taller than default).
+			JDialog customizeDialog = new JDialog((Frame) null, "Customize Chart", true);
+			customizeDialog.setLayout(new BorderLayout());
+			customizeDialog.add((Component) editor, BorderLayout.CENTER);
+
+			JPanel buttonPanel = new JPanel();
+			JButton okBtn = new JButton("OK");
+			JButton cancelBtn = new JButton("Cancel");
+			okBtn.addActionListener(ae -> {
+				editor.updateChart(getChart());
+				refreshDisplayedChart(getChart());
+				customizeDialog.dispose();
+			});
+			cancelBtn.addActionListener(ae -> customizeDialog.dispose());
+			buttonPanel.add(okBtn);
+			buttonPanel.add(cancelBtn);
+			customizeDialog.add(buttonPanel, BorderLayout.SOUTH);
+
+			// Select the Series tab (inserted at index 0) by default.
+			if (editorTabs != null) {
+				for (int i = 0; i < editorTabs.getTabCount(); i++) {
+					if ("Series".equalsIgnoreCase(editorTabs.getTitleAt(i))) {
+						editorTabs.setSelectedIndex(i);
+						break;
+					}
+				}
+			}
+
+			// Size dialog: width +30%, height -20% relative to previous sizing.
+			Dimension editorPref = ((Component) editor).getPreferredSize();
+			int dlgW = (int) (Math.max(300, (editorPref.width + 30) / 2) * 1.69);
+			int dlgH = (int) ((Math.max(350, editorPref.height) + buttonPanel.getPreferredSize().height + 30) * 1.5 * 0.80);
+			customizeDialog.setSize(dlgW, dlgH);
+			customizeDialog.setLocationRelativeTo(this);
+			customizeDialog.setVisible(true);
+		}
+
+		/**
+		 * Override the right-click popup to rename "Properties..." → "Customize...".
+		 */
+		@Override
+		public javax.swing.JPopupMenu createPopupMenu(boolean properties, boolean copy,
+				boolean save, boolean print, boolean zoom) {
+			javax.swing.JPopupMenu menu = super.createPopupMenu(properties, copy, save, print, zoom);
+			if (menu != null) {
+				for (int i = 0; i < menu.getComponentCount(); i++) {
+					Component item = menu.getComponent(i);
+					if (item instanceof javax.swing.JMenuItem) {
+						javax.swing.JMenuItem mi = (javax.swing.JMenuItem) item;
+						if ("Properties...".equalsIgnoreCase(mi.getText())
+								|| "Properties".equalsIgnoreCase(mi.getText())) {
+							mi.setText("Customize...");
+						}
+					}
+				}
+			}
+			return menu;
+		}
+	}
 
 	/**
 	 * Constructor for displaying a chart from an array of charts.
@@ -152,6 +258,17 @@ public class AChartDisplay {
 			if (jf.getTitle() != null)
 				jf.getTitle().setVisible(true); // Ensure title is visible
 			dialog = CreateComponent.crtJDialog(chart.getGraphName());
+			dialog.addComponentListener(new ComponentAdapter() {
+				@Override
+				public void componentResized(ComponentEvent e) {
+					if (updatingLayout) {
+						return;
+					}
+					// User-driven window resizing should be allowed to resize the chart.
+					clearPreservedChartViewportSize();
+					updateChartScrollBarPolicies();
+				}
+			});
 			dialog.setSize(new Dimension(smallSizeX, smallSizeY));
 			setJSplitPane(setChartPane(jf), null);
 			this.legendShowing = false;
@@ -163,6 +280,9 @@ public class AChartDisplay {
 			smallSizeY = dialog.getHeight();
 			dialog.setLocation(InterfaceMain.getInstance().getFrame().getLocation());
 			dialog.setVisible(true);
+			// Capture a stable post-layout baseline once so table toggles do not ratchet down
+			// by repeatedly preserving a slightly smaller live viewport.
+			SwingUtilities.invokeLater(() -> preserveCurrentChartViewportSize());
 			DbViewer.openWindows.add(dialog);
 		}
 	}
@@ -170,50 +290,281 @@ public class AChartDisplay {
 	/**
 	 * Sets up the split pane for chart and data panels in the dialog.
 	 * @param chartPane Chart panel scroll pane
-	 * @param dataPane Data panel scroll pane
+	 * @param dataPane Data panel
 	 */
-	private void setJSplitPane(JScrollPane chartPane, JScrollPane dataPane) {
-		sp = null;
-		if (dataPane != null) {
-			sp = new JSplitPane();
-			sp.setOrientation(JSplitPane.VERTICAL_SPLIT);
-			sp.setTopComponent(chartPane);
-			sp.setBottomComponent(dataPane);
-			sp.setDividerLocation(0.9);
-			sp.setDividerSize(5);
-			dialog.setContentPane(sp);
-		} else {
-			dialog.setContentPane(chartPane);
+	private void setJSplitPane(JPanel chartPane, DataPanel dataPane) {
+		updatingLayout = true;
+		try {
+			ensurePreservedChartViewportSize();
+			applyPreservedChartViewportSize();
+			if (dataPane != null) {
+				dataPane.applyTableViewportSizing();
+			}
+			sp = null;
+			if (dataPane != null) {
+				sp = new JSplitPane();
+				sp.setOrientation(JSplitPane.VERTICAL_SPLIT);
+				sp.setTopComponent(chartPane);
+				sp.setBottomComponent(dataPane);
+				sp.setResizeWeight(0.0);
+				sp.setDividerSize(5);
+				dialog.setContentPane(sp);
+			} else {
+				dialog.setContentPane(chartPane);
+			}
+			sizeDialogToFitLayout(dataPane);
+			dialog.getContentPane().revalidate();
+			dialog.getContentPane().repaint();
+			if (sp != null && dataPane != null) {
+				setSplitDividerForTable(dataPane);
+			}
+			logLayoutState("setJSplitPane-afterLayout", dataPane != null);
+			updateChartScrollBarPolicies();
+			SwingUtilities.invokeLater(() -> {
+				if (sp != null && dataPane != null) {
+					setSplitDividerForTable(dataPane);
+				}
+				fitChartViewToViewport();
+				logLayoutState("setJSplitPane-postEDT", dataPane != null);
+			});
+		} finally {
+			updatingLayout = false;
 		}
-		dialog.pack();
 		// dialog.setVisible(true); // YD moved to init()
 	}
 
-	/**
-	 * Creates the chart panel with options and returns as a scroll pane.
-	 * @param jfreechart Chart to display
-	 * @return JScrollPane containing chart panel
-	 */
-	private JScrollPane setChartPane(JFreeChart jfreechart) {
-		if (chartPaneScroll == null) {
-			ChartPanel chartPanel = new ChartPanel(jfreechart);
-			JPanel chartPane = new JPanel(new BorderLayout());
-			chartPane.add(chartPanel, BorderLayout.CENTER);
-			chartPane.add(chartOption(), BorderLayout.SOUTH);
-			chartPane.setMinimumSize(new Dimension(640, 360));
-			chartPane.updateUI();
-			chartPaneScroll = new JScrollPane(chartPane);
+	private void preserveCurrentChartViewportSize() {
+		if (chartPaneScroll == null || jp == null || chartPaneContainer == null) {
+			return;
 		}
-		return chartPaneScroll;
+		Dimension viewportSize = chartPaneScroll.getViewport().getExtentSize();
+		if (viewportSize == null || viewportSize.width <= 0 || viewportSize.height <= 0) {
+			return;
+		}
+		if (preservedChartViewportSize == null) {
+			preservedChartViewportSize = new Dimension(viewportSize);
+		} else {
+			// Keep the largest observed viewport so tiny layout fluctuations do not shrink
+			// the preserved size over repeated show/hide toggles.
+			preservedChartViewportSize.width = Math.max(preservedChartViewportSize.width, viewportSize.width);
+			preservedChartViewportSize.height = Math.max(preservedChartViewportSize.height, viewportSize.height);
+		}
+		applyPreservedChartViewportSize();
+	}
+
+	private void ensurePreservedChartViewportSize() {
+		if (preservedChartViewportSize != null) {
+			return;
+		}
+		Dimension viewportSize = null;
+		if (chartPaneScroll != null) {
+			viewportSize = chartPaneScroll.getViewport().getExtentSize();
+		}
+		if (viewportSize == null || viewportSize.width <= 0 || viewportSize.height <= 0) {
+			if (chartPanel != null) {
+				viewportSize = chartPanel.getPreferredSize();
+			}
+		}
+		if (viewportSize == null || viewportSize.width <= 0 || viewportSize.height <= 0) {
+			viewportSize = new Dimension(640, 360);
+		}
+		preservedChartViewportSize = new Dimension(viewportSize);
+	}
+
+	private void applyPreservedChartViewportSize() {
+		if (preservedChartViewportSize == null) {
+			return;
+		}
+		// Keep only the target size cache; the actual view size is synchronized to the
+		// viewport in fitChartViewToViewport() to avoid scrollbars.
+	}
+
+	private void clearPreservedChartViewportSize() {
+		preservedChartViewportSize = null;
+		if (jp != null) {
+			jp.setPreferredSize(null);
+		}
+		if (chartPaneContainer != null) {
+			chartPaneContainer.setPreferredSize(null);
+		}
+	}
+
+	private void updateChartScrollBarPolicies() {
+		if (chartPaneScroll == null) {
+			return;
+		}
+		chartPaneScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+		chartPaneScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+		chartPaneScroll.revalidate();
+		chartPaneScroll.repaint();
+	}
+
+	private void fitChartViewToViewport() {
+		if (chartPaneScroll == null || jp == null) {
+			return;
+		}
+		Dimension target;
+		if (preservedChartViewportSize != null && sp == null) {
+			// Table is hidden: use the stable preserved baseline so that layout-timing
+			// jitter (the live viewport may not have updated yet after setSize/revalidate)
+			// does not cause a 1-2 px ratchet shrink on each Hide Table toggle.
+			target = new Dimension(preservedChartViewportSize);
+		} else {
+			// Table is showing (sp != null): the chart shares vertical space with the
+			// table, so we must fit jp to the actual available top-panel viewport.
+			target = chartPaneScroll.getViewport().getExtentSize();
+			if (target == null || target.width <= 0 || target.height <= 0) {
+				return;
+			}
+		}
+		jp.setPreferredSize(target);
+		jp.revalidate();
+		if (chartPaneContainer != null) {
+			chartPaneContainer.revalidate();
+		}
+	}
+
+	private int getTargetSplitTopHeight() {
+		int target = getChartViewportTargetSize().height + getChartOptionHeight();
+		return Math.max(220, target);
+	}
+
+	private void setSplitDividerForTable(DataPanel dataPane) {
+		if (sp == null || dataPane == null) {
+			return;
+		}
+		int splitHeight = sp.getHeight();
+		if (splitHeight <= 0) {
+			return;
+		}
+		int minTop = 220;
+		int desiredBottom = Math.max(120, getDataPanePreferredHeight(dataPane) + TABLE_CHROME_ALLOWANCE);
+		int maxBottom = Math.max(120, splitHeight - sp.getDividerSize() - minTop);
+		int bottom = Math.min(desiredBottom, maxBottom);
+		int divider = splitHeight - sp.getDividerSize() - bottom;
+		divider = Math.max(minTop, divider);
+		sp.setDividerLocation(divider);
+	}
+
+	private void logLayoutState(String phase, boolean withTable) {
+		if (!DEBUG_LAYOUT) {
+			return;
+		}
+		Dimension dialogSize = dialog == null ? null : dialog.getSize();
+		Dimension contentSize = dialog == null || dialog.getContentPane() == null ? null : dialog.getContentPane().getSize();
+		Dimension viewportSize = chartPaneScroll == null ? null : chartPaneScroll.getViewport().getExtentSize();
+		Dimension chartViewPreferred = jp == null ? null : jp.getPreferredSize();
+		Dimension chartPanelPreferred = chartPanel == null ? null : chartPanel.getPreferredSize();
+		int divider = sp == null ? -1 : sp.getDividerLocation();
+		System.out.println("[AChartDisplay] " + phase + " withTable=" + withTable +
+				" dialog=" + dialogSize + " content=" + contentSize +
+				" viewport=" + viewportSize + " viewPreferred=" + chartViewPreferred +
+				" chartPreferred=" + chartPanelPreferred + " divider=" + divider);
+	}
+
+	private int getChartPanePreferredHeight(Component chartPane) {
+		int height = Math.max(240, chartPane.getPreferredSize().height);
+		return height;
+	}
+
+	private Dimension getChartViewportTargetSize() {
+		if (preservedChartViewportSize != null) {
+			return new Dimension(preservedChartViewportSize);
+		}
+		if (chartPanel != null && chartPanel.getPreferredSize() != null) {
+			Dimension preferred = chartPanel.getPreferredSize();
+			if (preferred.width > 0 && preferred.height > 0) {
+				return preferred;
+			}
+		}
+		return new Dimension(640, 360);
+	}
+
+	private int getChartOptionHeight() {
+		return Math.max(28, chartOptionsHeight);
+	}
+
+	private void sizeDialogToFitLayout(DataPanel dataPane) {
+		if (dialog == null) {
+			return;
+		}
+		Dimension chartSize = getChartViewportTargetSize();
+		int contentWidth = chartSize.width;
+		int contentHeight = chartSize.height + getChartOptionHeight();
+		if (dataPane != null) {
+			int dataHeight = Math.max(120, getDataPanePreferredHeight(dataPane) + TABLE_CHROME_ALLOWANCE);
+			contentHeight += 5 + dataHeight;
+			contentWidth = Math.max(contentWidth, dataPane.getPreferredSize().width);
+		}
+		Insets windowInsets = dialog.getInsets();
+		Rectangle screenBounds = getAvailableScreenBounds();
+		int desiredWidth = contentWidth + windowInsets.left + windowInsets.right;
+		int desiredHeight = contentHeight + windowInsets.top + windowInsets.bottom;
+		desiredWidth = Math.min(desiredWidth, Math.max(640, screenBounds.width - 40));
+		desiredHeight = Math.min(desiredHeight, Math.max(360, screenBounds.height - 40));
+
+		dialog.setSize(desiredWidth, desiredHeight);
+		logLayoutState("sizeDialogToFitLayout", dataPane != null);
+	}
+
+	private int getDataPanePreferredHeight(Component dataPane) {
+		int preferred = dataPane.getPreferredSize().height;
+		if (dataPane instanceof DataPanel) {
+			preferred = Math.max(preferred, ((DataPanel) dataPane).getPreferredDisplayHeight());
+		}
+		return preferred;
+	}
+
+	private Rectangle getAvailableScreenBounds() {
+		GraphicsConfiguration gc = dialog == null ? null : dialog.getGraphicsConfiguration();
+		if (gc == null) {
+			gc = InterfaceMain.getInstance().getFrame().getGraphicsConfiguration();
+		}
+		Rectangle bounds = new Rectangle(gc.getBounds());
+		Insets insets = Toolkit.getDefaultToolkit().getScreenInsets(gc);
+		bounds.x += insets.left;
+		bounds.y += insets.top;
+		bounds.width -= (insets.left + insets.right);
+		bounds.height -= (insets.top + insets.bottom);
+		return bounds;
+	}
+
+	/**
+	 * Creates the chart panel with options and returns as a container panel.
+	 * @param jfreechart Chart to display
+	 * @return JPanel containing chart and controls
+	 */
+	private JPanel setChartPane(JFreeChart jfreechart) {
+		if (chartPaneContainer == null) {
+			jp = new JPanel(new BorderLayout());
+			jp.setMinimumSize(new Dimension(640, 360));
+			chartPaneScroll = new JScrollPane(jp);
+			chartPaneScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+			chartPaneScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+			chartPaneContainer = new JPanel(new BorderLayout());
+			chartPaneContainer.add(chartPaneScroll, BorderLayout.CENTER);
+			Box options = chartOption();
+			chartOptionsHeight = Math.max(28, options.getPreferredSize().height);
+			chartPaneContainer.add(options, BorderLayout.SOUTH);
+			chartPaneContainer.setMinimumSize(new Dimension(640, 390));
+		}
+		ThumbnailUtilNew.validateChartPane(jp);
+		chartPanel = new SeriesChartPanel(jfreechart);
+		jp.add(chartPanel, BorderLayout.CENTER);
+		jp.revalidate();
+		jp.repaint();
+		chartPaneContainer.revalidate();
+		chartPaneContainer.repaint();
+		return chartPaneContainer;
 	}
 
 	/**
 	 * Creates the data panel for the chart and returns as a scroll pane.
 	 * @param jfreechart Chart to display
 	 * @param unitLookup Units lookup map
-	 * @return JScrollPane containing data panel
+	 * @return DataPanel containing data table and controls
 	 */
-	private JScrollPane setDataPane(JFreeChart jfreechart, HashMap<String, String> unitLookup) {
+	private DataPanel setDataPane(JFreeChart jfreechart, HashMap<String, String> unitLookup) {
 		DataPanel dataPane = null;
 		try {
 			if (jfreechart.getPlot().getPlotType().contains("Category")) {
@@ -239,7 +590,7 @@ public class AChartDisplay {
 		} catch (CloneNotSupportedException e1) {
 			// ignore
 		}
-		return new JScrollPane(dataPane);
+		return dataPane;
 	}
 
 	/**
@@ -247,25 +598,45 @@ public class AChartDisplay {
 	 * @return Box containing chart option buttons
 	 */
 	private Box chartOption() {
-		JButton jb = new JButton("Chart Options");
-		jb.setName("ChartOptions");
-		java.awt.event.MouseListener ml = new MouseAdapter() {
-			public void mouseClicked(MouseEvent e) {
-				if (myOpts != null) {
-					myOpts.dispose();
-					myOpts = null;
+		JButton jbCustomize = new JButton("Customize");
+		JButton jbCopyChart = new JButton("Copy Chart");
+		JButton jbCopyData = new JButton("Copy Data");
+		jbCustomize.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (chartPanel != null) {
+					chartPanel.doEditChartProperties();
 				}
-				myOpts = new ChartOptions(sp, e.getXOnScreen(), e.getYOnScreen());
 			}
-		};
-		jb.addMouseListener(ml);
+		});
+		jbCopyChart.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (chartPanel != null) {
+					chartPanel.doCopy();
+				}
+			}
+		});
+		jbCopyData.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				DataPanel dataPane = resolveDataPaneForCopy();
+				if (dataPane == null || !dataPane.copyTableToClipboard()) {
+					JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(),
+							"No chart data is available to copy.",
+							"Copy Data", JOptionPane.INFORMATION_MESSAGE);
+				}
+			}
+		});
 		Box box = Box.createHorizontalBox();
-		box.add(jb);
-		jb.setName("ChartOptions");
+		box.add(jbCustomize);
+		box.add(jbCopyChart);
+		box.add(jbCopyData);
 		// Table show/hide button
 		java.awt.event.MouseListener mlTable = new MouseAdapter() {
 			public void mouseClicked(MouseEvent e) {
 				if (!tableShowing) {
+					preserveCurrentChartViewportSize();
 					jb_table.setText("Hide Table");
 					setJSplitPane(setChartPane(chart.getChart()), setDataPane(chart.getChart(), chart.getUnitsLookup()));
 				} else {
@@ -297,164 +668,78 @@ public class AChartDisplay {
 		return box;
 	}
 
-	private class ChartOptions extends JDialog implements ActionListener, ItemListener {
-
-		private static final long serialVersionUID = 1L;
-		private final String options[] = { "Original Chart Type",
-				// Chart is modified in thumb nail life cycle
-				"Modify Legend", "Make a Marker", "Add/Remove Annotation",
-				// Chart is modified in single chart life cycle
-				"Show Legend", "Show As 3D",
-				// Chart is for representation only
-				"Show As PieChart", // "Show As HistogramChart",
-				"Select a Decimal Format", "Export Data to Excel" };
-		// "Generate Report" };
-		private Box box;
-		// Chart data manipulation
-		private DataPanel datapane;
-		private JFreeChart jfreechart;
-
-		public ChartOptions(JSplitPane sp, int x, int y) {
-			super((Frame) null, false);
-			new ModifyLegend(charts, id);
+	private DataPanel resolveDataPaneForCopy() {
+		if (tableShowing && sp != null && sp.getBottomComponent() instanceof DataPanel) {
+			return (DataPanel) sp.getBottomComponent();
 		}
-
-		private void createButtonItem(int start, int end) {
-			box.add(Box.createVerticalStrut(5));
-			for (int i = start; i < end; i++) {
-				JButton rbMenuItem = new JButton(options[i]);
-				rbMenuItem.setPreferredSize(new Dimension(120, 20));
-				rbMenuItem.setActionCommand(String.valueOf(i));
-				rbMenuItem.addActionListener(this);
-				box.add(rbMenuItem);
-				box.add(Box.createVerticalStrut(5));
-			}
-		}
-
-		private void createCheckBoxItem() {
-			for (int i = 4; i < 6; i++) {
-				JCheckBox cbMenuItem = new JCheckBox(options[i]);
-				cbMenuItem.setActionCommand(String.valueOf(i));
-				if (i == 4) {
-					cbMenuItem.setSelected(jfreechart.getLegend().visible);
-				} else if (i == 5) {
-					// No 3D for pie and histogram chart
-					if (!(jfreechart.getPlot() instanceof PiePlot) && !(jfreechart.getPlot() instanceof XYPlot
-							&& jfreechart.getXYPlot().getDataset() instanceof IntervalXYDataset))
-						cbMenuItem.setSelected(ChartOptionsUtil.is3DChart(jfreechart));
-				}
-				cbMenuItem.addItemListener(this);
-				box.add(cbMenuItem);
-			}
-		}
-
-		public void actionPerformed(ActionEvent e) {
-			if (e.getSource() instanceof JButton)
-				processRadioButtonMenuItem(e.getActionCommand());
-			dispose();
-		}
-
-		private void processRadioButtonMenuItem(String action) {
-			try {
-				switch (Integer.valueOf(action.trim()).intValue()) {
-				case 0:
-					curchart = null;
-					refreshChart(chart.getChart());//jfreechart);
-					break;
-				case 1: // Modify Legend
-					if (curchart != null && curchart.getPlot() instanceof PiePlot
-							|| (jfreechart.getPlot().getPlotType().contains("XY")
-									&& jfreechart.getXYPlot().getDataset() instanceof IntervalXYDataset)) {
-						JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Not support for this Chart", "Information",
-								JOptionPane.INFORMATION_MESSAGE);
-						return;
-					} else
-						new ModifyLegend(charts, id);
-					break;
-				case 2: // Modify Marker; curchart only use for chart type is a pie chart
-					if (curchart != null && curchart.getPlot() instanceof PiePlot
-							|| (jfreechart.getPlot().getPlotType().contains("XY")
-									&& jfreechart.getXYPlot().getDataset() instanceof IntervalXYDataset)) {
-						JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Not support for this Chart", "Information",
-								JOptionPane.INFORMATION_MESSAGE);
-						return;
-					} else {
-						ChartMarker cm = new ChartMarker(chart, dialog);
-						jfreechart = cm.getJfchart();
-					}
-					break;
-				case 3: // Modify Annotation
-					if (curchart != null && curchart.getPlot() instanceof PiePlot
-							|| (jfreechart.getPlot().getPlotType().contains("XY")
-									&& jfreechart.getXYPlot().getDataset() instanceof IntervalXYDataset)) {
-						JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Not support for this Chart", "Information",
-								JOptionPane.INFORMATION_MESSAGE);
-						return;
-					} else
-						jfreechart = new AnnotationChartPane(chart).getJfchart();
-					break;
-				case 6: // pie chart
-					curchart = ChartOptionsUtil.showPieChart(chart.getPath(), chart.getGraphName(),
-							chart.getMeta() + "|" + chart.getMetaCol(), chart.getAxis_name_unit(), chart.getChart());
-					refreshChart(curchart);
-					break;
-				case 7: // Show different decimal point
-					new SelectDecimalFormat(datapane);
-					break;
-				case 8: // Export Data
-					if (JOptionPane.showConfirmDialog(InterfaceMain.getInstance().getFrame(), "Meta Data Also?", "choose one",
-							JOptionPane.YES_NO_CANCEL_OPTION) == JOptionPane.YES_OPTION)
-						new ExportExcel("", datapane.getTableCol(), datapane.getDataValue(), chart.getTitles()[1],
-							chart.getMetaCol(), chart.getMeta(), chart.getAxis_name_unit()[1]);
-					else
-						new ExportExcel("", datapane.getTableCol(), datapane.getDataValue());
-					break;
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
-				this.dispose();
-				return;
-			}
-		}
-
-		private void refreshChart(JFreeChart jf) {
-			ChartUtils.applyCurrentTheme(jf);
-			ChartUtil.applyGraphicsDefaults(jf);
-			ThumbnailUtilNew.validateChartPane(jp);
-			jp.add(new ChartPanel(jf), BorderLayout.CENTER);
-			jp.updateUI();
-		}
-
-		@Override
-		public void itemStateChanged(ItemEvent e) {
-			JCheckBox cbMenuItem = (JCheckBox) e.getSource();
-			String action = cbMenuItem.getActionCommand();
-			try {
-				switch (Integer.valueOf(action.trim()).intValue()) {
-				case 4:
-					if (jfreechart.getPlot().getPlotType().contains("Pie"))
-						JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Show/Hide Legend Not Apply for Pie Chart", "Information",
-								JOptionPane.INFORMATION_MESSAGE);
-					else {
-						jfreechart.getLegend().visible = !jfreechart.getLegend().isVisible();
-						cbMenuItem.setSelected(jfreechart.getLegend().visible);
-						cbMenuItem.revalidate();
-					}
-					break;
-				case 5:
-					ChartOptionsUtil.changeChartType(chart.getPaint(), jfreechart, e.getStateChange());
-					break;
-				}
-			} catch (Exception e1) {
-				e1.printStackTrace();
-				this.dispose();
-			}
-			ChartUtils.applyCurrentTheme(jfreechart);
-			ChartUtil.applyGraphicsDefaults(jfreechart);
-			ThumbnailUtilNew.validateChartPane(jp);
-			jp.add(new ChartPanel(jfreechart), BorderLayout.CENTER);
-			jp.updateUI();
-			this.dispose();
-		}
+		return setDataPane(chart.getChart(), chart.getUnitsLookup());
 	}
+
+	private void insertSeriesTab(Component editorComponent, JFreeChart editorChart) {
+		if (!(editorComponent instanceof Container)) {
+			return;
+		}
+		JTabbedPane tabs = findTabbedPane((Container) editorComponent);
+		if (tabs == null || hasSeriesTab(tabs)) {
+			return;
+		}
+		int insertIndex = resolveSeriesInsertIndex(tabs);
+		JScrollPane seriesPanel = ModifyLegend.buildEmbeddedPanel(charts, id);
+		tabs.insertTab("Series", null, seriesPanel, null, insertIndex);
+	}
+
+	private JTabbedPane findTabbedPane(Container root) {
+		for (Component child : root.getComponents()) {
+			if (child instanceof JTabbedPane) {
+				return (JTabbedPane) child;
+			}
+			if (child instanceof Container) {
+				JTabbedPane nested = findTabbedPane((Container) child);
+				if (nested != null) {
+					return nested;
+				}
+			}
+		}
+		return null;
+	}
+
+	private boolean hasSeriesTab(JTabbedPane tabs) {
+		for (int i = 0; i < tabs.getTabCount(); i++) {
+			if ("Series".equalsIgnoreCase(tabs.getTitleAt(i))) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private int resolveSeriesInsertIndex(JTabbedPane tabs) {
+		// Place Series first — it is the most commonly used tab.
+		return 0;
+	}
+
+	private void refreshDisplayedChart(JFreeChart updatedChart) {
+		if (updatedChart == null) {
+			return;
+		}
+		ChartUtils.applyCurrentTheme(updatedChart);
+		ChartUtil.applyGraphicsDefaults(updatedChart);
+		if (chartPanel != null) {
+			chartPanel.setChart(updatedChart);
+			chartPanel.repaint();
+		}
+		if (dialog != null) {
+			dialog.repaint();
+		}
+		syncLegendButton(updatedChart);
+	}
+
+	private void syncLegendButton(JFreeChart activeChart) {
+		if (activeChart.getLegend() != null) {
+			legendShowing = activeChart.getLegend().isVisible();
+		} else {
+			legendShowing = false;
+		}
+		jb_legend.setText(legendShowing ? "Hide Legend" : "Show Legend");
+	}
+
 }

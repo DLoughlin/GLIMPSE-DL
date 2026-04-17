@@ -447,6 +447,7 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 
 	private JMenuItem toggleAutoGraphicsMenu;
 	private Properties savedProperties;
+	private final Object propertiesLock = new Object();
 	private UndoManager undoManager;
 
 	// New: Help menu primary item
@@ -1059,6 +1060,7 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 		final long createGuiStart = System.nanoTime();
 		main = null;
 		main = new InterfaceMain();
+		Properties startupProps = main.getProperties();
 		main.resetStartupProgress(path != null ? STARTUP_MESSAGE_WITH_DB : STARTUP_MESSAGE_WITHOUT_DB);
 		main.mainFrame = new JFrame("Model Interface");
 		String image_str = Paths.get(".", "config", "results.png").toString();
@@ -1066,15 +1068,15 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 		main.mainFrame.getContentPane().setBackground(UNIFIED_BG);
 		// Do not override default fonts; let the platform Look & Feel decide.
 		main.mainFrame.getRootPane().setBorder(javax.swing.BorderFactory.createLineBorder(UNIFIED_BORDER, 1));
-		if (Boolean.parseBoolean(main.savedProperties.getProperty("isMaximized", "false"))) {
+		if (Boolean.parseBoolean(startupProps.getProperty("isMaximized", "false"))) {
 			main.mainFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
 		}
-		String lastHeight = main.savedProperties.getProperty("lastHeight", "600");
-		String lastWidth = main.savedProperties.getProperty("lastWidth", "800");
+		String lastHeight = startupProps.getProperty("lastHeight", "600");
+		String lastWidth = startupProps.getProperty("lastWidth", "800");
 
 		System.out.println("Using size " + lastWidth + " width x " + lastHeight + " height");
 
-		String enableMapping = main.savedProperties.getProperty("enableMapping", "true");
+		String enableMapping = startupProps.getProperty("enableMapping", "true");
 		if (enableMapping != null) {
 			try {
 				boolean enableMaps = Boolean.parseBoolean(enableMapping);
@@ -1083,7 +1085,7 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 				System.out.println("Couldn't parse enableMaps: " + enableMapping);
 			}
 		}
-		String enableSankey = main.savedProperties.getProperty("enableSankey", "true");
+		String enableSankey = startupProps.getProperty("enableSankey", "true");
 		if (enableSankey != null) {
 			try {
 				boolean enableSankeys = Boolean.parseBoolean(enableSankey);
@@ -1802,80 +1804,81 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 	private InterfaceMain() {
 		mainFrame = null;
 		savedProperties = new Properties();
-		if (propertiesFile.exists()) {
-			System.out.println("Props: " + propertiesFile.getAbsolutePath());
+		synchronized (propertiesLock) {
+			if (propertiesFile.exists()) {
+				System.out.println("Props: " + propertiesFile.getAbsolutePath());
 
-			try {
-				savedProperties.loadFromXML(new FileInputStream(propertiesFile));
-				String prettyPrintProperty = savedProperties.getProperty("pretty-print", null);
-				if (System.getProperty("ModelInterface.pretty-print", null) == null && prettyPrintProperty != null) {
-					System.getProperties().setProperty("ModelInterface.pretty-print", prettyPrintProperty);
+				try {
+					savedProperties.loadFromXML(new FileInputStream(propertiesFile));
+					String prettyPrintProperty = savedProperties.getProperty("pretty-print", null);
+					if (System.getProperty("ModelInterface.pretty-print", null) == null && prettyPrintProperty != null) {
+						System.getProperties().setProperty("ModelInterface.pretty-print", prettyPrintProperty);
+					}
+				} catch (FileNotFoundException notFound) {
+					// well I checked if it existed before so..
+				} catch (IOException ioe) {
+					ioe.printStackTrace();
 				}
-			} catch (FileNotFoundException notFound) {
-				// well I checked if it existed before so..
-			} catch (IOException ioe) {
-				ioe.printStackTrace();
 			}
-		}
 
-		// Ensure required properties exist
-		if (!savedProperties.containsKey("allYearList")) {
-			String allYears = "1990;2005;2010;2015;2020;2021;2025;2030;2035;2040;2045;2050;2055;2060;2065;2070;2075;2080;2085;2090;2095;2100";
-			List<String> yearList = new ArrayList<>(Arrays.asList(allYears.split(";")));
-			yearList.sort(Comparator.naturalOrder());
-			savedProperties.setProperty("allYearList", String.join(";", yearList));
-		}
-		if (!savedProperties.containsKey("selectedYearList")) {
-			String selectedYears = "2015;2020;2021;2025;2030;2035;2040;2045;2050;2055;2060;2065;2070;2075;2080;2085;2090;2095;2100";
-			List<String> yearList = new ArrayList<>(Arrays.asList(selectedYears.split(";")));
-			yearList.sort(Comparator.naturalOrder());
-			savedProperties.setProperty("selectedYearList", String.join(";", yearList));
-		}
-		if (!savedProperties.containsKey("lastWidth")) {
-			savedProperties.setProperty("lastWidth", "1600");
-		}
-		if (!savedProperties.containsKey("lastHeight")) {
-			savedProperties.setProperty("lastHeight", "900");
-		}
-		if (!savedProperties.containsKey("scenarioRegionsSplit")) {
-			savedProperties.setProperty("scenarioRegionsSplit", "275");
-		}
-		if (!savedProperties.containsKey("remove1975")) {
-			savedProperties.setProperty("remove1975", "true");
-		}
-		if (!savedProperties.containsKey("tableCreatorSplit")) {
-			savedProperties.setProperty("tableCreatorSplit", "500");
-		}
-		if (!savedProperties.containsKey("queriesSplit")) {
-			savedProperties.setProperty("queriesSplit", "700");
-		}
-		if (!savedProperties.containsKey("enableMapping")) {
-			savedProperties.setProperty("enableMapping", "true");
-		}
-		if (!savedProperties.containsKey("favoriteQueriesFile")) {
-			savedProperties.setProperty("favoriteQueriesFile", ".\\config\\favorite_queries_list.txt");
-		}
-		if (!savedProperties.containsKey("presetRegionsFile")) {
-			savedProperties.setProperty("presetRegionsFile", ".\\config\\preset_region_list.txt");
-		}
-		if (!savedProperties.containsKey("unitsFile")) {
-			savedProperties.setProperty("unitsFile", ".\\config\\units_rules.csv");
-		}
-		if (!savedProperties.containsKey("mapResourceFolder")) {
-			savedProperties.setProperty("mapResourceFolder", ".\\map_resources");
-		}
-		if (!savedProperties.containsKey("RecentFilesLength")) {
-			savedProperties.setProperty("RecentFilesLength", "5");
-		}
-		if (!savedProperties.containsKey("suppressStartupWarning")) {
-			savedProperties.setProperty("suppressStartupWarning", "false");
-		}
-		if (!savedProperties.containsKey("isMaximized")) {
-			savedProperties.setProperty("isMaximized", "false");
-		}
-		if (!savedProperties.containsKey("zipExportedScenarios")) {
-			savedProperties.setProperty("zipExportedScenarios", "false");
-		}
+			// Ensure required properties exist
+			if (!savedProperties.containsKey("allYearList")) {
+				String allYears = "1990;2005;2010;2015;2020;2021;2025;2030;2035;2040;2045;2050;2055;2060;2065;2070;2075;2080;2085;2090;2095;2100";
+				List<String> yearList = new ArrayList<>(Arrays.asList(allYears.split(";")));
+				yearList.sort(Comparator.naturalOrder());
+				savedProperties.setProperty("allYearList", String.join(";", yearList));
+			}
+			if (!savedProperties.containsKey("selectedYearList")) {
+				String selectedYears = "2015;2020;2021;2025;2030;2035;2040;2045;2050;2055;2060;2065;2070;2075;2080;2085;2090;2095;2100";
+				List<String> yearList = new ArrayList<>(Arrays.asList(selectedYears.split(";")));
+				yearList.sort(Comparator.naturalOrder());
+				savedProperties.setProperty("selectedYearList", String.join(";", yearList));
+			}
+			if (!savedProperties.containsKey("lastWidth")) {
+				savedProperties.setProperty("lastWidth", "1600");
+			}
+			if (!savedProperties.containsKey("lastHeight")) {
+				savedProperties.setProperty("lastHeight", "900");
+			}
+			if (!savedProperties.containsKey("scenarioRegionsSplit")) {
+				savedProperties.setProperty("scenarioRegionsSplit", "275");
+			}
+			if (!savedProperties.containsKey("remove1975")) {
+				savedProperties.setProperty("remove1975", "true");
+			}
+			if (!savedProperties.containsKey("tableCreatorSplit")) {
+				savedProperties.setProperty("tableCreatorSplit", "500");
+			}
+			if (!savedProperties.containsKey("queriesSplit")) {
+				savedProperties.setProperty("queriesSplit", "700");
+			}
+			if (!savedProperties.containsKey("enableMapping")) {
+				savedProperties.setProperty("enableMapping", "true");
+			}
+			if (!savedProperties.containsKey("favoriteQueriesFile")) {
+				savedProperties.setProperty("favoriteQueriesFile", ".\\config\\favorite_queries_list.txt");
+			}
+			if (!savedProperties.containsKey("presetRegionsFile")) {
+				savedProperties.setProperty("presetRegionsFile", ".\\config\\preset_region_list.txt");
+			}
+			if (!savedProperties.containsKey("unitsFile")) {
+				savedProperties.setProperty("unitsFile", ".\\config\\units_rules.csv");
+			}
+			if (!savedProperties.containsKey("mapResourceFolder")) {
+				savedProperties.setProperty("mapResourceFolder", ".\\map_resources");
+			}
+			if (!savedProperties.containsKey("RecentFilesLength")) {
+				savedProperties.setProperty("RecentFilesLength", "5");
+			}
+			if (!savedProperties.containsKey("suppressStartupWarning")) {
+				savedProperties.setProperty("suppressStartupWarning", "false");
+			}
+			if (!savedProperties.containsKey("isMaximized")) {
+				savedProperties.setProperty("isMaximized", "false");
+			}
+			if (!savedProperties.containsKey("zipExportedScenarios")) {
+				savedProperties.setProperty("zipExportedScenarios", "false");
+			}
 		if (!savedProperties.containsKey("copyIncludeQueryName")) {
 			savedProperties.setProperty("copyIncludeQueryName", "false");
 		}
@@ -1954,17 +1957,18 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 				Double.toString(parseBoundedDoubleValue(savedProperties.getProperty(GRAPHICS_THUMBNAIL_LINE_WIDTH_PROPERTY),
 						DEFAULT_GRAPHICS_THUMBNAIL_LINE_WIDTH, MIN_GRAPHICS_LINE_WIDTH_SCALE,
 						MAX_GRAPHICS_LINE_WIDTH_SCALE)));
-		// Persist if any defaults were added
-		persistProperties();
+			// Persist if any defaults were added
+			persistProperties();
 
-		oldControl = "ModelInterface";
-		if (path != null)
-			savedProperties.setProperty("paramPath", path);
-		else
-			savedProperties.remove("paramPath");
-		// added by Dan to allow query file to be specified as runtime argument
-		if (queryFilename != null)
-			savedProperties.setProperty("queryFile", queryFilename);
+			oldControl = "ModelInterface";
+			if (path != null)
+				savedProperties.setProperty("paramPath", path);
+			else
+				savedProperties.remove("paramPath");
+			// added by Dan to allow query file to be specified as runtime argument
+			if (queryFilename != null)
+				savedProperties.setProperty("queryFile", queryFilename);
+		}
 
 	}
 
@@ -2019,14 +2023,16 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 
 	private File promptForExecutable(String title) {
 		FileChooser chooser = FileChooserFactory.getFileChooser();
-		String lastDir = savedProperties != null ? savedProperties.getProperty("lastDirectory", ".") : ".";
+		String lastDir = getProperties().getProperty("lastDirectory", ".");
 		File start = new File(lastDir);
 		File[] files = chooser.doFilePrompt(mainFrame, title, FileChooser.LOAD_DIALOG, start, null);
 		if (files != null && files.length > 0 && files[0] != null) {
 			File selected = files[0];
-			if (savedProperties != null && selected.getParent() != null) {
-				savedProperties.setProperty("lastDirectory", selected.getParent());
-				persistProperties();
+			if (selected.getParent() != null) {
+				synchronized (propertiesLock) {
+					savedProperties.setProperty("lastDirectory", selected.getParent());
+					persistProperties();
+				}
 			}
 			return selected;
 		}
@@ -2051,11 +2057,13 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 		try {
 			if (mainFrame != null) {
 				updateShutdownProgressStatus(1, SHUTDOWN_TOTAL_STEPS, SHUTDOWN_MESSAGE_SAVING_WINDOW);
-				savedProperties.setProperty("isMaximized",
-						Boolean.toString((mainFrame.getExtendedState() & JFrame.MAXIMIZED_BOTH) == JFrame.MAXIMIZED_BOTH));
-				if ((mainFrame.getExtendedState() & JFrame.MAXIMIZED_BOTH) != JFrame.MAXIMIZED_BOTH) {
-					savedProperties.setProperty("lastWidth", Integer.toString(mainFrame.getWidth()));
-					savedProperties.setProperty("lastHeight", Integer.toString(mainFrame.getHeight()));
+				synchronized (propertiesLock) {
+					savedProperties.setProperty("isMaximized",
+							Boolean.toString((mainFrame.getExtendedState() & JFrame.MAXIMIZED_BOTH) == JFrame.MAXIMIZED_BOTH));
+					if ((mainFrame.getExtendedState() & JFrame.MAXIMIZED_BOTH) != JFrame.MAXIMIZED_BOTH) {
+						savedProperties.setProperty("lastWidth", Integer.toString(mainFrame.getWidth()));
+						savedProperties.setProperty("lastHeight", Integer.toString(mainFrame.getHeight()));
+					}
 				}
 			}
 			updateShutdownProgressStatus(2, SHUTDOWN_TOTAL_STEPS, SHUTDOWN_MESSAGE_SAVING_SETTINGS);
@@ -2399,8 +2407,10 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 				File file = files[0];
 				String oldUnits = InterfaceMain.unitFileLocation;
 				InterfaceMain.unitFileLocation = file.getAbsolutePath();
-				savedProperties.setProperty("unitsFile", InterfaceMain.unitFileLocation);
-				savedProperties.setProperty("lastDirectory", file.getParent());
+				synchronized (propertiesLock) {
+					savedProperties.setProperty("unitsFile", InterfaceMain.unitFileLocation);
+					savedProperties.setProperty("lastDirectory", file.getParent());
+				}
 				System.out.println("Selected units file: " + file.getAbsolutePath());
 				ModelInterface.ModelGUI2.DbViewer.enableUnitConversions = true;
 				persistProperties();
@@ -2417,8 +2427,10 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			if (files != null && files.length > 0) {
 				File file = files[0];
 				InterfaceMain.presetRegionListLocation = file.getAbsolutePath();
-				savedProperties.setProperty("presetRegionList", InterfaceMain.presetRegionListLocation);
-				savedProperties.setProperty("lastDirectory", file.getParent());
+				synchronized (propertiesLock) {
+					savedProperties.setProperty("presetRegionList", InterfaceMain.presetRegionListLocation);
+					savedProperties.setProperty("lastDirectory", file.getParent());
+				}
 				System.out.println("Selected regions file: " + file.getAbsolutePath());
 				persistProperties();
 			}
@@ -2438,8 +2450,6 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			if (dirs != null && dirs.length > 0) {
 				File dir = dirs[0];
 				InterfaceMain.shapeFileLocationPrefix = dir.getAbsolutePath();
-				savedProperties.setProperty("mapResourceFolder", InterfaceMain.shapeFileLocationPrefix);
-				savedProperties.setProperty("lastDirectory", dir.getAbsolutePath());
 				InterfaceMain.enableMapping = true;
 				System.out.println("Selected map resources folder: " + dir.getAbsolutePath());
 				File preset_shapefile = new File(dir, "mapUS52Compact_from_rmap.shp");
@@ -2458,7 +2468,11 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 				if (preset_reg32US52_shapefile.exists()) {
 					gcamReg32US52ShapeFileLocation = preset_reg32US52_shapefile.getAbsolutePath();
 				}
-				savedProperties.setProperty("enableMapping", Boolean.toString(InterfaceMain.enableMapping));
+				synchronized (propertiesLock) {
+					savedProperties.setProperty("mapResourceFolder", InterfaceMain.shapeFileLocationPrefix);
+					savedProperties.setProperty("lastDirectory", dir.getAbsolutePath());
+					savedProperties.setProperty("enableMapping", Boolean.toString(InterfaceMain.enableMapping));
+				}
 				persistProperties();
 			}
 			break;
@@ -2476,7 +2490,7 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			return;
 		}
 
-		String editorCmd = savedProperties.getProperty(type + "Editor", "").trim();
+		String editorCmd = getProperties().getProperty(type + "Editor", "").trim();
 		try {
 			if (!editorCmd.isEmpty()) {
 				java.util.List<String> cmdTokens = parseCommandTokens(editorCmd);
@@ -2530,7 +2544,7 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 	private boolean hasQueryFileConfigured() {
 		String qFile = (queryFilename != null && !queryFilename.trim().isEmpty())
 				? queryFilename
-				: (savedProperties != null ? savedProperties.getProperty("queryFile", "") : "");
+				: getProperties().getProperty("queryFile", "");
 		return qFile != null && !qFile.trim().isEmpty() && new File(qFile).exists();
 	}
 
@@ -2543,7 +2557,7 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 	private void openConfiguredQueryFileInXmlEditor() {
 		String qFile = (queryFilename != null && !queryFilename.trim().isEmpty())
 				? queryFilename
-				: savedProperties.getProperty("queryFile", "");
+				: getProperties().getProperty("queryFile", "");
 		if (qFile == null || qFile.trim().isEmpty()) {
 			showMessageDialog("No query file is configured. Use File > Select Query File first.",
 					"Query File", JOptionPane.INFORMATION_MESSAGE);
@@ -2685,36 +2699,44 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 
 	public Properties getProperties() {
 		Properties copy = new Properties();
-		if (savedProperties != null) {
-			copy.putAll(savedProperties);
+		synchronized (propertiesLock) {
+			if (savedProperties != null) {
+				copy.putAll(savedProperties);
+			}
 		}
 		return copy;
 	}
 
 	public void setProperty(String key, String value) {
-		if (savedProperties != null) {
-			if ("paramPath".equals(key)) {
-				path = value;
+		synchronized (propertiesLock) {
+			if (savedProperties != null) {
+				if ("paramPath".equals(key)) {
+					path = value;
+				}
+				savedProperties.setProperty(key, value);
+				persistProperties();
 			}
-			savedProperties.setProperty(key, value);
-			persistProperties();
 		}
 	}
 
 	public void removeProperty(String key) {
-		if (savedProperties != null) {
-			if ("paramPath".equals(key)) {
-				path = null;
+		synchronized (propertiesLock) {
+			if (savedProperties != null) {
+				if ("paramPath".equals(key)) {
+					path = null;
+				}
+				savedProperties.remove(key);
+				persistProperties();
 			}
-			savedProperties.remove(key);
-			persistProperties();
 		}
 	}
 
 	public void updateProperties(java.util.function.Consumer<Properties> updates) {
-		if (savedProperties != null) {
-			updates.accept(savedProperties);
-			persistProperties();
+		synchronized (propertiesLock) {
+			if (savedProperties != null) {
+				updates.accept(savedProperties);
+				persistProperties();
+			}
 		}
 	}
 
@@ -2856,17 +2878,19 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 	}
 
 	private void persistProperties() {
-		try (FileOutputStream fos = new FileOutputStream(propertiesFile)) {
-			Properties sortedProps = new Properties() {
-				@Override
-				public java.util.Enumeration<Object> keys() {
-					return java.util.Collections.enumeration(new java.util.TreeSet<Object>(super.keySet()));
-				}
-			};
-			sortedProps.putAll(savedProperties);
-			sortedProps.storeToXML(fos, "ModelInterface properties");
-		} catch (IOException ioe) {
-			ioe.printStackTrace();
+		synchronized (propertiesLock) {
+			try (FileOutputStream fos = new FileOutputStream(propertiesFile)) {
+				Properties sortedProps = new Properties() {
+					@Override
+					public java.util.Enumeration<Object> keys() {
+						return java.util.Collections.enumeration(new java.util.TreeSet<Object>(super.keySet()));
+					}
+				};
+				sortedProps.putAll(savedProperties);
+				sortedProps.storeToXML(fos, "ModelInterface properties");
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+			}
 		}
 	}
 
@@ -2886,4 +2910,4 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			}
 		}
 	}
-}
+}

@@ -37,13 +37,17 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.Font;
+import java.awt.GraphicsConfiguration;
 import java.awt.Graphics;
+import java.awt.GraphicsEnvironment;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Image;
 import java.awt.Insets;
+import java.awt.Rectangle;
 import java.awt.TexturePaint;
+import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -71,6 +75,7 @@ import javax.swing.text.Document;
 
 import org.jfree.chart.JFreeChart;
 
+import ModelInterface.InterfaceMain;
 import chart.Chart;
 import chart.LegendUtil;
 import graphDisplay.CreateComponent;
@@ -81,6 +86,9 @@ import graphDisplay.CreateComponent;
  */
 public class ModifyLegend extends JDialog {
     private static final long serialVersionUID = 1L;
+    private static final int MAX_VISIBLE_LEGEND_ROWS = 20;
+    private static final int DIALOG_GAP = 12;
+    private static final int DIALOG_SCREEN_PADDING = 20;
     private Chart chart;
     private Chart[] charts;
     private String[] legend;
@@ -101,6 +109,7 @@ public class ModifyLegend extends JDialog {
     // Pattern and stroke options
     int[] patternList = { 0, -4162, -4126, 11, 14, 16, 17 };
     int[] strokeList = { 0, 5, 10, 20, 30, 40 };
+    private JDialog anchorDialog;
 
     /**
      * Constructor for ModifyLegend dialog.
@@ -108,44 +117,57 @@ public class ModifyLegend extends JDialog {
      * @param id Index of the chart to modify
      */
     public ModifyLegend(Chart[] charts, int id) {
+        this(charts, id, null);
+    }
+
+    /**
+     * Constructor for ModifyLegend dialog with an anchor chart dialog for placement.
+     * @param charts Array of Chart objects
+     * @param id Index of the chart to modify
+     * @param anchorDialog Chart dialog used to position this dialog
+     */
+    public ModifyLegend(Chart[] charts, int id, JDialog anchorDialog) {
         if (charts == null)
             return;
         this.charts = charts;
         this.chart = charts[id];
+        this.anchorDialog = anchorDialog;
         cancelDialog = this;
         setLegendUI();
     }
 
-    /**
-     * Custom renderer for combo boxes with images.
-     */
-    class ImageComboBoxRenderer extends JPanel implements ListCellRenderer<String> {
-        private JLabel label;
-        private BufferedImage image;
-        public ImageComboBoxRenderer(BufferedImage image) {
-            this.image = image;
-            this.label = new JLabel();
-            setLayout(new BorderLayout());
-            add(label, BorderLayout.CENTER);
-        }
-        @Override
-        public Component getListCellRendererComponent(JList<? extends String> list, String value, int index, boolean isSelected, boolean cellHasFocus) {
-            label.setText(value);
-            return this;
-        }
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            if (image != null) {
-                g.drawImage(image, 0, 0, getWidth(), getHeight(), this);
-            }
-        }
+    /** Private no-arg constructor used by the embedded-panel factory only. */
+    private ModifyLegend() {
+        super((java.awt.Frame) null, false);
     }
 
     /**
-     * Sets up the legend modification UI.
+     * Builds the legend-editing content as a self-contained {@link JScrollPane} that
+     * can be embedded directly in a tab rather than shown in its own dialog window.
+     * The "Done" button is omitted; Apply / Save For Query / Save Default remain.
+     *
+     * @param charts Array of Chart objects
+     * @param id     Index of the chart to modify
+     * @return A JScrollPane containing the legend editor panel
      */
-    private void setLegendUI() {
+    public static JScrollPane buildEmbeddedPanel(Chart[] charts, int id) {
+        if (charts == null || id < 0 || id >= charts.length) {
+            return new JScrollPane();
+        }
+        ModifyLegend ml = new ModifyLegend();
+        ml.charts = charts;
+        ml.chart  = charts[id];
+        return ml.buildEmbeddedScrollPane();
+    }
+
+    /**
+     * Builds the legend UI panel content and wraps it in a JScrollPane.
+     * Used both by {@link #setLegendUI()} and {@link #buildEmbeddedPanel}.
+     *
+     * @param includeCloseButton whether to include the "Done" close button
+     * @return JScrollPane containing the legend grid panel
+     */
+    private JScrollPane buildContentScrollPane(boolean includeCloseButton) {
         GridBagLayout gridbag = new GridBagLayout();
         JPanel jp = new JPanel();
         jp.setLayout(gridbag);
@@ -156,8 +178,8 @@ public class ModifyLegend extends JDialog {
         c.gridwidth = GridBagConstraints.REMAINDER;
         setColumnLabel(gridbag, jp);
         legend = chart.getLegend().split(",");
+        int rowHeight = 24;
 
-        // Prepare pattern icons and TexturePaints
         ImageIcon[] iiList = new ImageIcon[patternList.length];
         tpList = new TexturePaint[patternList.length];
         for (int a = 0; a < patternList.length; a++) {
@@ -166,7 +188,6 @@ public class ModifyLegend extends JDialog {
             iiList[a] = new ImageIcon(tp.getImage().getScaledInstance(45, 25, Image.SCALE_SMOOTH));
         }
 
-        // Prepare stroke icons and TexturePaints
         ImageIcon[] iiStrokeList = new ImageIcon[strokeList.length];
         tpStrokeList = new TexturePaint[strokeList.length];
         bsStrokeList = new BasicStroke[strokeList.length];
@@ -177,20 +198,16 @@ public class ModifyLegend extends JDialog {
             iiStrokeList[a] = new ImageIcon(tp.getImage().getScaledInstance(45, 25, Image.SCALE_SMOOTH));
         }
 
-        // Add legend rows
         for (int j = 0; j < legend.length; j++) {
             c = new GridBagConstraints();
             c.fill = 1;
             String name = String.valueOf(j);
-            // Legend name field
             jtf = CreateComponent.crtJTextField(name, legend[j], j);
             jtf.setScrollOffset(10);
             jtf.setEditable(false);
-            Font font1 = new Font("SansSerif", Font.PLAIN, 14);
-            jtf.setFont(font1);
+            rowHeight = Math.max(rowHeight, jtf.getPreferredSize().height + 6);
             gridbag.setConstraints(jtf, c);
             jp.add(jtf);
-            // Color changer button
             ImageIcon icon = new ImageIcon();
             TexturePaint tpCur = LegendUtil.getTexturePaint(new Color(chart.getColor()[j]), new Color(chart.getColor()[j]), 0, 0);
             icon.setImage(tpCur.getImage());
@@ -222,7 +239,6 @@ public class ModifyLegend extends JDialog {
             c.weightx = 0.0;
         }
 
-        // Set selected index for pattern and stroke combo boxes
         for (int j = 0; j < legend.length; j++) {
             int pattern = chart.getPattern()[j];
             for (int curIDX = 0; curIDX < patternList.length; curIDX++) {
@@ -238,17 +254,19 @@ public class ModifyLegend extends JDialog {
             }
         }
 
-        // Add control buttons
-        String[] options = { "Apply", "Save For Query", "Save Default", "Done" };
+        String[] buttonNames = includeCloseButton
+                ? new String[]{ "Apply", "Save For Query", "Save Default", "Done" }
+                : new String[]{ "Apply", "Save For Query", "Save Default" };
         JButton jb1;
         Box box = Box.createHorizontalBox();
-        box.add(Box.createVerticalStrut(30));
-        for (int i = 0; i < options.length; i++) {
-            jb1 = crtJButton(options[i], i);
+        box.setBorder(BorderFactory.createEmptyBorder(3, 0, 1, 0));
+        for (int i = 0; i < buttonNames.length; i++) {
+            jb1 = crtJButton(buttonNames[i], i);
+            c = new GridBagConstraints();
             gridbag.setConstraints(jb1, c);
             box.add(jb1);
         }
-        box.add(Box.createVerticalStrut(30));
+        c = new GridBagConstraints();
         c.gridwidth = GridBagConstraints.REMAINDER;
         c.weightx = 0.0;
         c.ipadx = 60;
@@ -257,8 +275,68 @@ public class ModifyLegend extends JDialog {
 
         JScrollPane jsp = new JScrollPane(jp);
         jsp.setBorder(BorderFactory.createEmptyBorder());
+
+        Dimension panelPref = jp.getPreferredSize();
+        int visibleLegendRows = Math.min(legend.length, MAX_VISIBLE_LEGEND_ROWS);
+        int estimatedRows = 1 + visibleLegendRows + 1;
+        int desiredHeight = estimatedRows * Math.max(24, rowHeight) + 24;
+        int desiredWidth = panelPref.width + 24;
+        if (legend.length > MAX_VISIBLE_LEGEND_ROWS) {
+            jsp.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+            desiredWidth += jsp.getVerticalScrollBar().getPreferredSize().width;
+        } else {
+            jsp.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        }
+        jsp.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+
+        Rectangle availableScreen = getAvailableScreenBounds(anchorDialog != null ? anchorDialog : this);
+        desiredWidth = Math.min(desiredWidth, Math.max(300, availableScreen.width - DIALOG_SCREEN_PADDING));
+        desiredHeight = Math.min(desiredHeight, Math.max(260, availableScreen.height - DIALOG_SCREEN_PADDING));
+        jsp.setPreferredSize(new Dimension(desiredWidth, desiredHeight));
+        return jsp;
+    }
+
+    /** Builds the embedded (tab) scroll pane without the Done button. */
+    private JScrollPane buildEmbeddedScrollPane() {
+        cancelDialog = this; // never actually disposed in embedded mode
+        return buildContentScrollPane(false);
+    }
+
+    /**
+     * Custom renderer for combo boxes with images.
+     */
+    class ImageComboBoxRenderer extends JPanel implements ListCellRenderer<String> {
+        private JLabel label;
+        private BufferedImage image;
+        public ImageComboBoxRenderer(BufferedImage image) {
+            this.image = image;
+            this.label = new JLabel();
+            setLayout(new BorderLayout());
+            add(label, BorderLayout.CENTER);
+        }
+        @Override
+        public Component getListCellRendererComponent(JList<? extends String> list, String value, int index, boolean isSelected, boolean cellHasFocus) {
+            label.setText(value);
+            return this;
+        }
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            if (image != null) {
+                g.drawImage(image, 0, 0, getWidth(), getHeight(), this);
+            }
+        }
+    }
+
+    /**
+     * Sets up the legend modification UI (dialog mode – includes Done button).
+     */
+    private void setLegendUI() {
+        JScrollPane jsp = buildContentScrollPane(true);
         setContentPane(jsp);
+        setTitle("Chart Options");
         pack();
+        placeDialogToRightOfChart();
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setVisible(true);
     }
@@ -325,15 +403,15 @@ public class ModifyLegend extends JDialog {
         GridBagConstraints c = new GridBagConstraints();
         c.fill = GridBagConstraints.BOTH;
         String[] name = { "Legend", "Color", "Pattern", "Line Stroke" };
+        int configuredSize = InterfaceMain.getConfiguredFontSize();
         JLabel jl = null;
         for (int j = 0; j < name.length; j++) {
             Box box = Box.createHorizontalBox();
             if (j == 0) {
-                jl = CreateComponent.crtJLabel(name[j], name[j], 10, 2, new Dimension(200, 20));
+                jl = CreateComponent.crtJLabel(name[j], name[j], configuredSize, 2, new Dimension(200, 20));
             } else {
-                jl = CreateComponent.crtJLabel(name[j], name[j], 10, 2, new Dimension(80, 20));
+                jl = CreateComponent.crtJLabel(name[j], name[j], configuredSize, 2, new Dimension(80, 20));
             }
-            jl.setFont(new Font("Verdana", 1, 12));
             box.add(jl);
             gridbag.setConstraints(box, c);
             jp.add(box);
@@ -342,6 +420,38 @@ public class ModifyLegend extends JDialog {
         jl = new JLabel("");
         gridbag.setConstraints(jl, c);
         jp.add(jl);
+    }
+
+    private void placeDialogToRightOfChart() {
+        if (anchorDialog == null) {
+            setLocationRelativeTo(getOwner());
+            return;
+        }
+        Rectangle available = getAvailableScreenBounds(anchorDialog);
+        Rectangle anchorBounds = anchorDialog.getBounds();
+
+        int x = anchorBounds.x + anchorBounds.width + DIALOG_GAP;
+        if (x + getWidth() > available.x + available.width) {
+            x = anchorBounds.x - getWidth() - DIALOG_GAP;
+        }
+        x = Math.max(available.x, Math.min(x, available.x + available.width - getWidth()));
+
+        int y = Math.max(available.y, Math.min(anchorBounds.y, available.y + available.height - getHeight()));
+        setLocation(x, y);
+    }
+
+    private Rectangle getAvailableScreenBounds(Window anchor) {
+        GraphicsConfiguration gc = anchor == null ? null : anchor.getGraphicsConfiguration();
+        if (gc == null) {
+            gc = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
+        }
+        Rectangle bounds = new Rectangle(gc.getBounds());
+        Insets insets = Toolkit.getDefaultToolkit().getScreenInsets(gc);
+        bounds.x += insets.left;
+        bounds.y += insets.top;
+        bounds.width -= (insets.left + insets.right);
+        bounds.height -= (insets.top + insets.bottom);
+        return bounds;
     }
 
     /**
