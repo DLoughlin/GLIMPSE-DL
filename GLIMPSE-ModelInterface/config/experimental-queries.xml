@@ -1,0 +1,984 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<queries>
+			<queryGroup name="experimental: tech stock and sales shares by region">
+				<queryGroup name="all">
+					<supplyDemandQuery title="calculated output-based emission factors by tech">
+						<axis1 name="GHG">GHG[@name]</axis1>
+						<axis2 name="Year">emissions[@year]</axis2>
+						<xPath buildList="true" dataName="emissions" group="false" sumAll="false"><![CDATA[
+                declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
+                    let $scn := $parent/ancestor::scenario,
+                        $rgn := $parent (: /ancestor::region :)
+                    return
+                        document { element scenario {
+                            $scn/@*,
+                            element region {
+                                $rgn/@*,
+                                $append
+                            }
+                        }}
+                };
+                declare function local:run-emiss-factors($scenarios as xs:string*, $regions as xs:string*, $collection as xs:string) as node()* {
+                    unordered {
+                    let $regionsG := if(not($regions[1] = 'Global'))
+                        then $regions
+                        else distinct-values(collection($collection)/scenario/world/*[@type='region']/@name)
+                    return
+                    for $scenario in $scenarios,
+                        $region in $regionsG
+                    let $scenario_split := tokenize($scenario, ' '),
+                        $scenario_name  := string-join($scenario_split[position() < last()], ' '),
+                        $scenario_date  := $scenario_split[last()],
+                        $currTree := collection($collection)/scenario[@name = $scenario_name and @date = $scenario_date]/world/*[@type = 'region' and @name=$region]
+                    for $sector in $currTree/*[@type='sector']
+                    for $subsector in $sector/*[@type='subsector']
+                    (: group by technology name, aggregating across all vintage years :)
+                    for $tech_name in distinct-values($subsector//*[@type='technology']/@name)
+                    let $tech_vintages := $subsector//*[@type='technology' and @name=$tech_name]
+                    for $ghg_name in distinct-values($tech_vintages/*[@type='GHG']/@name)
+                    where $ghg_name = ('CO2', 'NOx', 'SO2', 'PM2.5', 'PM10', 'CO', 'NH3')
+                    (: collect all GHG nodes across every vintage for this tech and pollutant :)
+                    let $all_ghg := $tech_vintages/*[@type='GHG' and @name=$ghg_name]
+                    for $year in distinct-values($all_ghg/emissions/@year)
+                    (: sum emissions and output across all vintages operating in $year :)
+                    let $total_emiss  := sum($all_ghg/emissions[@year=$year])
+                    let $total_output := sum($tech_vintages/output-primary[@type='output']/physical-output[@vintage=$year])
+                    let $emiss_unit   := string(($all_ghg/emissions[@year=$year]/@unit)[1])
+                    let $output_unit  := string(($tech_vintages/output-primary[@type='output']/physical-output[@vintage=$year]/@unit)[1])
+                    where $total_output > 0 and $total_emiss != 0
+                    return local:append-heirarchy($currTree,
+                        element { local-name($sector) } { $sector/@*,
+                            element { local-name($subsector) } { $subsector/@*,
+                                element technology {
+                                    attribute name { $tech_name },
+                                    attribute type { 'technology' },
+                                    element GHG {
+                                        attribute name { $ghg_name },
+                                        attribute type { 'GHG' },
+                                        element emissions {
+                                            attribute year { $year },
+                                            attribute unit { concat($emiss_unit, '/', $output_unit) },
+                                            text { $total_emiss div $total_output }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    )//text()
+                    }
+                };
+                local:run-emiss-factors((:scenarios:), (:regions:), (:collection:))
+                ]]></xPath>
+						<comments>Output-based emission factors (emissions / primary physical output), aggregated across all
+                vintage years for CO2, NOx, SO2, PM2.5, PM10, CO, NH3. Units are emiss_unit/output_unit (e.g. MTC/EJ).</comments>
+					</supplyDemandQuery>
+					<supplyDemandQuery title="calculated energy intensity by tech (input / primary output)">
+						<axis1 name="technology">technology[@name]</axis1>
+						<axis2 name="Year">demand-physical[@vintage]</axis2>
+						<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
+                declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
+                    let $scn := $parent/ancestor::scenario,
+                        $rgn := $parent (: /ancestor::region :)
+                    return
+                        document { element scenario {
+                            $scn/@*,
+                            element region {
+                                $rgn/@*,
+                                $append
+                            }
+                        }}
+                };
+                declare function local:run-energy-intensity($scenarios as xs:string*, $regions as xs:string*, $collection as xs:string) as node()* {
+                    unordered {
+                    let $regionsG := if(not($regions[1] = 'Global'))
+                        then $regions
+                        else distinct-values(collection($collection)/scenario/world/*[@type='region']/@name)
+                    return
+                    for $scenario in $scenarios,
+                        $region in $regionsG
+                    let $scenario_split := tokenize($scenario, ' '),
+                        $scenario_name  := string-join($scenario_split[position() < last()], ' '),
+                        $scenario_date  := $scenario_split[last()],
+                        $currTree := collection($collection)/scenario[@name = $scenario_name and @date = $scenario_date]/world/*[@type = 'region' and @name=$region]
+                    for $sector in $currTree/*[@type='sector']
+                    for $subsector in $sector/*[@type='subsector']
+                    (: group by technology name, aggregating across all vintage years :)
+                    for $tech_name in distinct-values($subsector//*[@type='technology']/@name)
+                    let $tech_vintages := $subsector//*[@type='technology' and @name=$tech_name]
+                    (: collect all energy inputs, excluding water routing inputs :)
+                    let $all_inputs := $tech_vintages/input-energy[not(starts-with(@name, 'water_td'))]
+                    for $year in distinct-values($tech_vintages/output-primary[@type='output']/physical-output/@vintage)
+                    (: sum all energy inputs and primary output across all vintages for this year :)
+                    let $total_input  := sum($all_inputs/demand-physical[@vintage=$year])
+                    let $total_output := sum($tech_vintages/output-primary[@type='output']/physical-output[@vintage=$year])
+                    let $input_unit   := string(($all_inputs/demand-physical[@vintage=$year]/@unit)[1])
+                    let $output_unit  := string(($tech_vintages/output-primary[@type='output']/physical-output[@vintage=$year]/@unit)[1])
+                    where $total_output > 0 and $total_input > 0
+                    return local:append-heirarchy($currTree,
+                        element { local-name($sector) } { $sector/@*,
+                            element { local-name($subsector) } { $subsector/@*,
+                                element technology {
+                                    attribute name { $tech_name },
+                                    attribute type { 'technology' },
+                                    element input {
+                                        attribute name { 'energy-intensity' },
+                                        attribute type { 'input' },
+                                        element demand-physical {
+                                            attribute vintage { $year },
+                                            attribute unit { concat($input_unit, '/', $output_unit) },
+                                            text { $total_input div $total_output }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    )//text()
+                    }
+                };
+                local:run-energy-intensity((:scenarios:), (:regions:), (:collection:))
+                ]]></xPath>
+						<comments>Energy intensity per technology (total energy inputs / primary physical output), aggregated across
+                all vintage years. Excludes water routing inputs. Units are input_unit/output_unit (e.g. EJ/EJ).</comments>
+					</supplyDemandQuery>
+					<supplyDemandQuery title="calculated energy intensity by tech (primary output / input)">
+						<axis1 name="technology">technology[@name]</axis1>
+						<axis2 name="Year">demand-physical[@vintage]</axis2>
+						<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
+                declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
+                    let $scn := $parent/ancestor::scenario,
+                        $rgn := $parent (: /ancestor::region :)
+                    return
+                        document { element scenario {
+                            $scn/@*,
+                            element region {
+                                $rgn/@*,
+                                $append
+                            }
+                        }}
+                };
+                declare function local:run-energy-intensity($scenarios as xs:string*, $regions as xs:string*, $collection as xs:string) as node()* {
+                    unordered {
+                    let $regionsG := if(not($regions[1] = 'Global'))
+                        then $regions
+                        else distinct-values(collection($collection)/scenario/world/*[@type='region']/@name)
+                    return
+                    for $scenario in $scenarios,
+                        $region in $regionsG
+                    let $scenario_split := tokenize($scenario, ' '),
+                        $scenario_name  := string-join($scenario_split[position() < last()], ' '),
+                        $scenario_date  := $scenario_split[last()],
+                        $currTree := collection($collection)/scenario[@name = $scenario_name and @date = $scenario_date]/world/*[@type = 'region' and @name=$region]
+                    for $sector in $currTree/*[@type='sector']
+                    for $subsector in $sector/*[@type='subsector']
+                    (: group by technology name, aggregating across all vintage years :)
+                    for $tech_name in distinct-values($subsector//*[@type='technology']/@name)
+                    let $tech_vintages := $subsector//*[@type='technology' and @name=$tech_name]
+                    (: collect all energy inputs, excluding water routing inputs :)
+                    let $all_inputs := $tech_vintages/input-energy[not(starts-with(@name, 'water_td'))]
+                    for $year in distinct-values($tech_vintages/output-primary[@type='output']/physical-output/@vintage)
+                    (: sum all energy inputs and primary output across all vintages for this year :)
+                    let $total_input  := sum($all_inputs/demand-physical[@vintage=$year])
+                    let $total_output := sum($tech_vintages/output-primary[@type='output']/physical-output[@vintage=$year])
+                    let $input_unit   := string(($all_inputs/demand-physical[@vintage=$year]/@unit)[1])
+                    let $output_unit  := string(($tech_vintages/output-primary[@type='output']/physical-output[@vintage=$year]/@unit)[1])
+                    where $total_output > 0 and $total_input > 0
+                    return local:append-heirarchy($currTree,
+                        element { local-name($sector) } { $sector/@*,
+                            element { local-name($subsector) } { $subsector/@*,
+                                element technology {
+                                    attribute name { $tech_name },
+                                    attribute type { 'technology' },
+                                    element input {
+                                        attribute name { 'energy-intensity' },
+                                        attribute type { 'input' },
+                                        element demand-physical {
+                                            attribute vintage { $year },
+                                            attribute unit { concat($output_unit, '/', $input_unit) },
+                                            text { $total_output div $total_input }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    )//text()
+                    }
+                };
+                local:run-energy-intensity((:scenarios:), (:regions:), (:collection:))
+                ]]></xPath>
+						<comments>Efficiency per technology (primary physical output / total energy inputs), aggregated across
+                all vintage years. Excludes water routing inputs. Units are output_unit/input_unit (e.g. EJ/EJ).</comments>
+					</supplyDemandQuery>
+					<supplyDemandQuery title="calculated stock share by tech within subsector (%)">
+						<axis1 name="technology">technology[@name]</axis1>
+						<axis2 name="Year">demand-physical[@vintage]</axis2>
+						<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
+                declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
+                    let $scn := $parent/ancestor::scenario,
+                        $rgn := $parent (: /ancestor::region :)
+                    return
+                        document { element scenario {
+                            $scn/@*,
+                            element region {
+                                $rgn/@*,
+                                $append
+                            }
+                        }}
+                };
+                declare function local:run-sales-share($scenarios as xs:string*, $regions as xs:string*, $collection as xs:string) as node()* {
+                    unordered {
+                    let $regionsG := if(not($regions[1] = 'Global'))
+                        then $regions
+                        else distinct-values(collection($collection)/scenario/world/*[@type='region']/@name)
+                    return
+                    for $scenario in $scenarios,
+                        $region in $regionsG
+                    let $scenario_split := tokenize($scenario, ' '),
+                        $scenario_name  := string-join($scenario_split[position() < last()], ' '),
+                        $scenario_date  := $scenario_split[last()],
+                        $currTree := collection($collection)/scenario[@name = $scenario_name and @date = $scenario_date]/world/*[@type = 'region' and @name=$region]
+                    for $sector in $currTree/*[@type='sector']
+                    for $subsector in $sector/*[@type='subsector']
+                    (: group by technology name, aggregating across all vintage years :)
+                    for $tech_name in distinct-values($subsector//*[@type='technology']/@name)
+                    let $tech_vintages := $subsector//*[@type='technology' and @name=$tech_name]
+                    for $year in distinct-values($tech_vintages/output-primary[@type='output']/physical-output/@vintage)
+                    (: sum this technology's primary output across all vintages for this year :)
+                    let $tech_output := sum($tech_vintages/output-primary[@type='output']/physical-output[@vintage=$year])
+                    (: sum all technologies' primary output within the subsector for this year :)
+                    let $subsector_output := sum($subsector//*[@type='technology']/output-primary[@type='output']/physical-output[@vintage=$year])
+                    where $subsector_output > 0 and $tech_output > 0
+                    return local:append-heirarchy($currTree,
+                        element { local-name($sector) } { $sector/@*,
+                            element { local-name($subsector) } { $subsector/@*,
+                                element technology {
+                                    attribute name { $tech_name },
+                                    attribute type { 'technology' },
+                                    element input {
+                                        attribute name { 'sales-share' },
+                                        attribute type { 'input' },
+                                        element demand-physical {
+                                            attribute vintage { $year },
+                                            attribute unit { '%' },
+                                            text { ($tech_output div $subsector_output) * 100 }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    )//text()
+                    }
+                };
+                local:run-sales-share((:scenarios:), (:regions:), (:collection:))
+                ]]></xPath>
+						<comments>Sales share per technology as a percentage of subsector total primary output, aggregated across
+                all vintage years. A value of 100 means the technology supplies all output in its subsector. Units are %.</comments>
+					</supplyDemandQuery>
+					<supplyDemandQuery title="calculated sales share by tech within subsector (%)">
+						<axis1 name="technology">technology[@name]</axis1>
+						<axis2 name="Year">demand-physical[@vintage]</axis2>
+						<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
+declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
+    let $scn := $parent/ancestor::scenario,
+        $rgn := $parent (: /ancestor::region :)
+    return
+        document { element scenario {
+            $scn/@*,
+            element region {
+                $rgn/@*,
+                $append
+            }
+        }}
+};
+
+declare function local:run-sales-share($scenarios as xs:string*, $regions as xs:string*, $collection as xs:string) as node()* {
+    unordered {
+    let $regionsG := if(not($regions[1] = 'Global'))
+        then $regions
+        else distinct-values(collection($collection)/scenario/world/*[@type='region']/@name)
+    return
+    for $scenario in $scenarios,
+        $region in $regionsG
+    let $scenario_split := tokenize($scenario, ' '),
+        $scenario_name  := string-join($scenario_split[position() < last()], ' '),
+        $scenario_date  := $scenario_split[last()],
+        $currTree := collection($collection)/scenario[@name = $scenario_name and @date = $scenario_date]/world/*[@type = 'region' and @name=$region]
+    for $sector in $currTree/*[@type='sector']
+    for $subsector in $sector/*[@type='subsector']
+    for $tech_name in distinct-values($subsector//*[@type='technology']/@name)
+    (: iterate over vintage years (installation years) for this technology :)
+    for $year in distinct-values($subsector//*[@type='technology' and @name=$tech_name]/@year)
+    (: select only the vintage node installed in year $year :)
+    let $tech_vintage := $subsector//*[@type='technology' and @name=$tech_name and @year=$year]
+    (: output of this technology's vintage-$year installation in model year $year (sales) :)
+    let $tech_sales := sum($tech_vintage/output-primary[@type='output']/physical-output[@vintage=$year])
+    (: output of ALL technologies' vintage-$year installations in model year $year :)
+    let $subsector_sales := sum($subsector//*[@type='technology' and @year=$year]/output-primary[@type='output']/physical-output[@vintage=$year])
+    where $subsector_sales > 0 and $tech_sales > 0
+    return local:append-heirarchy($currTree,
+        element { local-name($sector) } { $sector/@*,
+            element { local-name($subsector) } { $subsector/@*,
+                element technology {
+                    attribute name { $tech_name },
+                    attribute type { 'technology' },
+                    element input {
+                        attribute name { 'sales-share' },
+                        attribute type { 'input' },
+                        element demand-physical {
+                            attribute vintage { $year },
+                            attribute unit { '%' },
+                            text { ($tech_sales div $subsector_sales) * 100 }
+                        }
+                    }
+                }
+            }
+        }
+    )//text()
+    }
+};
+local:run-sales-share((:scenarios:), (:regions:), (:collection:))
+                ]]></xPath>
+						<comments>Sales share per technology as a percentage of subsector total primary output, aggregated across
+                all vintage years. A value of 100 means the technology supplies all output in its subsector. Units are %.</comments>
+					</supplyDemandQuery>
+					<supplyDemandQuery title="calcuated stock share by tech within sector (%)">
+						<axis1 name="technology">technology[@name]</axis1>
+						<axis2 name="Year">demand-physical[@vintage]</axis2>
+						<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
+                declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
+                    let $scn := $parent/ancestor::scenario,
+                        $rgn := $parent (: /ancestor::region :)
+                    return
+                        document { element scenario {
+                            $scn/@*,
+                            element region {
+                                $rgn/@*,
+                                $append
+                            }
+                        }}
+                };
+                declare function local:run-stock-share($scenarios as xs:string*, $regions as xs:string*, $collection as xs:string) as node()* {
+                    unordered {
+                    let $regionsG := if(not($regions[1] = 'Global'))
+                        then $regions
+                        else distinct-values(collection($collection)/scenario/world/*[@type='region']/@name)
+                    return
+                    for $scenario in $scenarios,
+                        $region in $regionsG
+                    let $scenario_split := tokenize($scenario, ' '),
+                        $scenario_name  := string-join($scenario_split[position() < last()], ' '),
+                        $scenario_date  := $scenario_split[last()],
+                        $currTree := collection($collection)/scenario[@name = $scenario_name and @date = $scenario_date]/world/*[@type = 'region' and @name=$region]
+                    for $sector in $currTree/*[@type='sector']
+                    for $tech_name in distinct-values($sector//*[@type='technology']/@name)
+                    (: iterate over model years (all years in which any vintage produced output) :)
+                    for $year in distinct-values($sector//*[@type='technology']/output-primary[@type='output']/physical-output/@vintage)
+                    (: total output of this tech across ALL vintages in model year $year :)
+                    let $tech_output := sum($sector//*[@type='technology' and @name=$tech_name]/output-primary[@type='output']/physical-output[@vintage=$year])
+                    (: total output of ALL techs in this sector in model year $year :)
+                    let $sector_output := sum($sector//*[@type='technology']/output-primary[@type='output']/physical-output[@vintage=$year])
+                    where $sector_output > 0 and $tech_output > 0
+                    return local:append-heirarchy($currTree,
+                        element { local-name($sector) } { $sector/@*,
+                            element technology {
+                                attribute name { $tech_name },
+                                attribute type { 'technology' },
+                                element input {
+                                    attribute name { 'stock-share' },
+                                    attribute type { 'input' },
+                                    element demand-physical {
+                                        attribute vintage { $year },
+                                        attribute unit { '%' },
+                                        text { ($tech_output div $sector_output) * 100 }
+                                    }
+                                }
+                            }
+                        }
+                    )//text()
+                    }
+                };
+                local:run-stock-share((:scenarios:), (:regions:), (:collection:))
+                ]]></xPath>
+						<comments>Stock share per technology as a percentage of sector total primary output in each model year,
+                summing across all operating vintages. For model year Y, compares each technology's cumulative
+                output (all installed vintages still operating) against the sector total. Technologies sum to 100%
+                within each sector in each year. Units are %.</comments>
+					</supplyDemandQuery>
+					<supplyDemandQuery title="calculated sales share by tech within sector (%)">
+						<axis1 name="technology">technology[@name]</axis1>
+						<axis2 name="Year">demand-physical[@vintage]</axis2>
+						<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
+                declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
+                    let $scn := $parent/ancestor::scenario,
+                        $rgn := $parent (: /ancestor::region :)
+                    return
+                        document { element scenario {
+                            $scn/@*,
+                            element region {
+                                $rgn/@*,
+                                $append
+                            }
+                        }}
+                };
+                declare function local:run-sales-share-sector($scenarios as xs:string*, $regions as xs:string*, $collection as xs:string) as node()* {
+                    unordered {
+                    let $regionsG := if(not($regions[1] = 'Global'))
+                        then $regions
+                        else distinct-values(collection($collection)/scenario/world/*[@type='region']/@name)
+                    return
+                    for $scenario in $scenarios,
+                        $region in $regionsG
+                    let $scenario_split := tokenize($scenario, ' '),
+                        $scenario_name  := string-join($scenario_split[position() < last()], ' '),
+                        $scenario_date  := $scenario_split[last()],
+                        $currTree := collection($collection)/scenario[@name = $scenario_name and @date = $scenario_date]/world/*[@type = 'region' and @name=$region]
+                    for $sector in $currTree/*[@type='sector']
+                    for $tech_name in distinct-values($sector//*[@type='technology']/@name)
+                    (: iterate over vintage years (installation years) for this technology :)
+                    for $year in distinct-values($sector//*[@type='technology' and @name=$tech_name]/@year)
+                    (: output of this technology's vintage-$year installation in model year $year (sales) :)
+                    let $tech_sales := sum($sector//*[@type='technology' and @name=$tech_name and @year=$year]/output-primary[@type='output']/physical-output[@vintage=$year])
+                    (: output of ALL technologies' vintage-$year installations in sector in model year $year :)
+                    let $sector_sales := sum($sector//*[@type='technology' and @year=$year]/output-primary[@type='output']/physical-output[@vintage=$year])
+                    where $sector_sales > 0 and $tech_sales > 0
+                    return local:append-heirarchy($currTree,
+                        element { local-name($sector) } { $sector/@*,
+                            element technology {
+                                attribute name { $tech_name },
+                                attribute type { 'technology' },
+                                element input {
+                                    attribute name { 'sales-share' },
+                                    attribute type { 'input' },
+                                    element demand-physical {
+                                        attribute vintage { $year },
+                                        attribute unit { '%' },
+                                        text { ($tech_sales div $sector_sales) * 100 }
+                                    }
+                                }
+                            }
+                        }
+                    )//text()
+                    }
+                };
+                local:run-sales-share-sector((:scenarios:), (:regions:), (:collection:))
+                ]]></xPath>
+						<comments>Sales share per technology as a percentage of sector total new-vintage output for each
+                vintage year. For vintage year X, compares only the output of the vintage-X installation of each
+                technology against the sum of all technologies' vintage-X output in year X across the whole sector
+                (not restricted to subsector). Units are %.</comments>
+					</supplyDemandQuery>
+				</queryGroup>
+				<queryGroup name="Residential Buildings">
+					<supplyDemandQuery title="calcuated stock share by tech within sector (%)">
+						<axis1 name="technology">technology[@name]</axis1>
+						<axis2 name="Year">demand-physical[@vintage]</axis2>
+						<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
+                declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
+                    let $scn := $parent/ancestor::scenario,
+                        $rgn := $parent (: /ancestor::region :)
+                    return
+                        document { element scenario {
+                            $scn/@*,
+                            element region {
+                                $rgn/@*,
+                                $append
+                            }
+                        }}
+                };
+                declare function local:run-stock-share($scenarios as xs:string*, $regions as xs:string*, $collection as xs:string) as node()* {
+                    unordered {
+                    let $regionsG := if(not($regions[1] = 'Global'))
+                        then $regions
+                        else distinct-values(collection($collection)/scenario/world/*[@type='region']/@name)
+                    return
+                    for $scenario in $scenarios,
+                        $region in $regionsG
+                    let $scenario_split := tokenize($scenario, ' '),
+                        $scenario_name  := string-join($scenario_split[position() < last()], ' '),
+                        $scenario_date  := $scenario_split[last()],
+                        $currTree := collection($collection)/scenario[@name = $scenario_name and @date = $scenario_date]/world/*[@type = 'region' and @name=$region]
+                    for $sector in $currTree/*[@type='sector' and starts-with(@name, 'resid')]
+                    for $tech_name in distinct-values($sector//*[@type='technology']/@name)
+                    (: iterate over model years (all years in which any vintage produced output) :)
+                    for $year in distinct-values($sector//*[@type='technology']/output-primary[@type='output']/physical-output/@vintage)
+                    (: total output of this tech across ALL vintages in model year $year :)
+                    let $tech_output := sum($sector//*[@type='technology' and @name=$tech_name]/output-primary[@type='output']/physical-output[@vintage=$year])
+                    (: total output of ALL techs in this sector in model year $year :)
+                    let $sector_output := sum($sector//*[@type='technology']/output-primary[@type='output']/physical-output[@vintage=$year])
+                    where $sector_output > 0 and $tech_output > 0
+                    return local:append-heirarchy($currTree,
+                        element { local-name($sector) } { $sector/@*,
+                            element technology {
+                                attribute name { $tech_name },
+                                attribute type { 'technology' },
+                                element input {
+                                    attribute name { 'stock-share' },
+                                    attribute type { 'input' },
+                                    element demand-physical {
+                                        attribute vintage { $year },
+                                        attribute unit { '%' },
+                                        text { ($tech_output div $sector_output) * 100 }
+                                    }
+                                }
+                            }
+                        }
+                    )//text()
+                    }
+                };
+                local:run-stock-share((:scenarios:), (:regions:), (:collection:))
+                ]]></xPath>
+						<comments>Stock share per technology as a percentage of sector total primary output in each model year,
+                summing across all operating vintages. For model year Y, compares each technology's cumulative
+                output (all installed vintages still operating) against the sector total. Technologies sum to 100%
+                within each sector in each year. Units are %.</comments>
+					</supplyDemandQuery>
+					<supplyDemandQuery title="calculated sales share by tech within sector (%)">
+						<axis1 name="technology">technology[@name]</axis1>
+						<axis2 name="Year">demand-physical[@vintage]</axis2>
+						<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
+                declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
+                    let $scn := $parent/ancestor::scenario,
+                        $rgn := $parent (: /ancestor::region :)
+                    return
+                        document { element scenario {
+                            $scn/@*,
+                            element region {
+                                $rgn/@*,
+                                $append
+                            }
+                        }}
+                };
+                declare function local:run-sales-share-sector($scenarios as xs:string*, $regions as xs:string*, $collection as xs:string) as node()* {
+                    unordered {
+                    let $regionsG := if(not($regions[1] = 'Global'))
+                        then $regions
+                        else distinct-values(collection($collection)/scenario/world/*[@type='region']/@name)
+                    return
+                    for $scenario in $scenarios,
+                        $region in $regionsG
+                    let $scenario_split := tokenize($scenario, ' '),
+                        $scenario_name  := string-join($scenario_split[position() < last()], ' '),
+                        $scenario_date  := $scenario_split[last()],
+                        $currTree := collection($collection)/scenario[@name = $scenario_name and @date = $scenario_date]/world/*[@type = 'region' and @name=$region]
+                    for $sector in $currTree/*[@type='sector' and starts-with(@name, 'resid')]
+                    for $tech_name in distinct-values($sector//*[@type='technology']/@name)
+                    (: iterate over vintage years (installation years) for this technology :)
+                    for $year in distinct-values($sector//*[@type='technology' and @name=$tech_name]/@year)
+                    (: output of this technology's vintage-$year installation in model year $year (sales) :)
+                    let $tech_sales := sum($sector//*[@type='technology' and @name=$tech_name and @year=$year]/output-primary[@type='output']/physical-output[@vintage=$year])
+                    (: output of ALL technologies' vintage-$year installations in sector in model year $year :)
+                    let $sector_sales := sum($sector//*[@type='technology' and @year=$year]/output-primary[@type='output']/physical-output[@vintage=$year])
+                    where $sector_sales > 0 and $tech_sales > 0
+                    return local:append-heirarchy($currTree,
+                        element { local-name($sector) } { $sector/@*,
+                            element technology {
+                                attribute name { $tech_name },
+                                attribute type { 'technology' },
+                                element input {
+                                    attribute name { 'sales-share' },
+                                    attribute type { 'input' },
+                                    element demand-physical {
+                                        attribute vintage { $year },
+                                        attribute unit { '%' },
+                                        text { ($tech_sales div $sector_sales) * 100 }
+                                    }
+                                }
+                            }
+                        }
+                    )//text()
+                    }
+                };
+                local:run-sales-share-sector((:scenarios:), (:regions:), (:collection:))
+                ]]></xPath>
+						<comments>Sales share per technology as a percentage of sector total new-vintage output for each
+                vintage year. For vintage year X, compares only the output of the vintage-X installation of each
+                technology against the sum of all technologies' vintage-X output in year X across the whole sector
+                (not restricted to subsector). Units are %.</comments>
+					</supplyDemandQuery>
+				</queryGroup>
+				<queryGroup name="Commercial Buildings">
+					<supplyDemandQuery title="calcuated stock share by tech within sector (%)">
+						<axis1 name="technology">technology[@name]</axis1>
+						<axis2 name="Year">demand-physical[@vintage]</axis2>
+						<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
+                declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
+                    let $scn := $parent/ancestor::scenario,
+                        $rgn := $parent (: /ancestor::region :)
+                    return
+                        document { element scenario {
+                            $scn/@*,
+                            element region {
+                                $rgn/@*,
+                                $append
+                            }
+                        }}
+                };
+                declare function local:run-stock-share($scenarios as xs:string*, $regions as xs:string*, $collection as xs:string) as node()* {
+                    unordered {
+                    let $regionsG := if(not($regions[1] = 'Global'))
+                        then $regions
+                        else distinct-values(collection($collection)/scenario/world/*[@type='region']/@name)
+                    return
+                    for $scenario in $scenarios,
+                        $region in $regionsG
+                    let $scenario_split := tokenize($scenario, ' '),
+                        $scenario_name  := string-join($scenario_split[position() < last()], ' '),
+                        $scenario_date  := $scenario_split[last()],
+                        $currTree := collection($collection)/scenario[@name = $scenario_name and @date = $scenario_date]/world/*[@type = 'region' and @name=$region]
+                    for $sector in $currTree/*[@type='sector' and starts-with(@name, 'comm')]
+                    for $tech_name in distinct-values($sector//*[@type='technology']/@name)
+                    (: iterate over model years (all years in which any vintage produced output) :)
+                    for $year in distinct-values($sector//*[@type='technology']/output-primary[@type='output']/physical-output/@vintage)
+                    (: total output of this tech across ALL vintages in model year $year :)
+                    let $tech_output := sum($sector//*[@type='technology' and @name=$tech_name]/output-primary[@type='output']/physical-output[@vintage=$year])
+                    (: total output of ALL techs in this sector in model year $year :)
+                    let $sector_output := sum($sector//*[@type='technology']/output-primary[@type='output']/physical-output[@vintage=$year])
+                    where $sector_output > 0 and $tech_output > 0
+                    return local:append-heirarchy($currTree,
+                        element { local-name($sector) } { $sector/@*,
+                            element technology {
+                                attribute name { $tech_name },
+                                attribute type { 'technology' },
+                                element input {
+                                    attribute name { 'stock-share' },
+                                    attribute type { 'input' },
+                                    element demand-physical {
+                                        attribute vintage { $year },
+                                        attribute unit { '%' },
+                                        text { ($tech_output div $sector_output) * 100 }
+                                    }
+                                }
+                            }
+                        }
+                    )//text()
+                    }
+                };
+                local:run-stock-share((:scenarios:), (:regions:), (:collection:))
+                ]]></xPath>
+						<comments>Stock share per technology as a percentage of sector total primary output in each model year,
+                summing across all operating vintages. For model year Y, compares each technology's cumulative
+                output (all installed vintages still operating) against the sector total. Technologies sum to 100%
+                within each sector in each year. Units are %.</comments>
+					</supplyDemandQuery>
+					<supplyDemandQuery title="calculated sales share by tech within sector (%)">
+						<axis1 name="technology">technology[@name]</axis1>
+						<axis2 name="Year">demand-physical[@vintage]</axis2>
+						<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
+                declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
+                    let $scn := $parent/ancestor::scenario,
+                        $rgn := $parent (: /ancestor::region :)
+                    return
+                        document { element scenario {
+                            $scn/@*,
+                            element region {
+                                $rgn/@*,
+                                $append
+                            }
+                        }}
+                };
+                declare function local:run-sales-share-sector($scenarios as xs:string*, $regions as xs:string*, $collection as xs:string) as node()* {
+                    unordered {
+                    let $regionsG := if(not($regions[1] = 'Global'))
+                        then $regions
+                        else distinct-values(collection($collection)/scenario/world/*[@type='region']/@name)
+                    return
+                    for $scenario in $scenarios,
+                        $region in $regionsG
+                    let $scenario_split := tokenize($scenario, ' '),
+                        $scenario_name  := string-join($scenario_split[position() < last()], ' '),
+                        $scenario_date  := $scenario_split[last()],
+                        $currTree := collection($collection)/scenario[@name = $scenario_name and @date = $scenario_date]/world/*[@type = 'region' and @name=$region]
+                    for $sector in $currTree/*[@type='sector' and starts-with(@name, 'comm')]
+                    for $tech_name in distinct-values($sector//*[@type='technology']/@name)
+                    (: iterate over vintage years (installation years) for this technology :)
+                    for $year in distinct-values($sector//*[@type='technology' and @name=$tech_name]/@year)
+                    (: output of this technology's vintage-$year installation in model year $year (sales) :)
+                    let $tech_sales := sum($sector//*[@type='technology' and @name=$tech_name and @year=$year]/output-primary[@type='output']/physical-output[@vintage=$year])
+                    (: output of ALL technologies' vintage-$year installations in sector in model year $year :)
+                    let $sector_sales := sum($sector//*[@type='technology' and @year=$year]/output-primary[@type='output']/physical-output[@vintage=$year])
+                    where $sector_sales > 0 and $tech_sales > 0
+                    return local:append-heirarchy($currTree,
+                        element { local-name($sector) } { $sector/@*,
+                            element technology {
+                                attribute name { $tech_name },
+                                attribute type { 'technology' },
+                                element input {
+                                    attribute name { 'sales-share' },
+                                    attribute type { 'input' },
+                                    element demand-physical {
+                                        attribute vintage { $year },
+                                        attribute unit { '%' },
+                                        text { ($tech_sales div $sector_sales) * 100 }
+                                    }
+                                }
+                            }
+                        }
+                    )//text()
+                    }
+                };
+                local:run-sales-share-sector((:scenarios:), (:regions:), (:collection:))
+                ]]></xPath>
+						<comments>Sales share per technology as a percentage of sector total new-vintage output for each
+                vintage year. For vintage year X, compares only the output of the vintage-X installation of each
+                technology against the sum of all technologies' vintage-X output in year X across the whole sector
+                (not restricted to subsector). Units are %.</comments>
+					</supplyDemandQuery>
+				</queryGroup>
+				<queryGroup name="Transportation">
+					<supplyDemandQuery title="calcuated stock share by tech within sector (%)">
+						<axis1 name="technology">technology[@name]</axis1>
+						<axis2 name="Year">demand-physical[@vintage]</axis2>
+						<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
+                declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
+                    let $scn := $parent/ancestor::scenario,
+                        $rgn := $parent (: /ancestor::region :)
+                    return
+                        document { element scenario {
+                            $scn/@*,
+                            element region {
+                                $rgn/@*,
+                                $append
+                            }
+                        }}
+                };
+                declare function local:run-stock-share($scenarios as xs:string*, $regions as xs:string*, $collection as xs:string) as node()* {
+                    unordered {
+                    let $regionsG := if(not($regions[1] = 'Global'))
+                        then $regions
+                        else distinct-values(collection($collection)/scenario/world/*[@type='region']/@name)
+                    return
+                    for $scenario in $scenarios,
+                        $region in $regionsG
+                    let $scenario_split := tokenize($scenario, ' '),
+                        $scenario_name  := string-join($scenario_split[position() < last()], ' '),
+                        $scenario_date  := $scenario_split[last()],
+                        $currTree := collection($collection)/scenario[@name = $scenario_name and @date = $scenario_date]/world/*[@type = 'region' and @name=$region]
+                    for $sector in $currTree/*[@type='sector' and starts-with(@name, 'trn_')]
+                    for $tech_name in distinct-values($sector//*[@type='technology']/@name)
+                    (: iterate over model years (all years in which any vintage produced output) :)
+                    for $year in distinct-values($sector//*[@type='technology']/output-primary[@type='output']/physical-output/@vintage)
+                    (: total output of this tech across ALL vintages in model year $year :)
+                    let $tech_output := sum($sector//*[@type='technology' and @name=$tech_name]/output-primary[@type='output']/physical-output[@vintage=$year])
+                    (: total output of ALL techs in this sector in model year $year :)
+                    let $sector_output := sum($sector//*[@type='technology']/output-primary[@type='output']/physical-output[@vintage=$year])
+                    where $sector_output > 0 and $tech_output > 0
+                    return local:append-heirarchy($currTree,
+                        element { local-name($sector) } { $sector/@*,
+                            element technology {
+                                attribute name { $tech_name },
+                                attribute type { 'technology' },
+                                element input {
+                                    attribute name { 'stock-share' },
+                                    attribute type { 'input' },
+                                    element demand-physical {
+                                        attribute vintage { $year },
+                                        attribute unit { '%' },
+                                        text { ($tech_output div $sector_output) * 100 }
+                                    }
+                                }
+                            }
+                        }
+                    )//text()
+                    }
+                };
+                local:run-stock-share((:scenarios:), (:regions:), (:collection:))
+                ]]></xPath>
+						<comments>Stock share per technology as a percentage of sector total primary output in each model year,
+                summing across all operating vintages. For model year Y, compares each technology's cumulative
+                output (all installed vintages still operating) against the sector total. Technologies sum to 100%
+                within each sector in each year. Units are %.</comments>
+					</supplyDemandQuery>
+					<supplyDemandQuery title="calculated sales share by tech within sector (%)">
+						<axis1 name="technology">technology[@name]</axis1>
+						<axis2 name="Year">demand-physical[@vintage]</axis2>
+						<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
+                declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
+                    let $scn := $parent/ancestor::scenario,
+                        $rgn := $parent (: /ancestor::region :)
+                    return
+                        document { element scenario {
+                            $scn/@*,
+                            element region {
+                                $rgn/@*,
+                                $append
+                            }
+                        }}
+                };
+                declare function local:run-sales-share-sector($scenarios as xs:string*, $regions as xs:string*, $collection as xs:string) as node()* {
+                    unordered {
+                    let $regionsG := if(not($regions[1] = 'Global'))
+                        then $regions
+                        else distinct-values(collection($collection)/scenario/world/*[@type='region']/@name)
+                    return
+                    for $scenario in $scenarios,
+                        $region in $regionsG
+                    let $scenario_split := tokenize($scenario, ' '),
+                        $scenario_name  := string-join($scenario_split[position() < last()], ' '),
+                        $scenario_date  := $scenario_split[last()],
+                        $currTree := collection($collection)/scenario[@name = $scenario_name and @date = $scenario_date]/world/*[@type = 'region' and @name=$region]
+                    for $sector in $currTree/*[@type='sector' and starts-with(@name, 'trn_')]
+                    for $tech_name in distinct-values($sector//*[@type='technology']/@name)
+                    (: iterate over vintage years (installation years) for this technology :)
+                    for $year in distinct-values($sector//*[@type='technology' and @name=$tech_name]/@year)
+                    (: output of this technology's vintage-$year installation in model year $year (sales) :)
+                    let $tech_sales := sum($sector//*[@type='technology' and @name=$tech_name and @year=$year]/output-primary[@type='output']/physical-output[@vintage=$year])
+                    (: output of ALL technologies' vintage-$year installations in sector in model year $year :)
+                    let $sector_sales := sum($sector//*[@type='technology' and @year=$year]/output-primary[@type='output']/physical-output[@vintage=$year])
+                    where $sector_sales > 0 and $tech_sales > 0
+                    return local:append-heirarchy($currTree,
+                        element { local-name($sector) } { $sector/@*,
+                            element technology {
+                                attribute name { $tech_name },
+                                attribute type { 'technology' },
+                                element input {
+                                    attribute name { 'sales-share' },
+                                    attribute type { 'input' },
+                                    element demand-physical {
+                                        attribute vintage { $year },
+                                        attribute unit { '%' },
+                                        text { ($tech_sales div $sector_sales) * 100 }
+                                    }
+                                }
+                            }
+                        }
+                    )//text()
+                    }
+                };
+                local:run-sales-share-sector((:scenarios:), (:regions:), (:collection:))
+                ]]></xPath>
+						<comments>Sales share per technology as a percentage of sector total new-vintage output for each
+                vintage year. For vintage year X, compares only the output of the vintage-X installation of each
+                technology against the sum of all technologies' vintage-X output in year X across the whole sector
+                (not restricted to subsector). Units are %.</comments>
+					</supplyDemandQuery>
+				</queryGroup>
+				<queryGroup name="Electricity Generation">
+					<supplyDemandQuery title="calcuated stock share by tech within sector (%)">
+						<axis1 name="technology">technology[@name]</axis1>
+						<axis2 name="Year">demand-physical[@vintage]</axis2>
+						<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
+                declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
+                    let $scn := $parent/ancestor::scenario,
+                        $rgn := $parent (: /ancestor::region :)
+                    return
+                        document { element scenario {
+                            $scn/@*,
+                            element region {
+                                $rgn/@*,
+                                $append
+                            }
+                        }}
+                };
+                declare function local:run-stock-share($scenarios as xs:string*, $regions as xs:string*, $collection as xs:string) as node()* {
+                    unordered {
+                    let $regionsG := if(not($regions[1] = 'Global'))
+                        then $regions
+                        else distinct-values(collection($collection)/scenario/world/*[@type='region']/@name)
+                    return
+                    for $scenario in $scenarios,
+                        $region in $regionsG
+                    let $scenario_split := tokenize($scenario, ' '),
+                        $scenario_name  := string-join($scenario_split[position() < last()], ' '),
+                        $scenario_date  := $scenario_split[last()],
+                        $currTree := collection($collection)/scenario[@name = $scenario_name and @date = $scenario_date]/world/*[@type = 'region' and @name=$region]
+                    for $sector in $currTree/*[@type='sector' and (starts-with(@name, 'base load') or starts-with(@name, 'intermediate load') or starts-with(@name, 'peak load') or starts-with(@name, 'subpeak load') or starts-with(@name, 'electricity'))]
+                    for $tech_name in distinct-values($sector//*[@type='technology']/@name)
+                    (: iterate over model years (all years in which any vintage produced output) :)
+                    for $year in distinct-values($sector//*[@type='technology']/output-primary[@type='output']/physical-output/@vintage)
+                    (: total output of this tech across ALL vintages in model year $year :)
+                    let $tech_output := sum($sector//*[@type='technology' and @name=$tech_name]/output-primary[@type='output']/physical-output[@vintage=$year])
+                    (: total output of ALL techs in this sector in model year $year :)
+                    let $sector_output := sum($sector//*[@type='technology']/output-primary[@type='output']/physical-output[@vintage=$year])
+                    where $sector_output > 0 and $tech_output > 0
+                    return local:append-heirarchy($currTree,
+                        element { local-name($sector) } { $sector/@*,
+                            element technology {
+                                attribute name { $tech_name },
+                                attribute type { 'technology' },
+                                element input {
+                                    attribute name { 'stock-share' },
+                                    attribute type { 'input' },
+                                    element demand-physical {
+                                        attribute vintage { $year },
+                                        attribute unit { '%' },
+                                        text { ($tech_output div $sector_output) * 100 }
+                                    }
+                                }
+                            }
+                        }
+                    )//text()
+                    }
+                };
+                local:run-stock-share((:scenarios:), (:regions:), (:collection:))
+                ]]></xPath>
+						<comments>Stock share per technology as a percentage of sector total primary output in each model year,
+                summing across all operating vintages. For model year Y, compares each technology's cumulative
+                output (all installed vintages still operating) against the sector total. Technologies sum to 100%
+                within each sector in each year. Units are %.</comments>
+					</supplyDemandQuery>
+					<supplyDemandQuery title="calculated sales share by tech within sector (%)">
+						<axis1 name="technology">technology[@name]</axis1>
+						<axis2 name="Year">demand-physical[@vintage]</axis2>
+						<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
+                declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
+                    let $scn := $parent/ancestor::scenario,
+                        $rgn := $parent (: /ancestor::region :)
+                    return
+                        document { element scenario {
+                            $scn/@*,
+                            element region {
+                                $rgn/@*,
+                                $append
+                            }
+                        }}
+                };
+                declare function local:run-sales-share-sector($scenarios as xs:string*, $regions as xs:string*, $collection as xs:string) as node()* {
+                    unordered {
+                    let $regionsG := if(not($regions[1] = 'Global'))
+                        then $regions
+                        else distinct-values(collection($collection)/scenario/world/*[@type='region']/@name)
+                    return
+                    for $scenario in $scenarios,
+                        $region in $regionsG
+                    let $scenario_split := tokenize($scenario, ' '),
+                        $scenario_name  := string-join($scenario_split[position() < last()], ' '),
+                        $scenario_date  := $scenario_split[last()],
+                        $currTree := collection($collection)/scenario[@name = $scenario_name and @date = $scenario_date]/world/*[@type = 'region' and @name=$region]
+                    for $sector in $currTree/*[@type='sector' and (starts-with(@name, 'base load') or starts-with(@name, 'intermediate load') or starts-with(@name, 'peak load') or starts-with(@name, 'subpeak load') or starts-with(@name, 'electricity'))]
+                    for $tech_name in distinct-values($sector//*[@type='technology']/@name)
+                    (: iterate over vintage years (installation years) for this technology :)
+                    for $year in distinct-values($sector//*[@type='technology' and @name=$tech_name]/@year)
+                    (: output of this technology's vintage-$year installation in model year $year (sales) :)
+                    let $tech_sales := sum($sector//*[@type='technology' and @name=$tech_name and @year=$year]/output-primary[@type='output']/physical-output[@vintage=$year])
+                    (: output of ALL technologies' vintage-$year installations in sector in model year $year :)
+                    let $sector_sales := sum($sector//*[@type='technology' and @year=$year]/output-primary[@type='output']/physical-output[@vintage=$year])
+                    where $sector_sales > 0 and $tech_sales > 0
+                    return local:append-heirarchy($currTree,
+                        element { local-name($sector) } { $sector/@*,
+                            element technology {
+                                attribute name { $tech_name },
+                                attribute type { 'technology' },
+                                element input {
+                                    attribute name { 'sales-share' },
+                                    attribute type { 'input' },
+                                    element demand-physical {
+                                        attribute vintage { $year },
+                                        attribute unit { '%' },
+                                        text { ($tech_sales div $sector_sales) * 100 }
+                                    }
+                                }
+                            }
+                        }
+                    )//text()
+                    }
+                };
+                local:run-sales-share-sector((:scenarios:), (:regions:), (:collection:))
+                ]]></xPath>
+						<comments>Sales share per technology as a percentage of sector total new-vintage output for each
+                vintage year. For vintage year X, compares only the output of the vintage-X installation of each
+                technology against the sum of all technologies' vintage-X output in year X across the whole sector
+                (not restricted to subsector). Units are %.</comments>
+					</supplyDemandQuery>
+				</queryGroup>
+			</queryGroup>
+	</queryGroup>
+</queries>

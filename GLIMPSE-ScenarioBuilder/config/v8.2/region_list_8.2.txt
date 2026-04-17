@@ -1,2 +1,2 @@
-USA,Africa_Eastern,Africa_Northern,Africa_Southern,Africa_Western,Australia_NZ,Argentina,Brazil,Canada,Central America and Caribbean,Central Asia,China,Colombia,EU-12,EU-15,Ukraine,Europe_Non_EU,European Free Trade Association,India,
-Indonesia,Japan,Mexico,Middle East,Pakistan,Russia,South Africa,South America_Northern,South America_Southern,South Asia,Southeast Asia,Taiwan
+USA,Africa_Eastern,Africa_Northern,Africa_Southern,Africa_Western,Argentina,Australia_NZ,Brazil,Canada,Central America and Caribbean,Central Asia,China
+Colombia,EU-12,EU-15,Europe_Non_EU,European Free Trade Association,India,Indonesia,Japan,Mexico,Middle East,Pakistan,Russia,South Africa,South America_Northern,South America_Southern,South Asia,South Korea,Southeast Asia,Taiwan,Ukraine
