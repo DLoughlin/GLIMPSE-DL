@@ -1,6 +1,0 @@
-
-1, global-technology-database/+{sector-name}location-info, global-technology-database/+{subsector-name}location-info, location-info/+{name}technology, technology/+{year}period, scenario, scenario/world, world/global-technology-database, period/{name=CO2_ELEC}CO2
-
-51, world/+{name}region, region/+{name;nocreate=1}supplysector, supplysector/+{name;nocreate=1}subsector, subsector/+{name;nocreate=1}stub-technology, stub-technology/+{year}period, period/+{name}CO2, scenario, scenario/world
-
-2, world/+{name;nocreate=1}region, region/+{name}ghgpolicy, ghgpolicy/+market, ghgpolicy/+{year}constraint, ghgpolicy/+constraint, scenario, scenario/world
