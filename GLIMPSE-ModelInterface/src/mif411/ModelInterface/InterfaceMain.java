@@ -2190,6 +2190,15 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 		if (toolsMM != null && toolsMM.getSubMenuManager(TOOLS_SUBMENU2_POS) == null) {
 			toolsMM.addMenuItem(new JMenu("Open Files"), TOOLS_SUBMENU2_POS);
 		}
+		// CSV to XML widget — available at all times (no InputViewer required)
+		if (toolsMM != null) {
+			toolsMM.addSeparator(TOOLS_CSV_MENUITEM_POS - 1);
+			JMenuItem csvToXmlItem = new JMenuItem("CSV to XML...");
+			csvToXmlItem.setToolTipText("Convert a CSV file to GCAM XML format using a header file");
+			csvToXmlItem.setActionCommand("CSV to XML Widget");
+			csvToXmlItem.addActionListener(this);
+			toolsMM.addMenuItem(csvToXmlItem, TOOLS_CSV_MENUITEM_POS);
+		}
 	}
 
 	private void addHelpMenu(MenuManager menuMan) {
@@ -2272,7 +2281,8 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 		logStartupTiming("addMenuAdder:new DbViewer " + elapsedMillis(menuAdderStart) + " ms");
 		dbView.addMenuItems(menuMan);
 		logStartupTiming("addMenuAdder:DbViewer.addMenuItems " + elapsedMillis(menuAdderStart) + " ms");
-		addLazyMenuItem(menuMan, TOOLS_MENU_POS, TOOLS_SUBMENU2_POS, new JMenuItem("XML file"), LAZY_OPEN_INPUT_VIEWER, 0);
+		// "XML file" (InputViewer) hidden — not working correctly
+		// addLazyMenuItem(menuMan, TOOLS_MENU_POS, TOOLS_SUBMENU2_POS, new JMenuItem("XML file"), LAZY_OPEN_INPUT_VIEWER, 0);
 		addLazyMenuItem(menuMan, TOOLS_MENU_POS, TOOLS_SUBMENU2_POS, new JMenuItem("Preprocessor file"), LAZY_OPEN_PP_VIEWER, 20);
 		logStartupTiming("addMenuAdder:add lazy open-file items " + elapsedMillis(menuAdderStart) + " ms");
 		final MenuAdder recentFilesList = RecentFilesList.getInstance();
@@ -2477,6 +2487,9 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			}
 			break;
 		}
+		case "CSV to XML Widget":
+			ModelInterface.ModelGUI2.CsvToXmlDialog.showDialog(mainFrame);
+			break;
 		default:
 			// fall through: other menu items may be handled by menu adders.
 			break;
@@ -2910,4 +2923,4 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			}
 		}
 	}
-}
+}
