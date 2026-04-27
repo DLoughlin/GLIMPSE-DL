@@ -143,6 +143,7 @@ import ModelInterface.common.FileChooser;
 import ModelInterface.common.FileChooserFactory;
 import ModelInterface.common.RecentFilesList.RecentFile;
 import filter.FilterTreePaneYears;
+import mapOptions.MapOptionsUtil;
 
 /**
  * DbViewer is the main class for the database viewing and query interface in
@@ -198,6 +199,8 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	private volatile StartupLifecycleState startupState = StartupLifecycleState.IDLE;
 	private volatile String lastControlOldValue = "(unset)";
 	private volatile String lastControlNewValue = "(unset)";
+	private javax.swing.Timer mappingWarmupTimer;
+	private static final int MAP_WARMUP_DELAY_MS = 3000;
 
 	private void resetDbViewInitialized(String reason) {
 		if (dbViewInitialized) {
@@ -291,6 +294,24 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 
 	private static void logStartup(String stage, long startNanos) {
 		InterfaceMain.logStartupTiming("DbViewer:" + stage + " " + elapsedMillis(startNanos) + " ms");
+	}
+
+	private void scheduleMappingWarmupAfterStartupReady() {
+		if (!InterfaceMain.enableMapping) {
+			return;
+		}
+		if (mappingWarmupTimer != null && mappingWarmupTimer.isRunning()) {
+			mappingWarmupTimer.stop();
+		}
+		mappingWarmupTimer = new javax.swing.Timer(MAP_WARMUP_DELAY_MS, e -> {
+			MapOptionsUtil.warmUpMappingCache(
+					InterfaceMain.stateShapeFileLocation,
+					InterfaceMain.gcamReg32ShapeFileLocation,
+					InterfaceMain.gcamReg32US52ShapeFileLocation);
+		});
+		mappingWarmupTimer.setRepeats(false);
+		mappingWarmupTimer.start();
+		InterfaceMain.logStartupTiming("DbViewer:scheduled map warm-up delay=" + MAP_WARMUP_DELAY_MS + " ms");
 	}
 
 	private static final String STARTUP_MESSAGE_PREPARING = "Preparing database viewer...";
@@ -1876,6 +1897,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 						main.setProperty("queryFile", data.queryFile.getAbsolutePath());
 					}
 					setStartupState(StartupLifecycleState.READY);
+					scheduleMappingWarmupAfterStartupReady();
 					logStartupPhase("Startup ready", dbFile);
 					logStartup("doOpenDB:complete", openStart);
 				} catch (Exception e) {
@@ -2073,6 +2095,11 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 
 	private JCheckBox doTotalCheckBox;
 	private static final int STARTUP_QUERY_TREE_EXPANSION_ROW_LIMIT = 250;
+	private static final int DEFERRED_UI_HYDRATION_DELAY_MS = 150;
+	private static final int DEFERRED_QUERY_TREE_EXPANSION_DELAY_MS = 250;
+	private static final int DEFERRED_QUERY_TREE_EXPANSION_BATCH_SIZE = 24;
+	private static final int DEFERRED_QUERY_TREE_EXPANSION_BATCH_INTERVAL_MS = 20;
+	private javax.swing.Timer deferredQueryTreeExpansionTimer;
 
 	/**
 	 * Sets up the main UI components for the DbViewer, including scenario/region lists,
@@ -2095,31 +2122,56 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		if (DEBUG) System.out.println("createTableSelector: start");
 		updateStartupMessage(STARTUP_MESSAGE_BUILDING_LISTS);
 		applyStartupData(data);
+		logStartup("createTableSelector:applyStartupData", selectorStart);
 		if (DEBUG) System.out.println("createTableSelector: applyStartupData done " + elapsedMillis(selectorStart) + " ms");
 		updateStartupMessage(STARTUP_MESSAGE_BUILDING_TREE);
 		setupQueryTree();
+		logStartup("createTableSelector:setupQueryTree", selectorStart);
 		if (DEBUG) System.out.println("createTableSelector: setupQueryTree done " + elapsedMillis(selectorStart) + " ms");
 		updateStartupMessage(STARTUP_MESSAGE_LAYOUT);
 		setupSplitPanes();
+		logStartup("createTableSelector:setupSplitPanes", selectorStart);
 		if (DEBUG) System.out.println("createTableSelector: setupSplitPanes done " + elapsedMillis(selectorStart) + " ms");
 		updateStartupMessage(STARTUP_MESSAGE_BUILDING_QUERY_PANEL);
 		setupQueryPanel();
+		logStartup("createTableSelector:setupQueryPanel", selectorStart);
 		if (DEBUG) System.out.println("createTableSelector: setupQueryPanel done " + elapsedMillis(selectorStart) + " ms");
 		updateStartupMessage(STARTUP_MESSAGE_BUILDING_ACTIONS);
 		setupButtonPanel();
+		logStartup("createTableSelector:setupButtonPanel", selectorStart);
 		if (DEBUG) System.out.println("createTableSelector: setupButtonPanel done " + elapsedMillis(selectorStart) + " ms");
 		installResultsTabCompletionTracking();
+		logStartup("createTableSelector:installResultsTabCompletionTracking", selectorStart);
 		if (DEBUG) System.out.println("createTableSelector: installResultsTabCompletionTracking done " + elapsedMillis(selectorStart) + " ms");
-		setupPresetRegionDropdown();
-		if (DEBUG) System.out.println("createTableSelector: setupPresetRegionDropdown done " + elapsedMillis(selectorStart) + " ms");
 		favoriteQueriesManager = new FavoriteQueriesManager(queryList, listScrollQueries);
+		logStartup("createTableSelector:FavoriteQueriesManager", selectorStart);
 		if (DEBUG) System.out.println("createTableSelector: FavoriteQueriesManager done " + elapsedMillis(selectorStart) + " ms");
 		setupListeners();
+		logStartup("createTableSelector:setupListeners", selectorStart);
 		if (DEBUG) System.out.println("createTableSelector: setupListeners done " + elapsedMillis(selectorStart) + " ms");
 		updateStartupMessage(STARTUP_MESSAGE_FINISHING);
 		finalizeUI();
+		logStartup("createTableSelector:finalizeUI", selectorStart);
 		dbViewInitialized = true;
+		scheduleDeferredUiHydration();
+		logStartup("createTableSelector:deferredUiHydrationScheduled", selectorStart);
 		if (DEBUG) System.out.println("createTableSelector: finalizeUI done " + elapsedMillis(selectorStart) + " ms");
+	}
+
+	private void scheduleDeferredUiHydration() {
+		javax.swing.Timer deferredUiTimer = new javax.swing.Timer(DEFERRED_UI_HYDRATION_DELAY_MS, e -> {
+			final long deferredStart = System.nanoTime();
+			try {
+				scheduleDeferredStartupQueryTreeExpansion();
+				logStartup("deferredUiHydration:scheduleDeferredStartupQueryTreeExpansion", deferredStart);
+				setupPresetRegionDropdown();
+				logStartup("deferredUiHydration:setupPresetRegionDropdown", deferredStart);
+			} catch (Exception ex) {
+				System.err.println("DbViewer deferred UI hydration failed: " + ex);
+			}
+		});
+		deferredUiTimer.setRepeats(false);
+		deferredUiTimer.start();
 	}
 
 	private void ensureSplitPanesInitialized() {
@@ -2200,15 +2252,8 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		if (queryList.getRowCount() > 0) {
 			queryList.setSelectionRow(0);
 		}
-		// Expand the tree according to the compress_tree property.
-		// compress_tree=true  → show only down to the second group level (sub-groups
-		//                       visible but collapsed); faster and less cluttered.
-		// compress_tree=false → expand the full tree (up to the row cap).
-		if (InterfaceMain.compressTree) {
-			expandQueryTreeToDepth(queryList, 2);
-		} else {
-			expandQueryTreeRows(queryList, STARTUP_QUERY_TREE_EXPANSION_ROW_LIMIT);
-		}
+		// Tree expansion is intentionally deferred to post-first-paint startup
+		// hydration so the initial frame appears sooner.
 		queryList.setRowHeight(queryList.getFont().getSize() + 5);
 		ToolTipManager.sharedInstance().registerComponent(queryList);
 		ToolTipManager.sharedInstance().setInitialDelay(1200); // set tooltip delay
@@ -2243,6 +2288,66 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			if (DEBUG) System.out.println("DbViewer: query tree startup expansion capped at " + maxRowsToExpand
 					+ " rows to keep the UI responsive.");
 		}
+	}
+
+	private void scheduleDeferredStartupQueryTreeExpansion() {
+		if (queryList == null) {
+			return;
+		}
+		if (deferredQueryTreeExpansionTimer != null && deferredQueryTreeExpansionTimer.isRunning()) {
+			deferredQueryTreeExpansionTimer.stop();
+		}
+		deferredQueryTreeExpansionTimer = new javax.swing.Timer(DEFERRED_QUERY_TREE_EXPANSION_DELAY_MS, e -> {
+			final long expansionStart = System.nanoTime();
+			if (queryList == null || !queryList.isDisplayable()) {
+				return;
+			}
+			if (InterfaceMain.compressTree) {
+				expandQueryTreeToDepth(queryList, 2);
+				logStartup("deferredQueryTreeExpansion:compressTreeDepth2", expansionStart);
+				return;
+			}
+			expandQueryTreeRowsInBatches(queryList, STARTUP_QUERY_TREE_EXPANSION_ROW_LIMIT,
+					DEFERRED_QUERY_TREE_EXPANSION_BATCH_SIZE,
+					DEFERRED_QUERY_TREE_EXPANSION_BATCH_INTERVAL_MS,
+					expansionStart);
+		});
+		deferredQueryTreeExpansionTimer.setRepeats(false);
+		deferredQueryTreeExpansionTimer.start();
+	}
+
+	private void expandQueryTreeRowsInBatches(JTree tree, int maxRowsToExpand, int batchSize, int intervalMs,
+			long expansionStartNanos) {
+		if (tree == null || maxRowsToExpand <= 0 || batchSize <= 0) {
+			return;
+		}
+		final int[] expandedRows = new int[] { 0 };
+		javax.swing.Timer batchTimer = new javax.swing.Timer(intervalMs, null);
+		batchTimer.addActionListener(evt -> {
+			if (queryList == null || !queryList.isDisplayable()) {
+				batchTimer.stop();
+				return;
+			}
+			int remaining = maxRowsToExpand - expandedRows[0];
+			if (remaining <= 0) {
+				batchTimer.stop();
+				logStartup("deferredQueryTreeExpansion:batchedComplete", expansionStartNanos);
+				return;
+			}
+			int rowsThisBatch = Math.min(batchSize, remaining);
+			for (int i = 0; i < rowsThisBatch; i++) {
+				int row = expandedRows[0];
+				if (row >= tree.getRowCount()) {
+					batchTimer.stop();
+					logStartup("deferredQueryTreeExpansion:batchedComplete", expansionStartNanos);
+					return;
+				}
+				tree.expandRow(row);
+				expandedRows[0]++;
+			}
+		});
+		batchTimer.setRepeats(true);
+		batchTimer.start();
 	}
 
 	/**
@@ -2831,27 +2936,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 				expanded = !expanded;
 			}
 		}); // listener end
-		if (DEBUG) System.out.println("DbViewer.setupListeners: listener registration complete, beginning main-view activation...");
-
-		JFrame parentFrame = InterfaceMain.getInstance().getFrame();
-		if (DEBUG) System.out.println("DbViewer.setupListeners: parentFrame acquired? " + (parentFrame != null));
-		parentFrame.getContentPane();
-		if (DEBUG) System.out.println("DbViewer.setupListeners: calling InterfaceMain.setMainView(tableCreatorSplit)...");
-
-		// Use InterfaceMain.setMainView to replace the CENTER component while keeping the
-		// global status bar (installed in InterfaceMain.SOUTH) intact.
-		InterfaceMain.getInstance().setMainView(tableCreatorSplit);
-		if (DEBUG) System.out.println("DbViewer.setupListeners: InterfaceMain.setMainView returned.");
-
-		// have to get rid of the wait cursor
-		if (DEBUG) System.out.println("DbViewer.setupListeners: hiding glass pane...");
-		parentFrame.getGlassPane().setVisible(false);
-		if (DEBUG) System.out.println("DbViewer.setupListeners: glass pane hidden.");
-
-		if (DEBUG) System.out.println("DbViewer.setupListeners: calling parentFrame.setVisible(true)...");
-
-		parentFrame.setVisible(true);
-		if (DEBUG) System.out.println("DbViewer.setupListeners: parentFrame.setVisible(true) returned.");
+		if (DEBUG) System.out.println("DbViewer.setupListeners: listener registration complete.");
 	}
 
 	private void resetPresetRegionsComboOnManualSelection() {

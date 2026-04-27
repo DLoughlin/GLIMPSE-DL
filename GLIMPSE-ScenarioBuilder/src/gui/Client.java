@@ -48,6 +48,7 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.swing.SwingUtilities;
 import javafx.animation.FadeTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -70,6 +71,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -141,6 +143,8 @@ public class Client extends Application {
     private static final String STARTUP_SCENARIO_MESSAGE = "Loading scenario status...";
     private static final String STARTUP_COMPONENT_MESSAGE = "Loading scenario components...";
     private static final String STARTUP_DIALOG_HEADING = "GLIMPSE startup:";
+    private static final String STARTUP_SHELL_MESSAGE = "Starting ScenarioBuilder...";
+    private static final String EARLY_SPLASH_INITIAL_MESSAGE = "Launching ScenarioBuilder...";
     private static final double STARTUP_OVERLAY_MAX_WIDTH = 420.0;
     private static final int STARTUP_TOTAL_STEPS = 5;
     private static final int STARTUP_STEP_WINDOW_LAYOUT = 1;
@@ -223,7 +227,6 @@ public class Client extends Application {
     private final AtomicInteger activeScenarioOperationCount = new AtomicInteger(0);
     private ProgressBar scenarioOperationProgressBar;
     private ProgressBar startupOverlayProgressBar;
-    private Label startupOverlayPercentLabel;
     private final AtomicBoolean startupOverlayVisible = new AtomicBoolean(false);
     private Label startupOverlayLabel;
     private VBox startupOverlayBox;
@@ -256,6 +259,11 @@ public class Client extends Application {
     private static volatile boolean initialComponentLoadPending = true;
     private static volatile int startupStepsCompleted = 0;
     private static volatile String lastStartupStatusText = STARTUP_UI_MESSAGE;
+    private static volatile boolean startupRelayoutApplied = false;
+    private static volatile javax.swing.JWindow earlySplashWindow;
+    private static volatile javax.swing.JLabel earlySplashLabel;
+    private static volatile javax.swing.JProgressBar earlySplashProgressBar;
+    private static final AtomicBoolean earlySplashVisible = new AtomicBoolean(false);
 
     /**
      * The entry point of the application. Sets up JavaFX and launches the GUI.
@@ -265,9 +273,14 @@ public class Client extends Application {
      * @param args Command line arguments passed to the application. Supports an options file via -options flag or as a single argument.
      */
     public static void main(String[] args) {
+        showEarlyStartupSplash(EARLY_SPLASH_INITIAL_MESSAGE);
         // Ensures JavaFX does not exit implicitly on certain VMs (e.g., when WM_ENDSESSION is called).
         Platform.setImplicitExit(false);
-        launch(args);
+        try {
+            launch(args);
+        } finally {
+            closeEarlyStartupSplash();
+        }
     }
 
     /**
@@ -284,6 +297,7 @@ public class Client extends Application {
         ConsoleOutputRedirect.install();
 
         final long t0 = System.nanoTime();
+        updateEarlyStartupSplashMessage("Loading settings and options...");
         System.out.println("Loading settings and initializing.");
 
         // Initialize utility/variable objects with references to each other
@@ -296,6 +310,7 @@ public class Client extends Application {
 
         // Load options into the vars singleton
         vars.loadOptions(optionsFilename);
+        updateEarlyStartupSplashMessage("Loading GLIMPSE options...");
         final String setup = vars.examineGLIMPSESetup();
         if (setup.length() > 0) {
             System.out.println(setup);
@@ -350,22 +365,29 @@ public class Client extends Application {
 //        primaryStage.centerOnScreen();
 //        primaryStage.show();
                 
-        advanceStartupStep(STARTUP_STEP_WINDOW_LAYOUT, STARTUP_BUILDING_UI_MESSAGE);
-        setStartupStatus(STARTUP_BUILDING_UI_MESSAGE, -1, true);
-        logStartupCheckpoint("ScenarioBuilder.build start", t0);
-        getScenarioBuilder().build();
-        logStartupCheckpoint("ScenarioBuilder.build complete", t0);
-        advanceStartupStep(STARTUP_STEP_UI_READY, STARTUP_WINDOW_READY_MESSAGE);
-        setFileDependentUiEnabled(false);
-        setStartupStatus(STARTUP_WINDOW_READY_MESSAGE, -1, true);
-        logStartupCheckpoint("Main window composition start", t0);
-        setMainWindow(combineAllElementsIntoOnePane(), createMenuBar());
-        logStartupCheckpoint("Main window composition complete", t0);
+        advanceStartupStep(STARTUP_STEP_WINDOW_LAYOUT, STARTUP_SHELL_MESSAGE);
+        setStartupStatus(STARTUP_SHELL_MESSAGE, -1, true);
+        setStartupShellWindow();
         primaryStage.show();
         mainWindowDisplayed = true;
-        utils.setModalDialogsReadyAndFlushWarnings();
+        closeEarlyStartupSplash();
+        logStartupCheckpoint("Startup shell shown", t0);
 
         Platform.runLater(() -> {
+            // Build heavy panes after first paint so startup is perceived as immediate.
+            setStartupStatus(STARTUP_BUILDING_UI_MESSAGE, -1, true);
+            logStartupCheckpoint("ScenarioBuilder.build start", STARTUP_T0_NANOS);
+            getScenarioBuilder().build();
+            logStartupCheckpoint("ScenarioBuilder.build complete", STARTUP_T0_NANOS);
+            advanceStartupStep(STARTUP_STEP_UI_READY, STARTUP_WINDOW_READY_MESSAGE);
+            setFileDependentUiEnabled(false);
+            setStartupStatus(STARTUP_WINDOW_READY_MESSAGE, -1, true);
+            logStartupCheckpoint("Main window composition start", STARTUP_T0_NANOS);
+            setMainWindow(combineAllElementsIntoOnePane(), createMenuBar());
+            forceStartupRelayoutAfterSceneSwap();
+            logStartupCheckpoint("Main window composition complete", STARTUP_T0_NANOS);
+            utils.setModalDialogsReadyAndFlushWarnings();
+
             setStartupStatus(STARTUP_POST_SHOW_MESSAGE, -1, true);
             logStartupCheckpoint("Post-show startup tasks begin", STARTUP_T0_NANOS);
             setupExecutionThreads();
@@ -445,6 +467,8 @@ public class Client extends Application {
     private GridPane combineAllElementsIntoOnePane() {
         final GridPane mainGridPane = new GridPane();
         mainGridPane.setHgap(0);
+        mainGridPane.setMinSize(0, 0);
+        mainGridPane.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
 
         javafx.scene.layout.RowConstraints topRow = new javafx.scene.layout.RowConstraints();
         topRow.setVgrow(Priority.ALWAYS);
@@ -465,6 +489,8 @@ public class Client extends Application {
         componentLibraryBox.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         createScenarioBox.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         runBox.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        componentLibraryBox.setMinWidth(0);
+        createScenarioBox.setMinWidth(0);
         
         final HBox topRowBox = new HBox(TOP_PANEL_GAP, componentLibraryBox, arrowBox, createScenarioBox);
         topRowBox.setFillHeight(true);
@@ -472,8 +498,8 @@ public class Client extends Application {
         arrowBox.setMinWidth(Region.USE_PREF_SIZE);
         arrowBox.setPrefWidth(Region.USE_COMPUTED_SIZE);
         arrowBox.setMaxWidth(Region.USE_PREF_SIZE);
-        HBox.setHgrow(componentLibraryBox, Priority.NEVER);
-        HBox.setHgrow(createScenarioBox, Priority.NEVER);
+        HBox.setHgrow(componentLibraryBox, Priority.ALWAYS);
+        HBox.setHgrow(createScenarioBox, Priority.ALWAYS);
 
         final double ratioDenominator = TOP_LEFT_PANEL_RATIO + TOP_RIGHT_PANEL_RATIO;
         componentLibraryBox.prefWidthProperty().bind(
@@ -563,6 +589,87 @@ public class Client extends Application {
     }
 
     /**
+     * After swapping from the lightweight startup shell to the full UI scene,
+     * force one extra CSS/layout pass and a tiny one-time stage-size nudge so
+     * width/height bindings settle immediately without user resize.
+     */
+    private void forceStartupRelayoutAfterSceneSwap() {
+        if (startupRelayoutApplied) {
+            return;
+        }
+        startupRelayoutApplied = true;
+        Platform.runLater(() -> {
+            try {
+                final Stage stage = primaryStage;
+                final Scene scene = stage == null ? null : stage.getScene();
+                final Parent root = scene == null ? null : scene.getRoot();
+                if (stage == null || root == null) {
+                    return;
+                }
+
+                final double targetW = Math.max(MIN_WINDOW_WIDTH, stage.getWidth());
+                final double targetH = Math.max(MIN_WINDOW_HEIGHT, stage.getHeight());
+
+                // First pass: force CSS/layout and request another pulse.
+                root.applyCss();
+                root.layout();
+                root.requestLayout();
+
+                Platform.runLater(() -> {
+                    try {
+                        // Second pass: re-apply layout after controls have reported final pref sizes.
+                        root.applyCss();
+                        root.layout();
+
+                        // Let JavaFX compute scene-driven preferred sizing once, then restore
+                        // the target startup dimensions to keep the expected window footprint.
+                        stage.sizeToScene();
+                        stage.setWidth(targetW);
+                        stage.setHeight(targetH);
+
+                        // Final one-pixel nudge to guarantee bound regions recompute now.
+                        stage.setWidth(targetW + 1);
+                        stage.setHeight(targetH + 1);
+                        stage.setWidth(targetW);
+                        stage.setHeight(targetH);
+                    } catch (Exception ignored) {
+                    }
+                });
+            } catch (Exception ignored) {
+            }
+        });
+    }
+
+    /**
+     * Shows a lightweight shell scene so users get immediate visual feedback
+     * while the full ScenarioBuilder panes are still being constructed.
+     */
+    private void setStartupShellWindow() {
+        Label heading = new Label(STARTUP_DIALOG_HEADING);
+        heading.setStyle("-fx-font-size: 17px; -fx-font-weight: bold; -fx-text-fill: #465060;");
+        Label message = new Label(STARTUP_SHELL_MESSAGE);
+        message.setStyle("-fx-font-size: 13px; -fx-text-fill: #465060;");
+        ProgressBar bar = new ProgressBar(ProgressIndicator.INDETERMINATE_PROGRESS);
+        bar.setPrefWidth(260);
+
+        VBox center = new VBox(12, heading, message, bar);
+        center.setAlignment(Pos.CENTER);
+        center.setPadding(new Insets(24));
+        BorderPane shellRoot = new BorderPane(center);
+        shellRoot.setStyle(styles.getBackgroundStyle());
+
+        Scene scene = new Scene(shellRoot, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT);
+        applyModernCss(scene);
+        primaryStage.setScene(scene);
+        primaryStage.setTitle(VERSION);
+        primaryStage.setMinHeight(MIN_WINDOW_HEIGHT);
+        primaryStage.setHeight(MIN_WINDOW_HEIGHT);
+        primaryStage.setMinWidth(MIN_WINDOW_WIDTH);
+        primaryStage.setWidth(MIN_WINDOW_WIDTH);
+        primaryStage.centerOnScreen();
+    }
+
+    /**
      * Sets up the execution threads for GCAM and the model interface.
      * GCAM uses a single-threaded executor, while the model interface uses a multi-threaded executor.
      *
@@ -635,6 +742,7 @@ public class Client extends Application {
         final Client inst = instanceForStatus;
         startupBusyState = busy;
         final String safeText = (text == null || text.trim().isEmpty()) ? STARTUP_READY_MESSAGE : text.trim();
+        updateEarlyStartupSplashMessage(safeText);
         if (inst == null) {
             return;
         }
@@ -677,12 +785,8 @@ public class Client extends Application {
             startupOverlayLabel.setText(safeText);
         }
         updateStartupStepForStatus(safeText);
-        double overlayProgress = normalizeStartupProgress(safeText, progress, busy);
         if (startupOverlayProgressBar != null) {
-            startupOverlayProgressBar.setProgress(overlayProgress);
-        }
-        if (startupOverlayPercentLabel != null) {
-            startupOverlayPercentLabel.setText(formatStartupPercent(overlayProgress));
+            startupOverlayProgressBar.setProgress(busy ? ProgressIndicator.INDETERMINATE_PROGRESS : 1.0);
         }
         boolean showOverlay = busy && !STARTUP_READY_MESSAGE.equalsIgnoreCase(safeText);
         startupOverlayVisible.set(showOverlay);
@@ -720,7 +824,7 @@ public class Client extends Application {
         startupOverlayLabel.setMaxWidth(Double.MAX_VALUE);
         startupOverlayLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #465060;");
 
-        startupOverlayProgressBar = new ProgressBar(0.0);
+        startupOverlayProgressBar = new ProgressBar(ProgressIndicator.INDETERMINATE_PROGRESS);
         startupOverlayProgressBar.setPrefWidth(240);
         startupOverlayProgressBar.setMaxWidth(240);
         startupOverlayProgressBar.setMinWidth(240);
@@ -728,12 +832,7 @@ public class Client extends Application {
         startupOverlayProgressBar.setFocusTraversable(false);
         startupOverlayProgressBar.setStyle("-fx-accent: #748ac4;");
 
-        startupOverlayPercentLabel = new Label("0%");
-        startupOverlayPercentLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #465060;");
-        startupOverlayPercentLabel.setMinWidth(40);
-        startupOverlayPercentLabel.setAlignment(Pos.CENTER_RIGHT);
-
-        HBox progressRow = new HBox(12, startupOverlayProgressBar, startupOverlayPercentLabel);
+        HBox progressRow = new HBox(12, startupOverlayProgressBar);
         progressRow.setAlignment(Pos.CENTER);
 
         VBox overlay = new VBox(12, headingLabel, startupOverlayLabel, progressRow);
@@ -755,6 +854,7 @@ public class Client extends Application {
         if (statusText != null && !statusText.trim().isEmpty()) {
             lastStartupStatusText = statusText.trim();
         }
+        updateEarlyStartupSplashMessage(lastStartupStatusText);
         final Client inst = instanceForStatus;
         if (inst == null) {
             return;
@@ -771,12 +871,8 @@ public class Client extends Application {
         if (startupOverlayLabel != null) {
             startupOverlayLabel.setText(lastStartupStatusText == null || lastStartupStatusText.trim().isEmpty() ? STARTUP_UI_MESSAGE : lastStartupStatusText.trim());
         }
-        double progress = calculateStartupProgress();
         if (startupOverlayProgressBar != null) {
-            startupOverlayProgressBar.setProgress(progress);
-        }
-        if (startupOverlayPercentLabel != null) {
-            startupOverlayPercentLabel.setText(formatStartupPercent(progress));
+            startupOverlayProgressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
         }
     }
 
@@ -1210,5 +1306,96 @@ public class Client extends Application {
             scenarioOperationProgressBar.setVisible(false);
             scenarioOperationProgressBar.setManaged(false);
         }
+    }
+
+    private static void showEarlyStartupSplash(String message) {
+        if (!earlySplashVisible.compareAndSet(false, true)) {
+            updateEarlyStartupSplashMessage(message);
+            return;
+        }
+        SwingUtilities.invokeLater(() -> {
+            try {
+                javax.swing.JWindow window = new javax.swing.JWindow();
+                window.setAlwaysOnTop(true);
+
+                javax.swing.JPanel content = new javax.swing.JPanel(new java.awt.BorderLayout(10, 10));
+                content.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 16, 12, 16));
+
+                javax.swing.JLabel heading = new javax.swing.JLabel("GLIMPSE startup:");
+                heading.setFont(heading.getFont().deriveFont(java.awt.Font.BOLD, 14f));
+
+                javax.swing.JLabel messageLabel = new javax.swing.JLabel(
+                        (message == null || message.trim().isEmpty()) ? EARLY_SPLASH_INITIAL_MESSAGE : message.trim());
+                javax.swing.JProgressBar bar = new javax.swing.JProgressBar();
+                bar.setIndeterminate(true);
+                bar.setStringPainted(false);
+
+                javax.swing.JPanel textPanel = new javax.swing.JPanel(new java.awt.GridLayout(2, 1, 0, 4));
+                textPanel.add(heading);
+                textPanel.add(messageLabel);
+                content.add(textPanel, java.awt.BorderLayout.CENTER);
+                content.add(bar, java.awt.BorderLayout.SOUTH);
+
+                window.setContentPane(content);
+                window.setSize(430, 110);
+                window.setLocationRelativeTo(null);
+                earlySplashWindow = window;
+                earlySplashLabel = messageLabel;
+                earlySplashProgressBar = bar;
+                window.setVisible(true);
+            } catch (Throwable t) {
+                earlySplashVisible.set(false);
+            }
+        });
+    }
+
+    private static void updateEarlyStartupSplashMessage(String message) {
+        if (!earlySplashVisible.get()) {
+            return;
+        }
+        final String safeMessage = (message == null || message.trim().isEmpty())
+                ? EARLY_SPLASH_INITIAL_MESSAGE
+                : message.trim();
+        SwingUtilities.invokeLater(() -> {
+            try {
+                if (earlySplashLabel != null) {
+                    earlySplashLabel.setText(safeMessage);
+                }
+            } catch (Throwable ignored) {
+            }
+        });
+    }
+
+    private static String buildEarlySplashStepText() {
+        int completed = Math.max(0, Math.min(STARTUP_TOTAL_STEPS, startupStepsCompleted));
+        if (completed <= 0) {
+            return "Preparing startup...";
+        }
+        return "Step " + completed + " of " + STARTUP_TOTAL_STEPS;
+    }
+
+    private static String buildEarlySplashProgressText() {
+        int completed = Math.max(0, Math.min(STARTUP_TOTAL_STEPS, startupStepsCompleted));
+        int percent = (int) Math.round((completed * 100.0) / STARTUP_TOTAL_STEPS);
+        return percent + "%";
+    }
+
+    private static void closeEarlyStartupSplash() {
+        if (!earlySplashVisible.compareAndSet(true, false)) {
+            return;
+        }
+        SwingUtilities.invokeLater(() -> {
+            try {
+                if (earlySplashWindow != null) {
+                    earlySplashWindow.setVisible(false);
+                    earlySplashWindow.dispose();
+                }
+            } catch (Throwable ignored) {
+            } finally {
+                earlySplashWindow = null;
+                earlySplashLabel = null;
+                earlySplashProgressBar = null;
+            }
+        });
     }
 }

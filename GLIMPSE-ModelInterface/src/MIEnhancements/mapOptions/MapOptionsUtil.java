@@ -28,6 +28,9 @@ import org.geotools.data.shapefile.ShapefileDataStore;
 import org.geotools.factory.CommonFactoryFinder;
 import org.geotools.feature.FeatureCollection;
 import org.geotools.feature.FeatureIterator;
+import org.geotools.feature.simple.SimpleFeatureBuilder;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.filter.Filter;
@@ -421,7 +424,19 @@ public class MapOptionsUtil {
     }
 
     /**
+     * Geometry simplification tolerance in decimal degrees (WGS-84).
+     * 0.05° ≈ 5 km — imperceptible at screen resolution but dramatically
+     * reduces polygon vertex counts, especially for the detailed US-states shapefile.
+     * Raise toward 0.1 for more aggressive simplification; lower toward 0.01 to
+     * preserve finer coastal detail.
+     */
+    private static final double SIMPLIFICATION_TOLERANCE = 0.05;
+
+    /**
      * Gets a FeatureCollection from a shapefile path.
+     * Geometries are simplified using {@link TopologyPreservingSimplifier} before
+     * being stored in the cache, so the (one-time) cost is paid at first open and
+     * every subsequent access is fast.
      * @param shpFilePath the shapefile path
      * @return FeatureCollection from the shapefile
      */
@@ -453,13 +468,16 @@ public class MapOptionsUtil {
             String typeName = store.getTypeNames()[0];
             FeatureSource<SimpleFeatureType, SimpleFeature> featureSource = store.getFeatureSource(typeName);
             FeatureCollection<SimpleFeatureType, SimpleFeature> loadedCollection = featureSource.getFeatures();
+            SimpleFeatureType schema = loadedCollection.getSchema();
             List<SimpleFeature> features = new ArrayList<>();
             try (FeatureIterator<SimpleFeature> iterator = loadedCollection.features()) {
                 while (iterator.hasNext()) {
-                    features.add(iterator.next());
+                    SimpleFeature original = iterator.next();
+                    SimpleFeature simplified = simplifyFeatureGeometry(original, schema);
+                    features.add(simplified);
                 }
             }
-            featureCollection = new ListFeatureCollection(loadedCollection.getSchema(), features);
+            featureCollection = new ListFeatureCollection(schema, features);
             shapeCollectionCache.put(cacheKey, featureCollection);
         } catch (IOException e1) { // IOException covers MalformedURLException
             e1.printStackTrace();
@@ -469,6 +487,77 @@ public class MapOptionsUtil {
             }
         }
         return featureCollection;
+    }
+
+    /**
+     * Returns a copy of {@code feature} with its default geometry simplified
+     * using {@link TopologyPreservingSimplifier}. All non-geometry attributes
+     * are preserved unchanged. If simplification fails or produces an invalid
+     * geometry the original feature is returned unmodified.
+     */
+    private static SimpleFeature simplifyFeatureGeometry(SimpleFeature feature, SimpleFeatureType schema) {
+        try {
+            Geometry originalGeom = (Geometry) feature.getDefaultGeometry();
+            if (originalGeom == null || originalGeom.isEmpty()) {
+                return feature;
+            }
+            Geometry simplified = TopologyPreservingSimplifier.simplify(originalGeom, SIMPLIFICATION_TOLERANCE);
+            if (simplified == null || simplified.isEmpty() || !simplified.isValid()) {
+                return feature;
+            }
+            SimpleFeatureBuilder builder = new SimpleFeatureBuilder(schema);
+            // Copy all attributes in schema order, replacing the default geometry.
+            for (int i = 0; i < schema.getAttributeCount(); i++) {
+                String attName = schema.getDescriptor(i).getLocalName();
+                if (attName.equals(schema.getGeometryDescriptor().getLocalName())) {
+                    builder.add(simplified);
+                } else {
+                    builder.add(feature.getAttribute(i));
+                }
+            }
+            return builder.buildFeature(feature.getID());
+        } catch (Exception e) {
+            // Simplification failed — fall back to the original feature.
+            return feature;
+        }
+    }
+
+    /**
+     * Kicks off background loading and simplification of all shapefiles so
+     * that the first map open feels instant. Safe to call multiple times —
+     * files already in the cache are skipped immediately.
+     *
+     * <p>Call this once mapping is enabled and shapefile paths are known
+     * (e.g. at the end of {@code InterfaceMain.initializeMappingFromFolder}).</p>
+     *
+     * @param shapeFilePaths one or more shapefile paths to pre-load (nulls are skipped)
+     */
+    public static void warmUpMappingCache(String... shapeFilePaths) {
+        if (shapeFilePaths == null || shapeFilePaths.length == 0) {
+            return;
+        }
+        Thread warmUp = new Thread(() -> {
+            for (String path : shapeFilePaths) {
+                if (path == null || path.trim().isEmpty()) {
+                    continue;
+                }
+                if (shapeCollectionCache.containsKey(new File(path).getAbsolutePath())) {
+                    continue; // already cached
+                }
+                try {
+                    System.out.println("MapOptionsUtil.warmUpMappingCache: pre-loading " + path);
+                    long t0 = System.currentTimeMillis();
+                    getCollectionFromShape(path);
+                    System.out.println("MapOptionsUtil.warmUpMappingCache: loaded in "
+                            + (System.currentTimeMillis() - t0) + " ms: " + path);
+                } catch (Exception e) {
+                    System.err.println("MapOptionsUtil.warmUpMappingCache: failed to pre-load " + path + ": " + e);
+                }
+            }
+        }, "map-cache-warmup");
+        warmUp.setDaemon(true); // don't block JVM shutdown
+        warmUp.setPriority(Thread.MIN_PRIORITY); // stay out of the way of startup UI
+        warmUp.start();
     }
 
     /**

@@ -75,7 +75,6 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
-import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -1175,12 +1174,6 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             // Keep the request armed until the first real snapshot populates the table.
             return;
         }
-        TableColumn<ScenarioRow, ?> createdColumn = findCreatedColumn(table);
-        if (createdColumn != null) {
-            createdColumn.setSortType(TableColumn.SortType.ASCENDING);
-            table.getSortOrder().setAll(createdColumn);
-            table.sort();
-        }
         int lastIndex = table.getItems().size() - 1;
         if (lastIndex >= 0) {
             final int targetIndex = lastIndex;
@@ -1191,18 +1184,6 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             });
         }
         resetToDefaultCreatedSortAndScroll.set(false);
-    }
-
-    private TableColumn<ScenarioRow, ?> findCreatedColumn(TableView<ScenarioRow> table) {
-        if (table == null || table.getColumns() == null) {
-            return null;
-        }
-        for (TableColumn<ScenarioRow, ?> column : table.getColumns()) {
-            if (column != null && "Created".equals(column.getText())) {
-                return column;
-            }
-        }
-        return null;
     }
 
     private void applyLiveStdoutErrorPeriods() {

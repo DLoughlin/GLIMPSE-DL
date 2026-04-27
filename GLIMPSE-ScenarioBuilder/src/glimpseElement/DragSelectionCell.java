@@ -36,7 +36,13 @@
 package glimpseElement;
 
 import javafx.scene.control.TextField;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TablePosition;
+import javafx.scene.control.TableView;
 import javafx.scene.control.cell.TextFieldTableCell;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+import javafx.event.Event;
 
 public class DragSelectionCell extends TextFieldTableCell<DataPoint, String> {
 
@@ -67,21 +73,12 @@ public class DragSelectionCell extends TextFieldTableCell<DataPoint, String> {
 			return;
 		}
 		super.startEdit();
-		// Create and configure the TextField for editing.
-		if (textField == null) {
-			textField = new TextField(getString());
-			// Commit the edit when focus leaves the editor (clicking elsewhere, switching tabs, etc.).
-			textField.focusedProperty().addListener((obs, wasFocused, isFocused) -> {
-				if (!isFocused && isEditing()) {
-					commitEdit(textField.getText());
-				}
-			});
-		} else {
-			textField.setText(getString());
-		}
+		createTextFieldIfNeeded();
+		textField.setText(getString());
 		setText(null);
 		setGraphic(textField);
 		textField.selectAll();
+		textField.requestFocus();
 	}
 
 	@Override
@@ -120,5 +117,53 @@ public class DragSelectionCell extends TextFieldTableCell<DataPoint, String> {
 	 */
 	private String getString() {
 		return getItem() == null ? "" : getItem();
+	}
+
+	private void createTextFieldIfNeeded() {
+		if (textField != null) {
+			return;
+		}
+		textField = new TextField(getString());
+		textField.setOnAction(event -> commitFromEditor());
+		textField.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+			if (event.getCode() == KeyCode.ESCAPE) {
+				cancelEdit();
+				event.consume();
+			}
+		});
+		// Commit on focus loss so edits are retained when clicking other cells/controls.
+		textField.focusedProperty().addListener((obs, wasFocused, isFocused) -> {
+			if (!isFocused) {
+				commitFromEditor();
+			}
+		});
+	}
+
+	private void commitFromEditor() {
+		if (textField == null) {
+			return;
+		}
+		commitEdit(textField.getText());
+	}
+
+	@Override
+	public void commitEdit(String newValue) {
+		// JavaFX may end editing before focus-loss listeners run; fire commit manually in that case.
+		if (!isEditing() && (newValue != null ? !newValue.equals(getItem()) : getItem() != null)) {
+			TableView<DataPoint> table = getTableView();
+			if (table != null) {
+				TableColumn<DataPoint, String> column = getTableColumn();
+				TableColumn.CellEditEvent<DataPoint, String> event =
+						new TableColumn.CellEditEvent<>(
+								table,
+								new TablePosition<>(table, getIndex(), column),
+								TableColumn.editCommitEvent(),
+								newValue);
+				Event.fireEvent(column, event);
+			}
+		}
+		super.commitEdit(newValue);
+		setGraphic(null);
+		setText(getString());
 	}
 }

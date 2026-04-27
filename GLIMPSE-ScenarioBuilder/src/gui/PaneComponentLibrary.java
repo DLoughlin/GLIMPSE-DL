@@ -51,7 +51,6 @@ import glimpseElement.ScenarioRow;
 import glimpseElement.ScenarioTable;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
-import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
@@ -261,6 +260,17 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 			try {
 				File folder = new File(vars.getScenarioComponentsDir());
 				ArrayList<File> fileList = buildFileList(folder.toPath());
+				fileList.sort((left, right) -> {
+					long leftModified = left == null ? Long.MIN_VALUE : left.lastModified();
+					long rightModified = right == null ? Long.MIN_VALUE : right.lastModified();
+					int byCreatedDesc = Long.compare(rightModified, leftModified);
+					if (byCreatedDesc != 0) {
+						return byCreatedDesc;
+					}
+					String leftName = left == null ? "" : left.getName();
+					String rightName = right == null ? "" : right.getName();
+					return leftName.compareToIgnoreCase(rightName);
+				});
 				ComponentRow[] fileArr = new ComponentRow[fileList.size()];
 				int k = 0;
 				for (File file : fileList) {
@@ -314,27 +324,9 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 		if (table == null) {
 			return;
 		}
-		TableColumn<ComponentRow, ?> createdColumn = findCreatedColumn(table);
-		if (createdColumn != null) {
-			createdColumn.setSortType(TableColumn.SortType.DESCENDING);
-			table.getSortOrder().setAll(createdColumn);
-			table.sort();
-		}
 		if (table.getItems() != null && !table.getItems().isEmpty()) {
 			table.scrollTo(0);
 		}
-	}
-
-	private TableColumn<ComponentRow, ?> findCreatedColumn(TableView<ComponentRow> table) {
-		if (table == null || table.getColumns() == null) {
-			return null;
-		}
-		for (TableColumn<ComponentRow, ?> column : table.getColumns()) {
-			if (column != null && "Created".equals(column.getText())) {
-				return column;
-			}
-		}
-		return null;
 	}
 
 	public ArrayList<File> buildFileList(Path path) {

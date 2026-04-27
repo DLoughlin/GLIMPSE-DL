@@ -118,6 +118,8 @@ public abstract class AbstractMapPanel extends JFrame implements ComponentListen
     protected JFrame frame;
     protected JMapPane jmap;
     protected MapContent stateMap;
+    /** The single FeatureLayer kept alive across redraws so only its Style is swapped. */
+    protected FeatureLayer boundaryLayer;
     protected JToolBar toolBar;
     protected JPanel scenarioMenuPanel;
     protected JPanel yearMenuPanel;
@@ -167,9 +169,13 @@ public abstract class AbstractMapPanel extends JFrame implements ComponentListen
     protected boolean normalizeScale;
     protected final MapMode mapMode;
     private SwingWorker<MapContent, Void> initialMapLoadWorker;
+    private SwingWorker<Style, Void> redrawWorker;
+    private javax.swing.Timer redrawDebounceTimer;
     private JLabel mapLoadingLabel;
 
     private static final Logger LOGGER = Logger.getLogger(AbstractMapPanel.class.getName());
+    /** Milliseconds to wait after the last redraw request before actually rendering. */
+    private static final int REDRAW_DEBOUNCE_MS = 250;
     private static final int LEGEND_PANEL_WIDTH = 160;
     private static final int DIVERGING_SWATCH_HEIGHT = 110;
     private static final int SEQUENTIAL_SWATCH_HEIGHT = 72;
@@ -581,6 +587,7 @@ public abstract class AbstractMapPanel extends JFrame implements ComponentListen
         if (stateMap != null) {
             stateMap.dispose();
             stateMap = null;
+            boundaryLayer = null; // force full rebuild on next redraw
         }
         contentPane.add(createMapContent(), BorderLayout.CENTER);
         contentPane.add(createFooter(), BorderLayout.PAGE_END);
@@ -605,36 +612,192 @@ public abstract class AbstractMapPanel extends JFrame implements ComponentListen
         if (selectedChoice == null || comboBoxPalette == null || comboBoxPalette.getSelectedItem() == null) {
             return;
         }
-        numColorClass = (int) comboBoxNumClasses.getSelectedItem();
-        numColorChoice = Integer.parseInt(selectedChoice) - 1;
-        paletteChoice = (String) comboBoxPalette.getSelectedItem();
-        usePalette = MapColorPalette.getMapColorPalette(paletteChoice, numColorChoice, numColorClass, reverseColors);
-        if (intervalType == IntervalType.AUTOMATIC) {
-            minMaxFromTable = getCurrentMinMax(normalizeScale);
-        }
-        if (intervalType == IntervalType.CUSTOM && minField != null && maxField != null
+
+        // Snapshot all UI state now (on the EDT) before handing off to background thread.
+        final int snapNumColorClass = (int) comboBoxNumClasses.getSelectedItem();
+        final int snapNumColorChoice = Integer.parseInt(selectedChoice) - 1;
+        final String snapPaletteChoice = (String) comboBoxPalette.getSelectedItem();
+        final boolean snapReverseColors = reverseColors;
+        final boolean snapNormalizeScale = normalizeScale;
+        final IntervalType snapIntervalType = intervalType;
+        final double snapCustomMin;
+        final double snapCustomMax;
+        if (snapIntervalType == IntervalType.CUSTOM && minField != null && maxField != null
                 && minField.getValue() instanceof Number && maxField.getValue() instanceof Number) {
-            double minCustom = ((Number) minField.getValue()).doubleValue();
-            double maxCustom = ((Number) maxField.getValue()).doubleValue();
-            useMapColor = new MapColor(usePalette, minCustom, maxCustom);
+            snapCustomMin = ((Number) minField.getValue()).doubleValue();
+            snapCustomMax = ((Number) maxField.getValue()).doubleValue();
         } else {
-            useMapColor = new MapColor(usePalette, minMaxFromTable[0], minMaxFromTable[1]);
+            snapCustomMin = 0;
+            snapCustomMax = 1;
+        }
+        // Snapshot Swing component selections needed for min/max computation off-EDT.
+        final String snapYear = yearListMenu.getSelectedItem() != null
+                ? yearListMenu.getSelectedItem().toString() : null;
+        final String snapScenario = scenarioListMenu.getSelectedItem() != null
+                ? scenarioListMenu.getSelectedItem().toString() : null;
+        final boolean snapRowSelected = !jtable.getSelectionModel().isSelectionEmpty();
+        // Snapshot all year items for across-year min/max (used when rows are selected).
+        final java.util.List<String> snapAllYears = new java.util.ArrayList<>();
+        for (int i = 0; i < yearListMenu.getItemCount(); i++) {
+            Object item = yearListMenu.getItemAt(i);
+            if (item != null) snapAllYears.add(item.toString());
         }
 
-        if (stateMap != null) {
-            stateMap.dispose();
+        // Cancel any in-flight redraw worker.
+        if (redrawWorker != null && !redrawWorker.isDone()) {
+            redrawWorker.cancel(true);
         }
-        stateMap = createBoundaryMapLayer();
-        if (stateMap == null) {
-            stateMap = new MapContent();
+
+        // Snapshot whether we already have a live layer to update in-place.
+        final boolean hasLiveLayer = (boundaryLayer != null && stateMap != null
+                && stateMap.layers().contains(boundaryLayer));
+        // Also snapshot the table data needed for style-building (off-EDT safe since it's a plain HashMap copy).
+        final HashMap<String, Double> snapTableData = hasLiveLayer ? snapshotTableData(snapYear, snapScenario) : null;
+
+        frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+
+        redrawWorker = new SwingWorker<Style, Void>() {
+            // These fields are computed in doInBackground and read in done().
+            private MapColorPalette builtPalette;
+            private MapColor builtMapColor;
+            private double[] builtMinMax;
+
+            @Override
+            protected Style doInBackground() {
+                if (isCancelled()) {
+                    return null;
+                }
+                builtPalette = MapColorPalette.getMapColorPalette(
+                        snapPaletteChoice, snapNumColorChoice, snapNumColorClass, snapReverseColors);
+
+                double[] minMax;
+                if (snapIntervalType == IntervalType.AUTOMATIC) {
+                    minMax = computeMinMaxOffEdt(snapYear, snapScenario, snapAllYears,
+                            snapRowSelected, snapNormalizeScale);
+                } else {
+                    minMax = new double[]{snapCustomMin, snapCustomMax};
+                }
+                builtMinMax = minMax;
+                builtMapColor = new MapColor(builtPalette, minMax[0], minMax[1]);
+
+                if (isCancelled()) {
+                    return null;
+                }
+
+                if (hasLiveLayer) {
+                    // Fast path: build only the new Style — no MapContent allocation,
+                    // no layer creation, no viewport reset.
+                    // Get the feature collection from the map resource cache (already simplified).
+                    useMapColor = builtMapColor;
+                    FeatureCollection<SimpleFeatureType, SimpleFeature> fc =
+                            MapOptionsUtil.getCollectionFromShape(mapMode.getShapeFilePath());
+                    return (fc != null && fc.size() > 0)
+                            ? buildBoundaryStyle(fc, snapTableData)
+                            : null;
+                } else {
+                    // Slow path (first open or layer was lost): full rebuild.
+                    useMapColor = builtMapColor;
+                    return null; // signals done() to do a full rebuild
+                }
+            }
+
+            @Override
+            protected void done() {
+                frame.setCursor(Cursor.getDefaultCursor());
+                if (isCancelled() || frame == null || !frame.isDisplayable()) {
+                    return;
+                }
+                try {
+                    Style newStyle = get();
+
+                    // Apply the palette / color fields on the EDT.
+                    numColorClass = snapNumColorClass;
+                    numColorChoice = snapNumColorChoice;
+                    paletteChoice = snapPaletteChoice;
+                    usePalette = builtPalette;
+                    minMaxFromTable = builtMinMax;
+                    useMapColor = builtMapColor;
+
+                    if (hasLiveLayer && newStyle != null) {
+                        // Fast path: swap the style in-place — MapContent, viewport
+                        // and JMapPane state are all preserved.
+                        boundaryLayer.setStyle(newStyle);
+                        if (jmap != null) {
+                            jmap.repaint();
+                        }
+                    } else {
+                        // Slow path: full MapContent rebuild (first open, or layer lost).
+                        MapContent newMap = createBoundaryMapLayer();
+                        if (newMap == null) newMap = new MapContent();
+                        if (stateMap != null) {
+                            stateMap.dispose();
+                        }
+                        stateMap = newMap;
+                        // Track the first (and only) feature layer for future fast-path redraws.
+                        boundaryLayer = stateMap.layers().stream()
+                                .filter(l -> l instanceof FeatureLayer)
+                                .map(l -> (FeatureLayer) l)
+                                .findFirst().orElse(null);
+                        if (jmap != null) {
+                            jmap.setMapContent(stateMap);
+                            configureMapPane(jmap);
+                            jmap.repaint();
+                        }
+                    }
+                    refreshLegend();
+                    refreshFooter();
+                } catch (java.util.concurrent.CancellationException ignored) {
+                    // A newer worker superseded this one — nothing to do.
+                } catch (Exception ex) {
+                    LOGGER.log(Level.WARNING, "Map redraw failed", ex);
+                }
+            }
+        };
+        redrawWorker.execute();
+    }
+
+    /**
+     * Computes the min/max data range off the EDT using only pre-snapshotted values.
+     * This mirrors the logic of {@link #getCurrentMinMax} without touching Swing components.
+     */
+    private double[] computeMinMaxOffEdt(String year, String scenario,
+            java.util.List<String> allYears, boolean rowSelected, boolean normalizeScale) {
+        if (year == null || scenario == null) {
+            return defaultMinMax();
         }
-        if (jmap != null) {
-            jmap.setMapContent(stateMap);
-            configureMapPane(jmap);
-            jmap.repaint();
+        if (!rowSelected) {
+            double[] colMinMax = MapOptionsUtil.getAbsMinMaxFromTableColumn(jtable, year, normalizeScale);
+            return isValidMinMax(colMinMax) ? colMinMax : defaultMinMax();
         }
-        refreshLegend();
-        refreshFooter();
+        // Rows are selected — compute across all years for this scenario.
+        double minD = Double.MAX_VALUE;
+        double maxD = -Double.MAX_VALUE;
+        for (String yr : allYears) {
+            HashMap<String, Double> data = MapOptionsUtil.getTableDataForStateOrCountry(jtable, yr, scenario);
+            if (data == null || data.isEmpty()) continue;
+            double newMin = Collections.min(data.values());
+            double newMax = Collections.max(data.values());
+            if (newMin < minD) minD = newMin;
+            if (newMax > maxD) maxD = newMax;
+        }
+        if (minD == Double.MAX_VALUE) return defaultMinMax();
+        double[] result = new double[]{minD, maxD};
+        return isValidMinMax(result) ? result : defaultMinMax();
+    }
+
+    /**
+     * Snapshot the region→value map for the currently selected year and scenario.
+     * Called on the EDT before the background worker starts, producing a plain
+     * HashMap that is safe to read from any thread.
+     */
+    private HashMap<String, Double> snapshotTableData(String year, String scenario) {
+        if (year == null || scenario == null) return new HashMap<>();
+        try {
+            HashMap<String, Double> data = MapOptionsUtil.getTableDataForStateOrCountry(jtable, year, scenario);
+            return data != null ? data : new HashMap<>();
+        } catch (Exception e) {
+            return new HashMap<>();
+        }
     }
 
     private void refreshLegend() {
@@ -1035,7 +1198,18 @@ public abstract class AbstractMapPanel extends JFrame implements ComponentListen
     }
 
     protected void redrawMap() {
-        redrawMapInternal();
+        // Debounce: restart the timer on every call so that only the final
+        // request in a rapid burst (e.g. holding down the year < / > buttons)
+        // actually triggers a full redraw.
+        if (redrawDebounceTimer == null) {
+            redrawDebounceTimer = new javax.swing.Timer(REDRAW_DEBOUNCE_MS, e -> redrawMapInternal());
+            redrawDebounceTimer.setRepeats(false);
+        }
+        if (redrawDebounceTimer.isRunning()) {
+            redrawDebounceTimer.restart();
+        } else {
+            redrawDebounceTimer.start();
+        }
     }
 
     protected MapContent buildBoundaryMap(String mapLabel, String shpFilePath) {
@@ -1046,10 +1220,13 @@ public abstract class AbstractMapPanel extends JFrame implements ComponentListen
         }
 
         HashMap<String, Double> selectedTableData = getSelectedTableData();
-        Style boundaryStyle = buildBoundaryStyle(featureCollection, selectedTableData);
-        FeatureLayer boundaryLayer = new FeatureLayer(featureCollection, boundaryStyle);
-        boundaryLayer.setVisible(true);
-        map.addLayer(boundaryLayer);
+        Style style = buildBoundaryStyle(featureCollection, selectedTableData);
+        FeatureLayer layer = new FeatureLayer(featureCollection, style);
+        layer.setVisible(true);
+        map.addLayer(layer);
+        // Capture the layer reference so subsequent redraws can update
+        // only the Style in-place rather than rebuilding the whole MapContent.
+        boundaryLayer = layer;
         return map;
     }
 

@@ -5,7 +5,9 @@ import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -88,6 +90,8 @@ final class ScenarioStatusService {
             if (scenarioFolders == null) {
                 noScenarios = true;
             } else {
+                Arrays.sort(scenarioFolders, Comparator.comparingLong(this::getScenarioConfigCreatedTime)
+                        .thenComparing(folder -> folder == null ? "" : folder.getName(), String.CASE_INSENSITIVE_ORDER));
                 for (File scenarioFolder : scenarioFolders) {
                     ScenarioStatusSnapshot snapshot = buildScenarioStatusSnapshot(
                             scenarioFolder,
@@ -107,6 +111,22 @@ final class ScenarioStatusService {
         }
 
         return new ScenarioStatusRefreshResult(snapshots, noScenarios, runningScenario, updatedQueue);
+    }
+
+    private long getScenarioConfigCreatedTime(File scenarioFolder) {
+        if (scenarioFolder == null) {
+            return Long.MAX_VALUE;
+        }
+        try {
+            String scenarioName = scenarioFolder.getName();
+            String configName = ScenarioLibraryPathHelper.scenarioConfigFile(vars.getScenarioDir(), scenarioName);
+            File configFile = new File(configName);
+            if (configFile.exists()) {
+                return configFile.lastModified();
+            }
+        } catch (Exception ignored) {
+        }
+        return Long.MAX_VALUE;
     }
 
     private ScenarioStatusSnapshot buildScenarioStatusSnapshot(File scenarioFolder, File currentMainLogFile,
