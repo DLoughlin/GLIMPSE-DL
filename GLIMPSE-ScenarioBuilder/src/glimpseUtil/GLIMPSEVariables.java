@@ -72,6 +72,8 @@ public class GLIMPSEVariables {
     private final String DEFAULT_DEBUG_REGION = "USA";
     private final boolean DEFAULT_SHOW_SPLASH = true;
     private final boolean DEFAULT_USE_ALL_AVAILABLE_PROCESSORS = true;
+    private final boolean DEFAULT_USE_TRN_MMBTU_CONVERSIONS = true;
+    private final boolean DEFAULT_USE_TRN_1990_DOLLAR_CONVERSIONS = true;
     private final int DEFAULT_PERIOD_INCREMENT = 5; // Default period increment for GCAM
     private final List<String> DEFAULT_REGION_LIST = new ArrayList<>(Arrays.asList("USA", "Canada", "EU-15", "Europe_Non_EU", "European Free Trade Association", "Japan", "Australia_NZ", "Central Asia", "Russia", "China", "Middle East", "Africa_Eastern", "Africa_Northern", "Africa_Southern", "Africa_Western", "South Africa", "Brazil", "Central America and Caribbean", "Mexico", "South America_Northern", "South America_Southern", "Argentina", "Colombia", "Indonesia", "Pakistan", "South Asia", "Southeast Asia", "Taiwan", "Europe_Eastern", "EU-12", "South Korea", "India", "Ukraine"));
     private final List<String> DEFAULT_SUBREGION_LIST = new ArrayList<>(Arrays.asList("AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"));
@@ -113,6 +115,8 @@ public class GLIMPSEVariables {
     private int simulationYearIncrement = DEFAULT_SIMULATION_YEAR_INCREMENT;
     private boolean showSplash = DEFAULT_SHOW_SPLASH;
     private boolean useAllAvailableProcessors = DEFAULT_USE_ALL_AVAILABLE_PROCESSORS;
+    private boolean useTrnMMBTUConversions = DEFAULT_USE_TRN_MMBTU_CONVERSIONS;
+    private boolean useTrn1990DollarConversions = DEFAULT_USE_TRN_1990_DOLLAR_CONVERSIONS;
     private String executeCmdShort = "cmd /C ";
     private String executeCmd = "cmd /C start ";
     private String buildInfo = glimpseVersion;
@@ -441,6 +445,64 @@ public class GLIMPSEVariables {
         boolean b = false;
         if ((str.toLowerCase().equals("true")) || (str.toLowerCase().equals("yes"))) b = true;
         showSplash = b;
+    }
+
+    /**
+     * Returns whether transportation calculations should use MMBTU-style conversion factors.
+     *
+     * @return True to use MMBTU conversions, false otherwise.
+     */
+    public boolean getUseTrnMMBTUConversions() {
+        return useTrnMMBTUConversions;
+    }
+
+    /**
+     * Sets whether transportation calculations should use MMBTU-style conversion factors.
+     *
+     * @param b True to use MMBTU conversions, false otherwise.
+     */
+    public void setUseTrnMMBTUConversions(boolean b) {
+        useTrnMMBTUConversions = b;
+    }
+
+    /**
+     * Sets whether transportation calculations should use MMBTU-style conversion factors from a string.
+     *
+     * @param str "true" or "yes" to enable, "false" otherwise.
+     */
+    public void setUseTrnMMBTUConversions(String str) {
+        boolean b = false;
+        if ((str.toLowerCase().equals("true")) || (str.toLowerCase().equals("yes"))) b = true;
+        useTrnMMBTUConversions = b;
+    }
+
+    /**
+     * Returns whether transportation calculations should use 1990-dollar assumptions.
+     *
+     * @return True to use 1990-dollar assumptions, false otherwise.
+     */
+    public boolean getUseTrn1990DollarConversions() {
+        return useTrn1990DollarConversions;
+    }
+
+    /**
+     * Sets whether transportation calculations should use 1990-dollar assumptions.
+     *
+     * @param b True to use 1990-dollar assumptions, false otherwise.
+     */
+    public void setUseTrn1990DollarConversions(boolean b) {
+        useTrn1990DollarConversions = b;
+    }
+
+    /**
+     * Sets whether transportation calculations should use 1990-dollar assumptions from a string.
+     *
+     * @param str "true" or "yes" to enable, "false" otherwise.
+     */
+    public void setUseTrn1990DollarConversions(String str) {
+        boolean b = false;
+        if ((str.toLowerCase().equals("true")) || (str.toLowerCase().equals("yes"))) b = true;
+        useTrn1990DollarConversions = b;
     }
 
     /**
@@ -1301,6 +1363,14 @@ public class GLIMPSEVariables {
         case "showsplash":
             returnVal = ""+showSplash;
             break;
+        case "usetrnmmbtuconversions":
+        case "usemmbtuconversionsintransportationcalculations":
+            returnVal = "" + useTrnMMBTUConversions;
+            break;
+        case "usetrn1990dollarconversions":
+        case "use1990dollarsintransportationcalculations":
+            returnVal = "" + useTrn1990DollarConversions;
+            break;
         case "buildinfo":
             returnVal = buildInfo;
             break;
@@ -1536,6 +1606,14 @@ public class GLIMPSEVariables {
             break;
         case "showsplash":
             setShowSplash(val);
+            break;
+        case "usetrnmmbtuconversions":
+        case "usemmbtuconversionsintransportationcalculations":
+            setUseTrnMMBTUConversions(val);
+            break;
+        case "usetrn1990dollarconversions":
+        case "use1990dollarsintransportationcalculations":
+            setUseTrn1990DollarConversions(val);
             break;
         case "buildinfo":
             buildInfo = val;

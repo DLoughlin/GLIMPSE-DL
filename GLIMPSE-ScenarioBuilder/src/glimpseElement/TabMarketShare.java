@@ -1183,6 +1183,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
         // Use the provided parameters rather than querying UI fields directly
         rtnStr.append(METADATA_POLICY_NAME).append(policy).append(vars.getEol());
         rtnStr.append(METADATA_MARKET_NAME).append(market).append(vars.getEol());
+		appendTransportConversionMetadata(rtnStr);
 
         String[] listOfSelectedLeaves = utils.getAllSelectedRegions(tree);
         listOfSelectedLeaves = utils.removeUSADuplicate(listOfSelectedLeaves);
@@ -1211,6 +1212,8 @@ public class TabMarketShare extends PolicyTab implements Runnable {
             return;
         }
 
+		ArrayList<String> transportWarnings = new ArrayList<>();
+
         // Process "Type" first to ensure dependent controls are set up correctly
         for (String line : content) {
             if (line.startsWith(METADATA_TYPE)) {
@@ -1223,6 +1226,11 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 
         // Now process other fields
         for (String line : content) {
+			String transportWarning = getTransportConversionMetadataMismatchWarning(line);
+			if (transportWarning != null) {
+				transportWarnings = utils.addToArrayListIfUnique(transportWarnings, transportWarning);
+			}
+
             if (line.startsWith(METADATA_SUBSET)) {
                 setCheckComboBoxItems(checkComboBoxSubset, line.substring(METADATA_SUBSET.length()));
             } else if (line.startsWith(METADATA_SUPERSET)) {
@@ -1249,6 +1257,8 @@ public class TabMarketShare extends PolicyTab implements Runnable {
                 this.paneForComponentDetails.populateTableFromCSV(tableData);
             }
         }
+
+		showTransportConversionMetadataWarnings(transportWarnings);
     }
 
     /**

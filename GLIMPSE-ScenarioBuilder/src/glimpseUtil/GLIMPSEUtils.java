@@ -920,43 +920,6 @@ public class GLIMPSEUtils {
 		transportUtils.loadTrnVehInfo();
 	}
 
-	public String getSubsectorConversionsNew(double numf, String region, String sector, String subsector, int year) {
-
-		String val = null;
-		double num = 0.0;
-
-	 val = numf + ",1";
-
-		String load = "1";
-		if (sector.startsWith("trn"))
-			load = getLoadFactor(region, sector, subsector, "any", Integer.toString(year));
-
-		if (load != null) {
-
-			try {
-				double valf = Double.parseDouble(load);
-//				if (sector.startsWith("trn")) {
-//					num = numf * (1e-6) / valf * 1.055;
-//
-//					val = "," + num + ",1.0e6";
-//				}
-				if (sector.startsWith("trn")) {
-				    // v8.5: no BTU hardwire, and output units are billion-service-km
-				    num = numf * 1.0e-9 / valf * 1000.0;
-				    val = "," + num + ",1.0e9";
-				}
-			} catch (Exception e) {
-				;
-			}
-
-		}
-
-		if ((sector.indexOf("trn_") >= 0) && (load == null))
-			val = null;
-
-//		}
-		return val;
-	}
 	
 	public String getSubsectorConversions(double numf, String region, String sector, String subsector, int year) {
 
@@ -974,9 +937,18 @@ public class GLIMPSEUtils {
 			try {
 				double valf = Double.parseDouble(load);
 				if (sector.startsWith("trn")) {
-					num = numf * (1e-6) / valf * 1.055;
+					boolean useMMBTUConversions = true;
+					if (vars != null) {
+						useMMBTUConversions = vars.getUseTrnMMBTUConversions();
+					}
 
-					val = "," + num + ",1.0e6";
+					if (useMMBTUConversions) {
+						num = numf * (1e-6) / valf * 1.055;
+						val = "," + num + ",1.0e6";
+					} else {
+						num = numf * 1.0e-9 / valf * 1000.0;
+						val = "," + num + ",1.0e9";
+					}
 				}
 						} catch (Exception e) {
 				;

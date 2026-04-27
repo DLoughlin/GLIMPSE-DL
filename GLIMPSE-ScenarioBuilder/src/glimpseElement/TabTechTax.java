@@ -52,23 +52,37 @@ import javafx.stage.Stage;
  * TabTechTax provides the user interface and logic for creating and editing
  * technology-level tax or subsidy policies in the GLIMPSE Scenario Builder.
  *
- * <p>Responsibilities:
+ * <p><b>Key Responsibilities:</b>
  * <ul>
  *   <li>Present controls to choose a sector/category, filter and select technologies, and pick policy type (tax/subsidy).</li>
  *   <li>Collect regions, yearly values and other parameters and serialize them into the GLIMPSE input CSV format.</li>
  *   <li>Validate user input before saving and provide informative warnings when data are inconsistent.</li>
+ *   <li>Auto-generate policy and market names based on user selections when auto-naming is enabled.</li>
+ *   <li>Display appropriate units based on selected technologies, with transport-specific conversions.</li>
  * </ul>
+ * </p>
  *
- * <p>Notes:
+ * <p><b>UI Structure:</b>
  * <ul>
- *   <li>This class is intended to be used on the JavaFX Application Thread (not thread-safe).</li>
- *   <li>It extends PolicyTab to inherit common UI elements and behaviors used by other policy tabs.</li>
+ *   <li>Left column: Category, filter, technology selection, measure type (tax/subsidy), units display, and naming options.</li>
+ *   <li>Center column: Region tree selection and modification type controls.</li>
+ *   <li>Right column: Year/value data entry table.</li>
  * </ul>
+ * </p>
  *
+ * <p><b>Thread Safety:</b> Not thread-safe; use only on the JavaFX Application Thread.</p>
+ *
+ * <p><b>Notes:</b>
+ * <ul>
+ *   <li>Extends PolicyTab to inherit common UI elements and behaviors used by other policy tabs.</li>
+ *   <li>Implements Runnable to support background thread execution for saving scenario components.</li>
+ * </ul>
+ * </p>
  */
 public class TabTechTax extends PolicyTab implements Runnable {
 	private static final String LABEL_UNITS_WARNING = "Warning - Units do not match!";
-	private static final String LABEL_UNITS_PASSKM = "1990$ per veh-km";
+	private static final String LABEL_UNITS_PASSKM_1990 = "1990$ per veh-km";
+	private static final String LABEL_UNITS_PASSKM_1975 = "1975$s per veh-km";
 	private static final String SELECT_ONE = "Select One";
 	private static final String SELECT_ONE_OR_MORE = "Select One or More";
 	private static final String ALL = "All";
@@ -94,9 +108,12 @@ public class TabTechTax extends PolicyTab implements Runnable {
 	private final HBox hboxAutoUnique = new HBox(8); // spacing 8
 
 	/**
-	 * Constructs the TabTechTax UI and logic.
+	 * Constructs a new TabTechTax instance and initializes the UI components.
+	 * Sets up event handlers, populates controls with available data, and prepares
+	 * the tab for user interaction. Auto-naming is enabled by default.
+	 * 
 	 * @param title  Tab title to display
-	 * @param stageX JavaFX stage reference
+	 * @param stageX JavaFX stage reference (used for file dialogs by parent classes)
 	 */
 	public TabTechTax(String title, Stage stageX) {
 		this.setText(title);
@@ -142,8 +159,9 @@ public class TabTechTax extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Initializes all UI controls for the tab and arranges them into left/center/right columns.
-	 * This method delegates to smaller helper methods that create logical groups of controls.
+	 * Initializes all UI controls for the tab by delegating to helper methods
+	 * that create logical groups of controls for left/center/right columns.
+	 * This method is called during construction to set up the basic UI structure.
 	 */
 	private void setupUIControls() {
 		setupLeftColumn();
@@ -153,12 +171,9 @@ public class TabTechTax extends PolicyTab implements Runnable {
 
 	// === UI Setup Methods ===
 	/**
-	 * Configure and populate the left column grid. This includes labels and controls for
-	 * the policy specification (measure, category, technology selection, units, naming,
-	 * modification type and data entry fields).
-	 *
-	 * The grid is placed inside scrollPaneLeft so contents can be scrolled when the
-	 * available vertical space is limited.
+	 * Configure and populate the left column grid pane with controls for policy specification,
+	 * including category selection, technology filter, parameter choice, naming options, and
+	 * populate controls. The grid is placed inside scrollPaneLeft for scrolling support.
 	 */
 	private void setupLeftColumn() {
 		gridPaneLeft.add(utils.createLabel("Specification:"), 0, 0, 2, 1);
@@ -726,6 +741,7 @@ public class TabTechTax extends PolicyTab implements Runnable {
 		if (market == null)
 			market = textFieldMarketName.getText();
 		rtnStr.append("#Market name: ").append(market).append(vars.getEol());
+		appendTransportConversionMetadata(rtnStr);
 		String[] listOfSelectedLeaves = utils.getAllSelectedRegions(tree);
 		listOfSelectedLeaves = utils.removeUSADuplicate(listOfSelectedLeaves);
 		String states = utils.returnAppendedString(listOfSelectedLeaves);
@@ -745,8 +761,13 @@ public class TabTechTax extends PolicyTab implements Runnable {
 	 */
 	@Override
 	public void loadContent(ArrayList<String> content) {
+		ArrayList<String> transportWarnings = new ArrayList<>();
 
 		for (String line : content) {
+			String transportWarning = getTransportConversionMetadataMismatchWarning(line);
+			if (transportWarning != null) {
+				transportWarnings = utils.addToArrayListIfUnique(transportWarnings, transportWarning);
+			}
 
 			if (line.startsWith("#")) {
 				int pos = line.indexOf(":");
@@ -785,6 +806,8 @@ public class TabTechTax extends PolicyTab implements Runnable {
 			}
 		}
 		this.paneForComponentDetails.updateTable();
+
+		showTransportConversionMetadataWarnings(transportWarnings);
 	}
 
 	/**
@@ -880,7 +903,7 @@ public class TabTechTax extends PolicyTab implements Runnable {
 			break;
 		case "million pass-km":
 		case "million ton-km":
-			label = LABEL_UNITS_PASSKM;
+			label = vars.getUseTrn1990DollarConversions() ? LABEL_UNITS_PASSKM_1990 : LABEL_UNITS_PASSKM_1975;
 			break;
 		case "":
 			label = "";

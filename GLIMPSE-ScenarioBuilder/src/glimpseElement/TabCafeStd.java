@@ -382,9 +382,11 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 
                     String io = year + "_" + policyName;
                     String iom = io + "Mkt";
-                    // Calculate output ratio and multiplier
-                    String outputRatio = Double.toString((1.0 / value / 1.61 * 131.76 / 1e6));
-                    String pMultiplier = Double.toString(load * 1e9);
+                    // Keep CAFE conversion scaling consistent with transport subsector conversion mode.
+                    boolean useMMBTUConversions = vars.getUseTrnMMBTUConversions();
+                    double serviceScale = useMMBTUConversions ? 1.0e6 : 1.0e9;
+                    String outputRatio = Double.toString((1.0 / value / 1.61 * 131.76 / serviceScale));
+                    String pMultiplier = Double.toString(load * serviceScale);
 
                     // Add row to CAFE targets table
                     contentP1.append(region).append(",").append(sector).append(",").append(subsector).append(",")
@@ -424,6 +426,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
         rtnStr.append("#Units: ").append(comboBoxWhichUnits.getValue()).append(vars.getEol());
         rtnStr.append("#Policy name: ").append(policy).append(vars.getEol());
         rtnStr.append("#Market name: ").append(market).append(vars.getEol());
+        appendTransportConversionMetadata(rtnStr);
         String[] listOfSelectedLeaves = utils.removeUSADuplicate(utils.getAllSelectedRegions(tree));
         String states = utils.returnAppendedString(listOfSelectedLeaves);
         rtnStr.append("#Regions: ").append(states).append(vars.getEol());
@@ -446,7 +449,13 @@ public class TabCafeStd extends PolicyTab implements Runnable {
         if (content == null) {
             return;
         }
+        ArrayList<String> transportWarnings = new ArrayList<>();
         for (String line : content) {
+            String transportWarning = getTransportConversionMetadataMismatchWarning(line);
+            if (transportWarning != null) {
+                transportWarnings = utils.addToArrayListIfUnique(transportWarnings, transportWarning);
+            }
+
             int pos = line.indexOf(":");
             if (line.startsWith("#") && (pos > -1)) {
                 String param = line.substring(1, pos).trim().toLowerCase();
@@ -494,6 +503,8 @@ public class TabCafeStd extends PolicyTab implements Runnable {
         paneForComponentDetails.updateTable();
         setPolicyAndMarketNames();
         setUnitsLabel();
+
+        showTransportConversionMetadataWarnings(transportWarnings);
     }
 
     /**

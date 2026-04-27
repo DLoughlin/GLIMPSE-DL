@@ -60,17 +60,40 @@ import javafx.stage.Stage;
  * TabTechBound provides the UI and behavior for creating and editing
  * technology-bound policies in the GLIMPSE Scenario Builder.
  *
- * <p>This class builds the controls for selecting sector/category, filtering
- * and selecting technologies, choosing constraint type (upper, lower, fixed),
- * and specifying how the policy is applied across regions. It also validates
- * inputs and writes the scenario component to temporary files in the format
- * expected by the GLIMPSE model interface.</p>
- *
- * <p>Notes:
+ * <p><b>Key Responsibilities:</b>
  * <ul>
- *   <li>Instances are intended to be used from the JavaFX Application Thread.</li>
- *   <li>The class extends {@link PolicyTab} and implements {@link Runnable} so
- *       it can be executed on the JavaFX thread to trigger saves.</li>
+ *   <li>Build controls for selecting sector/category and filtering/selecting technologies.</li>
+ *   <li>Support constraint type selection (upper, lower, fixed bounds).</li>
+ *   <li>Enable specification of how policies are applied across regions (each region vs. across regions).</li>
+ *   <li>Support applied-to selection (all stock vs. sales).</li>
+ *   <li>Validate inputs and serialize scenario components to GLIMPSE-format files.</li>
+ *   <li>Handle transport-specific load factor conversions for constraint values.</li>
+ * </ul>
+ * </p>
+ *
+ * <p><b>UI Structure:</b>
+ * <ul>
+ *   <li>Left column: Category, filter, technology selection, constraint type, treatment, applied-to, and naming options.</li>
+ *   <li>Center column: Region tree selection and populate controls.</li>
+ *   <li>Right column: Year/value data entry table.</li>
+ * </ul>
+ * </p>
+ *
+ * <p><b>File Output:</b> Creates temporary files in GLIMPSE-Data/temp containing:
+ * <ul>
+ *   <li>Metadata (policy description and selections)</li>
+ *   <li>Technology mapping tables (for nested and non-nested subsectors)</li>
+ *   <li>Constraint value tables with region, policy, and market information</li>
+ * </ul>
+ * </p>
+ *
+ * <p><b>Thread Safety:</b> Not thread-safe; use only on the JavaFX Application Thread.</p>
+ *
+ * <p><b>Notes:</b>
+ * <ul>
+ *   <li>Extends PolicyTab and implements Runnable for background thread execution.</li>
+ *   <li>Supports both nested (with '=>' markers) and non-nested technology structures.</li>
+ *   <li>Auto-generates policy and market names when auto-naming is enabled.</li>
  * </ul>
  * </p>
  */
@@ -115,10 +138,12 @@ public class TabTechBound extends PolicyTab implements Runnable {
     private final javafx.scene.layout.HBox hBoxAutoUnique = new javafx.scene.layout.HBox(8);
 
 	/**
-	 * Create a new TabTechBound instance and initialize controls and listeners.
+	 * Create a new TabTechBound instance and initialize the UI controls and event handlers.
+	 * Populates category and constraint options, sets up the technology list, and prepares
+	 * the tab for user interaction. Auto-naming is enabled by default.
 	 *
-	 * @param title The tab title
-	 * @param stageX The JavaFX stage (provided by caller; used by parent classes)
+	 * @param title  The tab title to display
+	 * @param stageX The JavaFX stage reference (used by parent classes)
 	 */
 	public TabTechBound(String title, Stage stageX) {
 		this.setText(title);
@@ -136,8 +161,8 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Initialize basic UI control state: default checkbox selections and disabling
-	 * manual name fields while auto-naming is enabled.
+	 * Initialize basic UI control state: default checkbox selections (auto-naming and unique names enabled),
+	 * policy/market name fields disabled (enabled only when auto-naming is off).
 	 */
 	private void setupUIControls() {
 		checkBoxUseAutoNames.setSelected(true);
@@ -182,7 +207,9 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Configure the left column layout and add labeled controls.
+	 * Configure the left column layout and add labeled controls for policy specification,
+	 * including category, filter, technology selection, constraint type, treatment, applied-to options,
+	 * naming controls, and populate/data entry fields. The controls are arranged in gridPaneLeft.
 	 */
 	private void setupLeftColumn() {
 
@@ -252,9 +279,11 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Attach listeners to controls to react to user actions. Listeners update
-	 * available techs, auto-name marketplace/policy, and enable/disable fields
-	 * appropriately.
+	 * Attach listeners and event handlers for controls in this tab. Listeners update UI state,
+	 * enable/disable controls appropriately, react to user actions (category/constraint selection),
+	 * and propagate changes to dependent fields (policy/market names, units label).
+	 * 
+	 * All UI updates are scheduled on the JavaFX Application Thread when necessary.
 	 */
 	protected void setupEventHandlers() {
 

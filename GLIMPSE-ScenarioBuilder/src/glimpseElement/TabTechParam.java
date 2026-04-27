@@ -58,17 +58,32 @@ import javafx.stage.Stage;
  * TabTechParam is the JavaFX tab used in the GLIMPSE Scenario Builder to create
  * and edit technology parameter policy components.
  *
- * <p>
- * The tab provides UI controls for selecting technology categories and specific
- * technologies, choosing a parameter to modify (and a sub-parameter/emission
- * when applicable), specifying input/output units, selecting regions, and
- * entering year/value pairs for the policy. It handles validation (QA),
- * serialization to CSV, and metadata creation for saving scenario components.
+ * <p><b>Key Responsibilities:</b>
+ * <ul>
+ *   <li>Present UI controls for selecting technology categories and specific technologies.</li>
+ *   <li>Allow users to choose a parameter to modify (and a sub-parameter/emission when applicable).</li>
+ *   <li>Support input/output unit specification and region selection.</li>
+ *   <li>Enable year/value pair data entry for policy definitions.</li>
+ *   <li>Perform validation (QA) checks on user inputs before saving.</li>
+ *   <li>Serialize configurations to CSV format and generate metadata for scenario components.</li>
+ * </ul>
  * </p>
  *
- * <p>
- * This class extends PolicyTab and implements Runnable; UI work must be
- * performed on the JavaFX Application Thread.
+ * <p><b>UI Structure:</b>
+ * <ul>
+ *   <li>Left column: Category, filter, technology selection, parameter choices, input/output units, and populate controls.</li>
+ *   <li>Center column: Region tree selection and modification type options.</li>
+ *   <li>Right column: Year/value data entry table.</li>
+ * </ul>
+ * </p>
+ *
+ * <p><b>Thread Safety:</b> Not thread-safe; use only on the JavaFX Application Thread.</p>
+ *
+ * <p><b>Notes:</b>
+ * <ul>
+ *   <li>Extends PolicyTab and implements Runnable for background thread execution.</li>
+ *   <li>Handles special cases for emission parameters and levelized non-energy cost conversions.</li>
+ * </ul>
  * </p>
  */
 public class TabTechParam extends PolicyTab implements Runnable {
@@ -136,9 +151,11 @@ public class TabTechParam extends PolicyTab implements Runnable {
 
     /**
      * Construct a TabTechParam instance and initialize the UI controls.
+     * Sets up the table, event handlers, and populates category controls from
+     * technology metadata. The tab is ready for user interaction after construction.
      *
-     * @param title the title shown on the tab
-     * @param stageX the JavaFX Stage (passed to super or used for dialogs)
+     * @param title  The title shown on the tab
+     * @param stageX The JavaFX Stage (passed to parent classes)
      */
     public TabTechParam(String title, Stage stageX) {
         // sets tab title and style
@@ -157,7 +174,8 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
 
     /**
-     * Initialize control lists, default selections and visibility states.
+     * Initialize control lists, default selections, visibility states, and option values.
+     * Disables tech filtering and parameter 2 controls until a category is selected.
      * Keeps the UI in a known default state before any data is loaded.
      */
     private void setupUIControls() {
@@ -244,9 +262,9 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
 
     /**
-     * Build the left column controls and add them to the left grid pane. This
-     * includes category, filter, technology list, parameter selectors, and
-     * populate controls.
+     * Configure and populate the left column grid pane with controls for policy specification,
+     * including category selection, technology filter, parameter selectors, unit display,
+     * and populate/data entry controls. The grid is placed inside scrollPaneLeft for scrolling.
      */
     private void setupLeftColumn() {
 
@@ -538,6 +556,7 @@ public class TabTechParam extends PolicyTab implements Runnable {
         String techs = utils.getStringFromList(techList, ";");
         rtnStr.append("#Technologies: ").append(techs).append(vars.getEol());
         rtnStr.append("#Parameter: ").append(comboBoxParam.getValue()).append(vars.getEol());
+        appendTransportConversionMetadata(rtnStr);
         String[] listOfSelectedLeaves = utils.getAllSelectedRegions(tree);
         listOfSelectedLeaves = utils.removeUSADuplicate(listOfSelectedLeaves);
         String states = utils.returnAppendedString(listOfSelectedLeaves);
@@ -558,7 +577,13 @@ public class TabTechParam extends PolicyTab implements Runnable {
      */
     @Override
     public void loadContent(ArrayList<String> content) {
+        ArrayList<String> transportWarnings = new ArrayList<>();
         for (String line : content) {
+            String transportWarning = getTransportConversionMetadataMismatchWarning(line);
+            if (transportWarning != null) {
+                transportWarnings = utils.addToArrayListIfUnique(transportWarnings, transportWarning);
+            }
+
             int pos = line.indexOf(":");
             if (line.startsWith("#") && (pos > -1)) {
                 String param = line.substring(1, pos).trim().toLowerCase();
@@ -593,6 +618,8 @@ public class TabTechParam extends PolicyTab implements Runnable {
         }
         updateInputOutputUnits();
         this.paneForComponentDetails.updateTable();
+
+        showTransportConversionMetadataWarnings(transportWarnings);
     }
 
 
@@ -713,14 +740,20 @@ public class TabTechParam extends PolicyTab implements Runnable {
                     if (s.equals("No match")) {
                         label = WARNING_UNITS_MISMATCH;
                     } else if (s.equals("million pass-km")) {
-                        label = "1990$ per veh-km";
-                    } else if (s.equals("million ton-km")) s2 = "GJ";
-                    if (s.equals("petalumen-hours")) s2 = "megalumen-hours";
-                    if (s.equals("million km3")) s2 = "million m3";
-                    if (s.equals("billion cycles")) s2 = "cycle";
-                    if (s.equals("Mt")) s2 = "kg";
-                    if (s.equals("km^3")) s2 = "m^3";
-                    label = "1975$s per " + s2;
+                        String trnDollarUnits = vars.getUseTrn1990DollarConversions() ? "1990$" : "1975$s";
+                        label = trnDollarUnits + " per veh-km";
+                    } else if (s.equals("million ton-km")) {
+                        String trnDollarUnits = vars.getUseTrn1990DollarConversions() ? "1990$" : "1975$s";
+                        label = trnDollarUnits + " per GJ";
+                    } else {
+                        s2 = "GJ";
+                        if (s.equals("petalumen-hours")) s2 = "megalumen-hours";
+                        if (s.equals("million km3")) s2 = "million m3";
+                        if (s.equals("billion cycles")) s2 = "cycle";
+                        if (s.equals("Mt")) s2 = "kg";
+                        if (s.equals("km^3")) s2 = "m^3";
+                        label = "1975$s per " + s2;
+                    }
                     break;
                 case "Capacity Factor":
                     label = UNIT_UNITLESS_CAPACITY;

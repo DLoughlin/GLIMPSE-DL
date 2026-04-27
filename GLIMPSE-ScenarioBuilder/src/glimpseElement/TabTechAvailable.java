@@ -64,24 +64,54 @@ import javafx.stage.Stage;
 
 /**
  * TabTechAvailable is a UI component used by the GLIMPSE Scenario Builder to
- * present and manage technology availability constraints. It provides a table
- * of technologies (with compacted display names for nested subsectors),
- * controls for filtering and selecting technologies, and utilities to export
- * the selected constraints as scenario component files.
+ * present and manage technology availability constraints. It provides an editable table
+ * of technologies with support for filtering, bulk selection actions, and export to
+ * GLIMPSE-format scenario component files.
  *
- * <p>Key responsibilities:
+ * <p><b>Key Responsibilities:</b>
  * <ul>
- *   <li>Render an editable table of TechBound entries (first/last years, bound flags)</li>
- *   <li>Provide filtering by category and free-form text search</li>
- *   <li>Allow bulk selection actions (set all to 'Never' or 'Range', set years)</li>
- *   <li>Serialize the selected constraints into one or two CSV-style input tables
- *       (nested and non-nested technology structures)</li>
+ *   <li>Render an editable table of TechBound entries displaying first/last years and bound flags.</li>
+ *   <li>Support filtering by category and free-form text search across all visible items.</li>
+ *   <li>Provide bulk selection actions: set all visible to 'Never' (bound all), set to 'Range', or set years.</li>
+ *   <li>Serialize selected constraints into CSV-style input tables (nested and non-nested technology structures).</li>
+ *   <li>Generate metadata headers describing policy selections and constraints.</li>
+ *   <li>Load previously saved constraints from scenario component files.</li>
  * </ul>
  * </p>
  *
- * <p>Note: This class interacts with application-level utilities (vars, utils,
- * styles, paneForCountryStateTree) that supply data and UI helpers. It is
- * intended to be used on the JavaFX Application Thread.</p>
+ * <p><b>UI Structure:</b>
+ * <ul>
+ *   <li>Left panel: Filter controls, editable technology bounds table, and year/selection buttons.</li>
+ *   <li>Right panel: Region tree selection pane for specifying where constraints apply.</li>
+ * </ul>
+ * </p>
+ *
+ * <p><b>Table Columns:</b>
+ * <ul>
+ *   <li>'Never?' - CheckBox column for bounding all years.</li>
+ *   <li>'Range?' - CheckBox column for bounding specific year ranges.</li>
+ *   <li>'First' - Editable first year value.</li>
+ *   <li>'Last' - Editable last year value.</li>
+ *   <li>Technology description with sector, subsector, and units.</li>
+ * </ul>
+ * </p>
+ *
+ * <p><b>Special Handling:</b>
+ * <ul>
+ *   <li>Nested subsector markers ('=>') are hidden in display but preserved in exports.</li>
+ *   <li>Category filtering works in combination with free-text filtering.</li>
+ *   <li>Bulk operations apply to all currently visible items after filtering.</li>
+ * </ul>
+ * </p>
+ *
+ * <p><b>Thread Safety:</b> Not thread-safe; use only on the JavaFX Application Thread.</p>
+ *
+ * <p><b>Notes:</b>
+ * <ul>
+ *   <li>Extends PolicyTab and implements Runnable for background thread execution.</li>
+ *   <li>Interacts with application-level utilities (vars, utils, styles) for data and UI support.</li>
+ * </ul>
+ * </p>
  */
 public class TabTechAvailable extends PolicyTab implements Runnable {
     // === Constants for UI Texts and Options ===
@@ -121,10 +151,11 @@ public class TabTechAvailable extends PolicyTab implements Runnable {
     private final Button selectRangeButton = createButton(BUTTON_SELECT_RANGE, styles.getBigButtonWidth(), null);
 
     /**
-     * Constructor for TabTechAvailable. Sets up the UI, event handlers, and initializes the technology bounds table.
+     * Constructor for TabTechAvailable. Sets up the UI, initializes the technology bounds table,
+     * configures event handlers for filtering and bulk actions, and prepares the regions tree pane.
      *
-     * @param title  the title of the tab
-     * @param stageX the JavaFX Stage
+     * @param title  The title of the tab to display
+     * @param stageX The JavaFX Stage (provided by caller)
      */
     public TabTechAvailable(String title, Stage stageX) {
         this.setStyle(styles.getFontStyle());
@@ -134,12 +165,12 @@ public class TabTechAvailable extends PolicyTab implements Runnable {
     }
 
     /**
-     * Sets up UI controls and their event handlers. This method creates the
-     * table columns, binds cell factories to TechBound properties, initializes
-     * default year values, wires up the selection buttons, and prepares filtering.
+     * Sets up UI controls and their event handlers. Creates the table columns with appropriate
+     * cell factories for boolean checkboxes and editable year fields, binds TechBound properties,
+     * initializes default year values, wires up selection/year buttons, prepares category filter,
+     * and loads the initial technology bounds list from application variables.
      *
-     * Important: This does not attach the controls into the tab layout — that is
-     * handled by setupUILayout().
+     * Important: This method does not attach controls into the tab layout — that is handled by setupUILayout().
      */
     private void setupUIControls() {
         
@@ -194,8 +225,12 @@ public class TabTechAvailable extends PolicyTab implements Runnable {
     }
 
     /**
-     * Sets up the layout of the tab using HBox and VBox.
-     * @param title The title of the tab
+     * Sets up the layout of the tab using HBox and VBox containers. Arranges the table and
+     * filter controls on the left panel, and the region tree pane on the right. Configures
+     * resizing behavior so the table expands to fill available space while controls remain
+     * at the bottom. Sets this layout as the tab's content.
+     * 
+     * @param title The title of the tab to display
      */
     private void setupUILayout(String title) {
         this.setText(title);
