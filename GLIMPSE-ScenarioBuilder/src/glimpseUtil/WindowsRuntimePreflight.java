@@ -35,11 +35,24 @@ public final class WindowsRuntimePreflight {
         // Utility class
     }
 
+    /**
+     * Indicates whether the current JVM is running on Windows.
+     *
+     * @return {@code true} when the host operating system is Windows
+     */
     public static boolean isWindows() {
         String osName = System.getProperty("os.name");
         return osName != null && osName.toLowerCase().startsWith("windows");
     }
 
+    /**
+     * Verifies that the required Microsoft Visual C++ runtime is available and,
+     * when missing, optionally warns the user before allowing execution to continue.
+     *
+     * @param utils utility facade used to show warning UI when needed
+     * @param contextLabel short label describing the action being attempted
+     * @return {@code true} when execution may proceed
+     */
     public static boolean ensureMsvcRuntimeAvailableOrWarn(GLIMPSEUtils utils, String contextLabel) {
         if (!isWindows()) {
             return true;
@@ -65,6 +78,11 @@ public final class WindowsRuntimePreflight {
         return proceedDespiteMissing;
     }
 
+    /**
+     * Performs a one-time check for the required Microsoft Visual C++ runtime DLLs.
+     *
+     * @return {@code true} when all required runtime files were found
+     */
     public static boolean checkMsvcRuntimeAvailable() {
         if (!isWindows()) {
             return true;
@@ -77,6 +95,13 @@ public final class WindowsRuntimePreflight {
         return available;
     }
 
+    /**
+     * Builds the explanatory message shown when the Windows VC++ runtime appears
+     * to be missing.
+     *
+     * @param contextLabel optional label describing the operation being blocked
+     * @return multi-line warning message for the user
+     */
     public static String buildMissingRuntimeMessage(String contextLabel) {
         StringBuilder sb = new StringBuilder();
         sb.append("Microsoft Visual C++ Runtime appears to be missing on Windows.");
@@ -215,6 +240,11 @@ public final class WindowsRuntimePreflight {
         return false;
     }
 
+    /**
+     * Returns the runtime DLL names that are required for startup checks.
+     *
+     * @return list of required DLL file names
+     */
     public static List<String> getRequiredDlls() {
         return Arrays.asList(REQUIRED_DLLS);
     }

@@ -10,6 +10,12 @@ import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
 
+/**
+ * Prepares selected scenarios for execution and resolves launch configuration paths.
+ * <p>
+ * This helper validates preconditions, clears stale status fields, handles archive-run
+ * prompts, and returns launchable config files for queue submission.
+ */
 final class ScenarioLibraryRunPreparationHelper {
 
     private final GLIMPSEVariables vars;
@@ -22,6 +28,11 @@ final class ScenarioLibraryRunPreparationHelper {
         this.utils = utils;
     }
 
+    /**
+     * Validates and prepares each selected scenario for queueing.
+     *
+     * @return a result containing launchable config paths
+     */
     RunPreparationResult prepareSelectedRuns(ScenarioSelection selection, RunPreparationCallbacks callbacks) {
         List<String> configFiles = new ArrayList<>();
         if (selection == null || callbacks == null) {
@@ -93,11 +104,13 @@ final class ScenarioLibraryRunPreparationHelper {
         return defaultConfigFile;
     }
 
+    /** Callback contract used to synchronize queue and row state during preparation. */
     interface RunPreparationCallbacks {
         void clearScenarioRunStatusFields(String scenarioName);
         void markQueued(String scenarioName);
     }
 
+    /** Immutable result of run preparation, including launchable configuration files. */
     static final class RunPreparationResult {
         private final List<String> configFiles;
 
@@ -105,10 +118,12 @@ final class ScenarioLibraryRunPreparationHelper {
             this.configFiles = configFiles == null ? new ArrayList<>() : new ArrayList<>(configFiles);
         }
 
+        /** Returns launchable config files as an array for execution thread APIs. */
         String[] getConfigFiles() {
             return configFiles.toArray(new String[0]);
         }
 
+        /** Returns whether at least one selected scenario is launchable. */
         boolean hasLaunchableRuns() {
             return !configFiles.isEmpty();
         }

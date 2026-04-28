@@ -76,36 +76,33 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 /**
- * Pane for creating a scenario in the GLIMPSE Scenario Builder.
+ * Pane for building and configuring new scenarios before they are added to the Scenario Library.
  * <p>
- * This class provides the user interface and logic for constructing new scenarios
- * in the GLIMPSE Scenario Builder application. It allows users to specify scenario
- * names, select and order scenario components, configure scenario options, and
- * generate scenario configuration files. The pane includes controls for moving
- * components up and down, entering scenario metadata, and setting advanced options
- * such as debug output, processor usage, and files to save. The scenario creation
- * process includes validation, file management, and XML configuration generation.
- * </p>
+ * This class owns both the create-scenario UI and the orchestration logic used to
+ * transform selected components into a scenario-specific configuration XML.
  * <p>
- * <b>Main Features:</b>
+ * <b>Responsibilities:</b>
  * <ul>
- *   <li>Scenario name entry and validation (no special characters allowed)</li>
- *   <li>Component selection and ordering (move up/down)</li>
- *   <li>Scenario configuration dialog for metadata and advanced options</li>
- *   <li>Support for CSV, XML, and list-based scenario components</li>
- *   <li>Automatic creation and population of scenario configuration XML files</li>
- *   <li>Database size checking and warning</li>
- *   <li>Debug and parallelism options</li>
- *   <li>File management for scenario folders and logs</li>
+ *   <li>Validates scenario names and controls component ordering for scenario composition.</li>
+ *   <li>Presents the "Creating Scenario" dialog for metadata and run options.</li>
+ *   <li>Generates scenario files/folders and writes scenario metadata headers.</li>
+ *   <li>Converts supported component types (CSV/list/XML references) into scenario config entries.</li>
+ *   <li>Applies runtime options (stop year, debug settings, processor usage, outputs to retain).</li>
+ *   <li>Integrates with {@link PaneScenarioLibrary} to refresh status after successful creation.</li>
  * </ul>
- * </p>
  * <p>
- * <b>Usage:</b> Instantiate this pane and add it to a JavaFX stage. The pane will
- * handle all user interactions for scenario creation.
- * </p>
+ * <b>Usage:</b> Instantiated by {@link ScenarioBuilder} and embedded in the center pane. The
+ * main entry point for user-triggered creation is {@link #processScenarioComponentList(Stage, boolean)}.
  * <p>
  * <b>Thread Safety:</b> All UI operations must be performed on the JavaFX Application Thread.
- * </p>
+ * File-generation work started from the creation dialog runs in a background {@link Task}.
+ * <p>
+ * <b>Integration:</b>
+ * <ul>
+ *   <li>Uses {@link ComponentLibraryTable} to read ordered scenario components.</li>
+ *   <li>Writes configuration XML through {@link XMLModifier} and conversion helpers like {@link CSVToXMLMain}.</li>
+ *   <li>Updates Scenario Library state via {@link Client#buttonRefreshScenarioStatus} and pane callbacks.</li>
+ * </ul>
  */
 class PaneCreateScenario extends ScenarioBuilder {
     // UI Constants
@@ -151,6 +148,7 @@ class PaneCreateScenario extends ScenarioBuilder {
     private HBox nameRow;
     private HBox buttonRow;
 
+    /** Result payload returned from the create-scenario dialog flow. */
     private static final class ScenarioDialogResult {
         private final String metadata;
         private final boolean confirmed;
@@ -354,6 +352,19 @@ class PaneCreateScenario extends ScenarioBuilder {
         return true;
     }
 
+    /**
+     * Creates scenario output files and updates configuration XML based on user-selected options.
+     *
+     * @param scenName scenario identifier used for generated folder and files
+     * @param list selected component rows to include
+     * @param list1 duplicate component list retained for compatibility with existing call flow
+     * @param runName run name metadata value
+     * @param scenarioName logical scenario name stored in config
+     * @param execute whether to execute immediately after creation
+     * @param overwritingScenario whether this creation is replacing an existing scenario
+     * @param message assembled scenario metadata/comment block
+     * @throws IOException when core file operations fail
+     */
     @SuppressWarnings("static-access")
     private void createScenarioFiles(String scenName, ObservableList<ComponentRow> list, ObservableList<ComponentRow> list1,
                                      String runName, String scenarioName, boolean execute, boolean overwritingScenario,
@@ -573,6 +584,18 @@ class PaneCreateScenario extends ScenarioBuilder {
      *
      * @param scenName Scenario name to display in the dialog
      * @return Scenario dialog result indicating whether creation completed successfully
+     */
+    /**
+     * Shows the scenario options dialog and executes creation if user confirms.
+     *
+     * @param scenName scenario name used for file/folder creation
+     * @param list selected component rows
+     * @param list1 duplicate selected component rows
+     * @param runName run name metadata value
+     * @param scenarioNameValue initial scenario name shown in dialog
+     * @param execute whether scenario should be executed after creation
+     * @param overwritingScenario whether this creation replaces an existing scenario
+     * @return dialog result indicating whether creation was confirmed and completed
      */
     private ScenarioDialogResult createScenarioDialog(String scenName, ObservableList<ComponentRow> list, ObservableList<ComponentRow> list1,
                                                       String runName, String scenarioNameValue, boolean execute, boolean overwritingScenario) {
@@ -795,6 +818,11 @@ class PaneCreateScenario extends ScenarioBuilder {
         return resultHolder[0];
     }
 
+    /**
+     * Builds metadata text inserted into the generated scenario configuration comment block.
+     *
+     * @return formatted metadata string, or {@code null} when dialog inputs are invalid
+     */
     private String buildScenarioDialogMetadata(String scenarioName, String databaseNameShort, String debugRegion, String stopYear, String comments) {
         if (comments == null) {
             return null;
@@ -809,6 +837,11 @@ class PaneCreateScenario extends ScenarioBuilder {
         return text.replaceAll(vars.getEol() + "" + vars.getEol(), vars.getEol());
     }
 
+    /**
+     * Adjusts global files-to-save option based on dialog checkbox selections.
+     *
+     * @return semicolon-delimited list suitable for {@code vars.setFilesToSave(...)}
+     */
     private String adjustFilesToSave(boolean saveCalibLog, boolean saveSolverLog, boolean saveDebugFile) {
         List<String> filesToSave = utils.createArrayListFromString(vars.getFilesToSave(), ";");
         String foundCalib = null;

@@ -10,6 +10,12 @@ import glimpseElement.ScenarioTable;
 import glimpseUtil.GLIMPSEUtils;
 import javafx.collections.ObservableList;
 
+/**
+ * Preserves and restores Scenario Library table view state during refresh cycles.
+ * <p>
+ * Captures selection/focus/anchor state before data mutation and reapplies it after
+ * snapshots are rendered, reducing disruptive selection jumps.
+ */
 final class ScenarioLibraryViewStateHelper {
 
     private final GLIMPSEUtils utils;
@@ -18,6 +24,7 @@ final class ScenarioLibraryViewStateHelper {
         this.utils = utils;
     }
 
+    /** Captures current selection, focus, and anchor information for later restoration. */
     RefreshViewState capture() {
         if (ScenarioTable.tableScenariosLibrary == null) {
             return RefreshViewState.empty();
@@ -51,6 +58,7 @@ final class ScenarioLibraryViewStateHelper {
         return new RefreshViewState(selectedScenarioNames, focusedScenarioName, anchorScenarioName, anchorIndex);
     }
 
+    /** Applies new scenario snapshots while restoring view state and placeholders. */
     void applySnapshots(List<ScenarioStatusSnapshot> snapshots, boolean noScenarios, RefreshViewState pendingViewState,
             String noScenariosMessage, String readyMessage) {
         if (ScenarioTable.tableScenariosLibrary == null) {
@@ -136,6 +144,7 @@ final class ScenarioLibraryViewStateHelper {
         return true;
     }
 
+    /** Executes a table update while preserving and restoring selection/focus context. */
     void preserveSelectionAndRefresh(Runnable updateAction) {
         if (ScenarioTable.tableScenariosLibrary == null) {
             if (updateAction != null) {
@@ -296,6 +305,7 @@ final class ScenarioLibraryViewStateHelper {
         return ScenarioSelection.normalizeScenarioName(row);
     }
 
+    /** Captured view-state payload for restoring selection, focus, and scroll anchor. */
     static final class RefreshViewState {
         final List<String> selectedScenarioNames;
         final String focusedScenarioName;
@@ -309,6 +319,7 @@ final class ScenarioLibraryViewStateHelper {
             this.anchorIndex = anchorIndex;
         }
 
+        /** Returns an empty view-state instance. */
         static RefreshViewState empty() {
             return new RefreshViewState(new ArrayList<>(), "", "", -1);
         }

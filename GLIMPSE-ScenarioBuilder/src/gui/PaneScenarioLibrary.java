@@ -80,7 +80,34 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-/** Manages the scenario library pane, including scenario actions, GCAM runs, and status refresh. */
+/**
+ * Manages the Scenario Library pane (bottom panel), including run orchestration, status refresh,
+ * reporting, and file actions for scenarios.
+ * <p>
+ * <b>Responsibilities:</b>
+ * <ul>
+ *   <li>Creates and manages scenario action buttons (run/stop/log/config/results/diff/import/delete).</li>
+ *   <li>Coordinates queued GCAM runs through {@link GcamRunController} and execution threads.</li>
+ *   <li>Refreshes scenario table status from logs/files using {@link ScenarioStatusService}.</li>
+ *   <li>Preserves selection/focus across refreshes via {@link ScenarioLibraryViewStateHelper}.</li>
+ *   <li>Streams run output into {@link ConsoleManager} and reacts to interactive GCAM prompts.</li>
+ *   <li>Provides error and execution reports using {@link ScenarioLibraryReportHelper}.</li>
+ * </ul>
+ *
+ * <b>Usage:</b> Constructed by {@link ScenarioBuilder} during UI build. Call
+ * {@link #refreshScenarioStatusAsync(boolean)} to update table content and
+ * {@link #requestDefaultCreatedSortAndScrollToBottomOnNextRefresh()} after adding/importing scenarios.
+ * <p>
+ * <b>Thread Safety:</b> UI updates are marshaled to JavaFX. Log parsing and refresh work run on
+ * background daemon threads.
+ * <p>
+ * <b>Integration:</b>
+ * <ul>
+ *   <li>Coordinates scenario file actions through {@link ScenarioFileActionService}.</li>
+ *   <li>Computes row status via {@link ScenarioStatusService} and applies view-state restoration.</li>
+ *   <li>Uses {@link ConsoleManager} and {@link GcamPromptMonitor} for live run feedback and prompts.</li>
+ * </ul>
+ */
 public class PaneScenarioLibrary extends ScenarioBuilder {
     private static final Duration LIVE_STATUS_REFRESH_INTERVAL = Duration.ofSeconds(5);
     private static final String STOPPED_LOG_MARKER = "GLIMPSE scenario status: Stopped";
@@ -148,6 +175,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private static final String XML_FILE_FILTER_EXT = "xml";
  
     // --- Selection state ---
+    /** Captured selection snapshot used to derive button enable/disable state. */
     private static final class ScenarioLibrarySelectionState {
         final int selectedCount;
         final boolean hasSelection;
@@ -205,6 +233,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private final AtomicBoolean resetToDefaultCreatedSortAndScroll = new AtomicBoolean(true);
 
     // --- Constructors ---
+    /**
+     * Creates and initializes the Scenario Library pane and action controls.
+     *
+     * @param stage owning stage (currently retained for compatibility with existing construction flow)
+     */
     PaneScenarioLibrary(Stage stage) {
         scenarioLibraryHBox.setSpacing(10);
         wireScenarioSelectionButtonRefresh();
@@ -227,6 +260,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         System.out.println("time now=" + (new SimpleDateFormat("MM/dd/yyyy HH:mm:ss")).format(startupTime));
     }
 
+    /**
+     * Zero-arg constructor retained for compatibility with tests and legacy call sites.
+     */
     PaneScenarioLibrary() {}
 
     // --- UI setup ---
@@ -1122,6 +1158,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     // --- Refresh and status ---
+    /**
+     * Recomputes scenario run status for all rows and applies refreshed snapshots to the table.
+     */
     public void updateRunStatus() {
         ScenarioStatusRefreshResult refreshResult = scenarioStatusService.refresh(buildScenarioStatusRefreshRequest());
         reconcileQueuedRunTracking(refreshResult);
@@ -1306,6 +1345,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         });
     }
 
+    /** Triggers an asynchronous scenario status refresh. */
     public void clearAndRefreshScenarioTable() {
         refreshScenarioStatusAsync(true);
     }
@@ -1604,10 +1644,20 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
+    /**
+     * Clears volatile run-status fields for a scenario before queueing a new run.
+     *
+     * @param scenarioName scenario to reset
+     */
     void clearScenarioRunStatusFields(String scenarioName) {
         clearScenarioTransientRunState(scenarioName, ScenarioRunStateClearMode.PREPARE_RUN);
     }
 
+    /**
+     * Clears terminal run-result fields when recreating an existing scenario.
+     *
+     * @param scenarioName scenario to reset
+     */
     void clearScenarioRunResultFields(String scenarioName) {
         clearScenarioTransientRunState(scenarioName, ScenarioRunStateClearMode.RECREATE_OVERWRITE);
     }
@@ -1654,6 +1704,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         });
     }
 
+    /**
+     * Returns the root HBox containing the Scenario Library table.
+     *
+     * @return pane root container
+     */
     public HBox gethBox() {
         return scenarioLibraryHBox;
     }

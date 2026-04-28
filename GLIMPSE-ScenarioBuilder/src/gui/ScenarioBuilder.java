@@ -79,7 +79,7 @@ import javafx.stage.Stage;
  * This class initializes and manages all primary JavaFX panes, tables, buttons, and event handlers required for scenario creation, editing, and management.
  * It follows the singleton pattern to ensure a single instance throughout the application lifecycle.
  * <p>
- * <b>Main Features:</b>
+ * <b>Responsibilities:</b>
  * <ul>
  *   <li>Initializes and lays out the component library, scenario creation, and scenario library panes.</li>
  *   <li>Configures and manages all major UI controls, including search fields, tables, and action buttons.</li>
@@ -160,16 +160,19 @@ public class ScenarioBuilder {
 	}
 
 	/**
-	 * Private constructor for singleton pattern. Prevents external instantiation.
+	 * Creates a ScenarioBuilder instance.
+	 * <p>
+	 * The application uses {@link #getInstance()} for normal lifecycle usage.
+	 * This constructor remains visible to support controlled subclassing in GUI helpers.
 	 */
 	public ScenarioBuilder() {
-		// Private constructor for singleton pattern
+		// Intentionally empty.
 	}
 
 	/**
-	 * Initializes and builds all main UI panes, tables, and controls for the Scenario Builder.
-	 * This method should be called once during application startup.
-	 * Sets up all tables, buttons, panes, and resizes labels for consistent UI.
+	 * Initializes all primary Scenario Builder panes, tables, and shared controls.
+	 * <p>
+	 * This method is intended to run once during startup.
 	 */
 	public void build() {
 		// Initialization of vars/files/utils is done during Client.init().
@@ -567,9 +570,9 @@ public class ScenarioBuilder {
 	}
 
 	/**
-	 * Updates the enabled/disabled status of all major arrow and action buttons based on current selection state.
-	 * This method should be called after any change in selection or list contents.
-	 * Enables/disables buttons for scenario library, scenario creation, and component library as appropriate.
+	 * Recomputes enabled/disabled state for scenario, create, and component action buttons.
+	 * <p>
+	 * Call this after selection or list-content changes that affect action availability.
 	 */
 	protected void setArrowAndButtonStatus() {
 		int numSelectedScenarios = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems().size();
@@ -656,7 +659,7 @@ public class ScenarioBuilder {
 	}
 
 	/**
-	 * Applies the application's modern stylesheet to the provided Scene (if available).
+	 * Applies the shared modern stylesheet to the provided scene when available.
 	 *
 	 * @param scene Scene to style
 	 */
@@ -740,6 +743,7 @@ public class ScenarioBuilder {
 		return utils.createButton(text, styles.getBigButtonWidth(), null);
 	}
 
+	/** Returns the classpath location for the shared modern CSS stylesheet. */
 	public static String getModernCssResource() {
 		return MODERN_CSS_RESOURCE;
 	}

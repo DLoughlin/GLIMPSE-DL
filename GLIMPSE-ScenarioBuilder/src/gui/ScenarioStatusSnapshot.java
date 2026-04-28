@@ -1,5 +1,10 @@
 package gui;
 
+/**
+ * Immutable snapshot of one scenario row's derived status fields.
+ * <p>
+ * Used as a transport object between status computation and table rendering.
+ */
 final class ScenarioStatusSnapshot {
     final String scenarioName;
     final String components;
@@ -9,6 +14,9 @@ final class ScenarioStatusSnapshot {
     final String runtime;
     final String unsolved;
 
+    /**
+     * Creates a snapshot using non-null string values.
+     */
     ScenarioStatusSnapshot(String scenarioName, String components, String createdDate, String completedDate,
             String status, String runtime, String unsolved) {
         this.scenarioName = scenarioName == null ? "" : scenarioName;

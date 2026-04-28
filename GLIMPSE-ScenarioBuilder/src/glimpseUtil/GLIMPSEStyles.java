@@ -89,28 +89,58 @@ public final class GLIMPSEStyles {
 
     // --- Style Getters ---
 
+    /**
+     * Returns the primary bordered panel style used for larger content panes.
+     *
+     * @return JavaFX CSS string for the primary panel style
+     */
     public String getStyle1() {
         return String.format("-fx-padding: 10; -fx-border-style: solid inside; -fx-border-width: 1; " +
             "-fx-border-insets: 5; -fx-border-radius: 4; -fx-border-color: #90caf9; -fx-background-color: white; -fx-background-radius: 4; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 3, 0, 0, 1); %s", getFontStyle());
     }
 
+    /**
+     * Returns the alternate bordered style used to highlight warning or error areas.
+     *
+     * @return JavaFX CSS string for the alternate panel style
+     */
     public String getStyle1b() {
         return String.format("-fx-padding: 3; -fx-border-style: solid inside; -fx-border-width: 1; " +
             "-fx-border-insets: 3; -fx-border-radius: 4; -fx-border-color: #ef9a9a; %s", getFontStyle());
     }
 
+    /**
+     * Returns the base white-background style for standard content panes.
+     *
+     * @return JavaFX CSS string for the base content style
+     */
     public String getStyle2() {
         return String.format("-fx-padding: 10; -fx-background-color: white; %s", getFontStyle());
     }
 
+    /**
+     * Returns a compact padding style for grouped controls.
+     *
+     * @return JavaFX CSS string for compact pane styling
+     */
     public String getStyle3() {
         return String.format("-fx-padding: 5; %s", getFontStyle());
     }
 
+    /**
+     * Returns a minimal padding style for tight layouts.
+     *
+     * @return JavaFX CSS string for minimal spacing
+     */
     public String getStyle4() {
         return String.format("-fx-padding: 2; %s", getFontStyle());
     }
 
+    /**
+     * Returns a right-aligned label/value style used in form layouts.
+     *
+     * @return JavaFX CSS string for right-aligned content
+     */
     public String getStyle5() {
         return String.format("-fx-alignment: CENTER-RIGHT; -fx-padding: 5 20 5 5; %s", getFontStyle());
     }
@@ -215,10 +245,20 @@ public final class GLIMPSEStyles {
 
     // --- Layout Constant Getters ---
 
+    /**
+     * Returns the preferred width for larger action buttons.
+     *
+     * @return standard large button width in pixels
+     */
     public int getBigButtonWidth() {
         return bigButtonWidth;
     }
 
+    /**
+     * Returns the preferred width for compact icon-sized buttons.
+     *
+     * @return standard small button width in pixels
+     */
     public int getSmallButtonWidth() {
         return smallButtonWidth;
     }

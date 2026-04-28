@@ -9,8 +9,12 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 
+/**
+ * Dialog helper that asks how to handle stopping active/queued GCAM runs.
+ */
 final class ScenarioLibraryStopHelper {
 
+    /** User choice returned from the stop-confirmation dialog. */
     enum StopMode {
         CONTINUE,
         STOP_CURRENT,
@@ -20,6 +24,7 @@ final class ScenarioLibraryStopHelper {
     private ScenarioLibraryStopHelper() {
     }
 
+    /** Displays stop options and maps the button result to a {@link StopMode}. */
     static StopMode promptForStopMode() {
         Alert alert = new Alert(AlertType.CONFIRMATION);
         UtilsDialogs.initDialogOwner(alert);

@@ -66,6 +66,16 @@ public final class ProcessRunner {
         private final long waitedMillis;
         private final String error;
 
+        /**
+         * Creates a snapshot describing the outcome of a stop request.
+         *
+         * @param outcome high-level stop outcome
+         * @param pid process id when available
+         * @param exitCode process exit code when available
+         * @param aliveAfterStop whether the process still appeared alive afterward
+         * @param waitedMillis time spent waiting for shutdown
+         * @param error optional error text collected during stopping
+         */
         public StopResult(Outcome outcome, Long pid, Integer exitCode, boolean aliveAfterStop, long waitedMillis, String error) {
             this.outcome = outcome;
             this.pid = pid;
@@ -75,30 +85,41 @@ public final class ProcessRunner {
             this.error = error;
         }
 
+        /** @return high-level outcome of the stop request */
         public Outcome getOutcome() {
             return outcome;
         }
 
+        /** @return process id when available */
         public Long getPid() {
             return pid;
         }
 
+        /** @return process exit code when available */
         public Integer getExitCode() {
             return exitCode;
         }
 
+        /** @return true if the process still appeared alive after stopping */
         public boolean isAliveAfterStop() {
             return aliveAfterStop;
         }
 
+        /** @return time spent waiting for shutdown in milliseconds */
         public long getWaitedMillis() {
             return waitedMillis;
         }
 
+        /** @return optional error text collected while stopping */
         public String getError() {
             return error;
         }
 
+        /**
+         * Returns a short human-readable summary of the stop attempt.
+         *
+         * @return summary string describing the stop result
+         */
         public String getSummary() {
             StringBuilder sb = new StringBuilder();
             sb.append(outcome);
@@ -209,7 +230,12 @@ public final class ProcessRunner {
             this.errFuture = ioPool.submit(streamToString(process.getErrorStream(), charset, stderrLineConsumer));
         }
 
-        @Override
+            /**
+             * Requests best-effort termination of the running process.
+             *
+             * @return structured information about the stop attempt
+             */
+            @Override
         public StopResult stop() {
             if (!stopRequested.compareAndSet(false, true)) {
                 return new StopResult(StopResult.Outcome.ALREADY_REQUESTED, null, safeExit(process), isAlive(process), 0, null);
@@ -268,17 +294,25 @@ public final class ProcessRunner {
             }
         }
 
-        @Override
+            /** @return true if a stop request has been issued */
+            @Override
         public boolean isStopRequested() {
             return stopRequested.get();
         }
 
-        @Override
+            /** @return the underlying process instance */
+            @Override
         public Process getProcess() {
             return process;
         }
 
-        @Override
+            /**
+             * Sends raw text to the child process standard input.
+             *
+             * @param text text to send
+             * @return {@code true} when the text was written successfully
+             */
+            @Override
         public boolean sendInput(String text) {
             if (text == null) {
                 return false;
@@ -297,7 +331,12 @@ public final class ProcessRunner {
             }
         }
 
-        @Override
+            /**
+             * Sends a single platform newline to the child process.
+             *
+             * @return {@code true} when the newline was written successfully
+             */
+            @Override
         public boolean sendLine() {
             return sendInput(System.lineSeparator());
         }
@@ -350,6 +389,19 @@ public final class ProcessRunner {
         void accept(String line);
     }
 
+    /**
+     * Runs a process to completion while capturing stdout and stderr.
+     *
+     * @param command command and arguments to execute
+     * @param workingDir optional working directory
+     * @param extraEnv optional extra environment variables
+     * @param timeout optional timeout
+     * @param stdoutLineConsumer optional callback for stdout lines
+     * @param stderrLineConsumer optional callback for stderr lines
+     * @return immutable process result snapshot
+     * @throws IOException if the process cannot be started
+     * @throws InterruptedException if the current thread is interrupted while waiting
+     */
     public static ProcessResult run(List<String> command,
                                     File workingDir,
                                     Map<String, String> extraEnv,
@@ -412,6 +464,17 @@ public final class ProcessRunner {
         }
     }
 
+    /**
+     * Runs a process to completion without streaming line callbacks.
+     *
+     * @param command command and arguments to execute
+     * @param workingDir optional working directory
+     * @param extraEnv optional extra environment variables
+     * @param timeout optional timeout
+     * @return immutable process result snapshot
+     * @throws IOException if the process cannot be started
+     * @throws InterruptedException if the current thread is interrupted while waiting
+     */
     public static ProcessResult run(List<String> command, File workingDir, Map<String, String> extraEnv, Duration timeout)
             throws IOException, InterruptedException {
         return run(command, workingDir, extraEnv, timeout, null, null);

@@ -94,11 +94,11 @@ import javafx.scene.Parent;
  *   <li>Coordinates the setup of execution threads for GCAM and post-processing.</li>
  *   <li>Provides static accessors for key UI elements and threads for use throughout the application.</li>
  * </ul>
- *
+ * <p>
  * <b>Usage:</b> This class is launched as a JavaFX application. It is responsible for the lifecycle of the Scenario Builder GUI.
- *
+ * <p>
  * <b>Thread Safety:</b> Most methods must be called on the JavaFX Application Thread. Static accessors are provided for UI integration.
- *
+ * <p>
  * <b>Integration:</b>
  * <ul>
  *   <li>Works with {@link ScenarioBuilder} for building and managing the main UI panels.</li>
@@ -106,13 +106,6 @@ import javafx.scene.Parent;
  *   <li>Integrates with menu setup classes (e.g., {@link SetupMenuFile}, {@link SetupMenuEdit}, etc.).</li>
  *   <li>Provides access to execution threads for running GCAM and post-processing tasks.</li>
  * </ul>
- *
- * <b>Example:</b>
- * <pre>
- * // Launch the Scenario Builder application
- * Client.main(new String[] {"-options", "options_GCAM-global-8.2.txt"});
- * </pre>
- *
  */
 public class Client extends Application {
 
@@ -266,9 +259,7 @@ public class Client extends Application {
     private static final AtomicBoolean earlySplashVisible = new AtomicBoolean(false);
 
     /**
-     * The entry point of the application. Sets up JavaFX and launches the GUI.
-     *
-     * Handles command-line arguments and starts the JavaFX application lifecycle.
+     * Launches the JavaFX application lifecycle for Scenario Builder.
      *
      * @param args Command line arguments passed to the application. Supports an options file via -options flag or as a single argument.
      */
@@ -284,9 +275,7 @@ public class Client extends Application {
     }
 
     /**
-     * Initializes the application. Loads settings, options, and data files, and sets up utility references.
-     *
-     * Initializes all singleton utility classes and loads user options and data files. Also logs system information.
+     * Initializes singleton utilities, options, and startup logging before the primary stage is shown.
      *
      * @throws Exception if initialization fails
      */
@@ -336,9 +325,10 @@ public class Client extends Application {
     }
 
     /**
-     * Starts the JavaFX application and sets up the main window and GUI components.
-     *
-     * Initializes the main window, sets up event handlers for shutdown, builds all panels, and configures the application icon.
+     * Builds and displays the primary Scenario Builder window.
+     * <p>
+     * Shows a lightweight startup shell immediately, then composes the full UI and
+     * starts deferred initialization tasks.
      *
      * @param primaryStage The primary stage for this application.
      */
@@ -405,10 +395,9 @@ public class Client extends Application {
     }
 
     /**
-     * Processes command-line arguments to extract the options filename if provided.
-     * Supports both single argument and -options flag.
-     *
-     * Sets the static optionsFilename field if an options file is specified.
+     * Parses launch arguments and resolves the options filename when provided.
+     * <p>
+     * Supports both single-argument usage and {@code -options <file>} form.
      */
     private void processArgs() {
         final Parameters params = getParameters();
@@ -429,9 +418,7 @@ public class Client extends Application {
     }
 
     /**
-     * Creates the main menu bar for the application, including File, Edit, Tools, View, and Help menus.
-     *
-     * Each menu is set up using its corresponding setup class.
+     * Builds the main menu bar and delegates menu population to setup helpers.
      *
      * @return MenuBar the constructed menu bar
      */
@@ -458,9 +445,7 @@ public class Client extends Application {
     }
 
     /**
-     * Combines all main GUI elements into a single GridPane for the main window layout.
-     *
-     * Adds the component library, button panel, create scenario panel, and run panel to the main layout.
+     * Composes the primary two-row layout containing top editing panes and bottom run pane.
      *
      * @return GridPane containing all main UI elements
      */
@@ -754,10 +739,22 @@ public class Client extends Application {
         }
     }
 
+    /**
+     * Convenience overload for reporting required-file startup progress when file counts are unknown.
+     *
+     * @param filename file path (or name) currently being loaded
+     */
     public static void setStartupRequiredFileStatus(String filename) {
         setStartupRequiredFileStatus(filename, -1, -1);
     }
 
+    /**
+     * Reports required-file loading progress in startup status UI.
+     *
+     * @param filename file path (or name) currently being loaded
+     * @param currentFileIndex one-based index of file currently loading; ignored when {@code <= 0}
+     * @param totalFiles total number of files in this phase; ignored when {@code <= 0}
+     */
     public static void setStartupRequiredFileStatus(String filename, int currentFileIndex, int totalFiles) {
         String safeFilename = (filename == null) ? "" : filename.trim();
         if (safeFilename.isEmpty()) {
@@ -799,12 +796,22 @@ public class Client extends Application {
         }
     }
 
+    /**
+     * Marks initial scenario status loading as complete and advances startup progress state.
+     * <p>
+     * This method is safe to call from non-JavaFX threads.
+     */
     public static void markInitialScenarioLoadComplete() {
         initialScenarioLoadPending = false;
         advanceStartupStep(STARTUP_STEP_SCENARIOS_READY, STARTUP_READY_MESSAGE);
         applyDeferredStatusBarTextIfReady();
     }
 
+    /**
+     * Marks initial component library loading as complete and advances startup progress state.
+     * <p>
+     * This method is safe to call from non-JavaFX threads.
+     */
     public static void markInitialComponentLoadComplete() {
         initialComponentLoadPending = false;
         advanceStartupStep(STARTUP_STEP_COMPONENTS_READY, STARTUP_SCENARIO_MESSAGE);
@@ -917,6 +924,7 @@ public class Client extends Application {
         return percent + "%";
     }
 
+  /** Returns the singleton {@link ScenarioBuilder} used by this application instance. */
 	public ScenarioBuilder getScenarioBuilder() {
 		return scenarioBuilder;
 	}
@@ -991,6 +999,12 @@ public class Client extends Application {
                 || SCENARIO_REFRESHED_MESSAGE.equalsIgnoreCase(safeText);
     }
 
+    /**
+     * Queues a post-startup status-bar message to apply once startup and initial library loads finish.
+     *
+     * @param text status message text
+     * @param style optional extra CSS fragment for the status bar; may be {@code null}
+     */
     public static void setDeferredStatusBarText(String text, String style) {
         final String safeText = (text == null) ? "" : text.trim();
         if (safeText.isEmpty()) {
@@ -1004,6 +1018,7 @@ public class Client extends Application {
         return initialScenarioLoadPending || initialComponentLoadPending;
     }
 
+    /** Returns whether startup flow is still considered busy by the status subsystem. */
     public static boolean isStartupBusy() {
         return startupBusyState;
     }
@@ -1191,6 +1206,11 @@ public class Client extends Application {
         }
     }
 
+    /**
+     * Returns the currently effective runtime font size used by the UI.
+     *
+     * @return clamped runtime font size in pixels
+     */
     public static int getRuntimeFontSize() {
         try {
             String raw = GLIMPSEVariables.getInstance().getPreferredFontSize();
@@ -1200,52 +1220,96 @@ public class Client extends Application {
         }
     }
 
+    /** Returns the minimum allowed runtime font size. */
     public static int getMinRuntimeFontSize() {
         return MIN_RUNTIME_FONT_SIZE;
     }
 
+    /** Returns the maximum allowed runtime font size. */
     public static int getMaxRuntimeFontSize() {
         return MAX_RUNTIME_FONT_SIZE;
     }
 
+    /** Returns the primary JavaFX stage. */
     public static Stage getPrimaryStage() { return primaryStage; }
+    /** Returns the resolved options filename (if provided at launch). */
     public static String getOptionsFilename() { return optionsFilename; }
+    /** Returns the create-scenario pane instance. */
     public static PaneCreateScenario getPaneCreateScenario() { return paneCreateScenario; }
+    /** Returns the scenario-library pane instance. */
     public static PaneScenarioLibrary getPaneScenarioLibrary() { return paneScenarioLibrary; }
+    /** Returns the component-library pane instance. */
     public static PaneComponentLibrary getPaneComponentLibrary() { return paneComponentLibrary; }
+    /** Returns the single-right-arrow button. */
     public static Button getButtonRightArrow() { return buttonRightArrow; }
+    /** Returns the single-left-arrow button. */
     public static Button getButtonLeftArrow() { return buttonLeftArrow; }
+    /** Returns the double-left-arrow button. */
     public static Button getButtonLeftDoubleArrow() { return buttonLeftDoubleArrow; }
+    /** Returns the Edit Scenario button. */
     public static Button getButtonEditScenario() { return buttonEditScenario; }
+    /** Returns the Delete Component button. */
     public static Button getButtonDeleteComponent() { return buttonDeleteComponent; }
+    /** Returns the Refresh Components button. */
     public static Button getButtonRefreshComponents() { return buttonRefreshComponents; }
+    /** Returns the New Component button. */
     public static Button getButtonNewComponent() { return buttonNewComponent; }
+    /** Returns the Edit Component button. */
     public static Button getButtonEditComponent() { return buttonEditComponent; }
+    /** Returns the Browse Component Library button. */
     public static Button getButtonBrowseComponentLibrary() { return buttonBrowseComponentLibrary; }
+    /** Returns the Move Component Up button. */
     public static Button getButtonMoveComponentUp() { return buttonMoveComponentUp; }
+    /** Returns the Move Component Down button. */
     public static Button getButtonMoveComponentDown() { return buttonMoveComponentDown; }
+    /** Returns the Create Scenario Config File button. */
     public static Button getButtonCreateScenarioConfigFile() { return buttonCreateScenarioConfigFile; }
+    /** Returns the View Config button. */
     public static Button getButtonViewConfig() { return buttonViewConfig; }
+    /** Returns the View Log button. */
     public static Button getButtonViewLog() { return buttonViewLog; }
+    /** Returns the View Executable Log button. */
     public static Button getButtonViewExeLog() { return buttonViewExeLog; }
+    /** Returns the View Errors button. */
     public static Button getButtonViewErrors() { return buttonViewErrors; }
+    /** Returns the View Executable Errors button. */
     public static Button getButtonViewExeErrors() { return buttonViewExeErrors; }
+    /** Returns the Browse Scenario Folder button. */
     public static Button getButtonBrowseScenarioFolder() { return buttonBrowseScenarioFolder; }
+    /** Returns the Import Scenario button. */
     public static Button getButtonImportScenario() { return buttonImportScenario; }
+    /** Returns the Diff Files button. */
     public static Button getButtonDiffFiles() { return buttonDiffFiles; }
+    /** Returns the Show Run Queue button. */
     public static Button getButtonShowRunQueue() { return buttonShowRunQueue; }
+    /** Returns the Refresh Scenario Status button. */
     public static Button getButtonRefreshScenarioStatus() { return buttonRefreshScenarioStatus; }
+    /** Returns the Delete Scenario button. */
     public static Button getButtonDeleteScenario() { return buttonDeleteScenario; }
+    /** Returns the Run Scenario button. */
     public static Button getButtonRunScenario() { return buttonRunScenario; }
+    /** Returns the Stop Scenario button. */
     public static Button getButtonStopScenario() { return buttonStopScenario; }
+    /** Returns the Results button. */
     public static Button getButtonResults() { return buttonResults; }
+    /** Returns the Results-for-selected button. */
     public static Button getButtonResultsForSelected() { return buttonResultsForSelected; }
+    /** Returns the Archive Scenario button. */
     public static Button getButtonArchiveScenario() { return buttonArchiveScenario; }
+    /** Returns the Report button. */
     public static Button getButtonReport() { return buttonReport; }
+    /** Returns the Examine Scenario button. */
     public static Button getButtonExamineScenario() { return buttonExamineScenario; }
+    /** Returns the GCAM execution-thread wrapper. */
     public static ExecutionThread getgCAMExecutionThread() { return gCAMExecutionThread; }
+    /** Returns the ModelInterface execution-thread wrapper. */
     public static ExecutionThread getgCAMPPExecutionThread() { return modelInterfaceExecutionThread; }
 
+    /**
+     * Increments active scenario-operation count and shows right-side status progress indicator.
+     * <p>
+     * Safe to call from any thread.
+     */
     public static void beginScenarioOperationProgress() {
         final Client inst = instanceForStatus;
         if (inst == null) {
@@ -1259,6 +1323,11 @@ public class Client extends Application {
         }
     }
 
+    /**
+     * Decrements active scenario-operation count and hides the indicator when count reaches zero.
+     * <p>
+     * Safe to call from any thread.
+     */
     public static void endScenarioOperationProgress() {
         final Client inst = instanceForStatus;
         if (inst == null) {

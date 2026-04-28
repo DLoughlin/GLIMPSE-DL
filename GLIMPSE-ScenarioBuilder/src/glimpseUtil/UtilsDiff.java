@@ -22,11 +22,24 @@ public final class UtilsDiff {
 	private GLIMPSEFiles files;
 	private Consumer<ArrayList<String>> differencesDisplayer;
 
+	/**
+	 * Wires the diff helper to shared file access and an optional display callback.
+	 *
+	 * @param files file helper used to load content before diffing
+	 * @param differencesDisplayer consumer that receives generated diff reports
+	 */
 	public void init(GLIMPSEFiles files, Consumer<ArrayList<String>> differencesDisplayer) {
 		this.files = files;
 		this.differencesDisplayer = differencesDisplayer;
 	}
 
+	/**
+	 * Builds and displays a unified diff report between two files.
+	 *
+	 * @param file1 first file path
+	 * @param file2 second file path
+	 * @return {@code true} when diff generation succeeded
+	 */
 	public boolean diffTwoFiles(String file1, String file2) {
 		if (files == null)
 			return false;
@@ -35,6 +48,13 @@ public final class UtilsDiff {
 		return !isDiffFailure(diff);
 	}
 
+	/**
+	 * Loads two files and returns a textual unified diff report.
+	 *
+	 * @param file1 first file path
+	 * @param file2 second file path
+	 * @return diff report lines describing the differences
+	 */
 	public ArrayList<String> buildDiffReport(String file1, String file2) {
 		if (files == null)
 			return buildDiffFailureReport("Diff failed: file access is not initialized.");
@@ -43,6 +63,15 @@ public final class UtilsDiff {
 		return buildDiffReport(file1, file2, file1Content, file2Content);
 	}
 
+	/**
+	 * Generates a unified diff report from in-memory content lists.
+	 *
+	 * @param file1Label label used for the left-hand content
+	 * @param file2Label label used for the right-hand content
+	 * @param file1Content left-hand content lines
+	 * @param file2Content right-hand content lines
+	 * @return diff report lines describing the supplied content
+	 */
 	public ArrayList<String> buildDiffReport(String file1Label, String file2Label, List<String> file1Content,
 			List<String> file2Content) {
 		Patch<String> patch = null;
@@ -99,6 +128,13 @@ public final class UtilsDiff {
 		return diff;
 	}
 
+	/**
+	 * Produces row-oriented side-by-side diff data for display in the UI.
+	 *
+	 * @param file1 first file path
+	 * @param file2 second file path
+	 * @return diff rows tagged with old and new line numbers
+	 */
 	public List<DiffLineRow> generateSideBySideDiffRows(String file1, String file2) {
 		if (files == null)
 			return new ArrayList<>();

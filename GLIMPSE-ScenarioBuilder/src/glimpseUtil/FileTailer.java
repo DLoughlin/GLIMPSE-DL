@@ -49,6 +49,16 @@ public final class FileTailer {
         void join(Duration timeout) throws InterruptedException;
     }
 
+    /**
+     * Starts a background tailer that watches a file for appended text lines.
+     *
+     * @param file file to monitor
+     * @param charset charset used to decode appended bytes, or UTF-8 when {@code null}
+     * @param pollInterval polling interval between file checks
+     * @param initialWaitForFile maximum time to wait for the file to appear
+     * @param onLine callback invoked for each completed line that is read
+     * @return handle that can stop the tailer and wait for shutdown
+     */
     public static TailHandle start(Path file,
                                   Charset charset,
                                   Duration pollInterval,

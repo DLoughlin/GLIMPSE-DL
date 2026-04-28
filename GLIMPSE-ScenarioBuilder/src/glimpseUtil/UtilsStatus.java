@@ -56,11 +56,23 @@ public class UtilsStatus {
 	private GLIMPSEVariables vars;
 	private GLIMPSEFiles files;
 
+	/**
+	 * Initializes the status helper with shared variables and file utilities.
+	 *
+	 * @param v shared variables instance
+	 * @param f shared file helper
+	 */
 	public void init(GLIMPSEVariables v, GLIMPSEFiles f) {
 		vars = v;
 		files = f;
 	}
 
+	/**
+	 * Extracts the currently running scenario name from a GCAM main log.
+	 *
+	 * @param mainLogFile main log file to inspect
+	 * @return scenario name, or an empty string when unavailable
+	 */
 	public String getRunningScenario(File mainLogFile) {
 		if (files == null || mainLogFile == null || !mainLogFile.exists())
 			return "";
@@ -77,6 +89,12 @@ public class UtilsStatus {
 		return scenName == null ? "" : scenName;
 	}
 
+	/**
+	 * Returns a concise scenario status summary derived from a GCAM main log.
+	 *
+	 * @param mainLogFile main log file to inspect
+	 * @return status text, or an empty string when no status can be determined
+	 */
 	public String getScenarioStatusFromMainLog(File mainLogFile) {
 		if (files == null || mainLogFile == null || !mainLogFile.exists())
 			return "";
@@ -96,6 +114,12 @@ public class UtilsStatus {
 		return "";
 	}
 
+	/**
+	 * Finds the most recent model period mentioned in a GCAM main log.
+	 *
+	 * @param mainLogFile main log file to inspect
+	 * @return latest period or period/year pair, or an empty string when none is found
+	 */
 	public String getLatestRunningPeriod(File mainLogFile) {
 		if (files == null || mainLogFile == null || !mainLogFile.exists())
 			return "";
@@ -139,6 +163,12 @@ public class UtilsStatus {
 		return "";
 	}
 
+	/**
+	 * Builds a compact resource-usage status string for the current machine and
+	 * configured output database.
+	 *
+	 * @return computer resource status summary
+	 */
 	public String getComputerStatString() {
 		boolean warning = false;
 		String status = "";
@@ -214,6 +244,11 @@ public class UtilsStatus {
 		return status;
 	}
 
+	/**
+	 * Returns the executable-side GCAM `main_log.txt` file path.
+	 *
+	 * @return executable main log file, or {@code null} when unavailable
+	 */
 	public File getExecutableMainLogFile() {
 		if (vars == null)
 			return null;
@@ -223,6 +258,13 @@ public class UtilsStatus {
 		return new File(exeDir + File.separator + "logs" + File.separator + "main_log.txt");
 	}
 
+	/**
+	 * Returns the scenario-side target path where the executable main log should be
+	 * copied or moved.
+	 *
+	 * @param mainLogFile executable main log file used to determine the scenario name
+	 * @return target main log file in the active scenario folder, or {@code null}
+	 */
 	public File getRunningScenarioMainLogTarget(File mainLogFile) {
 		if (vars == null)
 			return null;

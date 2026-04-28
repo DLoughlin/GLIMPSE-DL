@@ -849,6 +849,9 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 	 * @param tree The TreeView containing selected regions.
 	 */
 	private void saveScenarioComponent(TreeView<String> tree) {
+		
+		boolean debug = false;
+		
 		// 1. Early exit on failed QA
 		if (!qaInputs()) {
 			try {
@@ -931,7 +934,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 
 		for (int s = 0; s < listOfSelectedLeaves.length; s++) {
 			String state = listOfSelectedLeaves[s];
-			System.out.println("Creating part 1 of 3 of csv file for " + state + " : " + s + " of "
+			if (debug) System.out.println("Creating part 1 of 3 of csv file for " + state + " : " + s + " of "
 					+ (listOfSelectedLeaves.length - 1));
 
 			for (int t : years) {
@@ -984,7 +987,9 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 									if (is_subsector_in_region) {
 										Double val = valuef_list[i];
 										String conv = "1.0";
-										if (sector_name.startsWith("trn")) {
+										//adjusts scaling for transportation fuels when user has selected to use MMBTU conversions
+										//done to make small region transportation marketshare targets easier to work   
+										if ((vars.getUseTrnMMBTUConversions())&&(sector_name.startsWith("trn"))) {
 											conv = "1e-3";
 											val *= 1000.;
 										}
@@ -1021,7 +1026,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 
 		for (int s = 0; s < listOfSelectedLeaves.length; s++) {
 			String state = listOfSelectedLeaves[s];
-			System.out.println("Creating part 2 of 3 of csv file for " + state + " : " + s + " of "
+			if (debug) System.out.println("Creating part 2 of 3 of csv file for " + state + " : " + s + " of "
 					+ (listOfSelectedLeaves.length - 1));
 			for (int t : years) {
 				String use_this_policy_name = policy_name;
@@ -1092,7 +1097,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 		
 		for (int s = 0; s < listOfSelectedLeaves.length; s++) {
 			String state = listOfSelectedLeaves[s];
-			System.out.println("Creating part 3  of 3 of csv file for " + state + " : " + s + " of "
+			if (debug) System.out.println("Creating part 3  of 3 of csv file for " + state + " : " + s + " of "
 					+ (listOfSelectedLeaves.length - 1));
 			
 			for (int i = 0; i < year_list.length; i++) {

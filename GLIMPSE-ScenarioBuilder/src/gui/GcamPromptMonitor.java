@@ -5,9 +5,16 @@ import java.util.ArrayList;
 
 import glimpseUtil.GLIMPSEFiles;
 
+/**
+ * Utility for detecting interactive GCAM prompt windows and output-writing phases.
+ * <p>
+ * It buffers recent output lines, identifies database-save prompts, and reports prompt
+ * events to callbacks without coupling prompt parsing logic to run-control orchestration.
+ */
 final class GcamPromptMonitor {
     static final int DEFAULT_PROMPT_BUFFER_MAX_CHARS = 512;
 
+    /** Callback contract for prompt detections emitted by this monitor. */
     interface PromptCallbacks {
         void onPromptDetected(String promptWindow);
     }
@@ -28,6 +35,7 @@ final class GcamPromptMonitor {
         this.promptBufferMaxChars = Math.max(1, promptBufferMaxChars);
     }
 
+    /** Handles a new output line and triggers prompt callbacks when a DB prompt is recognized. */
     void handlePotentialInteractivePrompt(String line) {
         try {
             String promptWindow = appendAndGetRecentPromptWindow(line);
@@ -42,14 +50,17 @@ final class GcamPromptMonitor {
         } catch (Exception ignored) {}
     }
 
+    /** Appends text to the rolling prompt buffer and returns the recent normalized window. */
     String appendAndGetRecentPromptWindow(String line) {
         return runController.appendAndGetRecentPromptWindow(line, promptBufferMaxChars);
     }
 
+    /** Clears any cached prompt text accumulated so far. */
     void clearRecentPromptBuffer() {
         runController.clearRecentPromptBuffer();
     }
 
+    /** Returns whether the run appears to be in the output-writing phase. */
     boolean isWritingResultsPhase(File currentMainLogFile, String runningStatus) {
         if (runningStatus != null && runningStatus.contains(",ERR")) {
             return false;
@@ -83,6 +94,7 @@ final class GcamPromptMonitor {
         return false;
     }
 
+    /** Delegates phrase detection for write-phase markers to prompt helper logic. */
     boolean containsWritingPhrase(String text) {
         return ScenarioLibraryPromptHelper.containsWritingPhrase(text);
     }

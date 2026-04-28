@@ -2,6 +2,12 @@ package gui;
 
 import java.util.Locale;
 
+/**
+ * Token-based text helpers for identifying GCAM prompt and write-phase output patterns.
+ * <p>
+ * These utilities normalize stdout/stderr text and apply lightweight keyword checks
+ * used by run-monitoring logic.
+ */
 final class ScenarioLibraryPromptHelper {
 
     static final String GCAM_DB_PROMPT_TOKEN_CLOSE_MI = "close the modelinterface";
@@ -22,6 +28,7 @@ final class ScenarioLibraryPromptHelper {
     private ScenarioLibraryPromptHelper() {
     }
 
+    /** Returns whether a line resembles the GCAM database-lock prompt. */
     static boolean looksLikeDatabaseSavePrompt(String line) {
         if (line == null) {
             return false;
@@ -45,6 +52,7 @@ final class ScenarioLibraryPromptHelper {
         return mentionsDatabase && mentionsBlockedState && (mentionsResumeInput || mentionsContinue);
     }
 
+    /** Normalizes prompt text for robust token checks. */
     static String normalizeDatabasePromptText(String text) {
         if (text == null) {
             return "";
@@ -52,6 +60,7 @@ final class ScenarioLibraryPromptHelper {
         return text.trim().toLowerCase(Locale.ENGLISH).replaceAll("\\s+", " ");
     }
 
+    /** Returns whether text contains known write-phase markers emitted by GCAM. */
     static boolean containsWritingPhrase(String text) {
         if (text == null) {
             return false;

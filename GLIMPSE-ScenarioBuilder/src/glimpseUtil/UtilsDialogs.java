@@ -36,10 +36,20 @@ public final class UtilsDialogs {
 	private UtilsDialogs() {
 	}
 
+	/**
+	 * Returns the shared dialog helper instance.
+	 *
+	 * @return singleton dialog helper
+	 */
 	public static UtilsDialogs getInstance() {
 		return INSTANCE;
 	}
 
+	/**
+	 * Initializes the dialog helper with shared style settings.
+	 *
+	 * @param styles shared styles used to theme dialogs
+	 */
 	public void init(GLIMPSEStyles styles) {
 		this.styles = styles;
 	}
@@ -66,14 +76,29 @@ public final class UtilsDialogs {
 		}
 	}
 
+	/**
+	 * Assigns the best available owner window to a JavaFX dialog.
+	 *
+	 * @param dialog dialog to initialize
+	 */
 	public static void initDialogOwner(javafx.scene.control.Dialog<?> dialog) {
 		INSTANCE.applyDialogOwner(dialog);
 	}
 
+	/**
+	 * Assigns the best available owner window to a stage and centers it on show.
+	 *
+	 * @param stage stage to initialize
+	 */
 	public static void initStageOwner(Stage stage) {
 		INSTANCE.applyStageOwner(stage);
 	}
 
+	/**
+	 * Returns the currently visible primary owner window when one is available.
+	 *
+	 * @return visible primary owner window, or {@code null}
+	 */
 	public static Window getPrimaryOwnerWindow() {
 		return INSTANCE.getVisiblePrimaryWindow();
 	}
@@ -132,6 +157,11 @@ public final class UtilsDialogs {
 		return null;
 	}
 
+	/**
+	 * Shows a warning dialog, or queues the warning until modal dialogs are ready.
+	 *
+	 * @param msg warning text to display
+	 */
 	public void warningMessage(String msg) {
 		if (msg == null)
 			return;
@@ -155,6 +185,10 @@ public final class UtilsDialogs {
 		}
 	}
 
+	/**
+	 * Enables modal dialogs and flushes any warnings queued before the primary UI
+	 * became ready.
+	 */
 	public void setModalDialogsReadyAndFlushWarnings() {
 		modalDialogsReady = true;
 		if (deferredWarningMessages.isEmpty()) {
@@ -186,6 +220,12 @@ public final class UtilsDialogs {
 		}
 	}
 
+	/**
+	 * Shows a modal text-entry dialog and returns the entered text.
+	 *
+	 * @param descriptionType title describing the requested input
+	 * @return entered text, or an empty string when none was provided
+	 */
 	public String getTextDialog(String descriptionType) {
 		if (descriptionType == null)
 			descriptionType = "";
@@ -243,6 +283,11 @@ public final class UtilsDialogs {
 		return textArea.getText();
 	}
 
+	/**
+	 * Prompts the user to confirm deletion of selected items.
+	 *
+	 * @return {@code true} when deletion should continue
+	 */
 	public boolean confirmDelete() {
 		boolean continueWithDelete = true;
 		Alert alert = new Alert(AlertType.CONFIRMATION);
@@ -258,6 +303,12 @@ public final class UtilsDialogs {
 		return continueWithDelete;
 	}
 
+	/**
+	 * Prompts the user to confirm an arbitrary action.
+	 *
+	 * @param s action description shown in the dialog header
+	 * @return {@code true} when the user confirms the action
+	 */
 	public boolean confirmAction(String s) {
 		boolean continueAction = true;
 		Alert alert = new Alert(AlertType.CONFIRMATION);
@@ -273,10 +324,27 @@ public final class UtilsDialogs {
 		return continueAction;
 	}
 
+	/**
+	 * Shows an informational dialog using default width scaling.
+	 *
+	 * @param title dialog title
+	 * @param header dialog header text
+	 * @param content dialog body text
+	 * @return {@code true} when the dialog was shown
+	 */
 	public boolean showInformationDialog(String title, String header, String content) {
 		return showInformationDialog(title, header, content, 1.0);
 	}
 
+	/**
+	 * Shows an informational dialog with optional width scaling.
+	 *
+	 * @param title dialog title
+	 * @param header dialog header text
+	 * @param content dialog body text
+	 * @param widthScale width scaling factor applied to the dialog pane
+	 * @return {@code true} when the dialog was shown
+	 */
 	public boolean showInformationDialog(String title, String header, String content, double widthScale) {
 		if (title == null || header == null || content == null)
 			return false;
@@ -312,6 +380,11 @@ public final class UtilsDialogs {
 		}
 	}
 
+	/**
+	 * Prompts the user to confirm scenario archival.
+	 *
+	 * @return {@code true} when the user chooses to archive the scenario
+	 */
 	public boolean confirmArchiveScenario() {
 		Alert alert = new Alert(AlertType.CONFIRMATION);
 		applyDialogOwner(alert);
@@ -337,6 +410,14 @@ public final class UtilsDialogs {
 		return result.isPresent() && result.get() == yes;
 	}
 
+	/**
+	 * Shows a status dialog containing informational text.
+	 *
+	 * @param title dialog title
+	 * @param header dialog header text
+	 * @param content dialog body text
+	 * @return {@code true} unless the dialog was explicitly canceled
+	 */
 	public boolean showStatusDialog(String title, String header, String content) {
 		if (title == null || header == null || content == null)
 			return false;
@@ -350,6 +431,12 @@ public final class UtilsDialogs {
 		return !(result.isPresent() && result.get() == ButtonType.CANCEL);
 	}
 
+	/**
+	 * Prompts the user with a yes/no confirmation dialog.
+	 *
+	 * @param s message to show
+	 * @return {@code true} when the user selects Yes
+	 */
 	public boolean selectYesOrNoDialog(String s) {
 		Alert alert = new Alert(AlertType.CONFIRMATION);
 		applyDialogOwner(alert);

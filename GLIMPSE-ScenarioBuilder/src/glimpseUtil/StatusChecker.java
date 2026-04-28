@@ -46,9 +46,16 @@ package glimpseUtil;
 
 import gui.Client;
 
+/**
+ * Background thread that periodically checks scenario execution progress and
+ * triggers a refresh of the status view when progress changes.
+ */
 public class StatusChecker extends Thread {
 	boolean terminate = false;
 
+	/**
+	 * Polls the active execution thread until {@link #terminate()} is called.
+	 */
 	public void run() {
 		int count = 0;
 		while (!terminate) {
@@ -122,6 +129,9 @@ public class StatusChecker extends Thread {
 		}
 	}
 
+	/**
+	 * Requests that the background polling loop stop on its next iteration.
+	 */
 	public void terminate() {
 		terminate = true;
 	}

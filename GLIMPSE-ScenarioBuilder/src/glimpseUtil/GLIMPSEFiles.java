@@ -246,6 +246,14 @@ public class GLIMPSEFiles {
         return arrayList;
     }
     
+  /**
+   * Loads file lines into a generic {@link List} while applying the same comment
+   * filtering used by {@link #getStringArrayFromFile(String, String)}.
+   *
+   * @param regionListFilename file to read
+   * @param commentChar comment prefix to skip, or {@code null} to keep all lines
+   * @return file lines as a list
+   */
 	public List<String> getStringListFromFile(String regionListFilename, String commentChar) {
 		ArrayList<String> arrayList = getStringArrayFromFile(regionListFilename, commentChar);		
 		return arrayList;
@@ -1021,10 +1029,20 @@ public class GLIMPSEFiles {
         }
     }
 
+  /**
+   * Returns the cached monetary conversion table content loaded during startup.
+   *
+   * @return monetary conversion file rows
+   */
 	public ArrayList<String> getMonetaryConversionsFileContent() {
 		return monetaryConversionsFileContent;
 	}
 
+  /**
+   * Replaces the cached monetary conversion table content.
+   *
+   * @param monetaryConversionsFileContent new cached file rows
+   */
 	public void setMonetaryConversionsFileContent(ArrayList<String> monetaryConversionsFileContent) {
 		this.monetaryConversionsFileContent = monetaryConversionsFileContent;
 	}

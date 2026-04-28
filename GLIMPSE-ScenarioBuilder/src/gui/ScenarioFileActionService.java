@@ -15,6 +15,12 @@ import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
 
+/**
+ * Service for scenario file-system operations triggered by Scenario Library actions.
+ * <p>
+ * This class encapsulates path resolution, open/view helpers, import behavior, archiving,
+ * and delete-to-trash operations so UI code can stay focused on interaction flow.
+ */
 final class ScenarioFileActionService {
 
     private final GLIMPSEVariables vars;
@@ -27,6 +33,7 @@ final class ScenarioFileActionService {
         this.utils = utils;
     }
 
+    /** Returns config XML paths for the selected scenarios. */
     List<String> getScenarioConfigPaths(ScenarioSelection selection) {
         List<String> paths = new ArrayList<>();
         if (selection == null) {
@@ -40,6 +47,7 @@ final class ScenarioFileActionService {
         return paths;
     }
 
+    /** Returns main log paths for the selected scenarios. */
     List<String> getScenarioMainLogPaths(ScenarioSelection selection) {
         List<String> paths = new ArrayList<>();
         if (selection == null) {
@@ -53,6 +61,7 @@ final class ScenarioFileActionService {
         return paths;
     }
 
+    /** Returns folder paths for the selected scenarios. */
     List<String> getScenarioFolderPaths(ScenarioSelection selection) {
         List<String> paths = new ArrayList<>();
         if (selection == null) {
@@ -66,10 +75,12 @@ final class ScenarioFileActionService {
         return paths;
     }
 
+    /** Returns the executable-level main log path. */
     String getExeMainLogPath() {
         return ScenarioLibraryPathHelper.exeMainLogFile(vars.getgCamExecutableDir());
     }
 
+    /** Returns true if any selected scenario main log is missing (and opens the missing path). */
     boolean warnIfAnyScenarioMainLogMissing(ScenarioSelection selection) {
         for (String logPath : getScenarioMainLogPaths(selection)) {
             if (!files.doesFileExist(logPath)) {
@@ -80,28 +91,33 @@ final class ScenarioFileActionService {
         return false;
     }
 
+    /** Opens selected scenario folders in the system file explorer. */
     void openScenarioFolders(ScenarioSelection selection) {
         for (String folderPath : getScenarioFolderPaths(selection)) {
             files.openFileExplorer(folderPath);
         }
     }
 
+    /** Opens selected scenario config files in the configured text editor. */
     void openScenarioConfigs(ScenarioSelection selection) {
         for (String configPath : getScenarioConfigPaths(selection)) {
             files.showFileInTextEditor(configPath);
         }
     }
 
+    /** Opens selected scenario main logs in the configured text editor. */
     void openScenarioLogs(ScenarioSelection selection) {
         for (String logPath : getScenarioMainLogPaths(selection)) {
             files.showFileInTextEditor(logPath);
         }
     }
 
+    /** Opens the executable-level main log in the configured text editor. */
     void openExeLog() {
         files.showFileInTextEditor(getExeMainLogPath());
     }
 
+    /** Imports an external scenario config into the scenario library area. */
     ImportResult importScenarioConfig(File newConfigFile) {
         if (newConfigFile == null) {
             return ImportResult.cancelled();
@@ -126,6 +142,7 @@ final class ScenarioFileActionService {
         return new ImportResult(row, scenarioName, scenarioExists);
     }
 
+    /** Creates or refreshes archive artifacts for selected scenarios. */
     void archiveScenarios(ScenarioSelection selection) {
         if (selection == null) {
             return;
@@ -141,6 +158,7 @@ final class ScenarioFileActionService {
         }
     }
 
+    /** Moves selected scenarios into the trash area and returns deleted rows. */
     List<ScenarioRow> deleteScenarios(ScenarioSelection selection) throws IOException {
         List<ScenarioRow> deletedRows = new ArrayList<>();
         if (selection == null) {
@@ -232,6 +250,9 @@ final class ScenarioFileActionService {
         System.out.println("Done archiving.");
     }
 
+    /**
+     * Immutable result describing the outcome of a scenario-config import.
+     */
     static final class ImportResult {
         private final ScenarioRow scenarioRow;
         private final String scenarioName;
@@ -243,22 +264,27 @@ final class ScenarioFileActionService {
             this.overwroteExisting = overwroteExisting;
         }
 
+        /** Returns a cancelled import result sentinel. */
         static ImportResult cancelled() {
             return new ImportResult(null, "", false);
         }
 
+        /** Returns the imported scenario row, or {@code null} when import did not occur. */
         ScenarioRow getScenarioRow() {
             return scenarioRow;
         }
 
+        /** Returns the imported scenario name (empty when not imported). */
         String getScenarioName() {
             return scenarioName;
         }
 
+        /** Returns whether the import replaced an existing scenario entry. */
         boolean overwroteExisting() {
             return overwroteExisting;
         }
 
+        /** Returns whether a scenario was actually imported. */
         boolean wasImported() {
             return scenarioRow != null && !scenarioName.isEmpty();
         }

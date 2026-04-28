@@ -78,6 +78,10 @@ import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+/**
+ * Utility methods for working with JavaFX tables, including clipboard
+ * copy/paste support and display helpers for CSV-style data.
+ */
 public class UtilsTable {
 
 	public static NumberFormat numberFormatter = NumberFormat.getNumberInstance();
@@ -202,6 +206,12 @@ public class UtilsTable {
 
 	}
 
+	/**
+	 * Pastes tabular clipboard content into the selected table region, expanding
+	 * supported table rows when appropriate.
+	 * 
+	 * @param table table that receives the pasted values
+	 */
 	public static void pasteFromClipboard(TableView<?> table) {
 		int table_size = table.getItems().size();
 		Debug.log("Table size: " + table_size);
@@ -293,6 +303,13 @@ public class UtilsTable {
 
 	}
 
+	/**
+	 * Ensures a target table has enough rows to receive a paste operation while
+	 * respecting the configured maximum row count.
+	 * 
+	 * @param table table being updated
+	 * @param desiredRowCount requested total row count after the paste
+	 */
 	private static void ensureRowCapacityForPaste(TableView<?> table, int desiredRowCount) {
 		desiredRowCount = Math.min(desiredRowCount, MAX_ROWS_AFTER_PASTE);
 
@@ -315,6 +332,12 @@ public class UtilsTable {
 		}
 	}
 
+	/**
+	 * Splits CSV rows into a rectangular array using commas as delimiters.
+	 * 
+	 * @param data CSV rows to convert
+	 * @return matrix representation of the supplied rows
+	 */
 	public static String[][] getDataMatrixFromArrayList(ArrayList<String> data) {
 		if (data == null || data.isEmpty())
 			return new String[0][0];
@@ -327,6 +350,12 @@ public class UtilsTable {
 		return dataMatrix;
 	}
 
+	/**
+	 * Computes the largest row length present in a matrix.
+	 * 
+	 * @param data matrix to inspect
+	 * @return maximum number of columns found in any row
+	 */
 	public static int computeMaxRowLength(String[][] data) {
 		if (data == null)
 			return 0;
@@ -339,6 +368,14 @@ public class UtilsTable {
 		return maxLength;
 	}
 
+	/**
+	 * Extracts a single column from a matrix, substituting empty strings for
+	 * missing cells.
+	 * 
+	 * @param data source matrix
+	 * @param columnIndex zero-based column index to extract
+	 * @return values for the requested column
+	 */
 	public static String[] extractColumn(String[][] data, int columnIndex) {
 		if (data == null || columnIndex < 0)
 			return new String[0];
@@ -353,6 +390,12 @@ public class UtilsTable {
 		return column;
 	}
 
+	/**
+	 * Infers an appropriate Java type for a column of text values.
+	 * 
+	 * @param column column values, including an optional header row
+	 * @return {@link Integer}, {@link Double}, or {@link String}
+	 */
 	public static Class<?> deduceColumnType(String[] column) {
 		if (column == null || column.length <= 1)
 			return String.class;
@@ -384,6 +427,14 @@ public class UtilsTable {
 		return String.class;
 	}
 
+	/**
+	 * Returns the display header for a column, falling back to a generated label
+	 * when the source data does not define one.
+	 * 
+	 * @param data source matrix
+	 * @param columnIndex zero-based column index
+	 * @return header text for the column
+	 */
 	public static String getColumnHeader(String[][] data, int columnIndex) {
 		if (columnIndex < 0)
 			return "";
@@ -397,6 +448,15 @@ public class UtilsTable {
 		return header.isEmpty() ? fallback : header;
 	}
 
+	/**
+	 * Converts a cell value to the type assigned to a generated popup table
+	 * column.
+	 * 
+	 * @param row source row values
+	 * @param type desired Java type for the column
+	 * @param columnIndex zero-based column index
+	 * @return typed value suitable for insertion into the table model
+	 */
 	public static Object getDataAsType(String[] row, Class<?> type, int columnIndex) {
 		try {
 			if (type == Integer.class) {
@@ -419,12 +479,32 @@ public class UtilsTable {
 		}
 	}
 
+	/**
+	 * Creates a read-only table column backed by stringified row values.
+	 * 
+	 * @param type inferred data type for the column
+	 * @param index zero-based column index within each row
+	 * @param name header text to display
+	 * @return configured table column
+	 */
 	public static TableColumn<List<Object>, String> createColumn(Class<?> type, int index, String name) {
 		TableColumn<List<Object>, String> col = new TableColumn<>(name);
 		col.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().get(index).toString()));
 		return col;
 	}
 
+	/**
+	 * Displays CSV data in a popup table with copy support and an export option.
+	 * 
+	 * @param title window title to use, or a default label when {@code null}
+	 * @param csvData CSV rows to display
+	 * @param wd initial popup width
+	 * @param ht initial popup height
+	 * @param utils shared utility instance for button creation and dialogs
+	 * @param vars shared variables instance used to choose the export directory
+	 * @param styles style definitions for sizing controls
+	 * @param files file helper used when exporting the displayed data
+	 */
 	public static void showPopupTableOfCSVData(String title, ArrayList<String> csvData, int wd, int ht,
 			GLIMPSEUtils utils, GLIMPSEVariables vars, GLIMPSEStyles styles, GLIMPSEFiles files) {
 		if (styles == null)

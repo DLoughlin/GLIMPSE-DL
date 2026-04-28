@@ -17,9 +17,20 @@ public final class UtilsStrings {
     private long orig_date = 0;
  
  	
+	/**
+	 * Creates a string helper that can optionally use shared variables for
+	 * end-of-line aware operations.
+	 */
 	public UtilsStrings() {
 	}
 
+	/**
+	 * Tests whether a string exactly matches any value in a list.
+	 *
+	 * @param str value to search for
+	 * @param marketList candidate values
+	 * @return {@code true} when a matching item is present
+	 */
 	public static boolean getMatch(String str, List<String> marketList) {
 		if (str == null || marketList == null)
 			return false;
@@ -31,6 +42,13 @@ public final class UtilsStrings {
 		return false;
 	}
 
+	/**
+	 * Adds a string to a list when it is not already present.
+	 *
+	 * @param list list to update
+	 * @param str value to add
+	 * @return the provided list after the uniqueness check
+	 */
 	public static ArrayList<String> addToArrayListIfUnique(ArrayList<String> list, String str) {
 		if (list == null || str == null)
 			return list;
@@ -43,6 +61,15 @@ public final class UtilsStrings {
 		return list;
 	}
 
+	/**
+	 * Returns the first token in a delimited string that contains the requested
+	 * text.
+	 *
+	 * @param line source string
+	 * @param txt text fragment to search for
+	 * @param delim token delimiter
+	 * @return matching token, or an empty string when none is found
+	 */
 	public static String getTokenWithText(String line, String txt, String delim) {
 		if (line == null || txt == null || delim == null)
 			return "";
@@ -55,6 +82,13 @@ public final class UtilsStrings {
 		return "";
 	}
 
+	/**
+	 * Joins the contents of an observable list using the supplied separator.
+	 *
+	 * @param ol observable list to join
+	 * @param separator separator inserted between values
+	 * @return concatenated string of list items
+	 */
 	public static String getStringFromList(ObservableList<String> ol, String separator) {
 		if (ol == null || separator == null)
 			return "";
@@ -65,6 +99,12 @@ public final class UtilsStrings {
 		return rtnStr.toString();
 	}
 
+	/**
+	 * Removes any trailing commas from a string.
+	 *
+	 * @param s value to normalize
+	 * @return string without trailing commas
+	 */
 	public static String getRidOfTrailingCommasInString(String s) {
 		if (s == null)
 			return null;
@@ -74,6 +114,12 @@ public final class UtilsStrings {
 		return s;
 	}
 
+	/**
+	 * Removes trailing commas from each element of a string array.
+	 *
+	 * @param s array to normalize in place
+	 * @return normalized array reference
+	 */
 	public static String[] getRidOfTrailingCommasInStringArray(String[] s) {
 		if (s == null)
 			return null;
@@ -84,6 +130,12 @@ public final class UtilsStrings {
 		return s;
 	}
 
+	/**
+	 * Capitalizes the first character of a string and lowercases the remainder.
+	 *
+	 * @param inputString source text
+	 * @return normalized string with only the first character capitalized
+	 */
 	public static String capitalizeOnlyFirstLetterOfString(String inputString) {
 		if (inputString == null || inputString.isEmpty())
 			return inputString;
@@ -98,12 +150,26 @@ public final class UtilsStrings {
 		return outputString;
 	}
 
+	/**
+	 * Splits a string using the supplied delimiter.
+	 *
+	 * @param str source string
+	 * @param delim delimiter regex
+	 * @return split tokens, or an empty array for invalid input
+	 */
 	public static String[] splitString(String str, String delim) {
 		if (str == null || delim == null)
 			return new String[0];
 		return str.split(delim);
 	}
 
+	/**
+	 * Creates an {@link ArrayList} from a delimited string.
+	 *
+	 * @param line source string
+	 * @param delim delimiter regex
+	 * @return list of split values
+	 */
 	public static ArrayList<String> createArrayListFromString(String line, String delim) {
 		if (line == null || delim == null)
 			return new ArrayList<>();
@@ -115,6 +181,13 @@ public final class UtilsStrings {
 		return linesList;
 	}
 
+	/**
+	 * Joins an array list into a single string with an explicit end-of-line token.
+	 *
+	 * @param arrayList values to join
+	 * @param eol separator appended after each value
+	 * @return concatenated string
+	 */
 	public static String createStringFromArrayList(ArrayList<String> arrayList, String eol) {
 		if (arrayList == null)
 			return "";
@@ -125,6 +198,13 @@ public final class UtilsStrings {
 		return result.toString();
 	}
 
+	/**
+	 * Joins a list into a single string separated by the provided delimiter.
+	 *
+	 * @param filesToSave values to join
+	 * @param delimiter separator placed between entries
+	 * @return concatenated string
+	 */
 	public static String createStringFromArrayList(List<String> filesToSave, String delimiter) {
 		if (filesToSave == null || delimiter == null)
 			return "";
@@ -138,6 +218,12 @@ public final class UtilsStrings {
 		return result.toString();
 	}
 
+	/**
+	 * Joins a string array into a comma-separated string.
+	 *
+	 * @param strArray values to join
+	 * @return comma-separated representation of the array
+	 */
 	public static String createStringFromStringArray(String[] strArray) {
 		if (strArray == null)
 			return "";
@@ -150,22 +236,46 @@ public final class UtilsStrings {
 		return rtnStr.toString();
 	}
 
+	/**
+	 * Trims a string when it is non-null.
+	 *
+	 * @param str value to trim
+	 * @return trimmed value, or {@code null} when the input was null
+	 */
 	public static String trimIfExists(String str) {
 		if (str != null)
 			str = str.trim();
 		return str;
 	}
 
+	/**
+	 * Reports whether a string contains characters outside a simple identifier set.
+	 *
+	 * @param str value to inspect
+	 * @return {@code true} when special characters are present
+	 */
 	public static boolean hasSpecialCharacter(String str) {
 		if (str == null)
 			return false;
 		return !str.matches("[A-Za-z0-9_.-]+");
 	}
 
+	/**
+	 * Returns the first parenthesized substring found in a value.
+	 *
+	 * @param s source text
+	 * @return text between the first opening and closing parenthesis
+	 */
 	public static String getParentheticString(String s) {
 		return getTextBetweenParen(s);
 	}
 
+	/**
+	 * Extracts the text between the first opening and closing parenthesis.
+	 *
+	 * @param s source text
+	 * @return text between parentheses, or an empty string when unavailable
+	 */
 	public static String getTextBetweenParen(String s) {
 		if (s == null)
 			return "";
@@ -250,6 +360,12 @@ public final class UtilsStrings {
 		return result;
 	}
 
+	/**
+	 * Converts a list of integers into their string representations.
+	 *
+	 * @param list integer values to convert
+	 * @return string array containing the converted values
+	 */
 	public String[] createStringArrayFromListOfIntegers(List<Integer> list) {
 		if (list == null)
 			return new String[0];
@@ -261,6 +377,13 @@ public final class UtilsStrings {
 		return result;
 	}
 
+	/**
+	 * Splits a delimited string into a trimmed list while discarding empty values.
+	 *
+	 * @param str source string
+	 * @param delim delimiter regex
+	 * @return trimmed non-empty values from the source string
+	 */
 	public ArrayList<String> getStringListFromString(String str, String delim) {
 		ArrayList<String> list = new ArrayList<>();
 		if (str == null || delim == null)
@@ -279,9 +402,9 @@ public final class UtilsStrings {
 	/**
 	 * Retrieves the value for a given key from a list of key-value pairs.
 	 *
-	 * @param keyValuePairs List of key-value string arrays
-	 * @param key           Key to search for
-	 * @return Value string, or null if not found
+	 * @param keyValuePairs list of key-value string arrays
+	 * @param key key to search for
+	 * @return value string, or null if not found
 	 */
 	public String getKeyValue(ArrayList<String[]> keyValuePairs, String key) {
 		String value = null;
@@ -300,10 +423,10 @@ public final class UtilsStrings {
 	 * Finds a match for an item in a list of delimited strings and returns the
 	 * associated value.
 	 * 
-	 * @param list      List of delimited strings
-	 * @param item      Item to match
-	 * @param delimiter Delimiter
-	 * @return Associated value, or empty string if not found
+	 * @param list List of delimited strings
+	 * @param item Item to match
+	 * @param delimiter delimiter used to split key/value pairs
+	 * @return associated value, or empty string if not found
 	 */
 	public String getMatchOld(ArrayList<String> list, String item, String delimiter) {
 		String rtn_str = "";
@@ -321,13 +444,14 @@ public final class UtilsStrings {
 	}
 
 	/**
-	 * Finds a match for an item in a list of delimited strings and returns the
-	 * associated value.
+	 * Finds a match for an item in a list of doubly delimited strings and returns
+	 * the associated value.
 	 * 
-	 * @param list      List of delimited strings
-	 * @param item      Item to match
-	 * @param delimiter Delimiter
-	 * @return Associated value, or empty string if not found
+	 * @param list list of delimited strings
+	 * @param item item to match
+	 * @param delimiter1 outer delimiter used to split entries
+	 * @param delimiter2 inner delimiter used to split key/value pairs
+	 * @return associated value, or empty string if not found
 	 */
 	public String getMatchOld(ArrayList<String> list, String item, String delimiter1, String delimiter2) {
 		String rtn_str = "";
@@ -355,11 +479,12 @@ public final class UtilsStrings {
 	 * Finds matches for an item in a list of delimited strings and returns
 	 * associated values as an array.
 	 * 
-	 * @param list       List of delimited strings
-	 * @param item       Item to match
-	 * @param delimiter1 First delimiter
-	 * @param delimiter2 Second delimiter
-	 * @return Array of associated values
+	 * @param list list of delimited strings
+	 * @param item item to match
+	 * @param delimiter1 first delimiter
+	 * @param delimiter2 second delimiter
+	 * @param delimiter3 third delimiter used to split matched values
+	 * @return array of associated values
 	 */
 	public String[] getMatches(ArrayList<String> list, String item, String delimiter1, String delimiter2, String delimiter3) {
 		String[] rtn_str = null;
@@ -380,7 +505,12 @@ public final class UtilsStrings {
 		return rtn_str;
 	}
 
-
+	/**
+	 * Returns the maximum numeric value found in a string array.
+	 *
+	 * @param str_array numeric strings to evaluate
+	 * @return largest parsed integer value
+	 */
 	public int getMaxValFromStringArray(String[] str_array) {
 		int max_int = 0;
 		for (String s : str_array) {
@@ -391,6 +521,12 @@ public final class UtilsStrings {
 		return max_int;
 	}
 
+	/**
+	 * Returns the minimum numeric value found in a string array.
+	 *
+	 * @param str_array numeric strings to evaluate
+	 * @return smallest parsed integer value
+	 */
 	public int getMinValFromStringArray(String[] str_array) {
 		int min_int = Integer.MAX_VALUE;
 		for (String s : str_array) {
@@ -401,6 +537,14 @@ public final class UtilsStrings {
 		return min_int;
 	}
 	
+	/**
+	 * Returns the portion of a string that appears before the first occurrence of a
+	 * delimiter.
+	 *
+	 * @param str source string
+	 * @param ch delimiter text to search for
+	 * @return substring before the delimiter, or the trimmed original string
+	 */
 	public String getStringUpToChar(String str, String ch) {
 		String rtn_str = str;
 
@@ -413,6 +557,14 @@ public final class UtilsStrings {
 		return rtn_str.trim();
 	}
 
+	/**
+	 * Extracts the text between two delimiter sequences.
+	 *
+	 * @param str source string
+	 * @param start_sequence starting delimiter sequence
+	 * @param end_sequence ending delimiter sequence
+	 * @return text between the delimiters, or an empty string when not found
+	 */
 	public String getStringBetweenCharSequences(String str, String start_sequence, String end_sequence) {
 		String rtn_str = "";
 
@@ -431,6 +583,13 @@ public final class UtilsStrings {
 		return rtn_str.trim();
 	}
 
+	/**
+	 * Removes duplicate strings while preserving the special ordering used for
+	 * common chooser labels.
+	 *
+	 * @param list source values
+	 * @return de-duplicated list of values
+	 */
 	public ArrayList<String> getUniqueItemsFromStringArrayList(ArrayList<String> list) {
 		ArrayList<String> resultList = new ArrayList<>();
 		if (list == null)
@@ -464,6 +623,11 @@ public final class UtilsStrings {
 		return resultList;
 	}
 
+	/**
+	 * Generates a simple time-based unique string identifier.
+	 *
+	 * @return unique-ish string derived from elapsed seconds
+	 */
 	public String getUniqueString() {
 
 		if (orig_date == 0) {
@@ -481,6 +645,14 @@ public final class UtilsStrings {
 		return "" + diff_sec;
 	}
 
+	/**
+	 * Wraps each line in a multi-line string with the provided comment markers.
+	 *
+	 * @param stringLine lines to comment
+	 * @param startComment prefix added before each line
+	 * @param endComment suffix added after each line
+	 * @return commented multi-line string
+	 */
 	public String commentLinesInString(String stringLine, String startComment, String endComment) {
 		String[] stringLines = splitEOL(stringLine);
 		StringBuilder newStringLine = new StringBuilder();
@@ -493,6 +665,12 @@ public final class UtilsStrings {
 		return newStringLine.toString();
 	}
 
+	/**
+	 * Removes a single {@code World} entry from a region list when present.
+	 *
+	 * @param sOrig original region list
+	 * @return region list without the world entry
+	 */
 	public static String[] removeWorldRegion(String[] sOrig) {
 		if (sOrig == null)
 			return null;
@@ -523,6 +701,13 @@ public final class UtilsStrings {
 		return sReturn;
 	}
 
+	/**
+	 * Removes one duplicate {@code USA} entry when the region list contains more
+	 * than one.
+	 *
+	 * @param sOrig original region list
+	 * @return region list with at most one USA entry removed
+	 */
 	public static String[] removeUSADuplicate(String[] sOrig) {
 		if (sOrig == null)
 			return null;

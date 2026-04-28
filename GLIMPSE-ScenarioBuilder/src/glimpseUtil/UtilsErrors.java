@@ -58,10 +58,23 @@ public final class UtilsErrors {
 	private UtilsErrors() {
 	}
 
+	/**
+	 * Returns the shared error-report helper instance.
+	 *
+	 * @return singleton {@link UtilsErrors} instance
+	 */
 	public static UtilsErrors getInstance() {
 		return INSTANCE;
 	}
 
+	/**
+	 * Initializes the helper with shared GLIMPSE services.
+	 *
+	 * @param vars shared variables instance
+	 * @param styles shared style definitions
+	 * @param files shared file utilities
+	 * @param utils shared utility facade
+	 */
 	public void init(GLIMPSEVariables vars, GLIMPSEStyles styles, GLIMPSEFiles files, GLIMPSEUtils utils) {
 		this.vars = vars;
 		this.styles = styles;
@@ -69,10 +82,23 @@ public final class UtilsErrors {
 		this.utils = utils;
 	}
 
+	/**
+	 * Displays a list of lines in a text dialog without line wrapping.
+	 *
+	 * @param arrayListArg lines to display
+	 * @param title dialog title
+	 */
 	public void displayArrayList(ArrayList<String> arrayListArg, String title) {
 		Platform.runLater(() -> displayArrayList(arrayListArg, title, false));
 	}
 
+	/**
+	 * Displays a list of lines in a text dialog.
+	 *
+	 * @param arrayListArg lines to display
+	 * @param title dialog title
+	 * @param doWrap whether line wrapping should be enabled
+	 */
 	public void displayArrayList(ArrayList<String> arrayListArg, String title, boolean doWrap) {
 		if (styles == null || vars == null)
 			return;
@@ -119,6 +145,14 @@ public final class UtilsErrors {
 		displayTask.run();
 	}
 
+	/**
+	 * Shows the scenario-library error report using the richer text report view.
+	 *
+	 * @param title popup title
+	 * @param csvData CSV rows describing the report
+	 * @param wd popup width
+	 * @param ht popup height
+	 */
 	public void showPopupTableOfErrorReport(String title, ArrayList<String> csvData, int wd, int ht) {
 		if (styles == null) {
 			return;
@@ -131,6 +165,13 @@ public final class UtilsErrors {
 		showTextErrorReport(report, wd, ht);
 	}
 
+	/**
+	 * Displays a formatted error text report with filtering and export controls.
+	 *
+	 * @param report report model to display
+	 * @param wd popup width
+	 * @param ht popup height
+	 */
 	public void showTextErrorReport(ScenarioLibraryReportHelper.ErrorTextReport report, int wd, int ht) {
 		if (styles == null || report == null) {
 			return;
@@ -516,6 +557,13 @@ public final class UtilsErrors {
 		}
 	}
 
+	/**
+	 * Generates CSV-style error-report rows from a GCAM main log.
+	 *
+	 * @param mainLogFile path to the main log file
+	 * @param scenario scenario name to include in the report rows
+	 * @return report rows without a header line
+	 */
 	public ArrayList<String> generateErrorReport(String mainLogFile, String scenario) {
 		if (files == null || vars == null)
 			return new ArrayList<>();
@@ -630,6 +678,12 @@ public final class UtilsErrors {
 		return report;
 	}
 
+	/**
+	 * Converts raw report rows into a rectangular CSV table with a header row.
+	 *
+	 * @param rows raw report rows generated from the log
+	 * @return padded table rows suitable for popup display
+	 */
 	public ArrayList<String> buildErrorReportTable(ArrayList<String> rows) {
 		ArrayList<String> table = new ArrayList<>();
 		int maxCols = 0;
@@ -670,6 +724,13 @@ public final class UtilsErrors {
 		return table;
 	}
 
+	/**
+	 * Summarizes error severities from parsed GCAM error lines.
+	 *
+	 * @param errors error lines to classify
+	 * @param minRed minimum relative difference threshold for non-minor errors
+	 * @return compact summary string, or an empty string when no errors were found
+	 */
 	public String processErrors(ArrayList<String> errors, double minRed) {
 		if (errors == null)
 			return "";

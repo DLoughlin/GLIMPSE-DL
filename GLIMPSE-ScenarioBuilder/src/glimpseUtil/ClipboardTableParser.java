@@ -106,6 +106,12 @@ public final class ClipboardTableParser {
 		return out;
 	}
 
+	/**
+	 * Returns the largest column count present in the parsed clipboard grid.
+	 *
+	 * @param grid parsed clipboard rows
+	 * @return maximum number of cells found in any row
+	 */
 	public static int maxColumns(List<List<String>> grid) {
 		int max = 0;
 		for (List<String> row : grid) {

@@ -71,11 +71,25 @@ public class UtilsUI {
     private GLIMPSEVariables vars;
     private GLIMPSEStyles styles;
 
+    /**
+     * Initializes the UI helper with shared variables and style settings.
+     *
+     * @param vars shared variables used for icon/resource lookups
+     * @param styles shared style definitions used when constructing controls
+     */
     public void init(GLIMPSEVariables vars, GLIMPSEStyles styles) {
         this.vars = vars;
         this.styles = styles;
     }
 
+    /**
+     * Creates a JavaFX separator configured with the requested orientation and size.
+     *
+     * @param orientation separator orientation
+     * @param length minimum width to apply
+     * @param visible whether the separator should be visible
+     * @return configured separator node
+     */
     public Separator getSeparator(Orientation orientation, int length, boolean visible) {
         Separator separator = new Separator(orientation);
         separator.setMinWidth(length);
@@ -83,6 +97,12 @@ public class UtilsUI {
         return separator;
     }
 
+    /**
+     * Creates a label with the shared default padding when styles are available.
+     *
+     * @param txt label text
+     * @return configured label
+     */
     public Label createLabel(String txt) {
         if (styles == null)
             return new Label(txt);
@@ -91,6 +111,13 @@ public class UtilsUI {
         return label;
     }
 
+    /**
+     * Creates a label with a fixed preferred width.
+     *
+     * @param txt label text
+     * @param prefWidth preferred width in pixels
+     * @return configured label
+     */
     public Label createLabel(String txt, double prefWidth) {
         Label label = createLabel(txt);
         label.setPrefWidth(prefWidth);
@@ -101,6 +128,12 @@ public class UtilsUI {
         return resizeLabelText(label);
     }
 
+    /**
+     * Creates a text field with a fixed width.
+     *
+     * @param wid preferred width in pixels
+     * @return configured text field
+     */
     public TextField createTextField(double wid) {
         TextField tf = new TextField();
         tf.setPrefWidth(wid);
@@ -109,14 +142,30 @@ public class UtilsUI {
         return tf;
     }
 
+    /**
+     * Creates a plain text field with default sizing.
+     *
+     * @return new text field
+     */
     public TextField createTextField() {
         return new TextField();
     }
 
+    /**
+     * Creates a string combo box using default sizing.
+     *
+     * @return new combo box instance
+     */
     public ComboBox<String> createComboBox() {
         return createComboBoxString();
     }
 
+    /**
+     * Creates a string combo box with a fixed width.
+     *
+     * @param wid preferred width in pixels
+     * @return configured combo box
+     */
     public ComboBox<String> createComboBoxString(double wid) {
         ComboBox<String> comboBox = new ComboBox<>();
         comboBox.setPrefWidth(wid);
@@ -125,6 +174,12 @@ public class UtilsUI {
         return comboBox;
     }
 
+    /**
+     * Creates a combo box pre-populated with the supplied items.
+     *
+     * @param items items to add to the combo box
+     * @return configured combo box
+     */
     public ComboBox<String> createComboBoxString(String[] items) {
         ComboBox<String> comboBox = createComboBoxString();
         if (items != null) {
@@ -135,10 +190,21 @@ public class UtilsUI {
         return comboBox;
     }
 
+    /**
+     * Creates an empty string combo box.
+     *
+     * @return new combo box instance
+     */
     public ComboBox<String> createComboBoxString() {
         return new ComboBox<>();
     }
 
+    /**
+     * Creates a check combo box with a fixed width.
+     *
+     * @param wid preferred width in pixels
+     * @return configured check combo box
+     */
     public CheckComboBox<String> createCheckComboBox(double wid) {
         CheckComboBox<String> checkComboBox = new CheckComboBox<>();
         checkComboBox.setPrefWidth(wid);
@@ -147,12 +213,23 @@ public class UtilsUI {
         return checkComboBox;
     }
 
+    /**
+     * Creates a check combo box that expands to fill available width.
+     *
+     * @return configured check combo box
+     */
     public CheckComboBox<String> createCheckComboBox() {
         CheckComboBox<String> checkComboBox = new CheckComboBox<>();
         checkComboBox.setPrefWidth(Double.MAX_VALUE);
         return checkComboBox;
     }
 
+    /**
+     * Creates a check box with the supplied label.
+     *
+     * @param s label text
+     * @return new check box
+     */
     public CheckBox createCheckBox(String s) {
         return new CheckBox(s);
     }
@@ -206,19 +283,49 @@ public class UtilsUI {
         return button;
     }
 
+    /**
+     * Creates a button with optional width, tooltip, and icon image.
+     *
+     * @param text button text, or {@code null} when using icon-only buttons
+     * @param wid preferred width in pixels
+     * @param tt optional tooltip text
+     * @param imageName optional image resource name without extension
+     * @return configured button
+     */
     public Button createButton(String text, int wid, String tt, String imageName) {
         return createButtonInternal(text, wid, tt, imageName);
     }
 
+    /**
+     * Creates a text button using the standard large-button width when available.
+     *
+     * @param text button text
+     * @return configured button
+     */
     public Button createButton(String text) {
         int width = styles != null ? styles.getBigButtonWidth() : -1;
         return createButtonInternal(text, width, null, null);
     }
 
+    /**
+     * Creates a button with a tooltip and default sizing.
+     *
+     * @param text button text
+     * @param tt tooltip text
+     * @return configured button
+     */
     public Button createButton(String text, String tt) {
         return createButtonInternal(text, -1, tt, null);
     }
 
+    /**
+     * Creates a button and attaches an action handler when one is provided.
+     *
+     * @param text button text
+     * @param width preferred width in pixels
+     * @param handler action handler to attach
+     * @return configured button
+     */
     public Button createButton(String text, int width, EventHandler<ActionEvent> handler) {
         Button button = createButtonInternal(text, width, null, null);
         if (handler != null) {
@@ -227,6 +334,12 @@ public class UtilsUI {
         return button;
     }
 
+    /**
+     * Shrinks button text as needed so it fits the button's configured size.
+     *
+     * @param button button to resize
+     * @return the same button after text-size adjustment
+     */
     public Button resizeButtonText(Button button) {
         if (styles == null)
             return button;
@@ -235,6 +348,14 @@ public class UtilsUI {
         return button;
     }
 
+    /**
+     * Recursively reduces a button font size until the text fits the button.
+     *
+     * @param button button to resize
+     * @param text text to display
+     * @param size starting font size
+     * @return the same button after text-size adjustment
+     */
     public Button resizeButtonText(Button button, String text, double size) {
         if (styles == null)
             return button;
@@ -267,12 +388,26 @@ public class UtilsUI {
         }
     }
 
+    /**
+     * Shrinks a label's font size as needed so it fits its preferred width.
+     *
+     * @param label label to resize
+     * @return the same label after text-size adjustment
+     */
     public Label resizeLabelText(Label label) {
         if (styles == null)
             return label;
         return resizeLabelText(label, label.getText(), styles.getFontSize());
     }
 
+    /**
+     * Recursively reduces a label font size until the text fits its preferred width.
+     *
+     * @param label label to resize
+     * @param text text to display
+     * @param size starting font size
+     * @return the same label after text-size adjustment
+     */
     public Label resizeLabelText(Label label, String text, double size) {
         if (styles == null)
             return label;
@@ -304,6 +439,13 @@ public class UtilsUI {
             return label;
     }
 
+    /**
+     * Returns the selected region names from a checkbox tree, removing duplicate
+     * USA entries and the top-level world node.
+     *
+     * @param tree region tree to inspect
+     * @return selected region names
+     */
     public String[] getAllSelectedRegions(TreeView<String> tree) {
         if (tree == null || tree.getRoot() == null)
             return new String[0];
@@ -318,6 +460,12 @@ public class UtilsUI {
         return list;
     }
 
+    /**
+     * Returns the selected leaf nodes from a checkbox tree.
+     *
+	 * @param rootNode root node to traverse
+	 * @return selected leaf items
+	 */
     public ArrayList<CheckBoxTreeItem<String>> returnAllSelectedLeaves(TreeItem<String> rootNode) {
         ArrayList<TreeItem<String>> leaves = new ArrayList<>();
         ArrayList<CheckBoxTreeItem<String>> selectedLeaves = new ArrayList<>();
@@ -333,6 +481,14 @@ public class UtilsUI {
         return selectedLeaves;
     }
 
+    /**
+     * Recursively collects child tree items and reports whether all descendants of
+     * the current node are selected.
+     *
+     * @param node node to traverse
+     * @param list accumulator for visited nodes or leaf selections
+     * @return {@code true} when all descendants are selected
+     */
     public boolean getAllChildren(TreeItem<String> node, ArrayList<TreeItem<String>> list) {
         ObservableList<TreeItem<String>> childrenNodes = node.getChildren();
         boolean areAllChildrenSelected = true;

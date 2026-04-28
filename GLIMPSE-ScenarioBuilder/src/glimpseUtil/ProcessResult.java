@@ -18,6 +18,15 @@ public final class ProcessResult {
     private final boolean timedOut;
     private final long durationMillis;
 
+    /**
+     * Creates an immutable process-result snapshot.
+     *
+     * @param exitCode process exit code, or a sentinel value when timed out
+     * @param stdout captured standard output
+     * @param stderr captured standard error
+     * @param timedOut whether the process timed out
+     * @param durationMillis elapsed execution time in milliseconds
+     */
     public ProcessResult(int exitCode, String stdout, String stderr, boolean timedOut, long durationMillis) {
         this.exitCode = exitCode;
         this.stdout = stdout == null ? "" : stdout;
@@ -26,26 +35,56 @@ public final class ProcessResult {
         this.durationMillis = durationMillis;
     }
 
+    /**
+     * Returns the process exit code.
+     *
+     * @return exit code reported by the process
+     */
     public int getExitCode() {
         return exitCode;
     }
 
+    /**
+     * Returns the captured standard output.
+     *
+     * @return process standard output text
+     */
     public String getStdout() {
         return stdout;
     }
 
+    /**
+     * Returns the captured standard error.
+     *
+     * @return process standard error text
+     */
     public String getStderr() {
         return stderr;
     }
 
+    /**
+     * Indicates whether execution ended because of a timeout.
+     *
+     * @return {@code true} when the process timed out
+     */
     public boolean isTimedOut() {
         return timedOut;
     }
 
+    /**
+     * Returns the total runtime in milliseconds.
+     *
+     * @return elapsed execution time in milliseconds
+     */
     public long getDurationMillis() {
         return durationMillis;
     }
 
+    /**
+     * Indicates whether the process completed successfully.
+     *
+     * @return {@code true} when the process exited normally with code 0
+     */
     public boolean isSuccess() {
         return !timedOut && exitCode == 0;
     }

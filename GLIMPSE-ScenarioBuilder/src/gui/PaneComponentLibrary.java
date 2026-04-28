@@ -56,10 +56,29 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 
 /**
- * PaneComponentLibrary generates the top-left pane for scenario component management.
- *
- * It owns the component library table + buttons. The component creator dialog is
- * managed by {@link ScenarioComponentCreatorDialog}.
+ * Builds and manages the Component Library pane (top-left panel) in Scenario Builder.
+ * <p>
+ * <b>Responsibilities:</b>
+ * <ul>
+ *   <li>Creates and wires all component-library actions (new, edit, browse, delete, refresh).</li>
+ *   <li>Owns the component table population lifecycle, including asynchronous refresh and startup load.</li>
+ *   <li>Coordinates with {@link ScenarioComponentCreatorDialog} to create or edit component definitions.</li>
+ *   <li>Protects scenario integrity by preventing deletion of components referenced by scenarios.</li>
+ *   <li>Maintains default table presentation behavior (latest first, scroll positioning, placeholders).</li>
+ * </ul>
+ * <p>
+ * <b>Usage:</b> Construct once during {@link ScenarioBuilder#build()}, then embed {@link #getvBox()} in
+ * the main layout and trigger {@link #refreshComponentLibraryTableForStartup()} during initial load.
+ * <p>
+ * <b>Thread Safety:</b> UI mutations are performed on the JavaFX Application Thread. File-system scanning
+ * for refresh runs on a background daemon thread and marshals table updates back to JavaFX.
+ * <p>
+ * <b>Integration:</b>
+ * <ul>
+ *   <li>Works with {@link ComponentLibraryTable} for table model/list operations.</li>
+ *   <li>Uses {@link Client} button slots and startup notifications for coordinated app state.</li>
+ *   <li>Delegates create/edit workflows to {@link ScenarioComponentCreatorDialog}.</li>
+ * </ul>
  */
 public class PaneComponentLibrary extends gui.ScenarioBuilder {
 
@@ -88,6 +107,9 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 
 	private final AtomicBoolean componentRefreshInProgress = new AtomicBoolean(false);
 
+	/**
+	 * Creates the pane, initializes controls, and binds action handlers.
+	 */
 	public PaneComponentLibrary() {
 		this.creatorDialog = new ScenarioComponentCreatorDialog(this::refreshComponentLibraryTable);
 		initializeButtons();
@@ -240,10 +262,18 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 		return false;
 	}
 
+	/**
+	 * Refreshes component table contents for user-initiated refresh actions.
+	 */
 	public void refreshComponentLibraryTable() {
 		refreshComponentLibraryTableAsync(true);
 	}
 
+	/**
+	 * Refreshes component table contents during startup bootstrap flow.
+	 * <p>
+	 * This path marks startup component load completion once refresh work has finished.
+	 */
 	public void refreshComponentLibraryTableForStartup() {
 		refreshComponentLibraryTableAsync(false);
 	}
@@ -329,6 +359,12 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 		}
 	}
 
+	/**
+	 * Recursively builds a flat list of files rooted at the provided path.
+	 *
+	 * @param path root directory to traverse
+	 * @return flattened list of files discovered under {@code path}
+	 */
 	public ArrayList<File> buildFileList(Path path) {
 		ArrayList<File> rtnArray = new ArrayList<>();
 		File root = path.toFile();
@@ -345,6 +381,11 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 		return rtnArray;
 	}
 
+	/**
+	 * Appends files to the component library table model.
+	 *
+	 * @param file files to append as component rows
+	 */
 	public void loadFile(List<File> file) {
 		if (file == null)
 			return;
@@ -358,6 +399,11 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 		ComponentLibraryTable.addToListOfFiles(fileArr);
 	}
 
+	/**
+	 * Returns the root JavaFX container for this pane.
+	 *
+	 * @return pane root container
+	 */
 	public VBox getvBox() {
 		return mainVBox;
 	}

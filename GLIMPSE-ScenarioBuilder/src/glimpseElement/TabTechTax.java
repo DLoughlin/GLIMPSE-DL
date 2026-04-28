@@ -903,6 +903,8 @@ public class TabTechTax extends PolicyTab implements Runnable {
 			break;
 		case "million pass-km":
 		case "million ton-km":
+		case "billion pass-km":
+		case "billion ton-km":
 			label = vars.getUseTrn1990DollarConversions() ? LABEL_UNITS_PASSKM_1990 : LABEL_UNITS_PASSKM_1975;
 			break;
 		case "":
@@ -954,3 +956,4 @@ public class TabTechTax extends PolicyTab implements Runnable {
 		return unit;
 	}
 }
+

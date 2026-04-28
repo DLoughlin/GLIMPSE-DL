@@ -16,6 +16,12 @@ public final class CommandLineTokenizer {
 
     private CommandLineTokenizer() {}
 
+    /**
+     * Tokenizes a command-line string using lightweight shell-style quote handling.
+     *
+     * @param commandLine raw command line to split
+     * @return ordered list of parsed tokens
+     */
     public static List<String> tokenize(String commandLine) {
         ArrayList<String> tokens = new ArrayList<>();
         if (commandLine == null) {

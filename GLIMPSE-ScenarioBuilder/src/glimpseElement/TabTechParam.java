@@ -739,10 +739,10 @@ public class TabTechParam extends PolicyTab implements Runnable {
                 case "Levelized Non-Energy Cost":
                     if (s.equals("No match")) {
                         label = WARNING_UNITS_MISMATCH;
-                    } else if (s.equals("million pass-km")) {
+                    } else if (s.equals("million pass-km") || s.equals("billion pass-km")) {
                         String trnDollarUnits = vars.getUseTrn1990DollarConversions() ? "1990$" : "1975$s";
                         label = trnDollarUnits + " per veh-km";
-                    } else if (s.equals("million ton-km")) {
+                    } else if (s.equals("million ton-km") || s.equals("billion ton-km")) {
                         String trnDollarUnits = vars.getUseTrn1990DollarConversions() ? "1990$" : "1975$s";
                         label = trnDollarUnits + " per GJ";
                     } else {
@@ -978,3 +978,4 @@ public class TabTechParam extends PolicyTab implements Runnable {
         return errorCount == 0;
     }
 }
+

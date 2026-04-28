@@ -7,11 +7,18 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.DialogPane;
 
+/**
+ * Shared micro-helpers for ModelInterface launch argument construction and dialog UX.
+ * <p>
+ * Keeps small reusable concerns (optional argument appends, default button setup,
+ * and optional file validation messages) out of pane/controller classes.
+ */
 final class ScenarioLibraryModelInterfaceMiniHelper {
 
     private ScenarioLibraryModelInterfaceMiniHelper() {
     }
 
+    /** Adds a warning entry when an optional configured file path does not exist. */
     static void validateOptionalFile(List<String> problems, String label, String filename) {
         if (problems == null || label == null || filename == null || filename.trim().isEmpty()) {
             return;
@@ -22,6 +29,7 @@ final class ScenarioLibraryModelInterfaceMiniHelper {
         }
     }
 
+    /** Appends a CLI flag/value pair only when the value is present and non-empty. */
     static void appendArgIfPresent(List<String> args, String flag, String value) {
         if (args == null || flag == null || value == null) {
             return;
@@ -55,6 +63,7 @@ final class ScenarioLibraryModelInterfaceMiniHelper {
     //             + preferredFontSize + "'.");
     // }
 
+    /** Sets the given dialog button as the default action button when present. */
     static void setDefaultButton(DialogPane dialogPane, ButtonType buttonType) {
         if (dialogPane == null || buttonType == null) {
             return;
@@ -68,10 +77,12 @@ final class ScenarioLibraryModelInterfaceMiniHelper {
         }
     }
 
+    /** Creates a standard OK-style button type with custom label text. */
     static ButtonType createOkButton(String text) {
         return new ButtonType(text, ButtonBar.ButtonData.OK_DONE);
     }
 
+    /** Creates a standard cancel/close-style button type with custom label text. */
     static ButtonType createCancelCloseButton(String text) {
         return new ButtonType(text, ButtonBar.ButtonData.CANCEL_CLOSE);
     }

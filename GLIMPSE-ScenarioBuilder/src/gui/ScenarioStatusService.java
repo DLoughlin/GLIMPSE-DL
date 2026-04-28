@@ -20,6 +20,12 @@ import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
 
+/**
+ * Computes scenario status snapshots from scenario folders, run logs, and run-controller state.
+ * <p>
+ * The service parses scenario/executable logs, derives run status labels, reconciles queue state,
+ * and emits immutable snapshot rows for Scenario Library rendering.
+ */
 final class ScenarioStatusService {
     static final String STATUS_IN_QUEUE = "In queue";
     static final String STATUS_SUCCESS = "Success";
@@ -67,6 +73,7 @@ final class ScenarioStatusService {
     private final Map<String, CachedConfigMetadata> configMetadataCache = new HashMap<>();
     private final Map<String, CachedLogAnalysis> logAnalysisCache = new HashMap<>();
 
+    /** Creates a status service bound to the shared GLIMPSE utility singletons. */
     ScenarioStatusService(GLIMPSEVariables vars, GLIMPSEFiles files, GLIMPSEUtils utils) {
         this.vars = vars;
         this.files = files;
@@ -74,6 +81,12 @@ final class ScenarioStatusService {
         this.gcamPromptMonitor = new GcamPromptMonitor(new GcamRunController(), files, null);
     }
 
+    /**
+     * Rebuilds status rows for all scenario folders and returns the refresh output.
+     *
+     * @param request contextual run-state input captured from the UI/controller
+     * @return refreshed snapshots plus derived running/queue metadata
+     */
     ScenarioStatusRefreshResult refresh(RefreshRequest request) {
         RefreshRequest safeRequest = request == null ? RefreshRequest.empty() : request;
         DateFormat format = new SimpleDateFormat("yyyy-MM-dd: HH:mm", Locale.ENGLISH);
@@ -710,6 +723,7 @@ final class ScenarioStatusService {
         }
     }
 
+    /** Input context used by {@link #refresh(RefreshRequest)} to reconcile run state. */
     static final class RefreshRequest {
         final List<String> queuedRuns;
         final long startupTime;
@@ -731,10 +745,12 @@ final class ScenarioStatusService {
             this.scenarioActivelyRunning = scenarioActivelyRunning;
         }
 
+        /** Returns an empty request with default values. */
         static RefreshRequest empty() {
             return new RefreshRequest(new ArrayList<>(), 0L, "", "", false, false, false);
         }
 
+        /** Returns whether the provided scenario is still the actively running scenario. */
         boolean isScenarioActivelyRunning(String scenarioName) {
             return scenarioActivelyRunning
                     && scenarioName != null

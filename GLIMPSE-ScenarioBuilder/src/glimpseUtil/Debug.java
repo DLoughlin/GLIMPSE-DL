@@ -59,11 +59,23 @@ public final class Debug {
 		// no instances
 	}
 
+	/**
+	 * Writes a debug message to standard output when debugging is enabled.
+	 *
+	 * @param message message to print
+	 */
 	public static void log(String message) {
 		if (!ENABLED) return;
 		System.out.println(message);
 	}
 
+	/**
+	 * Writes a debug message and stack trace to standard output when debugging is
+	 * enabled.
+	 *
+	 * @param message message to print
+	 * @param t throwable to print after the message
+	 */
 	public static void log(String message, Throwable t) {
 		if (!ENABLED) return;
 		System.out.println(message);

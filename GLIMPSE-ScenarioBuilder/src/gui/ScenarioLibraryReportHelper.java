@@ -13,6 +13,12 @@ import java.util.regex.Pattern;
 
 import glimpseElement.ScenarioRow;
 
+/**
+ * Generates queue, execution, and error-report text used by Scenario Library dialogs.
+ * <p>
+ * Provides helper value types and report builders for executable-level and scenario-level
+ * diagnostics that can be displayed or exported from the UI.
+ */
 public final class ScenarioLibraryReportHelper {
 
     private static final String RUNTIME_PREFIX = "Data Readin, Model Run & Write Time:";
@@ -28,23 +34,28 @@ public final class ScenarioLibraryReportHelper {
     private static final Pattern SUMMARY_MAJOR_PATTERN = Pattern.compile("Major errors\\s*=\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern SUMMARY_MODERATE_PATTERN = Pattern.compile("Moderate errors\\s*=\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
 
+    /** One logical line in an error report with optional severity classification. */
     public static final class ErrorReportLine {
         private final String severity;
         private final String text;
 
+        /** Creates a report line and normalizes severity text. */
         public ErrorReportLine(String severity, String text) {
             this.severity = safeText(severity).toUpperCase();
             this.text = text == null ? "" : text;
         }
 
+        /** Returns severity label (for example, `MAJOR`, `MODERATE`, `MINOR`). */
         public String getSeverity() {
             return severity;
         }
 
+        /** Returns the display text for this line. */
         public String getText() {
             return text;
         }
 
+        /** Returns whether this line belongs to report summary/verdict metadata. */
         public boolean isSummaryOnly() {
             String normalized = safeText(text);
             return ERROR_REPORT_SUMMARY_SEPARATOR.equals(normalized)
@@ -52,6 +63,7 @@ public final class ScenarioLibraryReportHelper {
                     || normalized.startsWith("Verdict:");
         }
 
+        /** Returns whether this line should be visible for the requested filter. */
         public boolean matchesFilter(String filterLabel) {
             String filter = safeText(filterLabel);
             String normalizedText = safeText(text);
@@ -74,12 +86,14 @@ public final class ScenarioLibraryReportHelper {
         }
     }
 
+    /** Structured error-report payload with filters, lines, and export defaults. */
     public static final class ErrorTextReport {
         private final String title;
         private final ArrayList<String> filterOptions;
         private final ArrayList<ErrorReportLine> lines;
         private final String defaultSaveFileName;
 
+        /** Creates an immutable report payload used by error-report dialogs. */
         public ErrorTextReport(String title, ArrayList<String> filterOptions, ArrayList<ErrorReportLine> lines, String defaultSaveFileName) {
             this.title = safeText(title);
             this.filterOptions = filterOptions == null ? new ArrayList<>() : new ArrayList<>(filterOptions);
@@ -87,22 +101,27 @@ public final class ScenarioLibraryReportHelper {
             this.defaultSaveFileName = safeText(defaultSaveFileName);
         }
 
+        /** Returns the report title. */
         public String getTitle() {
             return title;
         }
 
+        /** Returns available filter labels. */
         public ArrayList<String> getFilterOptions() {
             return new ArrayList<>(filterOptions);
         }
 
+        /** Returns all report lines. */
         public ArrayList<ErrorReportLine> getLines() {
             return new ArrayList<>(lines);
         }
 
+        /** Returns the suggested default file name when saving report text. */
         public String getDefaultSaveFileName() {
             return defaultSaveFileName;
         }
 
+        /** Builds display text for the selected filter. */
         public String buildText(String filterLabel) {
             String normalizedFilter = safeText(filterLabel);
             boolean allLines = normalizedFilter.isEmpty() || ERROR_REPORT_FILTER_ALL.equalsIgnoreCase(normalizedFilter);
@@ -123,6 +142,7 @@ public final class ScenarioLibraryReportHelper {
             return builder.toString();
         }
 
+        /** Returns whether the selected filter has any visible lines. */
         public boolean hasVisibleContent(String filterLabel) {
             String normalizedFilter = safeText(filterLabel);
             boolean allLines = normalizedFilter.isEmpty() || ERROR_REPORT_FILTER_ALL.equalsIgnoreCase(normalizedFilter);
@@ -319,6 +339,7 @@ public final class ScenarioLibraryReportHelper {
         return reportLines;
     }
 
+    /** Builds an executable `main_log.txt`-based error report. */
     public static ErrorTextReport createExecutableErrorTextReport(GLIMPSEFiles files, File mainLog) {
         return createSingleMainLogErrorTextReport(
                 GLIMPSEUtils.getInstance(),
@@ -329,6 +350,7 @@ public final class ScenarioLibraryReportHelper {
                 false);
     }
 
+    /** Builds an aggregated error report for scenario rows, grouped by scenario. */
     public static ErrorTextReport createScenarioErrorTextReport(GLIMPSEFiles files, String scenarioDir, List<ScenarioRow> rows) {
         ArrayList<ErrorReportLine> reportLines = new ArrayList<>();
         GLIMPSEUtils utils = GLIMPSEUtils.getInstance();
@@ -374,6 +396,7 @@ public final class ScenarioLibraryReportHelper {
         return new ErrorTextReport("Error Report", defaultErrorFilters(), reportLines, "scenario_errors.txt");
     }
 
+    /** Builds an error report for one explicit main-log path. */
     public static ErrorTextReport createMainLogErrorTextReport(GLIMPSEUtils utils, String mainLogPath, String scenarioName) {
         return createSingleMainLogErrorTextReport(utils, mainLogPath, scenarioName, "Error Report", "error_report.txt", true);
     }

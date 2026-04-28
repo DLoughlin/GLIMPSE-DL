@@ -20,12 +20,28 @@ public final class UtilsTransport {
 	private String[][] hdvTable;
 	private String[][] otherTable;
 
+	/**
+	 * Creates a transport helper backed by shared GLIMPSE services.
+	 *
+	 * @param vars shared variables and configuration access
+	 * @param files shared file utilities for loading transport data
+	 * @param utils shared general-purpose utility facade
+	 */
 	public UtilsTransport(GLIMPSEVariables vars, GLIMPSEFiles files, GLIMPSEUtils utils) {
 		this.vars = vars;
 		this.files = files;
 		this.utils = utils;
 	}
 
+	/**
+	 * Tests whether a transportation subsector is defined for a region within the
+	 * loaded transport vehicle table.
+	 *
+	 * @param region region name to match
+	 * @param sector transport sector whose table should be searched
+	 * @param subsector subsector name to locate
+	 * @return {@code true} when the subsector exists in the selected region
+	 */
 	public boolean isSubsectorInRegion(String region, String sector, String subsector) {
 		boolean b = false;
 		String[][] data = getTrnDataForProcessing(sector);
@@ -57,14 +73,42 @@ public final class UtilsTransport {
 		return b;
 	}
 
+	/**
+	 * Returns the load-factor value for a transportation technology record.
+	 *
+	 * @param region region name
+	 * @param sector sector name
+	 * @param subsector subsector name
+	 * @param tech technology name
+	 * @param year year column to read
+	 * @return matching load-factor value, or {@code null} when unavailable
+	 */
 	public String getLoadFactor(String region, String sector, String subsector, String tech, String year) {
 		return getTrnVehInfo("load", region, sector, subsector, tech, year);
 	}
 
+	/**
+	 * Returns the vehicle coefficient for a transportation technology record.
+	 *
+	 * @param region region name
+	 * @param sector sector name
+	 * @param subsector subsector name
+	 * @param tech technology name
+	 * @param year year column to read
+	 * @return matching coefficient value, or {@code null} when unavailable
+	 */
 	public String getVehCoefficient(String region, String sector, String subsector, String tech, String year) {
 		return getTrnVehInfo("coefficient", region, sector, subsector, tech, year);
 	}
 
+	/**
+	 * Lists the transportation technologies defined for a subsector.
+	 *
+	 * @param region region name
+	 * @param sector sector name
+	 * @param subsector subsector name
+	 * @return technology names for the subsector, or {@code null} when unsupported
+	 */
 	public String[] getTrnTechsInSubsector(String region, String sector, String subsector) {
 		if (region == null || sector == null || subsector == null)
 			return null;
@@ -107,6 +151,18 @@ public final class UtilsTransport {
 		return utils.createStringArrayFromArrayList(list);
 	}
 
+	/**
+	 * Looks up a transportation input-table value for the requested parameter and
+	 * year.
+	 *
+	 * @param param parameter name such as {@code load} or {@code coefficient}
+	 * @param region region name
+	 * @param sector sector name
+	 * @param subsector subsector name
+	 * @param tech technology name
+	 * @param yearStr target year header
+	 * @return table value, or {@code null} when no matching record is found
+	 */
 	public String getTrnVehInfo(String param, String region, String sector, String subsector, String tech, String yearStr) {
 		String val = null;
 		String[][] data = getTrnDataForProcessing(sector);
@@ -166,6 +222,10 @@ public final class UtilsTransport {
 		return val;
 	}
 
+	/**
+	 * Loads and partitions transportation vehicle information into the cached
+	 * sector-specific tables used by this helper.
+	 */
 	public void loadTrnVehInfo() {
 		if (vars == null || files == null || utils == null)
 			return;
