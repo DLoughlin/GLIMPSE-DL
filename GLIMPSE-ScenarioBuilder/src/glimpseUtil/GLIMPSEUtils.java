@@ -1301,6 +1301,9 @@ public class GLIMPSEUtils {
 		String val = null;
 		double num = 0.0;
 
+		// Return format is ",output-ratio,pMultiplier" for transport branches.
+		// output-ratio is the normalized policy coefficient GCAM applies to service output,
+		// and pMultiplier is the service-unit scaling factor (million or billion service-km).
 	    val = numf + ",1";
 
 		String load = "1";
