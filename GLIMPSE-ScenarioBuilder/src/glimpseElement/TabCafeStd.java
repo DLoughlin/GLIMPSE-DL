@@ -382,11 +382,28 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 
                     String io = year + "_" + policyName;
                     String iom = io + "Mkt";
+                    
+                    double mj_per_gal = 131.76; // MJ per gallon of gasoline, used for unit conversion;
+                    double km_per_mile = 1.61; // km per mile, used for unit conversion;
+                    double mj_per_ej = 1e12;
+                    double km_per_bln_km = 1e9;
+                    double km_per_mln_km = 1e6;
+                    double veh_per_bln_veh = 1e9;
+                    double veh_per_mln_veh = 1e6;
+                    
+                    double outputRatio=1.0;
+                    double pMultiplier=1.0;
+                    
                     // Keep CAFE conversion scaling consistent with transport subsector conversion mode.
                     boolean useMMBTUConversions = vars.getUseTrnMMBTUConversions();
-                    double serviceScale = useMMBTUConversions ? 1.0e6 : 1.0e9;
-                    String outputRatio = Double.toString((1.0 / value / 1.61 * 131.76 / serviceScale));
-                    String pMultiplier = Double.toString(load * serviceScale);
+                    
+                    if (useMMBTUConversions) {
+                    	outputRatio = 1.0 / value / km_per_mile * mj_per_gal / mj_per_ej * km_per_bln_km; 
+                    	pMultiplier = load *  veh_per_bln_veh;
+                    } else {
+                    	outputRatio = 1.0 / value / km_per_mile * mj_per_gal / mj_per_ej * km_per_mln_km; 
+                    	pMultiplier = load *  veh_per_mln_veh;
+                    }
 
                     // Add row to CAFE targets table
                     contentP1.append(region).append(",").append(sector).append(",").append(subsector).append(",")

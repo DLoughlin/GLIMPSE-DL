@@ -850,7 +850,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 	 */
 	private void saveScenarioComponent(TreeView<String> tree) {
 		
-		boolean debug = false;
+		boolean debug = vars.getDebugTrnConversionSkips();
 		
 		// 1. Early exit on failed QA
 		if (!qaInputs()) {
@@ -1022,7 +1022,8 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 		files.writeToBufferedFile(bw2, "Variable ID" + vars.getEol());
 		files.writeToBufferedFile(bw2, "GLIMPSEPFStd2ndOut-Nest" + vars.getEol() + vars.getEol());
 		files.writeToBufferedFile(bw2,
-				"region,sector,subsector,nested-subsector,tech,year,policy,output-ratio,pMultiplier" + vars.getEol());
+				"region,sector,nested-subsector,tech,year,policy,output-ratio,pMultiplier" + vars.getEol());
+		int skippedConversionRows = 0;
 
 		for (int s = 0; s < listOfSelectedLeaves.length; s++) {
 			String state = listOfSelectedLeaves[s];
@@ -1060,7 +1061,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 							
 							double val = 1.0;
 							
-							String conversions = utils.getSubsectorConversions(val, state, sector_name, subsector_name,
+							String conversions = utils.getSubsectorConversions(state, sector_name, subsector_name,
 									t);
 							
 							if ((vars.isGcamUSA()) && (state.toLowerCase().equals("usa"))
@@ -1072,12 +1073,21 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 								String line = state + "," + sector_name + "," + subsector_name + "," + tech_name + ","
 										+ t + "," + use_this_policy_name + "," + conversions + vars.getEol();
 								files.writeToBufferedFile(bw, line);
+							} else {
+								skippedConversionRows++;
+								if (debug) {
+									System.out.println("Skipping 2ndOut row due to missing conversion metadata: region=" + state
+											+ ", sector=" + sector_name + ", subsector=" + subsector_name + ", year=" + t);
+								}
 							}
 						}
 					}
 				}
 			}
 			updateProgressBar((double) s / (listOfSelectedLeaves.length - 1));
+		}
+		if (debug && skippedConversionRows > 0) {
+			System.out.println("Skipped GLIMPSEPFStd2ndOut rows due to missing conversions: " + skippedConversionRows);
 		}
 
 		// 5. Write part 3: activate markets

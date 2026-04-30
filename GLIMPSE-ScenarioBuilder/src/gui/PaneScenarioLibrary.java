@@ -686,6 +686,8 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                     "No ModelInterface map resources folder was found; launching without mapping support.");
         }
 
+        showModelInterfaceLaunchingToast(5000);
+
         try {
             Client.modelInterfaceExecutionThread.submitCommandWithDirectory(args, modelInterfaceDir.getAbsolutePath());
         } catch (Exception e) {
@@ -1771,6 +1773,61 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
         runtime.append(seconds).append(" sec");
         return runtime.toString().trim();
+    }
+
+    /**
+     * Shows a lightweight Swing "Starting ModelInterface..." toast and auto-dismisses it
+     * after {@code dismissAfterMillis} milliseconds. Uses the same {@code JWindow} pattern
+     * as the ScenarioBuilder startup splash so it appears immediately on the Swing EDT,
+     * before the ModelInterface JVM has had time to paint its own window.
+     *
+     * @param dismissAfterMillis milliseconds before the window auto-closes (e.g. 5000)
+     */
+    private static void showModelInterfaceLaunchingToast(long dismissAfterMillis) {
+        javax.swing.SwingUtilities.invokeLater(() -> {
+            try {
+                javax.swing.JWindow window = new javax.swing.JWindow();
+                window.setAlwaysOnTop(true);
+
+                javax.swing.JPanel content = new javax.swing.JPanel(new java.awt.BorderLayout(10, 10));
+                content.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 16, 12, 16));
+
+                javax.swing.JLabel heading = new javax.swing.JLabel("ModelInterface");
+                heading.setFont(heading.getFont().deriveFont(java.awt.Font.BOLD, 14f));
+                javax.swing.JLabel msg = new javax.swing.JLabel("Starting ModelInterface, please wait...");
+                javax.swing.JProgressBar bar = new javax.swing.JProgressBar();
+                bar.setIndeterminate(true);
+                bar.setStringPainted(false);
+
+                javax.swing.JPanel textPanel = new javax.swing.JPanel(new java.awt.GridLayout(2, 1, 0, 4));
+                textPanel.add(heading);
+                textPanel.add(msg);
+                content.add(textPanel, java.awt.BorderLayout.CENTER);
+                content.add(bar, java.awt.BorderLayout.SOUTH);
+
+                window.setContentPane(content);
+                window.setSize(430, 110);
+                window.setLocationRelativeTo(null);
+                window.setVisible(true);
+
+                final long safeDelay = Math.max(1000, dismissAfterMillis);
+                Thread dismissThread = new Thread(() -> {
+                    try {
+                        Thread.sleep(safeDelay);
+                    } catch (InterruptedException ignored) {
+                        Thread.currentThread().interrupt();
+                    }
+                    javax.swing.SwingUtilities.invokeLater(() -> {
+                        try {
+                            window.setVisible(false);
+                            window.dispose();
+                        } catch (Throwable ignored) {}
+                    });
+                }, "mi-launch-toast");
+                dismissThread.setDaemon(true);
+                dismissThread.start();
+            } catch (Throwable ignored) {}
+        });
     }
 
     private enum ScenarioRunStateClearMode {
