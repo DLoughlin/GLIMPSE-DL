@@ -7516,7 +7516,7 @@
 					  (@name='SO2') or (@name='SO2_AGR') or (@name='SO2_AWB') or (@name='SO2_1') or (@name='SO2_1_AGR') or (@name='SO2_1_AWB') or 
 					  (@name='SO2_2') or (@name='SO2_2_AGR') or (@name='SO2_2_AWB') or (@name='SO2_3') or (@name='SO2_3_AGR') or (@name='SO2_3_AWB') or
 					  (@name='NMVOC') or (@name='NMVOC_AGR') or (@name='NMVOC_AWB') or
-					  (@name='CO') or (@name='CO_AGR') or (@name='CO_AWB') or (@name='PM2.5') or (@name='BC') or (@name='OC') or (@name='CH4'))]/emissions/node()</xPath>
+					  (@name='CO') or (@name='CO_AGR') or (@name='CO_AWB') or (@name='PM2.5') or (@name='PM10') or (@name='BC') or (@name='OC') or (@name='CH4'))]/emissions/node()</xPath>
 					<comments>All tracked emission species by technology.</comments>
 					<labelRewriteList append-values="false">
 						<level name="GHG">
@@ -7587,7 +7587,7 @@
 					  (@name='SO2') or (@name='SO2_AGR') or (@name='SO2_AWB') or (@name='SO2_1') or (@name='SO2_1_AGR') or (@name='SO2_1_AWB') or 
 					  (@name='SO2_2') or (@name='SO2_2_AGR') or (@name='SO2_2_AWB') or (@name='SO2_3') or (@name='SO2_3_AGR') or (@name='SO2_3_AWB') or
 					  (@name='NMVOC') or (@name='NMVOC_AGR') or (@name='NMVOC_AWB') or
-					  (@name='CO') or (@name='CO_AGR') or (@name='CO_AWB') or (@name='PM2.5') or (@name='BC') or (@name='OC') or (@name='CH4'))]/emissions/node()</xPath>
+					  (@name='CO') or (@name='CO_AGR') or (@name='CO_AWB') or (@name='PM2.5') or (@name='PM10') or (@name='BC') or (@name='OC') or (@name='CH4'))]/emissions/node()</xPath>
 					<comments/>
 					<labelRewriteList append-values="false">
 						<level name="GHG">
@@ -13882,12 +13882,11 @@ A user can adjust the query to search for any of:
 		</queryGroup>
 	</queryGroup>
 	<queryGroup name="experimental">
-		<queryGroup name="tech stock and sales shares by region">
-			<queryGroup name="all">
-				<supplyDemandQuery title="calculated output-based emission factors by tech">
-					<axis1 name="GHG">GHG[@name]</axis1>
-					<axis2 name="Year">emissions[@year]</axis2>
-					<xPath buildList="true" dataName="emissions" group="false" sumAll="false"><![CDATA[
+		<queryGroup name="calculated intensities">
+			<supplyDemandQuery title="calculated output-based emission factors by tech">
+				<axis1 name="GHG">GHG[@name]</axis1>
+				<axis2 name="Year">emissions[@year]</axis2>
+				<xPath buildList="true" dataName="emissions" group="false" sumAll="false"><![CDATA[
                 declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
                     let $scn := $parent/ancestor::scenario,
                         $rgn := $parent (: /ancestor::region :)
@@ -13951,13 +13950,13 @@ A user can adjust the query to search for any of:
                 };
                 local:run-emiss-factors((:scenarios:), (:regions:), (:collection:))
                 ]]></xPath>
-					<comments>Output-based emission factors (emissions / primary physical output), aggregated across all
+				<comments>Output-based emission factors (emissions / primary physical output), aggregated across all
                 vintage years for CO2, NOx, SO2, PM2.5, PM10, CO, NH3. Units are emiss_unit/output_unit (e.g. MTC/EJ).</comments>
-				</supplyDemandQuery>
-				<supplyDemandQuery title="calculated energy intensity by tech (input / primary output)">
-					<axis1 name="technology">technology[@name]</axis1>
-					<axis2 name="Year">demand-physical[@vintage]</axis2>
-					<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
+			</supplyDemandQuery>
+			<supplyDemandQuery title="calculated energy intensity by tech (input / primary output)">
+				<axis1 name="technology">technology[@name]</axis1>
+				<axis2 name="Year">demand-physical[@vintage]</axis2>
+				<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
                 declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
                     let $scn := $parent/ancestor::scenario,
                         $rgn := $parent (: /ancestor::region :)
@@ -14019,13 +14018,13 @@ A user can adjust the query to search for any of:
                 };
                 local:run-energy-intensity((:scenarios:), (:regions:), (:collection:))
                 ]]></xPath>
-					<comments>Energy intensity per technology (total energy inputs / primary physical output), aggregated across
+				<comments>Energy intensity per technology (total energy inputs / primary physical output), aggregated across
                 all vintage years. Excludes water routing inputs. Units are input_unit/output_unit (e.g. EJ/EJ).</comments>
-				</supplyDemandQuery>
-				<supplyDemandQuery title="calculated energy intensity by tech (primary output / input)">
-					<axis1 name="technology">technology[@name]</axis1>
-					<axis2 name="Year">demand-physical[@vintage]</axis2>
-					<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
+			</supplyDemandQuery>
+			<supplyDemandQuery title="calculated energy intensity by tech (primary output / input)">
+				<axis1 name="technology">technology[@name]</axis1>
+				<axis2 name="Year">demand-physical[@vintage]</axis2>
+				<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
                 declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
                     let $scn := $parent/ancestor::scenario,
                         $rgn := $parent (: /ancestor::region :)
@@ -14087,9 +14086,12 @@ A user can adjust the query to search for any of:
                 };
                 local:run-energy-intensity((:scenarios:), (:regions:), (:collection:))
                 ]]></xPath>
-					<comments>Efficiency per technology (primary physical output / total energy inputs), aggregated across
+				<comments>Efficiency per technology (primary physical output / total energy inputs), aggregated across
                 all vintage years. Excludes water routing inputs. Units are output_unit/input_unit (e.g. EJ/EJ).</comments>
-				</supplyDemandQuery>
+			</supplyDemandQuery>
+		</queryGroup>
+		<queryGroup name="tech stock and sales shares by region">
+			<queryGroup name="all">
 				<supplyDemandQuery title="calculated stock share by tech within subsector (%)">
 					<axis1 name="technology">technology[@name]</axis1>
 					<axis2 name="Year">demand-physical[@vintage]</axis2>
@@ -14863,30 +14865,43 @@ local:run-sales-share((:scenarios:), (:regions:), (:collection:))
 			</queryGroup>
 		</queryGroup>
 		<queryGroup name="vehicle efficiencies">
-			<supplyDemandQuery title="Transport Vehicle MPG (VMT/GGE)">
+			<supplyDemandQuery title="Transport subsector MPGe (by vintage)">
 				<axis1 name="subsector">subsector[@name]</axis1>
 				<axis2 name="Year">mpg[@year]</axis2>
 				<xPath buildList="true" dataName="mpg" group="false" sumAll="false"><![CDATA[
         (
         let $rgn := .
-        for $sub in $rgn//*[@type='subsector' and ancestor::*[starts-with(@name, 'trn')]]
-        for $y in (2015, 2020, 2025, 2030, 2035, 2040, 2045, 2050)
+		for $sub in $rgn//*[@type='subsector' and ancestor::*[starts-with(@name, 'trn')]]
+		(: Strict sales/model-year points are technology installation years :)
+		let $model_years := distinct-values($sub/*[@type='technology']/@year)
+		for $y in $model_years
         
-        let $service := sum($sub//*:physical-output[@year=$y or @vintage=$y]),
-            $fuel_ej := sum($sub//*:demand-physical[@year=$y or @vintage=$y]),
+		let $tech_nodes := $sub/*[@type='technology' and @year=$y],
+			$out_nodes := $tech_nodes/*:output-primary[@type='output']/*:physical-output[@vintage=$y],
+            $service_raw := sum($out_nodes),
+			$fuel_ej := sum($tech_nodes//*:input-energy[not(starts-with(@name, 'water_td'))]/*:demand-physical[@vintage=$y]),
             
-            (: Pulling load-factor from the technology level as per your working query :)
-            $load_nodes := $sub/*[@type='technology']//load-factor,
-            $applied_load := if (exists($load_nodes)) then avg($load_nodes) else 1.0,
+            (: DYNAMIC UNIT SCALING: Adjust for Billion vs Million service-km :)
+            $unit_label := lower-case(string(($out_nodes/@unit)[1])),
+            $multiplier := if (contains($unit_label, 'billion')) then 1000000000 
+                           else 1000000, 
             
-            (: Convert Service to Vehicle Miles: (Million Service-Miles / Load Factor) :)
-            $vmt_millions := ($service * 1000000) div $applied_load,
+			(: Prefer load factors from this model-year cohort; fallback to subsector average :)
+			$load_nodes := $tech_nodes//load-factor[@year=$y or @vintage=$y],
+            $applied_load := if (exists($load_nodes)) then avg($load_nodes) 
+							 else if (exists($tech_nodes//load-factor))
+							 then avg($tech_nodes//load-factor)
+                             else if (exists($sub/*[@type='technology']//load-factor)) 
+                             then avg($sub/*[@type='technology']//load-factor)
+                             else 1.0,
             
-            (: Convert EJ to Gallons of Gasoline Equivalent :)
+            (: CONVERSION LOGIC :)
+            $service_total := $service_raw * $multiplier,
             $gallons := ($fuel_ej * 1000000000) div 0.1213,
             
-            $vehicle_mpg := if ($gallons > 0 and $vmt_millions > 0) 
-                            then round(($vmt_millions div $gallons) * 100) div 100 
+            (: MATH: (Service / Load) / Gallons :)
+            $vehicle_mpg := if ($gallons > 0 and $service_total > 0) 
+                            then round((($service_total div $applied_load) div $gallons) * 100) div 100 
                             else 0
         
         where $vehicle_mpg > 0
@@ -14903,8 +14918,9 @@ local:run-sales-share((:scenarios:), (:regions:), (:collection:))
                             element mpg {
                                 attribute year { string($y) },
                                 attribute unit { "VMT/GGE" },
-                                (: Debug attribute to verify the load factor was found :)
+                                (: Verification attributes :)
                                 attribute load_used { $applied_load },
+                                attribute scale_used { $multiplier },
                                 text { $vehicle_mpg }
                             }
                         }
@@ -14915,33 +14931,102 @@ local:run-sales-share((:scenarios:), (:regions:), (:collection:))
         )//text()
     ]]></xPath>
 			</supplyDemandQuery>
-			<supplyDemandQuery title="Transport Vehicle EFF (service mi/GGE)">
+							  <supplyDemandQuery title="Transport subsector MPGe (fleet-wide, all vintages)">
+								<axis1 name="subsector">subsector[@name]</axis1>
+								<axis2 name="Year">mpg[@year]</axis2>
+								<xPath buildList="true" dataName="mpg" group="false" sumAll="false"><![CDATA[
+								(
+								let $rgn := .
+
+								for $sub in $rgn//*[@type='subsector' and ancestor::*[starts-with(@name, 'trn')]]
+								(: Fleet years come from operating-year vintage records across all technologies :)
+								let $all_years := distinct-values($sub/*[@type='technology']/*:output-primary[@type='output']/*:physical-output/@vintage)
+								for $y in $all_years
+
+								let $out_nodes := $sub/*[@type='technology']/*:output-primary[@type='output']/*:physical-output[@vintage=$y],
+									$service_raw := sum($out_nodes),
+									$fuel_ej := sum($sub/*[@type='technology']//*:input-energy[not(starts-with(@name, 'water_td'))]/*:demand-physical[@vintage=$y]),
+
+									(: Scale service to base units based on reported unit label :)
+									$unit_label := lower-case(string(($out_nodes/@unit)[1])),
+									$multiplier := if (contains($unit_label, 'billion')) then 1000000000 else 1000000,
+
+									(: Use year-specific load factors when present; otherwise fallback to subsector average :)
+									$load_nodes := $sub/*[@type='technology']//load-factor[@year=$y or @vintage=$y],
+									$applied_load := if (exists($load_nodes)) then avg($load_nodes)
+													 else if (exists($sub/*[@type='technology']//load-factor))
+													 then avg($sub/*[@type='technology']//load-factor)
+													 else 1.0,
+
+									$service_total := $service_raw * $multiplier,
+									$gallons := ($fuel_ej * 1000000000) div 0.1213,
+									$vehicle_mpg := if ($gallons > 0 and $service_total > 0)
+													then round((($service_total div $applied_load) div $gallons) * 100) div 100
+													else 0
+
+								where $vehicle_mpg > 0
+
+								return document {
+									element scenario {
+										$rgn/ancestor::scenario/@*,
+										element region {
+											$rgn/@*,
+											element sector {
+												attribute name { string($sub/parent::*/@name) },
+												element subsector {
+													attribute name { string($sub/@name) },
+													element mpg {
+														attribute year { string($y) },
+														attribute unit { "VMT/GGE" },
+														attribute load_used { $applied_load },
+														attribute scale_used { $multiplier },
+														text { $vehicle_mpg }
+													}
+												}
+											}
+										}
+									}
+								}
+								)//text()
+							]]></xPath>
+							  </supplyDemandQuery>
+			<supplyDemandQuery title="Transport subsector service-MPGe (by vintage)">
 				<axis1 name="subsector">subsector[@name]</axis1>
 				<axis2 name="Year">mpg[@year]</axis2>
 				<xPath buildList="true" dataName="mpg" group="false" sumAll="false"><![CDATA[
         (
         let $rgn := .
-        for $sub in $rgn//*[@type='subsector' and ancestor::*[starts-with(@name, 'trn')]]
-        for $y in (2015, 2020, 2025, 2030, 2035, 2040, 2045, 2050)
         
-        let $service := sum($sub//*:physical-output[@year=$y or @vintage=$y]),
-            $fuel_ej := sum($sub//*:demand-physical[@year=$y or @vintage=$y]),
+        
+        for $sub in $rgn//*[@type='subsector' and ancestor::*[starts-with(@name, 'trn')]]
+								(: Sales/model-year points are technology installation years :)
+								let $model_years := distinct-values($sub/*[@type='technology']/@year)
+								for $y in $model_years
+        
+																										let $tech_nodes := $sub/*[@type='technology' and @year=$y],
+																											$out_nodes := $tech_nodes/*:output-primary[@type='output']/*:physical-output[@vintage=$y],
+            $service_raw := sum($out_nodes),
+																											$fuel_ej := sum($tech_nodes//*:input-energy[not(starts-with(@name, 'water_td'))]/*:demand-physical[@vintage=$y]),
             
-            (: Pull the average load factor for this subsector :)
-            $load := avg($sub//*:load-factor[@year=$y or @vintage=$y]),
-            (: Default to 1.0 if load is missing to avoid division by zero :)
-            $safe_load := 1.0,
+            (: Unit Detection: Look for the 'unit' attribute on the first found output node :)
+            $unit_label := lower-case(string(($out_nodes/@unit)[1])),
+            $multiplier := if (contains($unit_label, 'billion')) then 1000000000 
+                           else 1000000, (: Defaults to million (10^6) :)
             
-            $actual_miles := $service * 1000000,
-            $actual_gallons := ($fuel_ej * 1000000000) div 0.1213,
+            (: Load Factor Lookup :)
+									$load_nodes := $tech_nodes//load-factor[@year=$y or @vintage=$y],
+									$applied_load := if (exists($load_nodes)) then avg($load_nodes)
+													else if (exists($tech_nodes//load-factor)) then avg($tech_nodes//load-factor)
+													else if (exists($sub/*[@type='technology']//load-factor)) then avg($sub/*[@type='technology']//load-factor)
+													else 1.0,
             
-            (: Calculate Service MPG first :)
-            $service_mpg := if ($actual_gallons > 0 and $actual_miles > 0) 
-                            then ($actual_miles div $actual_gallons) 
-                            else 0,
+			(: Service MPGe should stay in passenger-service units (no load-factor conversion) :)
+			$total_service := ($service_raw * $multiplier),
+            $gallons := ($fuel_ej * 1000000000) div 0.1213,
             
-            (: DIVIDE BY LOAD to get Vehicle MPG :)
-            $vehicle_mpg := round(($service_mpg div $safe_load) * 100) div 100
+			$vehicle_mpg := if ($gallons > 0 and $total_service > 0) 
+							then round(($total_service div $gallons) * 100) div 100 
+                            else 0
         
         where $vehicle_mpg > 0
         
@@ -14956,8 +15041,10 @@ local:run-sales-share((:scenarios:), (:regions:), (:collection:))
                             attribute name { string($sub/@name) },
                             element mpg {
                                 attribute year { string($y) },
-                                (: Adding units here for the Model Interface to display :)
-                                attribute unit { "VMT/GGE" },
+                                attribute unit { "PMT/GGE" },
+                                (: Diagnostic Attributes :)
+                                attribute detected_unit { $unit_label },
+                                attribute load_used { $applied_load },
                                 text { $vehicle_mpg }
                             }
                         }
@@ -14967,6 +15054,83 @@ local:run-sales-share((:scenarios:), (:regions:), (:collection:))
         }
         )//text()
     ]]></xPath>
+			</supplyDemandQuery>
+			<supplyDemandQuery title="Transport Tech MPGe (calculated, by vintage)">
+				<axis1 name="technology">technology[@name]</axis1>
+				<axis2 name="Year">demand-physical[@vintage]</axis2>
+				<xPath buildList="true" dataName="input" group="false" sumAll="false"><![CDATA[
+        declare function local:append-heirarchy($parent as node(), $append as node()*) as node() {
+            let $scn := $parent/ancestor::scenario,
+                $rgn := $parent
+            return
+                document { element scenario {
+                    $scn/@*,
+                    element region {
+                        $rgn/@*,
+                        $append
+                    }
+                }}
+        };
+        declare function local:run-transport-mpg-load($scenarios as xs:string*, $regions as xs:string*, $collection as xs:string) as node()* {
+            unordered {
+            let $regionsG := if(not($regions[1] = 'Global'))
+                then $regions
+                else distinct-values(collection($collection)/scenario/world/*[@type='region']/@name)
+            return
+            for $scenario in $scenarios,
+                $region in $regionsG
+            let $scenario_split := tokenize($scenario, ' '),
+                $scenario_name  := string-join($scenario_split[position() < last()], ' '),
+                $scenario_date  := $scenario_split[last()],
+                $currTree := collection($collection)/scenario[@name = $scenario_name and @date = $scenario_date]/world/*[@type = 'region' and @name=$region]
+            
+            for $sector in $currTree/*[@type='sector' and starts-with(@name, 'trn')]
+            for $subsector in $sector/*[@type='subsector']
+            for $tech_name in distinct-values($subsector//*[@type='technology']/@name)
+            let $tech_vintages := $subsector//*[@type='technology' and @name=$tech_name]
+            let $all_inputs := $tech_vintages/input-energy[not(starts-with(@name, 'water_td'))]
+            
+            (: Extract load factor: look at tech level, then subsector level if missing :)
+            let $load_node := ($tech_vintages//load-factor | $subsector/load-factor)[1]
+            let $load_val  := if (exists($load_node)) then number($load_node) else 1.0
+            
+            for $year in distinct-values($tech_vintages/output-primary[@type='output']/physical-output/@vintage)
+            let $total_input  := sum($all_inputs/demand-physical[@vintage=$year])
+            let $total_output := sum($tech_vintages/output-primary[@type='output']/physical-output[@vintage=$year])
+            
+            let $output_unit  := string(($tech_vintages/output-primary[@type='output']/physical-output[@vintage=$year]/@unit)[1])
+            let $unit_mult    := if (contains(lower-case($output_unit), 'billion')) then 1000 else 1
+            
+            (: MPGe Conversion Math divided by Load Factor :)
+            (: (intensity / load) * conversion_factor * unit_scaling :)
+            let $intensity := if ($total_input > 0) then $total_output div $total_input else 0
+            let $mpg_equiv := ($intensity div $load_val) * 0.0001213 * $unit_mult
+            
+            where $total_output > 0 and $total_input > 0
+            return local:append-heirarchy($currTree,
+                element { local-name($sector) } { $sector/@*,
+                    element { local-name($subsector) } { $subsector/@*,
+                        element technology {
+                            attribute name { $tech_name },
+                            attribute type { 'technology' },
+                            element input {
+                                attribute name { 'MPGe' },
+                                attribute type { 'input' },
+                                element demand-physical {
+                                    attribute vintage { $year },
+                                    attribute unit { 'MPGe' },
+                                    text { $mpg_equiv }
+                                }
+                            }
+                        }
+                    }
+                }
+            )//text()
+            }
+        };
+        local:run-transport-mpg-load((:scenarios:), (:regions:), (:collection:))
+    ]]></xPath>
+				<comments>Calculates MPGe for 'trn' sectors. Divides energy intensity by the load factor to convert from passenger/ton-units to vehicle-units before applying the gasoline energy density conversion.</comments>
 			</supplyDemandQuery>
 		</queryGroup>
 	</queryGroup>
