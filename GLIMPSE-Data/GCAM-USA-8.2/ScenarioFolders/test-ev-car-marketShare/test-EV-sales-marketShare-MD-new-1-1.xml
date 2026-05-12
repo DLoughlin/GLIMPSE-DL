@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<scenario>
+   <world>
+      <region name="MD" nocreate="1">
+         <policy-portfolio-standard name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2025">
+            <market>mktShr_LDV_EV_Lo_Ea_sales_MD_Mkt2479680024796800247968002479680024796800-2025</market>
+            <policyType>RES</policyType>
+            <constraint year="2025">1</constraint>
+         </policy-portfolio-standard>
+         <policy-portfolio-standard name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2030">
+            <market>mktShr_LDV_EV_Lo_Ea_sales_MD_Mkt2479680024796800247968002479680024796800-2030</market>
+            <policyType>RES</policyType>
+            <constraint year="2030">1</constraint>
+         </policy-portfolio-standard>
+         <policy-portfolio-standard name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2035">
+            <market>mktShr_LDV_EV_Lo_Ea_sales_MD_Mkt2479680024796800247968002479680024796800-2035</market>
+            <policyType>RES</policyType>
+            <constraint year="2035">1</constraint>
+         </policy-portfolio-standard>
+         <policy-portfolio-standard name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2040">
+            <market>mktShr_LDV_EV_Lo_Ea_sales_MD_Mkt2479680024796800247968002479680024796800-2040</market>
+            <policyType>RES</policyType>
+            <constraint year="2040">1</constraint>
+         </policy-portfolio-standard>
+         <policy-portfolio-standard name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2045">
+            <market>mktShr_LDV_EV_Lo_Ea_sales_MD_Mkt2479680024796800247968002479680024796800-2045</market>
+            <policyType>RES</policyType>
+            <constraint year="2045">1</constraint>
+         </policy-portfolio-standard>
+         <policy-portfolio-standard name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2050">
+            <market>mktShr_LDV_EV_Lo_Ea_sales_MD_Mkt2479680024796800247968002479680024796800-2050</market>
+            <policyType>RES</policyType>
+            <constraint year="2050">1</constraint>
+         </policy-portfolio-standard>
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <subsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <period year="2025">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2025">
+                        <current-coef year="2025">0.06</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                     <res-secondary-output name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2025">
+                        <output-ratio>0.6329113924050632</output-ratio>
+                        <pMultiplier>1.0</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2030">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2030">
+                        <current-coef year="2030">0.228</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                     <res-secondary-output name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2030">
+                        <output-ratio>0.6329113924050632</output-ratio>
+                        <pMultiplier>1.0</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2035">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2035">
+                        <current-coef year="2035">0.396</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                     <res-secondary-output name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2035">
+                        <output-ratio>0.6329113924050632</output-ratio>
+                        <pMultiplier>1.0</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2040">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2040">
+                        <current-coef year="2040">0.564</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                     <res-secondary-output name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2040">
+                        <output-ratio>0.6329113924050632</output-ratio>
+                        <pMultiplier>1.0</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2045">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2045">
+                        <current-coef year="2045">0.732</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                     <res-secondary-output name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2045">
+                        <output-ratio>0.6329113924050632</output-ratio>
+                        <pMultiplier>1.0</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2050">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2050">
+                        <current-coef year="2050">0.9</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                     <res-secondary-output name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2050">
+                        <output-ratio>0.6329113924050632</output-ratio>
+                        <pMultiplier>1.0</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+               </stub-technology>
+               <stub-technology name="FCEV" nocreate="1">
+                  <period year="2025">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2025">
+                        <current-coef year="2025">0.06</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2030">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2030">
+                        <current-coef year="2030">0.228</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2035">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2035">
+                        <current-coef year="2035">0.396</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2040">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2040">
+                        <current-coef year="2040">0.564</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2045">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2045">
+                        <current-coef year="2045">0.732</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2050">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2050">
+                        <current-coef year="2050">0.9</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+               </stub-technology>
+               <stub-technology name="Hybrid Liquids" nocreate="1">
+                  <period year="2025">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2025">
+                        <current-coef year="2025">0.06</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2030">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2030">
+                        <current-coef year="2030">0.228</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2035">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2035">
+                        <current-coef year="2035">0.396</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2040">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2040">
+                        <current-coef year="2040">0.564</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2045">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2045">
+                        <current-coef year="2045">0.732</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2050">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2050">
+                        <current-coef year="2050">0.9</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+               </stub-technology>
+               <stub-technology name="Liquids" nocreate="1">
+                  <period year="2025">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2025">
+                        <current-coef year="2025">0.06</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2030">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2030">
+                        <current-coef year="2030">0.228</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2035">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2035">
+                        <current-coef year="2035">0.396</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2040">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2040">
+                        <current-coef year="2040">0.564</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2045">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2045">
+                        <current-coef year="2045">0.732</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2050">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2050">
+                        <current-coef year="2050">0.9</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+               </stub-technology>
+               <stub-technology name="NG" nocreate="1">
+                  <period year="2025">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2025">
+                        <current-coef year="2025">0.06</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2030">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2030">
+                        <current-coef year="2030">0.228</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2035">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2035">
+                        <current-coef year="2035">0.396</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2040">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2040">
+                        <current-coef year="2040">0.564</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2045">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2045">
+                        <current-coef year="2045">0.732</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+                  <period year="2050">
+                     <minicam-energy-input name="mktShr_LDV_EV_Lo_Ea_sales_MD2479680024796800247968002479680024796800-2050">
+                        <current-coef year="2050">0.9</current-coef>
+                        <price-unit-conversion>1.0</price-unit-conversion>
+                     </minicam-energy-input>
+                  </period>
+               </stub-technology>
+            </subsector>
+         </supplysector>
+      </region>
+   </world>
+</scenario>

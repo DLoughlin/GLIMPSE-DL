@@ -1,0 +1,1466 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<scenario>
+   <world>
+      <region name="AK">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="AL">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="AR">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="AZ">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="CA">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="CO">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="CT">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="DC">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="DE">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="FL">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="GA">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="HI">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="IA">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="ID">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="IL">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="IN">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="KS">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="KY">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="LA">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="MA">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="MD">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+         <stub-technology name="BEV" nocreate="1">
+            <interpolation-rule apply-to="share-weight" delete="1" from-year="2025" to-year="2100">
+               <interpolation-function name="linear"/>
+               <overwrite-policy warn="0">NEVER</overwrite-policy>
+            </interpolation-rule>
+
+            <period year="2025">
+               <share-weight>0.25</share-weight>
+            </period>
+            <period year="2030">
+               <share-weight>1</share-weight>
+            </period>
+            <period year="2035">
+               <share-weight>1.0</share-weight>
+            </period>
+            <period year="2040">
+               <share-weight>1.0</share-weight>
+            </period>
+            <period year="2045">
+               <share-weight>1.0</share-weight>
+            </period>
+            <period year="2050">
+               <share-weight>1.0</share-weight>
+            </period>
+            <period year="2055">
+               <share-weight>1.0</share-weight>
+            </period>
+            <period year="2060">
+               <share-weight>1.0</share-weight>
+            </period>
+            <period year="2065">
+               <share-weight>1.0</share-weight>
+            </period>
+            <period year="2070">
+               <share-weight>1.0</share-weight>
+            </period>
+            <period year="2075">
+               <share-weight>1.0</share-weight>
+            </period>
+            <period year="2080">
+               <share-weight>1.0</share-weight>
+            </period>
+            <period year="2085">
+               <share-weight>1.0</share-weight>
+            </period>
+            <period year="2090">
+               <share-weight>1.0</share-weight>
+            </period>
+            <period year="2095">
+               <share-weight>1.0</share-weight>
+            </period>
+            <period year="2100">
+               <share-weight>1.0</share-weight>
+            </period>
+         </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="ME">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="MI">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="MN">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="MO">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="MS">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="MT">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="NC">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="ND">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="NE">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="NH">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="NJ">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="NM">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="NV">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="NY">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="OH">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="OK">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="OR">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="PA">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="RI">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="SC">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="SD">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="TN">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="TX">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="UT">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="VA">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="VT">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="WA">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="WI">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="WV">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+      <region name="WY">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <stub-technology name="BEV" nocreate="1">
+                  <share-weight fillout="1" year="2025">0.25</share-weight>
+                  <interpolation-rule apply-to="share-weight" delete="1" from-year="2021" to-year="2050">
+                     <interpolation-function name="linear"/>
+                     <overwrite-policy warn="0">NEVER</overwrite-policy>
+                  </interpolation-rule>
+                  <share-weight fillout="1" year="2030">1</share-weight>
+                  <share-weight fillout="1" year="2035">1.0</share-weight>
+                  <share-weight fillout="1" year="2040">1.0</share-weight>
+                  <share-weight fillout="1" year="2045">1.0</share-weight>
+                  <share-weight fillout="1" year="2050">1.0</share-weight>
+                  <share-weight fillout="1" year="2055">1.0</share-weight>
+                  <share-weight fillout="1" year="2060">1.0</share-weight>
+                  <share-weight fillout="1" year="2065">1.0</share-weight>
+                  <share-weight fillout="1" year="2070">1.0</share-weight>
+                  <share-weight fillout="1" year="2075">1.0</share-weight>
+                  <share-weight fillout="1" year="2080">1.0</share-weight>
+                  <share-weight fillout="1" year="2085">1.0</share-weight>
+                  <share-weight fillout="1" year="2090">1.0</share-weight>
+                  <share-weight fillout="1" year="2095">1.0</share-weight>
+                  <share-weight fillout="1" year="2100">1.0</share-weight>
+               </stub-technology>
+            </tranSubsector>
+         </supplysector>
+      </region>
+   </world>
+</scenario>

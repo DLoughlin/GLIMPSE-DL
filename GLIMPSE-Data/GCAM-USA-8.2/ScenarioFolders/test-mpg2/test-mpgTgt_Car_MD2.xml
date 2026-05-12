@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<scenario>
+   <world>
+      <region name="MD" nocreate="1">
+         <supplysector name="trn_pass_road_LDV_4W" nocreate="1">
+            <tranSubsector name="Car" nocreate="1">
+               <tranTechnology name="BEV" nocreate="1">
+                  <period year="2025">
+                     <minicam-energy-input name="2025_mpgTgt_Car_MD24883200">
+                        <coefficient>0.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2025_mpgTgt_Car_MD24883200">
+                        <output-ratio>3.2735403726708074E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2030">
+                     <minicam-energy-input name="2030_mpgTgt_Car_MD24883200">
+                        <coefficient>817.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2030_mpgTgt_Car_MD24883200">
+                        <output-ratio>2.338243123336291E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2035">
+                     <minicam-energy-input name="2035_mpgTgt_Car_MD24883200">
+                        <coefficient>814.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2035_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.8186335403726705E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2040">
+                     <minicam-energy-input name="2040_mpgTgt_Car_MD24883200">
+                        <coefficient>812.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2040_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.4879728966685486E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2045">
+                     <minicam-energy-input name="2045_mpgTgt_Car_MD24883200">
+                        <coefficient>809.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2045_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.2590539894887719E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2050">
+                     <minicam-energy-input name="2050_mpgTgt_Car_MD24883200">
+                        <coefficient>806.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2050_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.0911801242236025E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+               </tranTechnology>
+               <tranTechnology name="FCEV" nocreate="1">
+                  <period year="2025">
+                     <minicam-energy-input name="2025_mpgTgt_Car_MD24883200">
+                        <coefficient>0.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2025_mpgTgt_Car_MD24883200">
+                        <output-ratio>3.2735403726708074E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2030">
+                     <minicam-energy-input name="2030_mpgTgt_Car_MD24883200">
+                        <coefficient>1190.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2030_mpgTgt_Car_MD24883200">
+                        <output-ratio>2.338243123336291E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2035">
+                     <minicam-energy-input name="2035_mpgTgt_Car_MD24883200">
+                        <coefficient>1170.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2035_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.8186335403726705E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2040">
+                     <minicam-energy-input name="2040_mpgTgt_Car_MD24883200">
+                        <coefficient>1150.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2040_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.4879728966685486E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2045">
+                     <minicam-energy-input name="2045_mpgTgt_Car_MD24883200">
+                        <coefficient>1130.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2045_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.2590539894887719E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2050">
+                     <minicam-energy-input name="2050_mpgTgt_Car_MD24883200">
+                        <coefficient>1110.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2050_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.0911801242236025E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+               </tranTechnology>
+               <tranTechnology name="Hybrid Liquids" nocreate="1">
+                  <period year="2025">
+                     <minicam-energy-input name="2025_mpgTgt_Car_MD24883200">
+                        <coefficient>1480.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2025_mpgTgt_Car_MD24883200">
+                        <output-ratio>3.2735403726708074E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2030">
+                     <minicam-energy-input name="2030_mpgTgt_Car_MD24883200">
+                        <coefficient>1410.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2030_mpgTgt_Car_MD24883200">
+                        <output-ratio>2.338243123336291E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2035">
+                     <minicam-energy-input name="2035_mpgTgt_Car_MD24883200">
+                        <coefficient>1390.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2035_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.8186335403726705E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2040">
+                     <minicam-energy-input name="2040_mpgTgt_Car_MD24883200">
+                        <coefficient>1390.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2040_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.4879728966685486E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2045">
+                     <minicam-energy-input name="2045_mpgTgt_Car_MD24883200">
+                        <coefficient>1390.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2045_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.2590539894887719E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2050">
+                     <minicam-energy-input name="2050_mpgTgt_Car_MD24883200">
+                        <coefficient>1380.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2050_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.0911801242236025E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+               </tranTechnology>
+               <tranTechnology name="Liquids" nocreate="1">
+                  <period year="2025">
+                     <minicam-energy-input name="2025_mpgTgt_Car_MD24883200">
+                        <coefficient>1720.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2025_mpgTgt_Car_MD24883200">
+                        <output-ratio>3.2735403726708074E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2030">
+                     <minicam-energy-input name="2030_mpgTgt_Car_MD24883200">
+                        <coefficient>1730.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2030_mpgTgt_Car_MD24883200">
+                        <output-ratio>2.338243123336291E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2035">
+                     <minicam-energy-input name="2035_mpgTgt_Car_MD24883200">
+                        <coefficient>1750.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2035_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.8186335403726705E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2040">
+                     <minicam-energy-input name="2040_mpgTgt_Car_MD24883200">
+                        <coefficient>1770.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2040_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.4879728966685486E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2045">
+                     <minicam-energy-input name="2045_mpgTgt_Car_MD24883200">
+                        <coefficient>1790.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2045_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.2590539894887719E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2050">
+                     <minicam-energy-input name="2050_mpgTgt_Car_MD24883200">
+                        <coefficient>1810.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2050_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.0911801242236025E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+               </tranTechnology>
+               <tranTechnology name="NG" nocreate="1">
+                  <period year="2025">
+                     <minicam-energy-input name="2025_mpgTgt_Car_MD24883200">
+                        <coefficient>5000.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2025_mpgTgt_Car_MD24883200">
+                        <output-ratio>3.2735403726708074E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2030">
+                     <minicam-energy-input name="2030_mpgTgt_Car_MD24883200">
+                        <coefficient>5000.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2030_mpgTgt_Car_MD24883200">
+                        <output-ratio>2.338243123336291E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2035">
+                     <minicam-energy-input name="2035_mpgTgt_Car_MD24883200">
+                        <coefficient>5000.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2035_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.8186335403726705E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2040">
+                     <minicam-energy-input name="2040_mpgTgt_Car_MD24883200">
+                        <coefficient>5000.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2040_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.4879728966685486E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2045">
+                     <minicam-energy-input name="2045_mpgTgt_Car_MD24883200">
+                        <coefficient>5000.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2045_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.2590539894887719E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+                  <period year="2050">
+                     <minicam-energy-input name="2050_mpgTgt_Car_MD24883200">
+                        <coefficient>5000.0</coefficient>
+                     </minicam-energy-input>
+                     <res-secondary-output name="2050_mpgTgt_Car_MD24883200">
+                        <output-ratio>1.0911801242236025E-9</output-ratio>
+                        <pMultiplier>1.58E12</pMultiplier>
+                     </res-secondary-output>
+                  </period>
+               </tranTechnology>
+            </tranSubsector>
+         </supplysector>
+         <policy-portfolio-standard name="2025_mpgTgt_Car_MD24883200">
+            <market>2025_mpgTgt_Car_MD24883200Mkt</market>
+            <policyType>RES</policyType>
+            <constraint year="2025">1</constraint>
+         </policy-portfolio-standard>
+         <policy-portfolio-standard name="2030_mpgTgt_Car_MD24883200">
+            <market>2030_mpgTgt_Car_MD24883200Mkt</market>
+            <policyType>RES</policyType>
+            <constraint year="2030">1</constraint>
+         </policy-portfolio-standard>
+         <policy-portfolio-standard name="2035_mpgTgt_Car_MD24883200">
+            <market>2035_mpgTgt_Car_MD24883200Mkt</market>
+            <policyType>RES</policyType>
+            <constraint year="2035">1</constraint>
+         </policy-portfolio-standard>
+         <policy-portfolio-standard name="2040_mpgTgt_Car_MD24883200">
+            <market>2040_mpgTgt_Car_MD24883200Mkt</market>
+            <policyType>RES</policyType>
+            <constraint year="2040">1</constraint>
+         </policy-portfolio-standard>
+         <policy-portfolio-standard name="2045_mpgTgt_Car_MD24883200">
+            <market>2045_mpgTgt_Car_MD24883200Mkt</market>
+            <policyType>RES</policyType>
+            <constraint year="2045">1</constraint>
+         </policy-portfolio-standard>
+         <policy-portfolio-standard name="2050_mpgTgt_Car_MD24883200">
+            <market>2050_mpgTgt_Car_MD24883200Mkt</market>
+            <policyType>RES</policyType>
+            <constraint year="2050">1</constraint>
+         </policy-portfolio-standard>
+      </region>
+   </world>
+</scenario>
