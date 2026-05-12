@@ -96,6 +96,10 @@ public class TabCafeStd extends PolicyTab implements Runnable {
     private static final String LABEL_POPULATE = "Populate:";
     private static final String LABEL_TECHS = "Tech(s): ";
     private static final String LABEL_UNITS = "Units:";
+    private static final String LABEL_APPLICATION_MODE = "Apply to:";
+    private static final String MODE_FLEET_AVERAGE = "All Stock";
+    private static final String MODE_NEW_SALES = "Sales";
+    private static final String[] APPLICATION_MODE_OPTIONS = {MODE_FLEET_AVERAGE, MODE_NEW_SALES};
     private static final String[] SUBSECTOR_OPTIONS = {"Select One", "Car", "Large Car and Truck", "Light Truck", "Medium Truck", "Heavy Truck"};
     private static final String[] TECH_OPTIONS = {"BEV", "FCEV", "Hybrid Liquids", "Liquids", "NG"};
     private static final String[] UNITS_OPTIONS = {"Select One", "MPG", "MJ/vkt"};
@@ -111,6 +115,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
     private static final String SELECT_ONE = "Select One";
     private static final String REG = "Reg";
     private static final String MARKET_SUFFIX = "_Mkt";
+    private static final String METADATA_APPLICATION_MODE = "#Application mode: ";
 
     // === UI Components ===
     //private final GridPane gridPanePresetModification = new GridPane();
@@ -121,6 +126,8 @@ public class TabCafeStd extends PolicyTab implements Runnable {
     private final CheckComboBox<String> checkComboBoxTech = utils.createCheckComboBox(PREF_WIDTH);
     private final Label labelWhichUnits = utils.createLabel(LABEL_UNITS, LABEL_WIDTH);
     private final ComboBox<String> comboBoxWhichUnits = utils.createComboBoxString(PREF_WIDTH);
+    private final Label labelApplicationMode = utils.createLabel(LABEL_APPLICATION_MODE, LABEL_WIDTH);
+    private final ComboBox<String> comboBoxApplicationMode = utils.createComboBoxString(PREF_WIDTH);
     // HBox for Auto and Unique checkboxes
     private final HBox hBoxAutoUnique = new HBox(8); // spacing of 8
     
@@ -181,6 +188,8 @@ public class TabCafeStd extends PolicyTab implements Runnable {
         comboBoxWhichUnits.getItems().addAll(UNITS_OPTIONS);
         comboBoxWhichUnits.getSelectionModel().select("MPG");
         comboBoxWhichUnits.setDisable(true); // Disabled until tech selected
+        comboBoxApplicationMode.getItems().addAll(APPLICATION_MODE_OPTIONS);
+        comboBoxApplicationMode.getSelectionModel().select(MODE_FLEET_AVERAGE);
         comboBoxModificationType.getItems().addAll(MOD_TYPE_OPTIONS);
         comboBoxModificationType.getSelectionModel().selectFirst();
     }
@@ -196,11 +205,11 @@ public class TabCafeStd extends PolicyTab implements Runnable {
         hBoxAutoUnique.getChildren().addAll(checkBoxUseAutoNames, checkBoxUseUniqueNames);
         // Add labels and controls to grid
         gridPaneLeft.addColumn(0, labelComboBoxSubsector, labelCheckComboBoxTech,  
-                labelWhichUnits, new Label(),  new Separator(), utils.createLabel(LABEL_NAMES), labelPolicyName, labelMarketName,
+                labelWhichUnits, labelApplicationMode, new Separator(), utils.createLabel(LABEL_NAMES), labelPolicyName, labelMarketName,
                 new Label(), new Separator(), utils.createLabel(LABEL_POPULATE), labelModificationType, labelStartYear,
                 labelEndYear, labelInitialAmount, labelGrowth);
         gridPaneLeft.addColumn(1, comboBoxSubsector, checkComboBoxTech,  
-                comboBoxWhichUnits, new Label(), new Separator(), hBoxAutoUnique, textFieldPolicyName,
+                comboBoxWhichUnits, comboBoxApplicationMode, new Separator(), hBoxAutoUnique, textFieldPolicyName,
                 textFieldMarketName, new Label(), new Separator(), new Label(), comboBoxModificationType,
                 textFieldStartYear, textFieldEndYear, textFieldInitialAmount, textFieldGrowth);
         gridPaneLeft.setAlignment(Pos.TOP_LEFT);
@@ -214,7 +223,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
      * Applies sizing to combo boxes and text fields for consistent layout.
      */
     private void setComponentWidths() {
-        ComboBox<?>[] comboBoxes = {comboBoxSubsector, comboBoxWhichUnits, comboBoxModificationType};
+        ComboBox<?>[] comboBoxes = {comboBoxSubsector, comboBoxWhichUnits, comboBoxApplicationMode, comboBoxModificationType};
         TextField[] textFields = {textFieldStartYear, textFieldEndYear, textFieldInitialAmount, textFieldGrowth, textFieldPeriodLength, textFieldPolicyName, textFieldMarketName};
         for (ComboBox<?> cb : comboBoxes) {
             cb.setMaxWidth(MAX_WIDTH);
@@ -260,6 +269,63 @@ public class TabCafeStd extends PolicyTab implements Runnable {
             }
             setPolicyAndMarketNames(); // Update names when subsector changes
         });
+        comboBoxApplicationMode.setOnAction(e -> setPolicyAndMarketNames());
+    }
+
+    private boolean isNewSalesMode() {
+        String mode = comboBoxApplicationMode.getSelectionModel().getSelectedItem();
+        return MODE_NEW_SALES.equals(mode);
+    }
+
+    private String getPolicyKeyForTargetYear(String basePolicyName, String targetYear, boolean newSalesMode) {
+        // Keep policy keys target-year scoped so each target can activate independently.
+        return targetYear + "_" + basePolicyName;
+    }
+
+    private String getMarketKeyForTargetYear(String baseMarketName, String policyKey, String targetYear, boolean newSalesMode) {
+        if (!newSalesMode) {
+            // Fleet Average follows legacy activate-table market naming based on policy key.
+            return policyKey + "Mkt";
+        }
+        return targetYear + "_" + baseMarketName;
+    }
+
+    private boolean shouldApplyTargetToModelYear(boolean newSalesMode, int modelYear, int targetYear) {
+        if (newSalesMode) {
+            return modelYear == targetYear;
+        }
+        return modelYear >= vars.getCalibrationYear() && modelYear <= targetYear;
+    }
+
+    private Double safeParseDouble(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        try {
+            double parsed = Double.parseDouble(trimmed);
+            return Double.isFinite(parsed) ? parsed : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private Integer safeParseInt(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(trimmed);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**
@@ -330,22 +396,22 @@ public class TabCafeStd extends PolicyTab implements Runnable {
      */
     private void saveScenarioComponent(TreeView<String> tree) {
         if (!qaInputs()) {
-            // QA failed - abort save
             return;
         }
 
-        String ID = null;
-        if (checkBoxUseUniqueNames.isSelected()) { 
-            ID = utils.getUniqueString(); // Generate unique string for names
+        String ID;
+        if (checkBoxUseUniqueNames.isSelected()) {
+            ID = utils.getUniqueString();
         } else {
-            ID="";
+            ID = "";
         }
+
         String policyName = textFieldPolicyName.getText() + ID;
         String marketName = textFieldMarketName.getText() + ID;
+        boolean newSalesMode = isNewSalesMode();
         filenameSuggestion = textFieldPolicyName.getText().replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
         fileContent = getMetaDataContent(tree, marketName, policyName);
 
-        // Build content for CAFE targets and policy activation tables
         StringBuilder contentP1 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
             .append(VARIABLE_ID).append(vars.getEol())
             .append(HEADER_PART1).append(vars.getEol()).append(vars.getEol())
@@ -359,70 +425,130 @@ public class TabCafeStd extends PolicyTab implements Runnable {
         String[] listOfSelectedLeaves = utils.removeUSADuplicate(utils.getAllSelectedRegions(tree));
         ArrayList<String> dataArrayList = paneForComponentDetails.getDataYrValsArrayList();
 
-        // Loop through regions and data to build CSV rows
+        final double gj_per_gal = 0.1203; // Gasoline LHV (MJ/gal) for CAFE-like comparability.
+        final double mj_per_gal = 120.3;
+        final double km_per_mile = 1.61;
+        final double mj_per_ej = 1e12;
+        final double km_per_bln_km = 1e9;
+        final double km_per_mln_km = 1e6;
+        final double veh_per_bln_veh = 1e9;
+        final double veh_per_mln_veh = 1e6;
+        final double km_per_thous_km = 1e3;
+        final double mj_per_MMBTU = 1055.1;
+        final double gj_per_MMBTU = 1.055;
+
+        int skippedInvalidRows = 0;
+        int writtenConstraintRows = 0;
+
         for (String region : listOfSelectedLeaves) {
             String subsector = comboBoxSubsector.getValue();
-            // Determine sector based on subsector
             String sector = (subsector.equals("Light Truck") || subsector.equals("Medium Truck") || subsector.equals("Heavy Truck"))
                 ? "trn_freight_road" : "trn_pass_road_LDV_4W";
 
             for (String data : dataArrayList) {
                 String[] split = utils.splitString(data.replaceAll(" ", "").trim(), ",");
-                String year = split[0];
-                double value = Double.parseDouble(split[1]);
+                if (split == null || split.length < 2) {
+                    skippedInvalidRows++;
+                    continue;
+                }
 
-                ObservableList<String> techList = checkComboBoxTech.getCheckModel().getCheckedItems();
-                for (String tech : techList) {
-                    // Retrieve load and coefficient values for each tech
-                    String loadStr = utils.getTrnVehInfo("load", region, sector, subsector, tech, year);
-                    double load = (loadStr != null) ? Double.parseDouble(loadStr) : 0.0;
+                String targetYearStr = split[0];
+                Integer targetYearParsed = safeParseInt(targetYearStr);
+                Double targetValueParsed = safeParseDouble(split[1]);
+                if (targetYearParsed == null || targetValueParsed == null) {
+                    skippedInvalidRows++;
+                    continue;
+                }
+                int targetYear = targetYearParsed;
+                double targetMilesPerGal = targetValueParsed;
 
-                    String coefStr = utils.getTrnVehInfo("coefficient", region, sector, subsector, tech, year);
-                    double coef = (coefStr != null) ? Double.parseDouble(coefStr) : 5000.0; // fallback for NG vehicles
+                if (targetMilesPerGal <= 0.0 || !Double.isFinite(targetMilesPerGal)) {
+                    skippedInvalidRows++;
+                    continue;
+                }
 
-                    String io = year + "_" + policyName;
-                    String iom = io + "Mkt";
-                    
-                    double mj_per_gal = 131.76; // MJ per gallon of gasoline, used for unit conversion;
-                    double km_per_mile = 1.61; // km per mile, used for unit conversion;
-                    double mj_per_ej = 1e12;
-                    double km_per_bln_km = 1e9;
-                    double km_per_mln_km = 1e6;
-                    double veh_per_bln_veh = 1e9;
-                    double veh_per_mln_veh = 1e6;
-                    
-                    double outputRatio=1.0;
-                    double pMultiplier=1.0;
-                    
-                    // Keep CAFE conversion scaling consistent with transport subsector conversion mode.
-                    boolean useMMBTUConversions = vars.getUseTrnMMBTUConversions();
-                    
-                    if (useMMBTUConversions) {
-                    	outputRatio = 1.0 / value / km_per_mile * mj_per_gal / mj_per_ej * km_per_bln_km; 
-                    	pMultiplier = load *  veh_per_bln_veh;
-                    } else {
-                    	outputRatio = 1.0 / value / km_per_mile * mj_per_gal / mj_per_ej * km_per_mln_km; 
-                    	pMultiplier = load *  veh_per_mln_veh;
+                String io = getPolicyKeyForTargetYear(policyName, targetYearStr, newSalesMode);
+                String iom = getMarketKeyForTargetYear(marketName, io, targetYearStr, newSalesMode);
+                boolean activationWritten = false;
+                boolean hasValidConstraintRow = false;
+
+                for (Integer modelYear : vars.getAllowablePolicyYears()) { 
+                    if (!shouldApplyTargetToModelYear(newSalesMode, modelYear, targetYear)) {
+                        continue;
                     }
 
-                    // Add row to CAFE targets table
-                    contentP1.append(region).append(",").append(sector).append(",").append(subsector).append(",")
-                        .append(tech).append(",").append(year).append(",").append(io).append(",")
-                        .append(coef).append(",").append(io).append(",").append(outputRatio).append(",")
-                        .append(pMultiplier).append(vars.getEol());
+                    String modelYearStr = Integer.toString(modelYear);
+                    ObservableList<String> techList = checkComboBoxTech.getCheckModel().getCheckedItems();
 
-                    // Only add policy activation row for first tech
-                    if (techList.indexOf(tech) == 0) {
-                        contentP2.append(region).append(",").append(io).append(",").append(iom).append(",RES,")
-                            .append(year).append(",1").append(vars.getEol());
+                    for (int techIndex = 0; techIndex < techList.size(); techIndex++) {
+                        String tech = techList.get(techIndex);
+                        String loadStr = utils.getTrnVehInfo("load", region, sector, subsector, tech, modelYearStr);
+                        Double loadParsed = safeParseDouble(loadStr);
+                        double load = (loadParsed != null) ? loadParsed : 0.0;
+
+                        // Intensity-based CAFE formulation: use UCD transport intensity as the exported coefficient value.
+                        String coefStr = utils.getTrnVehInfo("intensity", region, sector, subsector, tech, modelYearStr);
+                        Double coefParsed = safeParseDouble(coefStr);
+                        double coef = (coefParsed != null) ? coefParsed : 5000.0;
+
+                        if (!Double.isFinite(load) || load <= 0.0 || !Double.isFinite(coef) || coef <= 0.0) {
+                            skippedInvalidRows++;
+                            continue;
+                        }
+
+                        double outputRatio;
+                        double pMultiplier;
+                        boolean useMMBTUConversions = vars.getUseTrnMMBTUConversions();
+
+                        if (useMMBTUConversions) {
+                            // legacy GCAM-USA 8.2
+                            //outputRatio = load / ( targetMilesPerGal * coef * km_per_mile / mj_per_gal * mj_per_ej / km_per_mln_km );
+                        	//outputRatio = load / ( targetMilesPerGal * coef * km_per_mile / mj_per_gal * mj_per_MMBTU / km_per_mln_km * 1e12);
+                            //pMultiplier = 1.0;
+                            outputRatio = (1.0 / targetMilesPerGal * coef / km_per_mile * mj_per_gal / mj_per_MMBTU / km_per_mln_km / 1e12);
+                            pMultiplier = 1;
+                        } else {
+                            // GCAM 8.5+
+                            outputRatio = 1.0 / ( targetMilesPerGal * km_per_mile / mj_per_gal * mj_per_ej / km_per_bln_km );
+                            pMultiplier = 1.0;
+                        }
+
+                        if (!Double.isFinite(outputRatio) || outputRatio <= 0.0 || !Double.isFinite(pMultiplier) || pMultiplier <= 0.0) {
+                            skippedInvalidRows++;
+                            continue;
+                        }
+
+                        contentP1.append(region).append(",").append(sector).append(",").append(subsector).append(",")
+                            .append(tech).append(",").append(modelYearStr).append(",").append(io).append(",")
+                            .append(coef).append(",").append(io).append(",").append(outputRatio).append(",")
+                            .append(pMultiplier).append(vars.getEol());
+                        hasValidConstraintRow = true;
+                        writtenConstraintRows++;
+
+                        if (!activationWritten && hasValidConstraintRow && techIndex == 0) {
+                            contentP2.append(region).append(",").append(io).append(",").append(iom).append(",RES,")
+                                .append(targetYearStr).append(",1").append(vars.getEol());
+                            activationWritten = true;
+                        }
                     }
                 }
             }
         }
 
+        if (writtenConstraintRows == 0) {
+            utils.warningMessage("No valid CAFE constraint rows were generated.\n"
+                    + "Please verify target table values and transport metadata (load/intensity) for selected years.");
+            return;
+        }
+
+        if (skippedInvalidRows > 0) {
+            System.out.println("Skipped invalid CAFE rows: " + skippedInvalidRows);
+        }
+
         fileContent += contentP1.toString() + vars.getEol() + contentP2.toString();
         System.out.println("Done");
     }
+
 
     /**
      * Generates the metadata content string for the scenario component, including selected subsector, technologies, units, policy/market names, and table data.
@@ -441,6 +567,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
         String techs = utils.getStringFromList(techList, ";");
         rtnStr.append("#Technologies: ").append(techs).append(vars.getEol());
         rtnStr.append("#Units: ").append(comboBoxWhichUnits.getValue()).append(vars.getEol());
+        rtnStr.append(METADATA_APPLICATION_MODE).append(comboBoxApplicationMode.getValue()).append(vars.getEol());
         rtnStr.append("#Policy name: ").append(policy).append(vars.getEol());
         rtnStr.append("#Market name: ").append(market).append(vars.getEol());
         appendTransportConversionMetadata(rtnStr);
@@ -493,6 +620,12 @@ public class TabCafeStd extends PolicyTab implements Runnable {
                     case "units":
                         comboBoxWhichUnits.setValue(value);
                         comboBoxWhichUnits.fireEvent(new ActionEvent());
+                        break;
+                    case "application mode":
+                        if (APPLICATION_MODE_OPTIONS[0].equals(value) || APPLICATION_MODE_OPTIONS[1].equals(value)) {
+                            comboBoxApplicationMode.setValue(value);
+                            comboBoxApplicationMode.fireEvent(new ActionEvent());
+                        }
                         break;
                     case "policy name":
                         textFieldPolicyName.setText(value);

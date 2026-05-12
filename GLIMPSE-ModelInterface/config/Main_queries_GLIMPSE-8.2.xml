@@ -14931,7 +14931,7 @@ local:run-sales-share((:scenarios:), (:regions:), (:collection:))
         )//text()
     ]]></xPath>
 			</supplyDemandQuery>
-							  <supplyDemandQuery title="Transport subsector MPGe (fleet-wide, all vintages)">
+			<supplyDemandQuery title="Transport subsector MPGe (fleet-wide, all vintages)">
 								<axis1 name="subsector">subsector[@name]</axis1>
 								<axis2 name="Year">mpg[@year]</axis2>
 								<xPath buildList="true" dataName="mpg" group="false" sumAll="false"><![CDATA[

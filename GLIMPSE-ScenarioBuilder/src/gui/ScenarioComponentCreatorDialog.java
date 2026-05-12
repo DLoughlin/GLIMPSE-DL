@@ -318,8 +318,15 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 					saveInProgress.set(false);
 					Platform.runLater(() -> {
 						setSaveButtonDisabled(false);
+						Throwable cause = getException();
 						System.out.println("Failed!");
-						 utils.warningMessage(WARNING_PROCESS_FAILED);
+						if (cause != null) {
+							System.out.println("Save failure cause: " + cause.getMessage());
+							cause.printStackTrace();
+							utils.warningMessage(WARNING_PROCESS_FAILED + "\n" + cause);
+						} else {
+							utils.warningMessage(WARNING_PROCESS_FAILED);
+						}
 						currentTab.resetFileContent();
 						currentTab.resetFilenameSuggestion();
 						currentTab.resetProgressBar();
@@ -419,65 +426,72 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 	}
 
 	public void saveComponentFile(PolicyTab tab) {
-		if (tab == null) {
-			setSaveButtonDisabled(false);
-			return;
-		}
-		String filenameSuggestion = tab.getFilenameSuggestion();
-		String fileContent = tab.getFileContent();
-		if (fileContent == null) {
-			setSaveButtonDisabled(false);
-			return;
-		}
-		boolean useTempFile = false;
-		if (fileContent.equals("use temp file")) {
-			useTempFile = true;
-		}
-		if ((filenameSuggestion != null) && (!filenameSuggestion.isEmpty())) {
-			String filter1 = "";
-			String filter2 = "";
-			if (fileContent.contains(XML_LIST_KEYWORD)) {
-				filter1 = FILE_FILTER_TXT;
-				filter2 = FILE_EXT_TXT;
-				if ((!filenameSuggestion.endsWith(".txt")) && (!filenameSuggestion.endsWith(".TXT")))
-					filenameSuggestion += ".txt";
-			} else {
-				filter1 = FILE_FILTER_CSV;
-				filter2 = FILE_EXT_CSV;
-				if ((!filenameSuggestion.endsWith(".csv")) && (!filenameSuggestion.endsWith(".CSV")))
-					filenameSuggestion += ".csv";
-			}
-			File file = FileChooserPlus.showSaveDialog(stageWithTabs, "Save Scenario Component",
-					new File(vars.getScenarioComponentsDir()), filenameSuggestion,
-					FileChooserPlus.createExtensionFilter(filter1, filter2));
-			if (file == null) {
+		try {
+			if (tab == null) {
 				setSaveButtonDisabled(false);
 				return;
 			}
-			boolean saved = true;
-			if (!useTempFile) {
-				files.saveFile(fileContent, file);
-			} else {
-				String tempPolicyFilename = vars.getGlimpseDir() + File.separator + "GLIMPSE-Data" + File.separator
-						+ "temp" + File.separator + TEMP_POLICY_FILENAME;
-				try {
-					Files.move(Paths.get(tempPolicyFilename), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
-				} catch (Exception e) {
-					System.out.println(ERROR_CREATING_POLICY_FILE + e);
-					saved = false;
+			String filenameSuggestion = tab.getFilenameSuggestion();
+			String fileContent = tab.getFileContent();
+			if (fileContent == null) {
+				setSaveButtonDisabled(false);
+				return;
+			}
+			boolean useTempFile = false;
+			if (fileContent.equals("use temp file")) {
+				useTempFile = true;
+			}
+			if ((filenameSuggestion != null) && (!filenameSuggestion.isEmpty())) {
+				String filter1 = "";
+				String filter2 = "";
+				if (fileContent.contains(XML_LIST_KEYWORD)) {
+					filter1 = FILE_FILTER_TXT;
+					filter2 = FILE_EXT_TXT;
+					if ((!filenameSuggestion.endsWith(".txt")) && (!filenameSuggestion.endsWith(".TXT")))
+						filenameSuggestion += ".txt";
+				} else {
+					filter1 = FILE_FILTER_CSV;
+					filter2 = FILE_EXT_CSV;
+					if ((!filenameSuggestion.endsWith(".csv")) && (!filenameSuggestion.endsWith(".CSV")))
+						filenameSuggestion += ".csv";
+				}
+				File file = FileChooserPlus.showSaveDialog(stageWithTabs, "Save Scenario Component",
+						new File(vars.getScenarioComponentsDir()), filenameSuggestion,
+						FileChooserPlus.createExtensionFilter(filter1, filter2));
+				if (file == null) {
+					setSaveButtonDisabled(false);
+					return;
+				}
+				boolean saved = true;
+				if (!useTempFile) {
+					files.saveFile(fileContent, file);
+				} else {
+					String tempPolicyFilename = vars.getGlimpseDir() + File.separator + "GLIMPSE-Data" + File.separator
+							+ "temp" + File.separator + TEMP_POLICY_FILENAME;
+					try {
+						Files.move(Paths.get(tempPolicyFilename), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+					} catch (Exception e) {
+						System.out.println(ERROR_CREATING_POLICY_FILE + e);
+						saved = false;
+					}
+				}
+				if (saved) {
+					tab.resetFileContent();
+					tab.resetFilenameSuggestion();
+					tab.resetProgressBar();
+					ComponentRow p1 = new ComponentRow(file.getName(), file.getPath(), new Date());
+					ComponentRow[] fileArr = { p1 };
+					ComponentLibraryTable.addOrUpdateFiles(fileArr);
+					onSaveSuccess.run();
 				}
 			}
-			if (saved) {
-				tab.resetFileContent();
-				tab.resetFilenameSuggestion();
-				tab.resetProgressBar();
-				ComponentRow p1 = new ComponentRow(file.getName(), file.getPath(), new Date());
-				ComponentRow[] fileArr = { p1 };
-				ComponentLibraryTable.addOrUpdateFiles(fileArr);
-				onSaveSuccess.run();
-			}
+		} catch (Exception e) {
+			System.out.println("saveComponentFile failed: " + e.getMessage());
+			e.printStackTrace();
+			utils.warningMessage(WARNING_PROCESS_FAILED + "\n" + e);
+		} finally {
+			setSaveButtonDisabled(false);
 		}
-		setSaveButtonDisabled(false);
 	}
 
 	private void setSaveButtonDisabled(boolean disabled) {
