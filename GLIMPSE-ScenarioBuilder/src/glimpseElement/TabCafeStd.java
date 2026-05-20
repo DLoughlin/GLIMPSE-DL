@@ -107,7 +107,8 @@ public class TabCafeStd extends PolicyTab implements Runnable {
             "Initial and Final", "Initial w/% Growth/yr",
             "Initial w/% Growth/pd", "Initial w/Delta/yr", "Initial w/Delta/pd"
     };
-    private static final String HEADER_PART1 = "GLIMPSECAFETargets";
+    //private static final String HEADER_PART1 = "GLIMPSECAFETargets";
+    private static final String HEADER_PART1 = "GLIMPSECAFETargets-update";
     private static final String HEADER_PART2 = "GLIMPSEPFStdActivate";
     private static final String INPUT_TABLE = "INPUT_TABLE";
     private static final String VARIABLE_ID = "Variable ID";
@@ -388,6 +389,124 @@ public class TabCafeStd extends PolicyTab implements Runnable {
         saveScenarioComponent(paneForCountryStateTree.getTree());
     }
 
+	private void saveScenarioComponentOld(TreeView<String> tree) {
+
+		String filename_suggestion;
+		String file_content;
+		
+		if (!qaInputs()) {
+			Thread.currentThread().destroy();
+		} else {
+
+			//// setting up policy name and suggested file name
+			
+			
+			String ID = utils.getUniqueString();
+			String policy_name = this.textFieldPolicyName.getText() + ID;
+			String market_name = this.textFieldMarketName.getText() + ID;
+			filename_suggestion = this.textFieldPolicyName.getText().replaceAll("/", "-").replaceAll(" ", "_") + ".csv";
+
+			//clearing info to save to file
+			file_content = this.getMetaDataContent(tree, market_name, policy_name);
+			String content_p1="";
+			String content_p2="";
+
+			//// -----------getting selected regions info from GUI
+			String[] listOfSelectedLeaves = utils.getAllSelectedRegions(tree);
+			listOfSelectedLeaves = utils.removeUSADuplicate(listOfSelectedLeaves);
+			String states = utils.returnAppendedString(listOfSelectedLeaves);
+
+			//// -----------getting constraint data from GUI
+			
+			// getting values for constraint
+			ArrayList<String> dataArrayList = this.paneForComponentDetails.getDataYrValsArrayList();
+			String[] year_list = new String[dataArrayList.size()];
+			String[] value_list = new String[dataArrayList.size()];
+			double[] valuef_list = new double[dataArrayList.size()];
+
+			// setting up dates for iteration
+			
+			
+			//// ------------ setting up headers
+			String header_part1 = "GLIMPSECAFETargets";
+			String header_part2 = "GLIMPSEPFStdActivate";
+			
+			//header 1:
+			content_p1+="INPUT_TABLE" + vars.getEol();
+			content_p1+="Variable ID" + vars.getEol();
+			content_p1+=header_part1 + vars.getEol() + vars.getEol();
+			content_p1+="region,sector,subsector,tech,year,input,coefficient,policy,output-ratio,pMultiplier" + vars.getEol();
+
+			//header 2:
+			content_p2+="INPUT_TABLE" + vars.getEol();
+			content_p2+="Variable ID" + vars.getEol();
+			content_p2+=header_part2 + vars.getEol() + vars.getEol();
+			content_p2+="region,policy,market,type,year,constrained" + vars.getEol();			
+			
+
+			/////----- Constructing data components			
+			
+			//loop over regions
+			for (int r = 0; r < listOfSelectedLeaves.length; r++) {
+				String region = listOfSelectedLeaves[r];
+			    
+				//for each region, sector/subsector, get list of techs
+				String subsector=comboBoxSubsector.getValue(); 
+				String sector="";
+				if ((subsector.equals("Light Truck"))||(subsector.equals("Medium Truck"))||(subsector.equals("Heavy Truck"))) {
+					sector="trn_freight_road";
+				} else {
+					sector="trn_pass_road_LDV_4W";
+				}
+
+				
+				for (int i = 0; i < dataArrayList.size(); i++) {
+					String str = dataArrayList.get(i).replaceAll(" ", "").trim();
+					year_list[i] = utils.splitString(str, ",")[0];
+					value_list[i] = utils.splitString(str, ",")[1];
+					valuef_list[i] = Double.parseDouble(value_list[i]);
+					
+				    String yr=year_list[i];
+				    double val=valuef_list[i];
+					
+					ObservableList<String> tech_list=this.checkComboBoxTech.getCheckModel().getCheckedItems();
+					
+					for (int t=0;t<tech_list.size();t++) {
+						String tech=tech_list.get(t);
+						
+					    String load_str=utils.getTrnVehInfo("load", region, sector, subsector, tech, yr);
+					    if (load_str==null) {
+					    	System.out.println("why null?");
+					    }
+					    double load=Double.parseDouble(load_str);
+					
+					    String coef_str=utils.getTrnVehInfo("intensity", region, sector, subsector, tech, yr);
+					    if (coef_str==null) {
+					    	//hack since NG vehicles are not in the coef list
+					    	coef_str="5000";
+					    	load=0.0;
+					    }
+					    double coef=Double.parseDouble(coef_str);
+			
+					    String io=yr+"_"+policy_name;
+					    String iom=io+"Mkt";
+					    
+					    String outputratio=Double.toString((float)(1.0/val/1.61*131.76/1e6));
+					    String pMultiplier=Double.toString((float)(load*1e9)); 
+					    
+					    content_p1+=region+","+sector+","+subsector+","+tech+","+yr+","+io+","+coef+","+io+","+outputratio+","+pMultiplier+ vars.getEol();
+					    if (t==0) content_p2+=region+","+io+","+iom+",RES,"+yr+",1"+ vars.getEol();
+					}
+				}
+
+				file_content+=content_p1+ vars.getEol();
+				file_content+=content_p2;
+
+			System.out.println("Done");
+			}}
+
+	}
+    
     /**
      * Saves the scenario component for the specified tree of regions.
      * Performs QA checks, generates unique IDs, and builds file content for export.
@@ -415,7 +534,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
         StringBuilder contentP1 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
             .append(VARIABLE_ID).append(vars.getEol())
             .append(HEADER_PART1).append(vars.getEol()).append(vars.getEol())
-            .append("region,sector,subsector,tech,year,input,coefficient,policy,output-ratio,pMultiplier").append(vars.getEol());
+            .append("region,sector,subsector,tech,year,input,adjusted-coef,policy,output-ratio,pMultiplier,price-unit-conversion").append(vars.getEol());
 
         StringBuilder contentP2 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
             .append(VARIABLE_ID).append(vars.getEol())
@@ -483,12 +602,16 @@ public class TabCafeStd extends PolicyTab implements Runnable {
                     for (int techIndex = 0; techIndex < techList.size(); techIndex++) {
                         String tech = techList.get(techIndex);
                         String loadStr = utils.getTrnVehInfo("load", region, sector, subsector, tech, modelYearStr);
+                        String coefStr = utils.getTrnVehInfo("intensity", region, sector, subsector, tech, modelYearStr);
+                        
+                        if (loadStr!=null&&coefStr!=null) {
+
                         Double loadParsed = safeParseDouble(loadStr);
                         double load = (loadParsed != null) ? loadParsed : 0.0;
 
                         // Intensity-based CAFE formulation: use UCD transport intensity as the exported coefficient value.
-                        String coefStr = utils.getTrnVehInfo("intensity", region, sector, subsector, tech, modelYearStr);
-                        Double coefParsed = safeParseDouble(coefStr);
+
+                        Double coefParsed = safeParseDouble(coefStr);// * 1000.0;// the multiplier converts from GJ/vkt to KJ/vkt 
                         double coef = (coefParsed != null) ? coefParsed : 5000.0;
 
                         if (!Double.isFinite(load) || load <= 0.0 || !Double.isFinite(coef) || coef <= 0.0) {
@@ -498,30 +621,39 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 
                         double outputRatio;
                         double pMultiplier;
+                        double priceUnitConversion = 1.0;
+                        
                         boolean useMMBTUConversions = vars.getUseTrnMMBTUConversions();
-
-                        if (useMMBTUConversions) {
-                            // legacy GCAM-USA 8.2
-                            //outputRatio = load / ( targetMilesPerGal * coef * km_per_mile / mj_per_gal * mj_per_ej / km_per_mln_km );
-                        	//outputRatio = load / ( targetMilesPerGal * coef * km_per_mile / mj_per_gal * mj_per_MMBTU / km_per_mln_km * 1e12);
-                            //pMultiplier = 1.0;
-                            outputRatio = (1.0 / targetMilesPerGal * coef / km_per_mile * mj_per_gal / mj_per_MMBTU / km_per_mln_km / 1e12);
-                            pMultiplier = 1;
-                        } else {
-                            // GCAM 8.5+
-                            outputRatio = 1.0 / ( targetMilesPerGal * km_per_mile / mj_per_gal * mj_per_ej / km_per_bln_km );
-                            pMultiplier = 1.0;
-                        }
-
-                        if (!Double.isFinite(outputRatio) || outputRatio <= 0.0 || !Double.isFinite(pMultiplier) || pMultiplier <= 0.0) {
-                            skippedInvalidRows++;
-                            continue;
-                        }
-
+                        double target=targetMilesPerGal;
+                        
+//                        if (useMMBTUConversions) {
+////                            outputRatio = 1.0 / (target / gj_per_gal * km_per_mile / veh_per_mln_veh);
+////                            pMultiplier = load*1e9;
+//    					    outputRatio=(float)(1.0/target/1.61*131.76/1e6);
+//    					    pMultiplier=((float)(load*1e9*priceUnitConversion)); 
+//                        } else {
+//                            // GCAM 8.5+
+//                            outputRatio = 1.0 /target/km_per_mile*mj_per_gal/veh_per_bln_veh;
+//                            pMultiplier = load*1e6;
+//                        }
+                        
+                        String conversions = utils.getSubsectorConversions(region, sector, subsector, modelYear.intValue());
+                        
+////					    outputRatio=(float)(1.0/target/1.61*131.76/1e6);
+////					    pMultiplier=((float)(load*1e9)); 
+//                        
+//                        if (!Double.isFinite(outputRatio) || outputRatio <= 0.0 || !Double.isFinite(pMultiplier) || pMultiplier <= 0.0) {
+//                            skippedInvalidRows++;
+//                            continue;
+//                        }
+                        
                         contentP1.append(region).append(",").append(sector).append(",").append(subsector).append(",")
                             .append(tech).append(",").append(modelYearStr).append(",").append(io).append(",")
-                            .append(coef).append(",").append(io).append(",").append(outputRatio).append(",")
-                            .append(pMultiplier).append(vars.getEol());
+                            .append(coef).append(",").append(io).append(",").append(conversions).append(",").append(priceUnitConversion).append(vars.getEol());
+                        
+//					    content_p1+=region+","+sector+","+subsector+","+tech+","+yr+","+io+","+coef+","+io+","+outputratio+","+pMultiplier+ vars.getEol();
+//					    if (t==0) content_p2+=region+","+io+","+iom+",RES,"+yr+",1"+ vars.getEol();
+                        
                         hasValidConstraintRow = true;
                         writtenConstraintRows++;
 
@@ -530,6 +662,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
                                 .append(targetYearStr).append(",1").append(vars.getEol());
                             activationWritten = true;
                         }
+                    }
                     }
                 }
             }

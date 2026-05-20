@@ -218,7 +218,7 @@ public final class UtilsTransport {
 			val = null;
 		}
 		if (val == null)
-			System.out.println("Problem finding " + param + " for " + sector + " / " + subsector);
+			System.out.println("Problem finding " + param + " for " + sector + " / " + subsector + " / " + tech + " in " + region + " for year " + yearStr);
 		return val;
 	}
 

@@ -526,6 +526,8 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	 */
 	private void saveScenarioComponent(TreeView<String> tree) {
 
+		System.out.println("Use trnMMBTUConversions: " + vars.getUseTrnMMBTUConversions());
+		
 		if (!qaInputs()) {
 			// Abort save if validation fails
 			return;
@@ -720,6 +722,8 @@ public class TabTechBound extends PolicyTab implements Runnable {
 
 		StringBuilder constraintBuffer = new StringBuilder();
 
+
+		
 		for (String state : listOfSelectedLeaves) {
 			String use_this_market_name = market_name;
 			String use_this_policy_name = policy_name;
@@ -738,7 +742,8 @@ public class TabTechBound extends PolicyTab implements Runnable {
 
 				String use_this_policy_name1 = use_this_policy_name + "-" + year;
 				;
-
+				Double valf = Double.parseDouble(val);
+				
 				if (isTransportation) {
 					if (loadFactorList.size() > 0) {
 						for (String lfStr : loadFactorList) {
@@ -754,8 +759,11 @@ public class TabTechBound extends PolicyTab implements Runnable {
 						}
 					}
 
-					Double valf = Double.parseDouble(val);
-					valf = valf / (1.0e9 * loadFactor); // convert from $/quads to $/EJ
+					if (vars.getUseTrnMMBTUConversions()) {
+						valf = valf / (1.0e9 * loadFactor / 1.055) ; 
+					} else {
+						valf = valf / loadFactor; 
+					}
 					val = "" + valf;
 				}
 

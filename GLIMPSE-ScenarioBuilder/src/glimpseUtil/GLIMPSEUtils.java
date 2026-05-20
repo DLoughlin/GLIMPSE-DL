@@ -1325,8 +1325,8 @@ public class GLIMPSEUtils {
 				// The shipped 8.2 includes service in million pass-km or million ton-km and energy in MMBTU
 				// requiring these conversions
 				// output_ratio units: [MMBTU per million service-km] / [load/veh]
-				output_ratio = (1.0e-6 / loadFactor) * 1.055;
-				pMultiplier = 1.0e6;
+				output_ratio = (1.0e-9 / loadFactor) * 1.055;
+				pMultiplier = 1.0e9;
 			} else {
 				// GCAM v8.5-style path: 
 				// output divided by loadFactor to make constraint veh-km-based
