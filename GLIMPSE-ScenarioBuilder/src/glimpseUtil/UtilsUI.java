@@ -37,6 +37,9 @@ package glimpseUtil;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.controlsfx.control.CheckComboBox;
 
@@ -70,6 +73,8 @@ public class UtilsUI {
 
     private GLIMPSEVariables vars;
     private GLIMPSEStyles styles;
+    /** Track missing icon warnings so startup logs are not spammed for repeated attempts. */
+    private static final Set<String> MISSING_BUTTON_ICON_PATHS = Collections.synchronizedSet(new HashSet<String>());
 
     /**
      * Initializes the UI helper with shared variables and style settings.
@@ -251,8 +256,10 @@ public class UtilsUI {
         if (text != null) {
             button.setText(text);
         }
-        if (imageName != null && vars != null && styles != null
-                && (vars.getUseIcons().toLowerCase().equals("true") || text == null)) {
+
+        boolean canAttemptIcon = imageName != null && vars != null && styles != null
+                && "true".equalsIgnoreCase(vars.getUseIcons());
+        if (canAttemptIcon) {
             try {
                 double size = styles.getSmallButtonWidth();
                 String imagePath = "file:" + vars.getResourceDir() + File.separator + imageName + ".png";
@@ -270,17 +277,54 @@ public class UtilsUI {
                 button.setPadding(styles.getNoPadding());
                 button.setStyle("-fx-background-color: transparent; -fx-background-radius: 0; -fx-padding: 0;");
             } catch (Exception e) {
-                System.out.println("Could not create button images.");
+                logMissingButtonImageOnce(imageName);
+                applyIconTextFallback(button, text, wid, imageName);
             }
-        } else if (wid > 0 && styles != null) {
+        } else {
+            applyIconTextFallback(button, text, wid, imageName);
+        }
+
+        if (styles != null)
+            button = resizeButtonText(button);
+        return button;
+    }
+
+    private void applyIconTextFallback(Button button, String text, int wid, String imageName) {
+        if ((text == null || text.trim().isEmpty()) && imageName != null) {
+            button.setText(getFallbackTextForIcon(imageName));
+        }
+        if (wid > 0 && styles != null) {
             double height = styles.getSmallButtonWidth();
             button.setPrefSize(wid, height);
             button.setMaxSize(wid, height);
             button.setMinSize(wid, height);
         }
-        if (styles != null)
-            button = resizeButtonText(button);
-        return button;
+    }
+
+    private static String getFallbackTextForIcon(String imageName) {
+        if ("left_arrow".equalsIgnoreCase(imageName)) {
+            return "<";
+        }
+        if ("double_left_arrow".equalsIgnoreCase(imageName)) {
+            return "<<";
+        }
+        if ("right_arrow".equalsIgnoreCase(imageName)) {
+            return ">";
+        }
+        if ("up_right_arrow".equalsIgnoreCase(imageName)) {
+            return "Edit";
+        }
+        return "?";
+    }
+
+    private static void logMissingButtonImageOnce(String imageName) {
+        if (imageName == null || imageName.trim().isEmpty()) {
+            return;
+        }
+        String key = imageName.trim().toLowerCase();
+        if (MISSING_BUTTON_ICON_PATHS.add(key)) {
+            System.out.println("Could not create button image: " + imageName + ".png");
+        }
     }
 
     /**

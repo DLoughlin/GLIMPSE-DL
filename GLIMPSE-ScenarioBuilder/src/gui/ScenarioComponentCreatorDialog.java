@@ -162,6 +162,9 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 		double dialogWidth = lastDialogWidth;
 		double dialogHeight = lastDialogHeight;
 
+		// Tech-bound metadata is only needed by component-creator tabs, so load it lazily here.
+		files.ensureTechBoundFileContentLoaded();
+
 		hBoxButtons = createButtonHBox();
 		buttonSaveComponent = createDialogButton(BUTTON_LABEL_SAVE);
 		buttonClose = createDialogButton(BUTTON_LABEL_CLOSE);
@@ -379,6 +382,7 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 			stageWithTabs.setOnCloseRequest(null);
 			stageWithTabs = null;
 		}
+		files.clearTechBoundFileContentCache();
 	}
 
 	private PolicyTab getTabByName(String tabName) {

@@ -36,7 +36,12 @@
 package glimpseElement;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.controlsfx.control.CheckComboBox;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
@@ -108,8 +113,37 @@ public class TabCafeStd extends PolicyTab implements Runnable {
             "Initial w/% Growth/pd", "Initial w/Delta/yr", "Initial w/Delta/pd"
     };
     //private static final String HEADER_PART1 = "GLIMPSECAFETargets";
-    private static final String HEADER_PART1 = "GLIMPSECAFETargets-update";
-    private static final String HEADER_PART2 = "GLIMPSEPFStdActivate";
+    private static final String HEADER_PART1 =
+    	    "GLIMPSECAFETargets-update";//, "
+//    	    + "world/+{name;nocreate=1}region, "
+//    	    + "region/+{name;nocreate=1}supplysector, "
+//    	    + "supplysector/+{name;nocreate=1}tranSubsector, "
+//    	    + "tranSubsector/+{name;nocreate=1}tranTechnology, "
+//    	    + "tranTechnology/+{year}period, "
+//    	    + "period/+{name}input-tax, "
+//    	    + "input-tax/+current-coef, "
+//    	    + "scenario, scenario/world";
+    private static final String HEADER_PART2 =
+    	    "GLIMPSECAFETargetsPolicy-update";//, "
+//    	    + "world/+{name;nocreate=1}region, "
+//    	    + "region/+{name}policy-portfolio-standard, "
+//    	    + "policy-portfolio-standard/+market, "
+//    	    + "policy-portfolio-standard/+policyType, "
+//    	    + "policy-portfolio-standard/+{year}constraint, "
+//    	    + "constraint, "
+//    	    + "scenario, scenario/world";
+
+	private static final String HEADER_PART1_TAX =
+		    "GLIMPSECAFETargetsTax-update";
+	private static final String HEADER_PART1_SUBSIDY =
+		    "GLIMPSECAFETargetsSubsidy-update";
+	
+	private static final String HEADER_TAX_1SIDE_PART1 = "GLIMPSECAFETargetsTax-1side";
+	private static final String HEADER_TAX_1SIDE_PART2 = "GLIMPSECAFETargetsPolicyTax-1side";
+	private static final String HEADER_TAXSUBSIDY_2SIDE_PART1 = "GLIMPSECAFETargetsTax-2side";
+	private static final String HEADER_TAXSUBSIDY_2SIDE_PART2 = "GLIMPSECAFETargetsSubsidy-2side";
+	private static final String HEADER_TAXSUBSIDY_2SIDE_PART3 = "GLIMPSECAFETargetsPolicyTax-2side";
+	
     private static final String INPUT_TABLE = "INPUT_TABLE";
     private static final String VARIABLE_ID = "Variable ID";
     private static final String NO_MATCH = "No match";
@@ -386,13 +420,691 @@ public class TabCafeStd extends PolicyTab implements Runnable {
      */
     @Override
     public void saveScenarioComponent() {
-        saveScenarioComponent(paneForCountryStateTree.getTree());
+        saveScenarioComponentAlt7(paneForCountryStateTree.getTree());
     }
 
-	private void saveScenarioComponentOld(TreeView<String> tree) {
+private void saveScenarioComponentAlt1(TreeView<String> tree) {
+    if (!qaInputs()) {
+        return;
+    }
 
-		String filename_suggestion;
-		String file_content;
+    final String idSuffix = checkBoxUseUniqueNames.isSelected()
+        ? utils.getUniqueString()
+        : "";
+
+    final String basePolicyName = textFieldPolicyName.getText();
+    final String baseMarketName = textFieldMarketName.getText();
+
+    final String policyName = basePolicyName + idSuffix;
+    final String marketName = baseMarketName + idSuffix;
+    final boolean newSalesMode = isNewSalesMode();
+
+    // ---------------------------------------------------------------------
+    // This implementation generates a one-sided tax only.
+    //
+    // Assumptions:
+    // - intensity values from trn_veh_info_8.5.csv are on a vehicle-distance
+    //   basis and can be compared directly to a target intensity derived from
+    //   MPGe:
+    //
+    //       targetIntensityVehicle = gjPerGal / (kmPerMile * targetMPGe)
+    //
+    // - tax is only applied to technologies worse than the target:
+    //
+    //       rawGap = techIntensityVehicle - targetIntensityVehicle
+    //
+    // - the written tax coefficient is load-adjusted:
+    //
+    //       taxCoefficient = rawGap / load
+    //
+    // CSV part 1 row shape:
+    //   region,sector,subsector,tech,year,input-tax-name,current-coef
+    //
+    // CSV part 2 row shape:
+    //   region,policy-name,market-name,policy-type,year,constraint
+    //
+    // IMPORTANT:
+    // HEADER_PART1 and HEADER_PART2 must match these row widths.
+    // ---------------------------------------------------------------------
+
+    filenameSuggestion = basePolicyName.replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
+    fileContent = getMetaDataContent(tree, marketName, policyName);
+
+    // ---------------------------------------------------------------------
+    // Part 1: technology tax rows
+    // ---------------------------------------------------------------------
+    StringBuilder contentP1 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+        .append(VARIABLE_ID).append(vars.getEol())
+        .append(HEADER_TAX_1SIDE_PART1).append(vars.getEol()).append(vars.getEol())
+        .append("region,sector,subsector,tech,year,input-tax-name,current-coef")
+        .append(vars.getEol());
+
+    // ---------------------------------------------------------------------
+    // Part 2: policy rows
+    // ---------------------------------------------------------------------
+    StringBuilder contentP2 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+        .append(VARIABLE_ID).append(vars.getEol())
+        .append(HEADER_TAX_1SIDE_PART2).append(vars.getEol()).append(vars.getEol())
+        .append("region,policy-name,market-name,policy-type,year,constraint")
+        .append(vars.getEol());
+
+    final String[] selectedRegions = utils.removeUSADuplicate(utils.getAllSelectedRegions(tree));
+    final ArrayList<String> targetTableRows = paneForComponentDetails.getDataYrValsArrayList();
+
+    final double gjPerGal = 0.1203;
+    final double kmPerMile = 1.61;
+
+    int skippedInvalidRows = 0;
+    int writtenConstraintRows = 0;
+
+    Map<String, Integer> rowsPerTargetYear = new LinkedHashMap<>();
+    Map<String, Integer> rowsPerModelYear = new LinkedHashMap<>();
+    Map<String, Integer> taxedTechsPerYear = new LinkedHashMap<>();
+
+    System.out.println("======================================================");
+    System.out.println("Generating MPG Target Scenario Component (one-sided tax + load adjustment)");
+    System.out.println("Policy name base: " + basePolicyName);
+    System.out.println("Market name base: " + baseMarketName);
+    System.out.println("Policy name final: " + policyName);
+    System.out.println("Market name final: " + marketName);
+    System.out.println("Use unique names: " + checkBoxUseUniqueNames.isSelected());
+    System.out.println("New sales mode: " + newSalesMode);
+    System.out.println("Intensity basis assumption: vehicle-distance based");
+    System.out.println("Tax coefficient adjustment: divide rawGap by load");
+    System.out.println("======================================================");
+
+    for (String region : selectedRegions) {
+        final String subsector = comboBoxSubsector.getValue();
+        final String sector =
+            (subsector.equals("Light Truck") || subsector.equals("Medium Truck") || subsector.equals("Heavy Truck"))
+                ? "trn_freight_road"
+                : "trn_pass_road_LDV_4W";
+
+        for (String tableRow : targetTableRows) {
+            String[] split = utils.splitString(tableRow.replaceAll(" ", "").trim(), ",");
+            if (split == null || split.length < 2) {
+                skippedInvalidRows++;
+                continue;
+            }
+
+            final String targetYearStr = split[0];
+            final Integer targetYearParsed = safeParseInt(targetYearStr);
+            final Double targetValueParsed = safeParseDouble(split[1]);
+
+            if (targetYearParsed == null || targetValueParsed == null) {
+                skippedInvalidRows++;
+                continue;
+            }
+
+            final int targetYear = targetYearParsed;
+            final double targetMPGe = targetValueParsed;
+
+            if (targetMPGe <= 0.0 || !Double.isFinite(targetMPGe)) {
+                skippedInvalidRows++;
+                continue;
+            }
+
+            final String taxPolicyKey = getPolicyKeyForTargetYear(policyName + "_tax", targetYearStr, newSalesMode);
+            final String taxMarketKey = getMarketKeyForTargetYear(marketName + "_tax", taxPolicyKey, targetYearStr, newSalesMode);
+
+            boolean taxActivationWritten = false;
+
+            final double targetIntensityVehicle = gjPerGal / (kmPerMile * targetMPGe);
+
+            System.out.println();
+            System.out.println("------------------------------------------------------");
+            System.out.println("Region: " + region);
+            System.out.println("Subsector: " + subsector);
+            System.out.println("Target year: " + targetYear);
+            System.out.println("Target MPGe: " + targetMPGe);
+            System.out.println("Tax policy: " + taxPolicyKey);
+            System.out.println("Tax market: " + taxMarketKey);
+            System.out.println("Target intensity (vehicle basis): " + targetIntensityVehicle);
+            System.out.println("------------------------------------------------------");
+
+            for (Integer modelYear : vars.getAllowablePolicyYears()) {
+                final boolean applyThisTarget;
+                if (newSalesMode) {
+                    applyThisTarget = (modelYear == targetYear);
+                } else {
+                    applyThisTarget = shouldApplyTargetToModelYear(false, modelYear, targetYear);
+                }
+
+                System.out.println(
+                    "Target-year applicability => " +
+                    "targetYear=" + targetYear +
+                    ", modelYear=" + modelYear +
+                    ", newSalesMode=" + newSalesMode +
+                    ", apply=" + applyThisTarget
+                );
+
+                if (!applyThisTarget) {
+                    continue;
+                }
+
+                final String modelYearStr = Integer.toString(modelYear);
+                final ObservableList<String> techList = checkComboBoxTech.getCheckModel().getCheckedItems();
+
+                for (String tech : techList) {
+                    final String intensityStr = utils.getTrnVehInfo("intensity", region, sector, subsector, tech, modelYearStr);
+                    final String loadStr = utils.getTrnVehInfo("load", region, sector, subsector, tech, modelYearStr);
+
+                    if (intensityStr == null) {
+                        skippedInvalidRows++;
+                        System.out.println("Skipping row due to missing intensity metadata:"
+                            + " region=" + region
+                            + ", sector=" + sector
+                            + ", subsector=" + subsector
+                            + ", tech=" + tech
+                            + ", year=" + modelYearStr);
+                        continue;
+                    }
+
+                    final Double rawIntensityParsed = safeParseDouble(intensityStr);
+                    final double techIntensityVehicle = (rawIntensityParsed != null) ? rawIntensityParsed : Double.NaN;
+
+                    if (!Double.isFinite(techIntensityVehicle) || techIntensityVehicle <= 0.0) {
+                        skippedInvalidRows++;
+                        System.out.println("Skipping row due to invalid intensity:"
+                            + " region=" + region
+                            + ", sector=" + sector
+                            + ", subsector=" + subsector
+                            + ", tech=" + tech
+                            + ", year=" + modelYearStr
+                            + ", intensity=" + techIntensityVehicle);
+                        continue;
+                    }
+
+                    if (loadStr == null) {
+                        skippedInvalidRows++;
+                        System.out.println("Skipping row due to missing load metadata:"
+                            + " region=" + region
+                            + ", sector=" + sector
+                            + ", subsector=" + subsector
+                            + ", tech=" + tech
+                            + ", year=" + modelYearStr);
+                        continue;
+                    }
+
+                    final Double loadParsed = safeParseDouble(loadStr);
+                    final double load = (loadParsed != null) ? loadParsed : Double.NaN;
+
+                    if (!Double.isFinite(load) || load <= 0.0) {
+                        skippedInvalidRows++;
+                        System.out.println("Skipping row due to invalid load:"
+                            + " region=" + region
+                            + ", sector=" + sector
+                            + ", subsector=" + subsector
+                            + ", tech=" + tech
+                            + ", year=" + modelYearStr
+                            + ", load=" + load);
+                        continue;
+                    }
+
+                    final double rawGap = techIntensityVehicle - targetIntensityVehicle;
+
+                    final double techBackConvertedMPGeVehicle =
+                        gjPerGal / (kmPerMile * techIntensityVehicle);
+
+                    final double targetBackConvertedMPGeVehicle =
+                        gjPerGal / (kmPerMile * targetIntensityVehicle);
+
+                    System.out.println(
+                        "Tech debug => " +
+                        "region=" + region +
+                        ", subsector=" + subsector +
+                        ", tech=" + tech +
+                        ", targetYear=" + targetYearStr +
+                        ", modelYear=" + modelYearStr +
+                        ", load=" + load +
+                        ", techIntensityVehicle=" + techIntensityVehicle +
+                        ", targetIntensityVehicle=" + targetIntensityVehicle +
+                        ", rawGap(tech-target)=" + rawGap +
+                        ", loadAdjustedTaxGap=" + (rawGap / load) +
+                        ", techBackConvertedMPGeVehicle=" + techBackConvertedMPGeVehicle +
+                        ", targetBackConvertedMPGeVehicle=" + targetBackConvertedMPGeVehicle
+                    );
+
+                    if (rawGap > 0.0) {
+                        final double taxCoefficient = rawGap / load;
+
+                        contentP1.append(region).append(",")
+                            .append(sector).append(",")
+                            .append(subsector).append(",")
+                            .append(tech).append(",")
+                            .append(modelYearStr).append(",")
+                            .append(taxPolicyKey).append(",")
+                            .append(taxCoefficient)
+                            .append(vars.getEol());
+
+                        writtenConstraintRows++;
+                        rowsPerTargetYear.put(targetYearStr, rowsPerTargetYear.getOrDefault(targetYearStr, 0) + 1);
+                        rowsPerModelYear.put(modelYearStr, rowsPerModelYear.getOrDefault(modelYearStr, 0) + 1);
+                        taxedTechsPerYear.put(targetYearStr, taxedTechsPerYear.getOrDefault(targetYearStr, 0) + 1);
+
+                        if (!taxActivationWritten) {
+                            contentP2.append(region).append(",")
+                                .append(taxPolicyKey).append(",")
+                                .append(taxMarketKey).append(",")
+                                .append("tax").append(",")
+                                .append(targetYearStr).append(",")
+                                .append("1")
+                                .append(vars.getEol());
+
+                            taxActivationWritten = true;
+                        }
+                    } else {
+                        System.out.println("No tax row written; tech is at or better than target:"
+                            + " tech=" + tech
+                            + ", modelYear=" + modelYearStr);
+                    }
+                }
+            }
+        }
+    }
+
+    if (writtenConstraintRows == 0) {
+        utils.warningMessage(
+            "No valid one-sided tax rows were generated.\n" +
+            "Please verify target values and transport intensity/load metadata."
+        );
+        return;
+    }
+
+    if (skippedInvalidRows > 0) {
+        System.out.println("Skipped invalid one-sided tax rows: " + skippedInvalidRows);
+    }
+
+    fileContent += contentP1.toString() + vars.getEol() + contentP2.toString();
+
+    System.out.println("======================================================");
+    System.out.println("Finished generating MPG Target Scenario Component (one-sided tax + load adjustment)");
+    System.out.println("Written constraint rows: " + writtenConstraintRows);
+    System.out.println("Skipped invalid rows: " + skippedInvalidRows);
+
+    System.out.println("--- Rows per target year ---");
+    for (Map.Entry<String, Integer> e : rowsPerTargetYear.entrySet()) {
+        System.out.println("targetYear=" + e.getKey() + ", rows=" + e.getValue());
+    }
+
+    System.out.println("--- Rows per model year ---");
+    for (Map.Entry<String, Integer> e : rowsPerModelYear.entrySet()) {
+        System.out.println("modelYear=" + e.getKey() + ", rows=" + e.getValue());
+    }
+
+    System.out.println("--- Taxed technologies per target year ---");
+    for (Map.Entry<String, Integer> e : taxedTechsPerYear.entrySet()) {
+        System.out.println("targetYear=" + e.getKey() + ", taxedTechCount=" + e.getValue());
+    }
+
+    System.out.println("======================================================");
+}
+
+private void saveScenarioComponentAlt2(TreeView<String> tree) {
+    if (!qaInputs()) {
+        return;
+    }
+
+    final String idSuffix = checkBoxUseUniqueNames.isSelected()
+        ? utils.getUniqueString()
+        : "";
+
+    final String basePolicyName = textFieldPolicyName.getText();
+    final String baseMarketName = textFieldMarketName.getText();
+
+    final String policyName = basePolicyName + idSuffix;
+    final String marketName = baseMarketName + idSuffix;
+    final boolean newSalesMode = isNewSalesMode();
+
+    // ---------------------------------------------------------------------
+    // This implementation generates a two-sided tax/subsidy structure.
+    //
+    // Assumptions:
+    // - intensity values from trn_veh_info_8.5.csv are on a vehicle-distance
+    //   basis and can be compared directly to a target intensity derived from
+    //   MPGe:
+    //
+    //       targetIntensityVehicle = gjPerGal / (kmPerMile * targetMPGe)
+    //
+    // - the comparison to determine whether a technology is above or below
+    //   the target is done on the vehicle basis:
+    //
+    //       rawGap = techIntensityVehicle - targetIntensityVehicle
+    //
+    // - the written tax/subsidy coefficient is load-adjusted:
+    //
+    //       adjustedCoefficient = abs(rawGap) / load
+    //
+    // CSV part 1a row shape (tax rows):
+    //   region,sector,subsector,tech,year,input-tax-name,current-coef
+    //
+    // CSV part 1b row shape (subsidy rows):
+    //   region,sector,subsector,tech,year,input-subsidy-name,current-coef
+    //
+    // CSV part 2 row shape:
+    //   region,policy-name,market-name,policy-type,year,constraint
+    //
+    // IMPORTANT:
+    // HEADER_PART1_TAX, HEADER_PART1_SUBSIDY, and HEADER_PART2 must match
+    // these row widths.
+    // ---------------------------------------------------------------------
+
+    filenameSuggestion = basePolicyName.replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
+    fileContent = getMetaDataContent(tree, marketName, policyName);
+
+    // ---------------------------------------------------------------------
+    // Part 1a: technology tax rows
+    // ---------------------------------------------------------------------
+    StringBuilder contentTax = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+        .append(VARIABLE_ID).append(vars.getEol())
+        .append(HEADER_TAXSUBSIDY_2SIDE_PART1).append(vars.getEol()).append(vars.getEol())
+        .append("region,sector,subsector,tech,year,input-tax-name,current-coef")
+        .append(vars.getEol());
+
+    // ---------------------------------------------------------------------
+    // Part 1b: technology subsidy rows
+    // ---------------------------------------------------------------------
+    StringBuilder contentSubsidy = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+        .append(VARIABLE_ID).append(vars.getEol())
+        .append(HEADER_TAXSUBSIDY_2SIDE_PART2).append(vars.getEol()).append(vars.getEol())
+        .append("region,sector,subsector,tech,year,input-subsidy-name,current-coef")
+        .append(vars.getEol());
+
+    // ---------------------------------------------------------------------
+    // Part 2: policy rows
+    // ---------------------------------------------------------------------
+    StringBuilder contentPolicy = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+        .append(VARIABLE_ID).append(vars.getEol())
+        .append(HEADER_TAXSUBSIDY_2SIDE_PART3).append(vars.getEol()).append(vars.getEol())
+        .append("region,policy-name,market-name,policy-type,year,constraint")
+        .append(vars.getEol());
+
+    final String[] selectedRegions = utils.removeUSADuplicate(utils.getAllSelectedRegions(tree));
+    final ArrayList<String> targetTableRows = paneForComponentDetails.getDataYrValsArrayList();
+
+    final double gjPerGal = 0.1203;
+    final double kmPerMile = 1.61;
+
+    int skippedInvalidRows = 0;
+    int writtenTaxRows = 0;
+    int writtenSubsidyRows = 0;
+
+    Map<String, Integer> taxRowsPerTargetYear = new LinkedHashMap<>();
+    Map<String, Integer> subsidyRowsPerTargetYear = new LinkedHashMap<>();
+    Map<String, Integer> totalRowsPerModelYear = new LinkedHashMap<>();
+
+    System.out.println("======================================================");
+    System.out.println("Generating MPG Target Scenario Component (two-sided tax/subsidy + load adjustment)");
+    System.out.println("Policy name base: " + basePolicyName);
+    System.out.println("Market name base: " + baseMarketName);
+    System.out.println("Policy name final: " + policyName);
+    System.out.println("Market name final: " + marketName);
+    System.out.println("Use unique names: " + checkBoxUseUniqueNames.isSelected());
+    System.out.println("New sales mode: " + newSalesMode);
+    System.out.println("Intensity basis assumption: vehicle-distance based");
+    System.out.println("Coefficient adjustment: divide abs(rawGap) by load");
+    System.out.println("======================================================");
+
+    for (String region : selectedRegions) {
+        final String subsector = comboBoxSubsector.getValue();
+        final String sector =
+            (subsector.equals("Light Truck") || subsector.equals("Medium Truck") || subsector.equals("Heavy Truck"))
+                ? "trn_freight_road"
+                : "trn_pass_road_LDV_4W";
+
+        for (String tableRow : targetTableRows) {
+            String[] split = utils.splitString(tableRow.replaceAll(" ", "").trim(), ",");
+            if (split == null || split.length < 2) {
+                skippedInvalidRows++;
+                continue;
+            }
+
+            final String targetYearStr = split[0];
+            final Integer targetYearParsed = safeParseInt(targetYearStr);
+            final Double targetValueParsed = safeParseDouble(split[1]);
+
+            if (targetYearParsed == null || targetValueParsed == null) {
+                skippedInvalidRows++;
+                continue;
+            }
+
+            final int targetYear = targetYearParsed;
+            final double targetMPGe = targetValueParsed;
+
+            if (targetMPGe <= 0.0 || !Double.isFinite(targetMPGe)) {
+                skippedInvalidRows++;
+                continue;
+            }
+
+            final String taxPolicyKey = getPolicyKeyForTargetYear(policyName + "_tax", targetYearStr, newSalesMode);
+            final String taxMarketKey = getMarketKeyForTargetYear(marketName + "_tax", taxPolicyKey, targetYearStr, newSalesMode);
+
+            final String subsidyPolicyKey = getPolicyKeyForTargetYear(policyName + "_subsidy", targetYearStr, newSalesMode);
+            final String subsidyMarketKey = getMarketKeyForTargetYear(marketName + "_subsidy", subsidyPolicyKey, targetYearStr, newSalesMode);
+
+            boolean taxActivationWritten = false;
+            boolean subsidyActivationWritten = false;
+
+            final double targetIntensityVehicle = gjPerGal / (kmPerMile * targetMPGe);
+
+            System.out.println();
+            System.out.println("------------------------------------------------------");
+            System.out.println("Region: " + region);
+            System.out.println("Subsector: " + subsector);
+            System.out.println("Target year: " + targetYear);
+            System.out.println("Target MPGe: " + targetMPGe);
+            System.out.println("Tax policy: " + taxPolicyKey);
+            System.out.println("Tax market: " + taxMarketKey);
+            System.out.println("Subsidy policy: " + subsidyPolicyKey);
+            System.out.println("Subsidy market: " + subsidyMarketKey);
+            System.out.println("Target intensity (vehicle basis): " + targetIntensityVehicle);
+            System.out.println("------------------------------------------------------");
+
+            for (Integer modelYear : vars.getAllowablePolicyYears()) {
+                final boolean applyThisTarget;
+                if (newSalesMode) {
+                    applyThisTarget = (modelYear == targetYear);
+                } else {
+                    applyThisTarget = shouldApplyTargetToModelYear(false, modelYear, targetYear);
+                }
+
+                System.out.println(
+                    "Target-year applicability => " +
+                    "targetYear=" + targetYear +
+                    ", modelYear=" + modelYear +
+                    ", newSalesMode=" + newSalesMode +
+                    ", apply=" + applyThisTarget
+                );
+
+                if (!applyThisTarget) {
+                    continue;
+                }
+
+                final String modelYearStr = Integer.toString(modelYear);
+                final ObservableList<String> techList = checkComboBoxTech.getCheckModel().getCheckedItems();
+
+                for (String tech : techList) {
+                    final String intensityStr = utils.getTrnVehInfo("intensity", region, sector, subsector, tech, modelYearStr);
+                    final String loadStr = utils.getTrnVehInfo("load", region, sector, subsector, tech, modelYearStr);
+
+                    if (intensityStr == null) {
+                        skippedInvalidRows++;
+                        System.out.println("Skipping row due to missing intensity metadata:"
+                            + " region=" + region
+                            + ", sector=" + sector
+                            + ", subsector=" + subsector
+                            + ", tech=" + tech
+                            + ", year=" + modelYearStr);
+                        continue;
+                    }
+
+                    final Double rawIntensityParsed = safeParseDouble(intensityStr);
+                    final double techIntensityVehicle = (rawIntensityParsed != null) ? rawIntensityParsed : Double.NaN;
+
+                    if (!Double.isFinite(techIntensityVehicle) || techIntensityVehicle <= 0.0) {
+                        skippedInvalidRows++;
+                        System.out.println("Skipping row due to invalid intensity:"
+                            + " region=" + region
+                            + ", sector=" + sector
+                            + ", subsector=" + subsector
+                            + ", tech=" + tech
+                            + ", year=" + modelYearStr
+                            + ", intensity=" + techIntensityVehicle);
+                        continue;
+                    }
+
+                    if (loadStr == null) {
+                        skippedInvalidRows++;
+                        System.out.println("Skipping row due to missing load metadata:"
+                            + " region=" + region
+                            + ", sector=" + sector
+                            + ", subsector=" + subsector
+                            + ", tech=" + tech
+                            + ", year=" + modelYearStr);
+                        continue;
+                    }
+
+                    final Double loadParsed = safeParseDouble(loadStr);
+                    final double load = (loadParsed != null) ? loadParsed : Double.NaN;
+
+                    if (!Double.isFinite(load) || load <= 0.0) {
+                        skippedInvalidRows++;
+                        System.out.println("Skipping row due to invalid load:"
+                            + " region=" + region
+                            + ", sector=" + sector
+                            + ", subsector=" + subsector
+                            + ", tech=" + tech
+                            + ", year=" + modelYearStr
+                            + ", load=" + load);
+                        continue;
+                    }
+
+                    final double rawGap = techIntensityVehicle - targetIntensityVehicle;
+                    final double adjustedGap = Math.abs(rawGap) / load;
+
+                    final double techBackConvertedMPGeVehicle =
+                        gjPerGal / (kmPerMile * techIntensityVehicle);
+
+                    final double targetBackConvertedMPGeVehicle =
+                        gjPerGal / (kmPerMile * targetIntensityVehicle);
+
+                    System.out.println(
+                        "Tech debug => " +
+                        "region=" + region +
+                        ", subsector=" + subsector +
+                        ", tech=" + tech +
+                        ", targetYear=" + targetYearStr +
+                        ", modelYear=" + modelYearStr +
+                        ", load=" + load +
+                        ", techIntensityVehicle=" + techIntensityVehicle +
+                        ", targetIntensityVehicle=" + targetIntensityVehicle +
+                        ", rawGap(tech-target)=" + rawGap +
+                        ", loadAdjustedAbsGap=" + adjustedGap +
+                        ", techBackConvertedMPGeVehicle=" + techBackConvertedMPGeVehicle +
+                        ", targetBackConvertedMPGeVehicle=" + targetBackConvertedMPGeVehicle
+                    );
+
+                    if (rawGap > 0.0) {
+                        contentTax.append(region).append(",")
+                            .append(sector).append(",")
+                            .append(subsector).append(",")
+                            .append(tech).append(",")
+                            .append(modelYearStr).append(",")
+                            .append(taxPolicyKey).append(",")
+                            .append(adjustedGap)
+                            .append(vars.getEol());
+
+                        writtenTaxRows++;
+                        taxRowsPerTargetYear.put(targetYearStr, taxRowsPerTargetYear.getOrDefault(targetYearStr, 0) + 1);
+                        totalRowsPerModelYear.put(modelYearStr, totalRowsPerModelYear.getOrDefault(modelYearStr, 0) + 1);
+
+                        if (!taxActivationWritten) {
+                            contentPolicy.append(region).append(",")
+                                .append(taxPolicyKey).append(",")
+                                .append(taxMarketKey).append(",")
+                                .append("tax").append(",")
+                                .append(targetYearStr).append(",")
+                                .append("1")
+                                .append(vars.getEol());
+                            taxActivationWritten = true;
+                        }
+                    } else if (rawGap < 0.0) {
+                        contentSubsidy.append(region).append(",")
+                            .append(sector).append(",")
+                            .append(subsector).append(",")
+                            .append(tech).append(",")
+                            .append(modelYearStr).append(",")
+                            .append(subsidyPolicyKey).append(",")
+                            .append(adjustedGap)
+                            .append(vars.getEol());
+
+                        writtenSubsidyRows++;
+                        subsidyRowsPerTargetYear.put(targetYearStr, subsidyRowsPerTargetYear.getOrDefault(targetYearStr, 0) + 1);
+                        totalRowsPerModelYear.put(modelYearStr, totalRowsPerModelYear.getOrDefault(modelYearStr, 0) + 1);
+
+                        if (!subsidyActivationWritten) {
+                            contentPolicy.append(region).append(",")
+                                .append(subsidyPolicyKey).append(",")
+                                .append(subsidyMarketKey).append(",")
+                                .append("subsidy").append(",")
+                                .append(targetYearStr).append(",")
+                                .append("1")
+                                .append(vars.getEol());
+                            subsidyActivationWritten = true;
+                        }
+                    } else {
+                        System.out.println("No row written; tech is exactly at target:"
+                            + " tech=" + tech
+                            + ", modelYear=" + modelYearStr);
+                    }
+                }
+            }
+        }
+    }
+
+    if (writtenTaxRows == 0 && writtenSubsidyRows == 0) {
+        utils.warningMessage(
+            "No valid two-sided tax/subsidy rows were generated.\n" +
+            "Please verify target values and transport intensity/load metadata."
+        );
+        return;
+    }
+
+    if (skippedInvalidRows > 0) {
+        System.out.println("Skipped invalid two-sided rows: " + skippedInvalidRows);
+    }
+
+    fileContent += contentTax.toString()
+        + vars.getEol()
+        + contentSubsidy.toString()
+        + vars.getEol()
+        + contentPolicy.toString();
+
+    System.out.println("======================================================");
+    System.out.println("Finished generating MPG Target Scenario Component (two-sided tax/subsidy + load adjustment)");
+    System.out.println("Written tax rows: " + writtenTaxRows);
+    System.out.println("Written subsidy rows: " + writtenSubsidyRows);
+    System.out.println("Skipped invalid rows: " + skippedInvalidRows);
+
+    System.out.println("--- Tax rows per target year ---");
+    for (Map.Entry<String, Integer> e : taxRowsPerTargetYear.entrySet()) {
+        System.out.println("targetYear=" + e.getKey() + ", taxRows=" + e.getValue());
+    }
+
+    System.out.println("--- Subsidy rows per target year ---");
+    for (Map.Entry<String, Integer> e : subsidyRowsPerTargetYear.entrySet()) {
+        System.out.println("targetYear=" + e.getKey() + ", subsidyRows=" + e.getValue());
+    }
+
+    System.out.println("--- Total rows per model year ---");
+    for (Map.Entry<String, Integer> e : totalRowsPerModelYear.entrySet()) {
+        System.out.println("modelYear=" + e.getKey() + ", totalRows=" + e.getValue());
+    }
+
+    System.out.println("======================================================");
+}
+    
+	private void saveScenarioComponentOld(TreeView<String> tree) {
 		
 		if (!qaInputs()) {
 			Thread.currentThread().destroy();
@@ -404,10 +1116,10 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 			String ID = utils.getUniqueString();
 			String policy_name = this.textFieldPolicyName.getText() + ID;
 			String market_name = this.textFieldMarketName.getText() + ID;
-			filename_suggestion = this.textFieldPolicyName.getText().replaceAll("/", "-").replaceAll(" ", "_") + ".csv";
+			filenameSuggestion = this.textFieldPolicyName.getText().replaceAll("/", "-").replaceAll(" ", "_") + ".csv";
 
 			//clearing info to save to file
-			file_content = this.getMetaDataContent(tree, market_name, policy_name);
+			fileContent = this.getMetaDataContent(tree, market_name, policy_name);
 			String content_p1="";
 			String content_p2="";
 
@@ -499,21 +1211,2151 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 					}
 				}
 
-				file_content+=content_p1+ vars.getEol();
-				file_content+=content_p2;
+				fileContent+=content_p1+ vars.getEol();
+				fileContent+=content_p2;
 
 			System.out.println("Done");
 			}}
 
 	}
     
+	private void saveScenarioComponentAlt3(TreeView<String> tree) {
+	    if (!qaInputs()) {
+	        return;
+	    }
+
+	    final String idSuffix = checkBoxUseUniqueNames.isSelected()
+	        ? utils.getUniqueString()
+	        : "";
+
+	    final String basePolicyName = textFieldPolicyName.getText();
+	    final String baseMarketName = textFieldMarketName.getText();
+
+	    final String policyName = basePolicyName + idSuffix;
+	    final String marketName = baseMarketName + idSuffix;
+	    final boolean newSalesMode = isNewSalesMode();
+
+	    filenameSuggestion = basePolicyName.replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
+	    fileContent = getMetaDataContent(tree, marketName, policyName);
+
+	    // ---------------------------------------------------------------------
+	    // PART 1:
+	    // Technology rows. These now use input-tax or input-subsidy rather than
+	    // minicam-energy-input + res-secondary-output.
+	    //
+	    // PART 2:
+	    // Policy activation rows. We create separate tax and subsidy markets.
+	    // ---------------------------------------------------------------------
+	    StringBuilder contentP1 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+	        .append(VARIABLE_ID).append(vars.getEol())
+	        .append(HEADER_PART1).append(vars.getEol()).append(vars.getEol())
+	        .append("region,sector,subsector,tech,year,input-type,input,coefficient,market-name")
+	        .append(vars.getEol());
+
+	    StringBuilder contentP2 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+	        .append(VARIABLE_ID).append(vars.getEol())
+	        .append(HEADER_PART2).append(vars.getEol()).append(vars.getEol())
+	        .append("region,policy,market,type,year,constrained")
+	        .append(vars.getEol());
+
+	    final String[] selectedRegions = utils.removeUSADuplicate(utils.getAllSelectedRegions(tree));
+	    final ArrayList<String> targetTableRows = paneForComponentDetails.getDataYrValsArrayList();
+
+	    final double gj_per_gal = 0.1203; // GJ / gallon gasoline equivalent
+	    final double km_per_mile = 1.61;
+	    final double km_per_bln_km = 1e9;
+
+	    int skippedInvalidRows = 0;
+	    int writtenConstraintRows = 0;
+
+	    // Debug bookkeeping
+	    Map<String, Integer> rowsPerTargetYear = new LinkedHashMap<>();
+	    Map<String, Integer> rowsPerModelYear = new LinkedHashMap<>();
+
+	    System.out.println("======================================================");
+	    System.out.println("Generating MPG Target Scenario Component (tax/subsidy feebate style)");
+	    System.out.println("Policy name base: " + basePolicyName);
+	    System.out.println("Market name base: " + baseMarketName);
+	    System.out.println("Policy name final: " + policyName);
+	    System.out.println("Market name final: " + marketName);
+	    System.out.println("Use unique names: " + checkBoxUseUniqueNames.isSelected());
+	    System.out.println("New sales mode: " + newSalesMode);
+	    System.out.println("======================================================");
+
+	    for (String region : selectedRegions) {
+	        final String subsector = comboBoxSubsector.getValue();
+	        final String sector =
+	            (subsector.equals("Light Truck") || subsector.equals("Medium Truck") || subsector.equals("Heavy Truck"))
+	                ? "trn_freight_road"
+	                : "trn_pass_road_LDV_4W";
+
+	        for (String tableRow : targetTableRows) {
+	            String[] split = utils.splitString(tableRow.replaceAll(" ", "").trim(), ",");
+	            if (split == null || split.length < 2) {
+	                skippedInvalidRows++;
+	                continue;
+	            }
+
+	            final String targetYearStr = split[0];
+	            final Integer targetYearParsed = safeParseInt(targetYearStr);
+	            final Double targetValueParsed = safeParseDouble(split[1]);
+
+	            if (targetYearParsed == null || targetValueParsed == null) {
+	                skippedInvalidRows++;
+	                continue;
+	            }
+
+	            final int targetYear = targetYearParsed;
+	            final double targetMilesPerGal = targetValueParsed;
+
+	            if (targetMilesPerGal <= 0.0 || !Double.isFinite(targetMilesPerGal)) {
+	                skippedInvalidRows++;
+	                continue;
+	            }
+
+	            // Convert MPG target to intensity basis used for comparison.
+	            final double targetIntensity =
+	                (1.0 / targetMilesPerGal) / km_per_mile * gj_per_gal * km_per_bln_km / 1000.0;
+
+	            // Create separate policy/market names for tax and subsidy.
+	            final String taxPolicyKey = getPolicyKeyForTargetYear(policyName + "_tax", targetYearStr, newSalesMode);
+	            final String subPolicyKey = getPolicyKeyForTargetYear(policyName + "_subsidy", targetYearStr, newSalesMode);
+
+	            final String taxMarketKey = getMarketKeyForTargetYear(marketName + "_tax", taxPolicyKey, targetYearStr, newSalesMode);
+	            final String subMarketKey = getMarketKeyForTargetYear(marketName + "_subsidy", subPolicyKey, targetYearStr, newSalesMode);
+
+	            boolean taxActivationWritten = false;
+	            boolean subActivationWritten = false;
+
+	            System.out.println();
+	            System.out.println("------------------------------------------------------");
+	            System.out.println("Region: " + region);
+	            System.out.println("Subsector: " + subsector);
+	            System.out.println("Target year: " + targetYear);
+	            System.out.println("Target MPG/MPGe: " + targetMilesPerGal);
+	            System.out.println("Target intensity: " + targetIntensity);
+	            System.out.println("Tax policy: " + taxPolicyKey);
+	            System.out.println("Tax market: " + taxMarketKey);
+	            System.out.println("Subsidy policy: " + subPolicyKey);
+	            System.out.println("Subsidy market: " + subMarketKey);
+	            System.out.println("------------------------------------------------------");
+
+	            for (Integer modelYear : vars.getAllowablePolicyYears()) {
+	                final boolean applyThisTarget;
+	                if (newSalesMode) {
+	                    applyThisTarget = (modelYear == targetYear);
+	                } else {
+	                    applyThisTarget = shouldApplyTargetToModelYear(false, modelYear, targetYear);
+	                }
+
+	                System.out.println(
+	                    "Target-year applicability => " +
+	                    "targetYear=" + targetYear +
+	                    ", modelYear=" + modelYear +
+	                    ", newSalesMode=" + newSalesMode +
+	                    ", apply=" + applyThisTarget
+	                );
+
+	                if (!applyThisTarget) {
+	                    continue;
+	                }
+
+	                final String modelYearStr = Integer.toString(modelYear);
+	                final ObservableList<String> techList = checkComboBoxTech.getCheckModel().getCheckedItems();
+
+	                for (int techIndex = 0; techIndex < techList.size(); techIndex++) {
+	                    final String tech = techList.get(techIndex);
+
+	                    final String intensityStr = utils.getTrnVehInfo("intensity", region, sector, subsector, tech, modelYearStr);
+	                    if (intensityStr == null) {
+	                        skippedInvalidRows++;
+	                        System.out.println("Skipping row due to missing intensity metadata:"
+	                            + " region=" + region
+	                            + ", sector=" + sector
+	                            + ", subsector=" + subsector
+	                            + ", tech=" + tech
+	                            + ", year=" + modelYearStr);
+	                        continue;
+	                    }
+
+	                    final Double rawIntensityParsed = safeParseDouble(intensityStr);
+	                    final double rawTechIntensityGJPerMillionVkt = (rawIntensityParsed != null) ? rawIntensityParsed : 0.0;
+
+	                    if (!Double.isFinite(rawTechIntensityGJPerMillionVkt) || rawTechIntensityGJPerMillionVkt <= 0.0) {
+	                        skippedInvalidRows++;
+	                        System.out.println("Skipping row due to invalid intensity:"
+	                            + " region=" + region
+	                            + ", sector=" + sector
+	                            + ", subsector=" + subsector
+	                            + ", tech=" + tech
+	                            + ", year=" + modelYearStr
+	                            + ", rawIntensity=" + rawTechIntensityGJPerMillionVkt);
+	                        continue;
+	                    }
+
+	                    // Convert tech intensity to same exported basis as target.
+	                    final double techIntensity = rawTechIntensityGJPerMillionVkt * 1000.0;
+
+	                    // Positive => tech is worse than target => tax
+	                    // Negative => tech is better than target => subsidy
+	                    final double intensityGap = techIntensity - targetIntensity;
+
+	                    final double techBackConvertedMPG =
+	                        (techIntensity > 0.0)
+	                            ? (gj_per_gal * km_per_bln_km / 1000.0) / (techIntensity * km_per_mile)
+	                            : Double.NaN;
+
+	                    final double targetBackConvertedMPG =
+	                        (targetIntensity > 0.0)
+	                            ? (gj_per_gal * km_per_bln_km / 1000.0) / (targetIntensity * km_per_mile)
+	                            : Double.NaN;
+
+	                    System.out.println(
+	                        "Tech debug => " +
+	                        "region=" + region +
+	                        ", subsector=" + subsector +
+	                        ", tech=" + tech +
+	                        ", targetYear=" + targetYearStr +
+	                        ", modelYear=" + modelYearStr +
+	                        ", inputMPG=" + targetMilesPerGal +
+	                        ", rawIntensity(GJ/million-vkt)=" + rawTechIntensityGJPerMillionVkt +
+	                        ", techIntensity(exported)=" + techIntensity +
+	                        ", targetIntensity=" + targetIntensity +
+	                        ", intensityGap(tech-target)=" + intensityGap +
+	                        ", techBackConvertedMPG=" + techBackConvertedMPG +
+	                        ", targetBackConvertedMPG=" + targetBackConvertedMPG
+	                    );
+
+	                    // Tax side: tech worse than target.
+	                    if (intensityGap > 0.0) {
+	                        contentP1.append(region).append(",")
+	                            .append(sector).append(",")
+	                            .append(subsector).append(",")
+	                            .append(tech).append(",")
+	                            .append(modelYearStr).append(",")
+	                            .append("input-tax").append(",")
+	                            .append(taxPolicyKey).append(",")
+	                            .append(intensityGap).append(",")
+	                            .append(region)
+	                            .append(vars.getEol());
+
+	                        writtenConstraintRows++;
+	                        rowsPerTargetYear.put(targetYearStr, rowsPerTargetYear.getOrDefault(targetYearStr, 0) + 1);
+	                        rowsPerModelYear.put(modelYearStr, rowsPerModelYear.getOrDefault(modelYearStr, 0) + 1);
+
+	                        if (!taxActivationWritten) {
+	                            contentP2.append(region).append(",")
+	                                .append(taxPolicyKey).append(",")
+	                                .append(taxMarketKey).append(",tax,")
+	                                .append(targetYearStr).append(",1")
+	                                .append(vars.getEol());
+	                            taxActivationWritten = true;
+	                        }
+	                    }
+	                    // Subsidy side: tech better than target.
+	                    else if (intensityGap < 0.0) {
+	                        final double subsidyGap = -intensityGap;
+
+	                        contentP1.append(region).append(",")
+	                            .append(sector).append(",")
+	                            .append(subsector).append(",")
+	                            .append(tech).append(",")
+	                            .append(modelYearStr).append(",")
+	                            .append("input-subsidy").append(",")
+	                            .append(subPolicyKey).append(",")
+	                            .append(subsidyGap).append(",")
+	                            .append(region)
+	                            .append(vars.getEol());
+
+	                        writtenConstraintRows++;
+	                        rowsPerTargetYear.put(targetYearStr, rowsPerTargetYear.getOrDefault(targetYearStr, 0) + 1);
+	                        rowsPerModelYear.put(modelYearStr, rowsPerModelYear.getOrDefault(modelYearStr, 0) + 1);
+
+	                        if (!subActivationWritten) {
+	                            contentP2.append(region).append(",")
+	                                .append(subPolicyKey).append(",")
+	                                .append(subMarketKey).append(",subsidy,")
+	                                .append(targetYearStr).append(",1")
+	                                .append(vars.getEol());
+	                            subActivationWritten = true;
+	                        }
+	                    }
+	                    else {
+	                        System.out.println("Tech exactly at target; no tax/subsidy row written for tech=" + tech
+	                            + ", modelYear=" + modelYearStr);
+	                    }
+	                }
+	            }
+	        }
+	    }
+
+	    if (writtenConstraintRows == 0) {
+	        utils.warningMessage(
+	            "No valid feebate constraint rows were generated.\n" +
+	            "Please verify target table values and transport intensity metadata for selected years."
+	        );
+	        return;
+	    }
+
+	    if (skippedInvalidRows > 0) {
+	        System.out.println("Skipped invalid feebate rows: " + skippedInvalidRows);
+	    }
+
+	    fileContent += contentP1.toString() + vars.getEol() + contentP2.toString();
+
+	    System.out.println("======================================================");
+	    System.out.println("Finished generating MPG target scenario component (tax/subsidy feebate style)");
+	    System.out.println("Written constraint rows: " + writtenConstraintRows);
+	    System.out.println("Skipped invalid rows: " + skippedInvalidRows);
+
+	    System.out.println("--- Rows per target year ---");
+	    for (Map.Entry<String, Integer> e : rowsPerTargetYear.entrySet()) {
+	        System.out.println("targetYear=" + e.getKey() + ", rows=" + e.getValue());
+	    }
+
+	    System.out.println("--- Rows per model year ---");
+	    for (Map.Entry<String, Integer> e : rowsPerModelYear.entrySet()) {
+	        System.out.println("modelYear=" + e.getKey() + ", rows=" + e.getValue());
+	    }
+	    System.out.println("======================================================");
+	}
+
+	private void saveScenarioComponentAlt4(TreeView<String> tree) {
+	    if (!qaInputs()) {
+	        return;
+	    }
+
+	    final String idSuffix = checkBoxUseUniqueNames.isSelected()
+	        ? utils.getUniqueString()
+	        : "";
+
+	    final String basePolicyName = textFieldPolicyName.getText();
+	    final String baseMarketName = textFieldMarketName.getText();
+
+	    final String policyName = basePolicyName + idSuffix;
+	    final String marketName = baseMarketName + idSuffix;
+	    final boolean newSalesMode = isNewSalesMode();
+
+	    // ---------------------------------------------------------------------
+	    // This implementation generates a one-sided tax only.
+	    //
+	    // Assumptions:
+	    // - intensity values from trn_veh_info_8.5.csv are on a vehicle-distance
+	    //   basis
+	    // - if the user-specified MPGe target is intended to reflect passenger/
+	    //   service performance, then load should be incorporated when converting
+	    //   the target into a vehicle-basis intensity:
+	    //
+	    //       targetIntensityVehicleAdjusted =
+	    //           (gjPerGal * load) / (kmPerMile * targetMPGe)
+	    //
+	    // - tax is applied only to technologies worse than the adjusted target:
+	    //
+	    //       taxGap = techIntensityVehicle - targetIntensityVehicleAdjusted
+	    //
+	    // - no additional division by load is applied after the comparison
+	    //
+	    // CSV part 1 row shape:
+	    //   region,sector,subsector,tech,year,input-tax-name,current-coef
+	    //
+	    // CSV part 2 row shape:
+	    //   region,policy-name,market-name,policy-type,year,constraint
+	    //
+	    // IMPORTANT:
+	    // HEADER_TAX_1SIDE_PART1 and HEADER_TAX_1SIDE_PART2 must match
+	    // these row widths.
+	    // ---------------------------------------------------------------------
+
+	    filenameSuggestion = basePolicyName.replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
+	    fileContent = getMetaDataContent(tree, marketName, policyName);
+
+	    // ---------------------------------------------------------------------
+	    // Part 1: technology tax rows
+	    // ---------------------------------------------------------------------
+	    StringBuilder contentP1 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+	        .append(VARIABLE_ID).append(vars.getEol())
+	        .append(HEADER_TAX_1SIDE_PART1).append(vars.getEol()).append(vars.getEol())
+	        .append("region,sector,subsector,tech,year,input-tax-name,current-coef")
+	        .append(vars.getEol());
+
+	    // ---------------------------------------------------------------------
+	    // Part 2: policy rows
+	    // ---------------------------------------------------------------------
+	    StringBuilder contentP2 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+	        .append(VARIABLE_ID).append(vars.getEol())
+	        .append(HEADER_TAX_1SIDE_PART2).append(vars.getEol()).append(vars.getEol())
+	        .append("region,policy-name,market-name,policy-type,year,constraint")
+	        .append(vars.getEol());
+
+	    final String[] selectedRegions = utils.removeUSADuplicate(utils.getAllSelectedRegions(tree));
+	    final ArrayList<String> targetTableRows = paneForComponentDetails.getDataYrValsArrayList();
+
+	    final double gjPerGal = 0.1203;
+	    final double kmPerMile = 1.61;
+
+	    int skippedInvalidRows = 0;
+	    int writtenConstraintRows = 0;
+
+	    Map<String, Integer> rowsPerTargetYear = new LinkedHashMap<>();
+	    Map<String, Integer> rowsPerModelYear = new LinkedHashMap<>();
+	    Map<String, Integer> taxedTechsPerYear = new LinkedHashMap<>();
+
+	    System.out.println("======================================================");
+	    System.out.println("Generating MPG Target Scenario Component (one-sided tax + load in target conversion)");
+	    System.out.println("Policy name base: " + basePolicyName);
+	    System.out.println("Market name base: " + baseMarketName);
+	    System.out.println("Policy name final: " + policyName);
+	    System.out.println("Market name final: " + marketName);
+	    System.out.println("Use unique names: " + checkBoxUseUniqueNames.isSelected());
+	    System.out.println("New sales mode: " + newSalesMode);
+	    System.out.println("Intensity basis assumption: vehicle-distance based");
+	    System.out.println("Target conversion adjustment: multiply gjPerGal by load before MPGe conversion");
+	    System.out.println("======================================================");
+
+	    for (String region : selectedRegions) {
+	        final String subsector = comboBoxSubsector.getValue();
+	        final String sector =
+	            (subsector.equals("Light Truck") || subsector.equals("Medium Truck") || subsector.equals("Heavy Truck"))
+	                ? "trn_freight_road"
+	                : "trn_pass_road_LDV_4W";
+
+	        for (String tableRow : targetTableRows) {
+	            String[] split = utils.splitString(tableRow.replaceAll(" ", "").trim(), ",");
+	            if (split == null || split.length < 2) {
+	                skippedInvalidRows++;
+	                continue;
+	            }
+
+	            final String targetYearStr = split[0];
+	            final Integer targetYearParsed = safeParseInt(targetYearStr);
+	            final Double targetValueParsed = safeParseDouble(split[1]);
+
+	            if (targetYearParsed == null || targetValueParsed == null) {
+	                skippedInvalidRows++;
+	                continue;
+	            }
+
+	            final int targetYear = targetYearParsed;
+	            final double targetMPGe = targetValueParsed;
+
+	            if (targetMPGe <= 0.0 || !Double.isFinite(targetMPGe)) {
+	                skippedInvalidRows++;
+	                continue;
+	            }
+
+	            final String taxPolicyKey = getPolicyKeyForTargetYear(policyName + "_tax", targetYearStr, newSalesMode);
+	            final String taxMarketKey = getMarketKeyForTargetYear(marketName + "_tax", taxPolicyKey, targetYearStr, newSalesMode);
+
+	            boolean taxActivationWritten = false;
+
+	            System.out.println();
+	            System.out.println("------------------------------------------------------");
+	            System.out.println("Region: " + region);
+	            System.out.println("Subsector: " + subsector);
+	            System.out.println("Target year: " + targetYear);
+	            System.out.println("Target MPGe: " + targetMPGe);
+	            System.out.println("Tax policy: " + taxPolicyKey);
+	            System.out.println("Tax market: " + taxMarketKey);
+	            System.out.println("------------------------------------------------------");
+
+	            for (Integer modelYear : vars.getAllowablePolicyYears()) {
+	                final boolean applyThisTarget;
+	                if (newSalesMode) {
+	                    applyThisTarget = (modelYear == targetYear);
+	                } else {
+	                    applyThisTarget = shouldApplyTargetToModelYear(false, modelYear, targetYear);
+	                }
+
+	                System.out.println(
+	                    "Target-year applicability => " +
+	                    "targetYear=" + targetYear +
+	                    ", modelYear=" + modelYear +
+	                    ", newSalesMode=" + newSalesMode +
+	                    ", apply=" + applyThisTarget
+	                );
+
+	                if (!applyThisTarget) {
+	                    continue;
+	                }
+
+	                final String modelYearStr = Integer.toString(modelYear);
+	                final ObservableList<String> techList = checkComboBoxTech.getCheckModel().getCheckedItems();
+
+	                for (String tech : techList) {
+	                    final String intensityStr = utils.getTrnVehInfo("intensity", region, sector, subsector, tech, modelYearStr);
+	                    final String loadStr = utils.getTrnVehInfo("load", region, sector, subsector, tech, modelYearStr);
+
+	                    if (intensityStr == null) {
+	                        skippedInvalidRows++;
+	                        System.out.println("Skipping row due to missing intensity metadata:"
+	                            + " region=" + region
+	                            + ", sector=" + sector
+	                            + ", subsector=" + subsector
+	                            + ", tech=" + tech
+	                            + ", year=" + modelYearStr);
+	                        continue;
+	                    }
+
+	                    final Double rawIntensityParsed = safeParseDouble(intensityStr);
+	                    final double techIntensityVehicle = (rawIntensityParsed != null) ? rawIntensityParsed : Double.NaN;
+
+	                    if (!Double.isFinite(techIntensityVehicle) || techIntensityVehicle <= 0.0) {
+	                        skippedInvalidRows++;
+	                        System.out.println("Skipping row due to invalid intensity:"
+	                            + " region=" + region
+	                            + ", sector=" + sector
+	                            + ", subsector=" + subsector
+	                            + ", tech=" + tech
+	                            + ", year=" + modelYearStr
+	                            + ", intensity=" + techIntensityVehicle);
+	                        continue;
+	                    }
+
+	                    if (loadStr == null) {
+	                        skippedInvalidRows++;
+	                        System.out.println("Skipping row due to missing load metadata:"
+	                            + " region=" + region
+	                            + ", sector=" + sector
+	                            + ", subsector=" + subsector
+	                            + ", tech=" + tech
+	                            + ", year=" + modelYearStr);
+	                        continue;
+	                    }
+
+	                    final Double loadParsed = safeParseDouble(loadStr);
+	                    final double load = (loadParsed != null) ? loadParsed : Double.NaN;
+
+	                    if (!Double.isFinite(load) || load <= 0.0) {
+	                        skippedInvalidRows++;
+	                        System.out.println("Skipping row due to invalid load:"
+	                            + " region=" + region
+	                            + ", sector=" + sector
+	                            + ", subsector=" + subsector
+	                            + ", tech=" + tech
+	                            + ", year=" + modelYearStr
+	                            + ", load=" + load);
+	                        continue;
+	                    }
+
+	                    final double targetIntensityVehicleAdjusted =
+	                        (gjPerGal * load) / (kmPerMile * targetMPGe);
+
+	                    final double taxGap = techIntensityVehicle - targetIntensityVehicleAdjusted;
+
+	                    final double techBackConvertedMPGeVehicle =
+	                        gjPerGal / (kmPerMile * techIntensityVehicle);
+
+	                    final double targetBackConvertedMPGeVehicleNoLoad =
+	                        gjPerGal / (kmPerMile * (gjPerGal / (kmPerMile * targetMPGe)));
+
+	                    final double targetBackConvertedMPGeVehicleAdjusted =
+	                        gjPerGal / (kmPerMile * targetIntensityVehicleAdjusted);
+
+	                    System.out.println(
+	                        "Tech debug => " +
+	                        "region=" + region +
+	                        ", subsector=" + subsector +
+	                        ", tech=" + tech +
+	                        ", targetYear=" + targetYearStr +
+	                        ", modelYear=" + modelYearStr +
+	                        ", load=" + load +
+	                        ", techIntensityVehicle=" + techIntensityVehicle +
+	                        ", targetIntensityVehicleAdjusted=" + targetIntensityVehicleAdjusted +
+	                        ", taxGap(tech-targetAdjusted)=" + taxGap +
+	                        ", techBackConvertedMPGeVehicle=" + techBackConvertedMPGeVehicle +
+	                        ", targetBackConvertedMPGeVehicleNoLoad=" + targetBackConvertedMPGeVehicleNoLoad +
+	                        ", targetBackConvertedMPGeVehicleAdjusted=" + targetBackConvertedMPGeVehicleAdjusted
+	                    );
+
+	                    if (taxGap > 0.0) {
+	                        contentP1.append(region).append(",")
+	                            .append(sector).append(",")
+	                            .append(subsector).append(",")
+	                            .append(tech).append(",")
+	                            .append(modelYearStr).append(",")
+	                            .append(taxPolicyKey).append(",")
+	                            .append(taxGap)
+	                            .append(vars.getEol());
+
+	                        writtenConstraintRows++;
+	                        rowsPerTargetYear.put(targetYearStr, rowsPerTargetYear.getOrDefault(targetYearStr, 0) + 1);
+	                        rowsPerModelYear.put(modelYearStr, rowsPerModelYear.getOrDefault(modelYearStr, 0) + 1);
+	                        taxedTechsPerYear.put(targetYearStr, taxedTechsPerYear.getOrDefault(targetYearStr, 0) + 1);
+
+	                        if (!taxActivationWritten) {
+	                            contentP2.append(region).append(",")
+	                                .append(taxPolicyKey).append(",")
+	                                .append(taxMarketKey).append(",")
+	                                .append("tax").append(",")
+	                                .append(targetYearStr).append(",")
+	                                .append("1")
+	                                .append(vars.getEol());
+
+	                            taxActivationWritten = true;
+	                        }
+	                    } else {
+	                        System.out.println("No tax row written; tech is at or better than adjusted target:"
+	                            + " tech=" + tech
+	                            + ", modelYear=" + modelYearStr);
+	                    }
+	                }
+	            }
+	        }
+	    }
+
+	    if (writtenConstraintRows == 0) {
+	        utils.warningMessage(
+	            "No valid one-sided tax rows were generated.\n" +
+	            "Please verify target values and transport intensity/load metadata."
+	        );
+	        return;
+	    }
+
+	    if (skippedInvalidRows > 0) {
+	        System.out.println("Skipped invalid one-sided tax rows: " + skippedInvalidRows);
+	    }
+
+	    fileContent += contentP1.toString() + vars.getEol() + contentP2.toString();
+
+	    System.out.println("======================================================");
+	    System.out.println("Finished generating MPG Target Scenario Component (one-sided tax + load in target conversion)");
+	    System.out.println("Written constraint rows: " + writtenConstraintRows);
+	    System.out.println("Skipped invalid rows: " + skippedInvalidRows);
+
+	    System.out.println("--- Rows per target year ---");
+	    for (Map.Entry<String, Integer> e : rowsPerTargetYear.entrySet()) {
+	        System.out.println("targetYear=" + e.getKey() + ", rows=" + e.getValue());
+	    }
+
+	    System.out.println("--- Rows per model year ---");
+	    for (Map.Entry<String, Integer> e : rowsPerModelYear.entrySet()) {
+	        System.out.println("modelYear=" + e.getKey() + ", rows=" + e.getValue());
+	    }
+
+	    System.out.println("--- Taxed technologies per target year ---");
+	    for (Map.Entry<String, Integer> e : taxedTechsPerYear.entrySet()) {
+	        System.out.println("targetYear=" + e.getKey() + ", taxedTechCount=" + e.getValue());
+	    }
+
+	    System.out.println("======================================================");
+	}	
+
+	private void saveScenarioComponentAlt5(TreeView<String> tree) {
+	    if (!qaInputs()) {
+	        return;
+	    }
+
+	    final String idSuffix = checkBoxUseUniqueNames.isSelected()
+	        ? utils.getUniqueString()
+	        : "";
+
+	    final String basePolicyName = textFieldPolicyName.getText();
+	    final String baseMarketName = textFieldMarketName.getText();
+
+	    final String policyName = basePolicyName + idSuffix;
+	    final String marketName = baseMarketName + idSuffix;
+	    final boolean newSalesMode = isNewSalesMode();
+
+	    // ---------------------------------------------------------------------
+	    // This implementation generates a one-sided tax only.
+	    //
+	    // Assumptions:
+	    // - intensity values from trn_veh_info_8.5.csv are on a vehicle-distance
+	    //   basis
+	    // - the target MPGe is converted directly to a vehicle-basis intensity:
+	    //
+	    //       targetIntensityVehicle = gjPerGal / (kmPerMile * targetMPGe)
+	    //
+	    // - tax is applied only to technologies worse than the target:
+	    //
+	    //       rawGap = techIntensityVehicle - targetIntensityVehicle
+	    //
+	    // - the written tax coefficient is scaled by a tunable multiplier:
+	    //
+	    //       taxCoefficient = TAX_SCALAR * rawGap
+	    //
+	    // CSV part 1 row shape:
+	    //   region,sector,subsector,tech,year,input-tax-name,current-coef
+	    //
+	    // CSV part 2 row shape:
+	    //   region,policy-name,market-name,policy-type,year,constraint
+	    //
+	    // IMPORTANT:
+	    // HEADER_TAX_1SIDE_PART1 and HEADER_TAX_1SIDE_PART2 must match
+	    // these row widths.
+	    // ---------------------------------------------------------------------
+
+	    final double TAX_SCALAR = 0.10;
+
+	    filenameSuggestion = basePolicyName.replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
+	    fileContent = getMetaDataContent(tree, marketName, policyName);
+
+	    // ---------------------------------------------------------------------
+	    // Part 1: technology tax rows
+	    // ---------------------------------------------------------------------
+	    StringBuilder contentP1 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+	        .append(VARIABLE_ID).append(vars.getEol())
+	        .append(HEADER_TAX_1SIDE_PART1).append(vars.getEol()).append(vars.getEol())
+	        .append("region,sector,subsector,tech,year,input-tax-name,current-coef")
+	        .append(vars.getEol());
+
+	    // ---------------------------------------------------------------------
+	    // Part 2: policy rows
+	    // ---------------------------------------------------------------------
+	    StringBuilder contentP2 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+	        .append(VARIABLE_ID).append(vars.getEol())
+	        .append(HEADER_TAX_1SIDE_PART2).append(vars.getEol()).append(vars.getEol())
+	        .append("region,policy-name,market-name,policy-type,year,constraint")
+	        .append(vars.getEol());
+
+	    final String[] selectedRegions = utils.removeUSADuplicate(utils.getAllSelectedRegions(tree));
+	    final ArrayList<String> targetTableRows = paneForComponentDetails.getDataYrValsArrayList();
+
+	    final double gjPerGal = 0.1203;
+	    final double kmPerMile = 1.61;
+
+	    int skippedInvalidRows = 0;
+	    int writtenConstraintRows = 0;
+
+	    Map<String, Integer> rowsPerTargetYear = new LinkedHashMap<>();
+	    Map<String, Integer> rowsPerModelYear = new LinkedHashMap<>();
+	    Map<String, Integer> taxedTechsPerYear = new LinkedHashMap<>();
+
+	    System.out.println("======================================================");
+	    System.out.println("Generating MPG Target Scenario Component (one-sided tax + scalar)");
+	    System.out.println("Policy name base: " + basePolicyName);
+	    System.out.println("Market name base: " + baseMarketName);
+	    System.out.println("Policy name final: " + policyName);
+	    System.out.println("Market name final: " + marketName);
+	    System.out.println("Use unique names: " + checkBoxUseUniqueNames.isSelected());
+	    System.out.println("New sales mode: " + newSalesMode);
+	    System.out.println("Intensity basis assumption: vehicle-distance based");
+	    System.out.println("Tax coefficient scaling: TAX_SCALAR = " + TAX_SCALAR);
+	    System.out.println("======================================================");
+
+	    for (String region : selectedRegions) {
+	        final String subsector = comboBoxSubsector.getValue();
+	        final String sector =
+	            (subsector.equals("Light Truck") || subsector.equals("Medium Truck") || subsector.equals("Heavy Truck"))
+	                ? "trn_freight_road"
+	                : "trn_pass_road_LDV_4W";
+
+	        for (String tableRow : targetTableRows) {
+	            String[] split = utils.splitString(tableRow.replaceAll(" ", "").trim(), ",");
+	            if (split == null || split.length < 2) {
+	                skippedInvalidRows++;
+	                continue;
+	            }
+
+	            final String targetYearStr = split[0];
+	            final Integer targetYearParsed = safeParseInt(targetYearStr);
+	            final Double targetValueParsed = safeParseDouble(split[1]);
+
+	            if (targetYearParsed == null || targetValueParsed == null) {
+	                skippedInvalidRows++;
+	                continue;
+	            }
+
+	            final int targetYear = targetYearParsed;
+	            final double targetMPGe = targetValueParsed;
+
+	            if (targetMPGe <= 0.0 || !Double.isFinite(targetMPGe)) {
+	                skippedInvalidRows++;
+	                continue;
+	            }
+
+	            final String taxPolicyKey = getPolicyKeyForTargetYear(policyName + "_tax", targetYearStr, newSalesMode);
+	            final String taxMarketKey = getMarketKeyForTargetYear(marketName + "_tax", taxPolicyKey, targetYearStr, newSalesMode);
+
+	            boolean taxActivationWritten = false;
+
+	            final double targetIntensityVehicle = gjPerGal / (kmPerMile * targetMPGe);
+
+	            System.out.println();
+	            System.out.println("------------------------------------------------------");
+	            System.out.println("Region: " + region);
+	            System.out.println("Subsector: " + subsector);
+	            System.out.println("Target year: " + targetYear);
+	            System.out.println("Target MPGe: " + targetMPGe);
+	            System.out.println("Tax policy: " + taxPolicyKey);
+	            System.out.println("Tax market: " + taxMarketKey);
+	            System.out.println("Target intensity (vehicle basis): " + targetIntensityVehicle);
+	            System.out.println("------------------------------------------------------");
+
+	            for (Integer modelYear : vars.getAllowablePolicyYears()) {
+	                final boolean applyThisTarget;
+	                if (newSalesMode) {
+	                    applyThisTarget = (modelYear == targetYear);
+	                } else {
+	                    applyThisTarget = shouldApplyTargetToModelYear(false, modelYear, targetYear);
+	                }
+
+	                System.out.println(
+	                    "Target-year applicability => " +
+	                    "targetYear=" + targetYear +
+	                    ", modelYear=" + modelYear +
+	                    ", newSalesMode=" + newSalesMode +
+	                    ", apply=" + applyThisTarget
+	                );
+
+	                if (!applyThisTarget) {
+	                    continue;
+	                }
+
+	                final String modelYearStr = Integer.toString(modelYear);
+	                final ObservableList<String> techList = checkComboBoxTech.getCheckModel().getCheckedItems();
+
+	                for (String tech : techList) {
+	                    final String intensityStr = utils.getTrnVehInfo("intensity", region, sector, subsector, tech, modelYearStr);
+
+	                    if (intensityStr == null) {
+	                        skippedInvalidRows++;
+	                        System.out.println("Skipping row due to missing intensity metadata:"
+	                            + " region=" + region
+	                            + ", sector=" + sector
+	                            + ", subsector=" + subsector
+	                            + ", tech=" + tech
+	                            + ", year=" + modelYearStr);
+	                        continue;
+	                    }
+
+	                    final Double rawIntensityParsed = safeParseDouble(intensityStr);
+	                    final double techIntensityVehicle = (rawIntensityParsed != null) ? rawIntensityParsed : Double.NaN;
+
+	                    if (!Double.isFinite(techIntensityVehicle) || techIntensityVehicle <= 0.0) {
+	                        skippedInvalidRows++;
+	                        System.out.println("Skipping row due to invalid intensity:"
+	                            + " region=" + region
+	                            + ", sector=" + sector
+	                            + ", subsector=" + subsector
+	                            + ", tech=" + tech
+	                            + ", year=" + modelYearStr
+	                            + ", intensity=" + techIntensityVehicle);
+	                        continue;
+	                    }
+
+	                    final double rawGap = techIntensityVehicle - targetIntensityVehicle;
+	                    final double taxCoefficient = TAX_SCALAR * rawGap;
+
+	                    final double techBackConvertedMPGeVehicle =
+	                        gjPerGal / (kmPerMile * techIntensityVehicle);
+
+	                    final double targetBackConvertedMPGeVehicle =
+	                        gjPerGal / (kmPerMile * targetIntensityVehicle);
+
+	                    System.out.println(
+	                        "Tech debug => " +
+	                        "region=" + region +
+	                        ", subsector=" + subsector +
+	                        ", tech=" + tech +
+	                        ", targetYear=" + targetYearStr +
+	                        ", modelYear=" + modelYearStr +
+	                        ", techIntensityVehicle=" + techIntensityVehicle +
+	                        ", targetIntensityVehicle=" + targetIntensityVehicle +
+	                        ", rawGap(tech-target)=" + rawGap +
+	                        ", taxCoefficient=" + taxCoefficient +
+	                        ", techBackConvertedMPGeVehicle=" + techBackConvertedMPGeVehicle +
+	                        ", targetBackConvertedMPGeVehicle=" + targetBackConvertedMPGeVehicle
+	                    );
+
+	                    if (rawGap > 0.0) {
+	                        contentP1.append(region).append(",")
+	                            .append(sector).append(",")
+	                            .append(subsector).append(",")
+	                            .append(tech).append(",")
+	                            .append(modelYearStr).append(",")
+	                            .append(taxPolicyKey).append(",")
+	                            .append(taxCoefficient)
+	                            .append(vars.getEol());
+
+	                        writtenConstraintRows++;
+	                        rowsPerTargetYear.put(targetYearStr, rowsPerTargetYear.getOrDefault(targetYearStr, 0) + 1);
+	                        rowsPerModelYear.put(modelYearStr, rowsPerModelYear.getOrDefault(modelYearStr, 0) + 1);
+	                        taxedTechsPerYear.put(targetYearStr, taxedTechsPerYear.getOrDefault(targetYearStr, 0) + 1);
+
+	                        if (!taxActivationWritten) {
+	                            contentP2.append(region).append(",")
+	                                .append(taxPolicyKey).append(",")
+	                                .append(taxMarketKey).append(",")
+	                                .append("tax").append(",")
+	                                .append(targetYearStr).append(",")
+	                                .append("1")
+	                                .append(vars.getEol());
+
+	                            taxActivationWritten = true;
+	                        }
+	                    } else {
+	                        System.out.println("No tax row written; tech is at or better than target:"
+	                            + " tech=" + tech
+	                            + ", modelYear=" + modelYearStr);
+	                    }
+	                }
+	            }
+	        }
+	    }
+
+	    if (writtenConstraintRows == 0) {
+	        utils.warningMessage(
+	            "No valid one-sided tax rows were generated.\n" +
+	            "Please verify target values and transport intensity metadata."
+	        );
+	        return;
+	    }
+
+	    if (skippedInvalidRows > 0) {
+	        System.out.println("Skipped invalid one-sided tax rows: " + skippedInvalidRows);
+	    }
+
+	    fileContent += contentP1.toString() + vars.getEol() + contentP2.toString();
+
+	    System.out.println("======================================================");
+	    System.out.println("Finished generating MPG Target Scenario Component (one-sided tax + scalar)");
+	    System.out.println("Written constraint rows: " + writtenConstraintRows);
+	    System.out.println("Skipped invalid rows: " + skippedInvalidRows);
+
+	    System.out.println("--- Rows per target year ---");
+	    for (Map.Entry<String, Integer> e : rowsPerTargetYear.entrySet()) {
+	        System.out.println("targetYear=" + e.getKey() + ", rows=" + e.getValue());
+	    }
+
+	    System.out.println("--- Rows per model year ---");
+	    for (Map.Entry<String, Integer> e : rowsPerModelYear.entrySet()) {
+	        System.out.println("modelYear=" + e.getKey() + ", rows=" + e.getValue());
+	    }
+
+	    System.out.println("--- Taxed technologies per target year ---");
+	    for (Map.Entry<String, Integer> e : taxedTechsPerYear.entrySet()) {
+	        System.out.println("targetYear=" + e.getKey() + ", taxedTechCount=" + e.getValue());
+	    }
+
+	    System.out.println("======================================================");
+	}
+
+	private void saveScenarioComponentAlt6(TreeView<String> tree) {
+	    if (!qaInputs()) {
+	        return;
+	    }
+
+	    final String idSuffix = checkBoxUseUniqueNames.isSelected()
+	        ? utils.getUniqueString()
+	        : "";
+
+	    final String basePolicyName = textFieldPolicyName.getText();
+	    final String baseMarketName = textFieldMarketName.getText();
+
+	    final String policyName = basePolicyName + idSuffix;
+	    final String marketName = baseMarketName + idSuffix;
+	    final boolean newSalesMode = isNewSalesMode();
+
+	    // ---------------------------------------------------------------------
+	    // This implementation generates a one-sided tax only.
+	    //
+	    // Assumptions:
+	    // - intensity values from trn_veh_info_8.5.csv are on a vehicle-distance
+	    //   basis
+	    // - the target MPGe is converted directly to a vehicle-basis intensity:
+	    //
+	    //       targetIntensityVehicle = gjPerGal / (kmPerMile * targetMPGe)
+	    //
+	    // - tax is applied only to technologies worse than the target:
+	    //
+	    //       rawGap = techIntensityVehicle - targetIntensityVehicle
+	    //
+	    // - the written tax coefficient is scaled by a tunable multiplier:
+	    //
+	    //       taxCoefficient = TAX_SCALAR * rawGap
+	    //
+	    // CSV part 1 row shape:
+	    //   region,sector,subsector,tech,year,input-tax-name,current-coef
+	    //
+	    // CSV part 2 row shape:
+	    //   region,policy-name,market-name,policy-type,year,constraint
+	    //
+	    // IMPORTANT:
+	    // HEADER_TAX_1SIDE_PART1 and HEADER_TAX_1SIDE_PART2 must match
+	    // these row widths.
+	    // ---------------------------------------------------------------------
+
+	    final double TAX_SCALAR = 1e-4;
+
+	    filenameSuggestion = basePolicyName.replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
+	    fileContent = getMetaDataContent(tree, marketName, policyName);
+
+	    // ---------------------------------------------------------------------
+	    // Part 1: technology tax rows
+	    // ---------------------------------------------------------------------
+	    StringBuilder contentP1 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+	        .append(VARIABLE_ID).append(vars.getEol())
+	        .append(HEADER_TAX_1SIDE_PART1).append(vars.getEol()).append(vars.getEol())
+	        .append("region,sector,subsector,tech,year,input-tax-name,current-coef")
+	        .append(vars.getEol());
+
+	    // ---------------------------------------------------------------------
+	    // Part 2: policy rows
+	    // ---------------------------------------------------------------------
+	    StringBuilder contentP2 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+	        .append(VARIABLE_ID).append(vars.getEol())
+	        .append(HEADER_TAX_1SIDE_PART2).append(vars.getEol()).append(vars.getEol())
+	        .append("region,policy-name,market-name,policy-type,year,constraint")
+	        .append(vars.getEol());
+
+	    final String[] selectedRegions = utils.removeUSADuplicate(utils.getAllSelectedRegions(tree));
+	    final ArrayList<String> targetTableRows = paneForComponentDetails.getDataYrValsArrayList();
+
+	    final double gjPerGal = 0.1203;
+	    final double kmPerMile = 1.61;
+
+	    int skippedInvalidRows = 0;
+	    int writtenConstraintRows = 0;
+
+	    Map<String, Integer> rowsPerTargetYear = new LinkedHashMap<>();
+	    Map<String, Integer> rowsPerModelYear = new LinkedHashMap<>();
+	    Map<String, Integer> taxedTechsPerYear = new LinkedHashMap<>();
+
+	    System.out.println("======================================================");
+	    System.out.println("Generating MPG Target Scenario Component (one-sided tax + scalar)");
+	    System.out.println("Policy name base: " + basePolicyName);
+	    System.out.println("Market name base: " + baseMarketName);
+	    System.out.println("Policy name final: " + policyName);
+	    System.out.println("Market name final: " + marketName);
+	    System.out.println("Use unique names: " + checkBoxUseUniqueNames.isSelected());
+	    System.out.println("New sales mode: " + newSalesMode);
+	    System.out.println("Intensity basis assumption: vehicle-distance based");
+	    System.out.println("Tax coefficient scaling: TAX_SCALAR = " + TAX_SCALAR);
+	    System.out.println("======================================================");
+
+	    for (String region : selectedRegions) {
+	        final String subsector = comboBoxSubsector.getValue();
+	        final String sector =
+	            (subsector.equals("Light Truck") || subsector.equals("Medium Truck") || subsector.equals("Heavy Truck"))
+	                ? "trn_freight_road"
+	                : "trn_pass_road_LDV_4W";
+
+	        for (String tableRow : targetTableRows) {
+	            String[] split = utils.splitString(tableRow.replaceAll(" ", "").trim(), ",");
+	            if (split == null || split.length < 2) {
+	                skippedInvalidRows++;
+	                continue;
+	            }
+
+	            final String targetYearStr = split[0];
+	            final Integer targetYearParsed = safeParseInt(targetYearStr);
+	            final Double targetValueParsed = safeParseDouble(split[1]);
+
+	            if (targetYearParsed == null || targetValueParsed == null) {
+	                skippedInvalidRows++;
+	                continue;
+	            }
+
+	            final int targetYear = targetYearParsed;
+	            final double targetMPGe = targetValueParsed;
+
+	            if (targetMPGe <= 0.0 || !Double.isFinite(targetMPGe)) {
+	                skippedInvalidRows++;
+	                continue;
+	            }
+
+	            final String taxPolicyKey = getPolicyKeyForTargetYear(policyName + "_tax", targetYearStr, newSalesMode);
+	            final String taxMarketKey = getMarketKeyForTargetYear(marketName + "_tax", taxPolicyKey, targetYearStr, newSalesMode);
+
+	            boolean taxActivationWritten = false;
+
+	            final double targetIntensityVehicle = gjPerGal / (kmPerMile * targetMPGe);
+
+	            System.out.println();
+	            System.out.println("------------------------------------------------------");
+	            System.out.println("Region: " + region);
+	            System.out.println("Subsector: " + subsector);
+	            System.out.println("Target year: " + targetYear);
+	            System.out.println("Target MPGe: " + targetMPGe);
+	            System.out.println("Tax policy: " + taxPolicyKey);
+	            System.out.println("Tax market: " + taxMarketKey);
+	            System.out.println("Target intensity (vehicle basis): " + targetIntensityVehicle);
+	            System.out.println("------------------------------------------------------");
+
+	            for (Integer modelYear : vars.getAllowablePolicyYears()) {
+	                final boolean applyThisTarget;
+	                if (newSalesMode) {
+	                    applyThisTarget = (modelYear == targetYear);
+	                } else {
+	                    applyThisTarget = shouldApplyTargetToModelYear(false, modelYear, targetYear);
+	                }
+
+	                System.out.println(
+	                    "Target-year applicability => " +
+	                    "targetYear=" + targetYear +
+	                    ", modelYear=" + modelYear +
+	                    ", newSalesMode=" + newSalesMode +
+	                    ", apply=" + applyThisTarget
+	                );
+
+	                if (!applyThisTarget) {
+	                    continue;
+	                }
+
+	                final String modelYearStr = Integer.toString(modelYear);
+	                final ObservableList<String> techList = checkComboBoxTech.getCheckModel().getCheckedItems();
+
+	                for (String tech : techList) {
+	                    final String intensityStr = utils.getTrnVehInfo("intensity", region, sector, subsector, tech, modelYearStr);
+
+	                    if (intensityStr == null) {
+	                        skippedInvalidRows++;
+	                        System.out.println("Skipping row due to missing intensity metadata:"
+	                            + " region=" + region
+	                            + ", sector=" + sector
+	                            + ", subsector=" + subsector
+	                            + ", tech=" + tech
+	                            + ", year=" + modelYearStr);
+	                        continue;
+	                    }
+
+	                    final Double rawIntensityParsed = safeParseDouble(intensityStr);
+	                    final double techIntensityVehicle = (rawIntensityParsed != null) ? rawIntensityParsed : Double.NaN;
+
+	                    if (!Double.isFinite(techIntensityVehicle) || techIntensityVehicle <= 0.0) {
+	                        skippedInvalidRows++;
+	                        System.out.println("Skipping row due to invalid intensity:"
+	                            + " region=" + region
+	                            + ", sector=" + sector
+	                            + ", subsector=" + subsector
+	                            + ", tech=" + tech
+	                            + ", year=" + modelYearStr
+	                            + ", intensity=" + techIntensityVehicle);
+	                        continue;
+	                    }
+
+	                    final double rawGap = techIntensityVehicle - targetIntensityVehicle;
+	                    final double taxCoefficient = TAX_SCALAR * rawGap;
+
+	                    final double techBackConvertedMPGeVehicle =
+	                        gjPerGal / (kmPerMile * techIntensityVehicle);
+
+	                    final double targetBackConvertedMPGeVehicle =
+	                        gjPerGal / (kmPerMile * targetIntensityVehicle);
+
+	                    System.out.println(
+	                        "Tech debug => " +
+	                        "region=" + region +
+	                        ", subsector=" + subsector +
+	                        ", tech=" + tech +
+	                        ", targetYear=" + targetYearStr +
+	                        ", modelYear=" + modelYearStr +
+	                        ", techIntensityVehicle=" + techIntensityVehicle +
+	                        ", targetIntensityVehicle=" + targetIntensityVehicle +
+	                        ", rawGap(tech-target)=" + rawGap +
+	                        ", taxCoefficient=" + taxCoefficient +
+	                        ", techBackConvertedMPGeVehicle=" + techBackConvertedMPGeVehicle +
+	                        ", targetBackConvertedMPGeVehicle=" + targetBackConvertedMPGeVehicle
+	                    );
+
+	                    if (rawGap > 0.0) {
+	                        contentP1.append(region).append(",")
+	                            .append(sector).append(",")
+	                            .append(subsector).append(",")
+	                            .append(tech).append(",")
+	                            .append(modelYearStr).append(",")
+	                            .append(taxPolicyKey).append(",")
+	                            .append(taxCoefficient)
+	                            .append(vars.getEol());
+
+	                        writtenConstraintRows++;
+	                        rowsPerTargetYear.put(targetYearStr, rowsPerTargetYear.getOrDefault(targetYearStr, 0) + 1);
+	                        rowsPerModelYear.put(modelYearStr, rowsPerModelYear.getOrDefault(modelYearStr, 0) + 1);
+	                        taxedTechsPerYear.put(targetYearStr, taxedTechsPerYear.getOrDefault(targetYearStr, 0) + 1);
+
+	                        if (!taxActivationWritten) {
+	                            contentP2.append(region).append(",")
+	                                .append(taxPolicyKey).append(",")
+	                                .append(taxMarketKey).append(",")
+	                                .append("tax").append(",")
+	                                .append(targetYearStr).append(",")
+	                                .append("1")
+	                                .append(vars.getEol());
+
+	                            taxActivationWritten = true;
+	                        }
+	                    } else {
+	                        System.out.println("No tax row written; tech is at or better than target:"
+	                            + " tech=" + tech
+	                            + ", modelYear=" + modelYearStr);
+	                    }
+	                }
+	            }
+	        }
+	    }
+
+	    if (writtenConstraintRows == 0) {
+	        utils.warningMessage(
+	            "No valid one-sided tax rows were generated.\n" +
+	            "Please verify target values and transport intensity metadata."
+	        );
+	        return;
+	    }
+
+	    if (skippedInvalidRows > 0) {
+	        System.out.println("Skipped invalid one-sided tax rows: " + skippedInvalidRows);
+	    }
+
+	    fileContent += contentP1.toString() + vars.getEol() + contentP2.toString();
+
+	    System.out.println("======================================================");
+	    System.out.println("Finished generating MPG Target Scenario Component (one-sided tax + scalar)");
+	    System.out.println("Written constraint rows: " + writtenConstraintRows);
+	    System.out.println("Skipped invalid rows: " + skippedInvalidRows);
+
+	    System.out.println("--- Rows per target year ---");
+	    for (Map.Entry<String, Integer> e : rowsPerTargetYear.entrySet()) {
+	        System.out.println("targetYear=" + e.getKey() + ", rows=" + e.getValue());
+	    }
+
+	    System.out.println("--- Rows per model year ---");
+	    for (Map.Entry<String, Integer> e : rowsPerModelYear.entrySet()) {
+	        System.out.println("modelYear=" + e.getKey() + ", rows=" + e.getValue());
+	    }
+
+	    System.out.println("--- Taxed technologies per target year ---");
+	    for (Map.Entry<String, Integer> e : taxedTechsPerYear.entrySet()) {
+	        System.out.println("targetYear=" + e.getKey() + ", taxedTechCount=" + e.getValue());
+	    }
+
+	    System.out.println("======================================================");
+	}
+
+private void saveScenarioComponentAlt7(TreeView<String> tree) {
+    if (!qaInputs()) {
+        return;
+    }
+
+    // ---------------------------------------------------------------------
+    // Name setup
+    // ---------------------------------------------------------------------
+    final String idSuffix = checkBoxUseUniqueNames.isSelected()
+        ? utils.getUniqueString()
+        : "";
+
+    final String basePolicyName = textFieldPolicyName.getText();
+    final String baseMarketName = textFieldMarketName.getText();
+
+    final String policyName = basePolicyName + idSuffix;
+    final String marketName = baseMarketName + idSuffix;
+    final boolean newSalesMode = isNewSalesMode();
+
+    filenameSuggestion = basePolicyName.replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
+    fileContent = getMetaDataContent(tree, marketName, policyName);
+
+    // ---------------------------------------------------------------------
+    // Output tables
+    //
+    // RES-style implementation:
+    // - minicam-energy-input current-coef
+    // - res-secondary-output output-ratio
+    // - policy-portfolio-standard type = RES
+    // ---------------------------------------------------------------------
+    StringBuilder contentP1 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+        .append(VARIABLE_ID).append(vars.getEol())
+        .append(HEADER_PART1).append(vars.getEol()).append(vars.getEol())
+        .append("region,sector,subsector,tech,year,input,current-coef,policy,output-ratio,pMultiplier,price-unit-conversion")
+        .append(vars.getEol());
+
+    StringBuilder contentP2 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+        .append(VARIABLE_ID).append(vars.getEol())
+        .append(HEADER_PART2).append(vars.getEol()).append(vars.getEol())
+        .append("region,policy,market,type,year,constrained")
+        .append(vars.getEol());
+
+    final String[] selectedRegions = utils.removeUSADuplicate(utils.getAllSelectedRegions(tree));
+    final ArrayList<String> targetTableRows = paneForComponentDetails.getDataYrValsArrayList();
+
+    // ---------------------------------------------------------------------
+    // Physical conversion constants
+    // ---------------------------------------------------------------------
+    final double gjPerGal = 0.1203;   // GJ / gallon gasoline equivalent
+    final double kmPerMile = 1.61;
+
+    // ---------------------------------------------------------------------
+    // Export scaling
+    // ---------------------------------------------------------------------
+    final double EXPORT_SCALE = 1.0;
+
+    int skippedInvalidRows = 0;
+    int writtenConstraintRows = 0;
+
+    // ---------------------------------------------------------------------
+    // Debug bookkeeping
+    // ---------------------------------------------------------------------
+    Map<String, Integer> rowsPerTechModelYear = new LinkedHashMap<>();
+    Map<String, Integer> rowsPerTargetYear = new LinkedHashMap<>();
+    Map<String, Integer> rowsPerModelYear = new LinkedHashMap<>();
+    Map<String, Set<String>> policiesPerTechModelYear = new LinkedHashMap<>();
+
+    System.out.println("======================================================");
+    System.out.println("Generating MPG Target Scenario Component (revised RES)");
+    System.out.println("Policy name base: " + basePolicyName);
+    System.out.println("Market name base: " + baseMarketName);
+    System.out.println("Policy name final: " + policyName);
+    System.out.println("Market name final: " + marketName);
+    System.out.println("Use unique names: " + checkBoxUseUniqueNames.isSelected());
+    System.out.println("New sales mode: " + newSalesMode);
+    System.out.println("Intensity basis assumption: vehicle-distance based");
+    System.out.println("EXPORT_SCALE: " + EXPORT_SCALE);
+    System.out.println("pMultiplier fixed at 1.0");
+    System.out.println("priceUnitConversion fixed at 1.0");
+    System.out.println("Policy market rule: marketKey = policyKey");
+    System.out.println("======================================================");
+
+    for (String region : selectedRegions) {
+        final String subsector = comboBoxSubsector.getValue();
+        final String sector =
+            (subsector.equals("Light Truck") || subsector.equals("Medium Truck") || subsector.equals("Heavy Truck"))
+                ? "trn_freight_road"
+                : "trn_pass_road_LDV_4W";
+
+        for (String tableRow : targetTableRows) {
+            String[] split = utils.splitString(tableRow.replaceAll(" ", "").trim(), ",");
+            if (split == null || split.length < 2) {
+                skippedInvalidRows++;
+                continue;
+            }
+
+            final String targetYearStr = split[0];
+            final Integer targetYearParsed = safeParseInt(targetYearStr);
+            final Double targetValueParsed = safeParseDouble(split[1]);
+
+            if (targetYearParsed == null || targetValueParsed == null) {
+                skippedInvalidRows++;
+                continue;
+            }
+
+            final int targetYear = targetYearParsed;
+            final double targetMPGe = targetValueParsed;
+
+            if (targetMPGe <= 0.0 || !Double.isFinite(targetMPGe)) {
+                skippedInvalidRows++;
+                continue;
+            }
+
+            final String policyKey = getPolicyKeyForTargetYear(policyName, targetYearStr, newSalesMode);
+
+            // -----------------------------------------------------------------
+            // IMPORTANT:
+            // Use the policy name itself as the market name for this RES test.
+            // This is intended to avoid missing-market errors in the
+            // policy-portfolio-standard.
+            // -----------------------------------------------------------------
+            final String marketKey = policyKey;
+
+            boolean activationWritten = false;
+
+            // -----------------------------------------------------------------
+            // Convert MPGe target to vehicle-basis intensity:
+            //
+            // intensity = (GJ/gal) / (km/mile * miles/gal)
+            // -----------------------------------------------------------------
+            final double targetIntensityVehicle =
+                gjPerGal / (kmPerMile * targetMPGe);
+
+            final double exportedOutputRatio = targetIntensityVehicle * EXPORT_SCALE;
+            final double pMultiplier = 1.0;
+            final double priceUnitConversion = 1.0;
+
+            System.out.println();
+            System.out.println("------------------------------------------------------");
+            System.out.println("Region: " + region);
+            System.out.println("Subsector: " + subsector);
+            System.out.println("Target year: " + targetYear);
+            System.out.println("Target MPGe: " + targetMPGe);
+            System.out.println("Policy key: " + policyKey);
+            System.out.println("Market key: " + marketKey);
+            System.out.println("Target intensity (vehicle basis): " + targetIntensityVehicle);
+            System.out.println("Exported output-ratio: " + exportedOutputRatio);
+            System.out.println("------------------------------------------------------");
+
+            for (Integer modelYear : vars.getAllowablePolicyYears()) {
+                final boolean applyThisTarget;
+                if (newSalesMode) {
+                    applyThisTarget = (modelYear == targetYear);
+                } else {
+                    applyThisTarget = shouldApplyTargetToModelYear(false, modelYear, targetYear);
+                }
+
+                System.out.println(
+                    "Target-year applicability => " +
+                    "targetYear=" + targetYear +
+                    ", modelYear=" + modelYear +
+                    ", newSalesMode=" + newSalesMode +
+                    ", apply=" + applyThisTarget
+                );
+
+                if (!applyThisTarget) {
+                    continue;
+                }
+
+                final String modelYearStr = Integer.toString(modelYear);
+                final ObservableList<String> techList = checkComboBoxTech.getCheckModel().getCheckedItems();
+
+                for (String tech : techList) {
+                    final String intensityStr = utils.getTrnVehInfo("intensity", region, sector, subsector, tech, modelYearStr);
+
+                    if (intensityStr == null) {
+                        skippedInvalidRows++;
+                        System.out.println("Skipping row due to missing intensity metadata:"
+                            + " region=" + region
+                            + ", sector=" + sector
+                            + ", subsector=" + subsector
+                            + ", tech=" + tech
+                            + ", year=" + modelYearStr);
+                        continue;
+                    }
+
+                    final Double intensityParsed = safeParseDouble(intensityStr);
+                    final double techIntensityVehicle = (intensityParsed != null) ? intensityParsed : Double.NaN;
+
+                    if (!Double.isFinite(techIntensityVehicle) || techIntensityVehicle <= 0.0) {
+                        skippedInvalidRows++;
+                        System.out.println("Skipping row due to invalid intensity:"
+                            + " region=" + region
+                            + ", sector=" + sector
+                            + ", subsector=" + subsector
+                            + ", tech=" + tech
+                            + ", year=" + modelYearStr
+                            + ", intensity=" + techIntensityVehicle);
+                        continue;
+                    }
+
+                    final double exportedCurrentCoef = techIntensityVehicle * EXPORT_SCALE;
+                    final double intensityGap = exportedCurrentCoef - exportedOutputRatio;
+
+                    final double techBackConvertedMPGe =
+                        gjPerGal / (kmPerMile * techIntensityVehicle);
+
+                    final double targetBackConvertedMPGe =
+                        gjPerGal / (kmPerMile * targetIntensityVehicle);
+
+                    final String rowKey = region + "|" + sector + "|" + subsector + "|" + tech + "|" + modelYearStr;
+                    rowsPerTechModelYear.put(rowKey, rowsPerTechModelYear.getOrDefault(rowKey, 0) + 1);
+                    policiesPerTechModelYear.computeIfAbsent(rowKey, k -> new LinkedHashSet<>()).add(policyKey);
+
+                    if (rowsPerTechModelYear.get(rowKey) > 1) {
+                        System.out.println("WARNING: Multiple policy rows written for same tech/modelYear:"
+                            + " key=" + rowKey
+                            + ", count=" + rowsPerTechModelYear.get(rowKey)
+                            + ", policies=" + policiesPerTechModelYear.get(rowKey));
+                    }
+
+                    rowsPerTargetYear.put(targetYearStr, rowsPerTargetYear.getOrDefault(targetYearStr, 0) + 1);
+                    rowsPerModelYear.put(modelYearStr, rowsPerModelYear.getOrDefault(modelYearStr, 0) + 1);
+
+                    System.out.println(
+                        "Tech debug => " +
+                        "region=" + region +
+                        ", subsector=" + subsector +
+                        ", tech=" + tech +
+                        ", targetYear=" + targetYearStr +
+                        ", modelYear=" + modelYearStr +
+                        ", rawIntensity(vehicle basis)=" + techIntensityVehicle +
+                        ", exportedCurrentCoef=" + exportedCurrentCoef +
+                        ", exportedOutputRatio=" + exportedOutputRatio +
+                        ", pMultiplier=" + pMultiplier +
+                        ", priceUnitConversion=" + priceUnitConversion +
+                        ", intensityGap(current-output)=" + intensityGap +
+                        ", techBackConvertedMPGe=" + techBackConvertedMPGe +
+                        ", targetBackConvertedMPGe=" + targetBackConvertedMPGe
+                    );
+
+                    // ---------------------------------------------------------
+                    // Write technology-level RES row
+                    // ---------------------------------------------------------
+                    contentP1.append(region).append(",")
+                        .append(sector).append(",")
+                        .append(subsector).append(",")
+                        .append(tech).append(",")
+                        .append(modelYearStr).append(",")
+                        .append(policyKey).append(",")
+                        .append(exportedCurrentCoef).append(",")
+                        .append(policyKey).append(",")
+                        .append(exportedOutputRatio).append(",")
+                        .append(pMultiplier).append(",")
+                        .append(priceUnitConversion)
+                        .append(vars.getEol());
+
+                    writtenConstraintRows++;
+
+                    // ---------------------------------------------------------
+                    // Write one policy activation row after the first valid
+                    // technology row for this target year
+                    // ---------------------------------------------------------
+                    if (!activationWritten) {
+                        contentP2.append(region).append(",")
+                            .append(policyKey).append(",")
+                            .append(marketKey).append(",")
+                            .append("RES").append(",")
+                            .append(targetYearStr).append(",")
+                            .append("1")
+                            .append(vars.getEol());
+                        activationWritten = true;
+                    }
+                }
+            }
+        }
+    }
+
+    if (writtenConstraintRows == 0) {
+        utils.warningMessage(
+            "No valid CAFE RES rows were generated.\n" +
+            "Please verify target table values and transport intensity metadata for selected years."
+        );
+        return;
+    }
+
+    if (skippedInvalidRows > 0) {
+        System.out.println("Skipped invalid CAFE RES rows: " + skippedInvalidRows);
+    }
+
+    fileContent += contentP1.toString() + vars.getEol() + contentP2.toString();
+
+    // ---------------------------------------------------------------------
+    // Debug summary
+    // ---------------------------------------------------------------------
+    System.out.println("======================================================");
+    System.out.println("Finished generating MPG target scenario component (revised RES)");
+    System.out.println("Written constraint rows: " + writtenConstraintRows);
+    System.out.println("Skipped invalid rows: " + skippedInvalidRows);
+
+    System.out.println("--- Rows per target year ---");
+    for (Map.Entry<String, Integer> e : rowsPerTargetYear.entrySet()) {
+        System.out.println("targetYear=" + e.getKey() + ", rows=" + e.getValue());
+    }
+
+    System.out.println("--- Rows per model year ---");
+    for (Map.Entry<String, Integer> e : rowsPerModelYear.entrySet()) {
+        System.out.println("modelYear=" + e.getKey() + ", rows=" + e.getValue());
+    }
+
+    System.out.println("--- Duplicate policy attachment summary ---");
+    for (Map.Entry<String, Set<String>> e : policiesPerTechModelYear.entrySet()) {
+        if (e.getValue().size() > 1) {
+            System.out.println("WARNING: multiple policies attached to same tech/modelYear:"
+                + " key=" + e.getKey()
+                + ", policies=" + e.getValue());
+        }
+    }
+
+    System.out.println("======================================================");
+}
+
+private void saveScenarioComponentAlt8(TreeView<String> tree) {
+    if (!qaInputs()) {
+        return;
+    }
+
+    final String idSuffix = checkBoxUseUniqueNames.isSelected()
+        ? utils.getUniqueString()
+        : "";
+
+    final String basePolicyName = textFieldPolicyName.getText();
+    final String baseMarketName = textFieldMarketName.getText();
+
+    final String policyNameBase = basePolicyName + idSuffix;
+    final String marketName = baseMarketName + idSuffix;
+    final boolean newSalesMode = isNewSalesMode();
+
+    filenameSuggestion = basePolicyName.replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
+    fileContent = getMetaDataContent(tree, marketName, policyNameBase);
+
+    // ---------------------------------------------------------------------
+    // IMPORTANT:
+    // Part 1 uses minicam-energy-input/current-coef and res-secondary-output.
+    // Part 2 should match the repo's PortfolioStdConstraint-style layout.
+    // ---------------------------------------------------------------------
+    StringBuilder contentP1 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+        .append(VARIABLE_ID).append(vars.getEol())
+        .append(HEADER_PART1).append(vars.getEol()).append(vars.getEol())
+        .append("region,sector,subsector,tech,year,input,current-coef,policy,output-ratio,pMultiplier,price-unit-conversion")
+        .append(vars.getEol());
+
+    StringBuilder contentP2 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+        .append(VARIABLE_ID).append(vars.getEol())
+        .append(HEADER_PART2).append(vars.getEol()).append(vars.getEol())
+        .append("region,policy,market,type,year,constraint")
+        .append(vars.getEol());
+
+    final String[] selectedRegions = utils.removeUSADuplicate(utils.getAllSelectedRegions(tree));
+    final ArrayList<String> targetTableRows = paneForComponentDetails.getDataYrValsArrayList();
+
+    final double gjPerGal = 0.1203;
+    final double kmPerMile = 1.61;
+    final double EXPORT_SCALE = 1.0;
+
+    int skippedInvalidRows = 0;
+    int writtenTechRows = 0;
+    int writtenPolicyRows = 0;
+
+    Map<String, Integer> rowsPerTargetYear = new LinkedHashMap<>();
+    Map<String, Integer> rowsPerModelYear = new LinkedHashMap<>();
+
+    System.out.println("======================================================");
+    System.out.println("Generating MPG Target Scenario Component (RES, conservative wiring)");
+    System.out.println("Policy name base: " + basePolicyName);
+    System.out.println("Policy name final base: " + policyNameBase);
+    System.out.println("Market name final: " + marketName);
+    System.out.println("Use unique names: " + checkBoxUseUniqueNames.isSelected());
+    System.out.println("New sales mode: " + newSalesMode);
+    System.out.println("EXPORT_SCALE: " + EXPORT_SCALE);
+    System.out.println("======================================================");
+
+    for (String region : selectedRegions) {
+        final String subsector = comboBoxSubsector.getValue();
+        final String sector =
+            (subsector.equals("Light Truck") || subsector.equals("Medium Truck") || subsector.equals("Heavy Truck"))
+                ? "trn_freight_road"
+                : "trn_pass_road_LDV_4W";
+
+        for (String tableRow : targetTableRows) {
+            String[] split = utils.splitString(tableRow.replaceAll(" ", "").trim(), ",");
+            if (split == null || split.length < 2) {
+                skippedInvalidRows++;
+                continue;
+            }
+
+            final String targetYearStr = split[0];
+            final Integer targetYearParsed = safeParseInt(targetYearStr);
+            final Double targetValueParsed = safeParseDouble(split[1]);
+
+            if (targetYearParsed == null || targetValueParsed == null) {
+                skippedInvalidRows++;
+                continue;
+            }
+
+            final int targetYear = targetYearParsed;
+            final double targetMPGe = targetValueParsed;
+
+            if (targetMPGe <= 0.0 || !Double.isFinite(targetMPGe)) {
+                skippedInvalidRows++;
+                continue;
+            }
+
+            // Keep policy names year-specific, but keep market name stable.
+            final String policyKey = getPolicyKeyForTargetYear(policyNameBase, targetYearStr, newSalesMode);
+            final String marketKey = marketName;
+
+            boolean activationWritten = false;
+
+            final double targetIntensityVehicle = gjPerGal / (kmPerMile * targetMPGe);
+            final double exportedOutputRatio = targetIntensityVehicle * EXPORT_SCALE;
+            final double pMultiplier = 1.0;
+            final double priceUnitConversion = 1.0;
+
+            System.out.println();
+            System.out.println("------------------------------------------------------");
+            System.out.println("Region: " + region);
+            System.out.println("Subsector: " + subsector);
+            System.out.println("Target year: " + targetYear);
+            System.out.println("Target MPGe: " + targetMPGe);
+            System.out.println("Policy key: " + policyKey);
+            System.out.println("Market key: " + marketKey);
+            System.out.println("Target intensity (vehicle basis): " + targetIntensityVehicle);
+            System.out.println("------------------------------------------------------");
+
+            for (Integer modelYear : vars.getAllowablePolicyYears()) {
+                final boolean applyThisTarget;
+                if (newSalesMode) {
+                    applyThisTarget = (modelYear == targetYear);
+                } else {
+                    applyThisTarget = shouldApplyTargetToModelYear(false, modelYear, targetYear);
+                }
+
+                if (!applyThisTarget) {
+                    continue;
+                }
+
+                final String modelYearStr = Integer.toString(modelYear);
+                final ObservableList<String> techList = checkComboBoxTech.getCheckModel().getCheckedItems();
+
+                for (String tech : techList) {
+                    final String intensityStr = utils.getTrnVehInfo("intensity", region, sector, subsector, tech, modelYearStr);
+
+                    if (intensityStr == null) {
+                        skippedInvalidRows++;
+                        System.out.println("Skipping row due to missing intensity metadata:"
+                            + " region=" + region
+                            + ", sector=" + sector
+                            + ", subsector=" + subsector
+                            + ", tech=" + tech
+                            + ", year=" + modelYearStr);
+                        continue;
+                    }
+
+                    final Double intensityParsed = safeParseDouble(intensityStr);
+                    final double techIntensityVehicle = (intensityParsed != null) ? intensityParsed : Double.NaN;
+
+                    if (!Double.isFinite(techIntensityVehicle) || techIntensityVehicle <= 0.0) {
+                        skippedInvalidRows++;
+                        System.out.println("Skipping row due to invalid intensity:"
+                            + " region=" + region
+                            + ", sector=" + sector
+                            + ", subsector=" + subsector
+                            + ", tech=" + tech
+                            + ", year=" + modelYearStr
+                            + ", intensity=" + techIntensityVehicle);
+                        continue;
+                    }
+
+                    final double exportedCurrentCoef = techIntensityVehicle * EXPORT_SCALE;
+                    final double techBackConvertedMPGe = gjPerGal / (kmPerMile * techIntensityVehicle);
+
+                    System.out.println(
+                        "Tech debug => " +
+                        "region=" + region +
+                        ", subsector=" + subsector +
+                        ", tech=" + tech +
+                        ", targetYear=" + targetYearStr +
+                        ", modelYear=" + modelYearStr +
+                        ", techIntensityVehicle=" + techIntensityVehicle +
+                        ", targetIntensityVehicle=" + targetIntensityVehicle +
+                        ", exportedCurrentCoef=" + exportedCurrentCoef +
+                        ", exportedOutputRatio=" + exportedOutputRatio +
+                        ", techBackConvertedMPGe=" + techBackConvertedMPGe +
+                        ", targetBackConvertedMPGe=" + targetMPGe
+                    );
+
+                    contentP1.append(region).append(",")
+                        .append(sector).append(",")
+                        .append(subsector).append(",")
+                        .append(tech).append(",")
+                        .append(modelYearStr).append(",")
+                        .append(policyKey).append(",")
+                        .append(exportedCurrentCoef).append(",")
+                        .append(policyKey).append(",")
+                        .append(exportedOutputRatio).append(",")
+                        .append(pMultiplier).append(",")
+                        .append(priceUnitConversion)
+                        .append(vars.getEol());
+
+                    writtenTechRows++;
+                    rowsPerTargetYear.put(targetYearStr, rowsPerTargetYear.getOrDefault(targetYearStr, 0) + 1);
+                    rowsPerModelYear.put(modelYearStr, rowsPerModelYear.getOrDefault(modelYearStr, 0) + 1);
+
+                    if (!activationWritten) {
+                        contentP2.append(region).append(",")
+                            .append(policyKey).append(",")
+                            .append(marketKey).append(",")
+                            .append("RES").append(",")
+                            .append(targetYearStr).append(",")
+                            .append("1")
+                            .append(vars.getEol());
+                        activationWritten = true;
+                        writtenPolicyRows++;
+                    }
+                }
+            }
+        }
+    }
+
+    if (writtenTechRows == 0) {
+        utils.warningMessage(
+            "No valid CAFE RES rows were generated.\n" +
+            "Please verify target table values and transport intensity metadata."
+        );
+        return;
+    }
+
+    if (skippedInvalidRows > 0) {
+        System.out.println("Skipped invalid CAFE RES rows: " + skippedInvalidRows);
+    }
+
+    fileContent += contentP1.toString() + vars.getEol() + contentP2.toString();
+
+    System.out.println("======================================================");
+    System.out.println("Finished generating MPG target scenario component (RES, conservative wiring)");
+    System.out.println("Written tech rows: " + writtenTechRows);
+    System.out.println("Written policy rows: " + writtenPolicyRows);
+    System.out.println("Skipped invalid rows: " + skippedInvalidRows);
+
+    System.out.println("--- Rows per target year ---");
+    for (Map.Entry<String, Integer> e : rowsPerTargetYear.entrySet()) {
+        System.out.println("targetYear=" + e.getKey() + ", rows=" + e.getValue());
+    }
+
+    System.out.println("--- Rows per model year ---");
+    for (Map.Entry<String, Integer> e : rowsPerModelYear.entrySet()) {
+        System.out.println("modelYear=" + e.getKey() + ", rows=" + e.getValue());
+    }
+
+    System.out.println("======================================================");
+}
+	private void saveScenarioComponent(TreeView<String> tree) {
+	    if (!qaInputs()) {
+	        return;
+	    }
+
+	    // ---------------------------------------------------------------------
+	    // Name setup
+	    // ---------------------------------------------------------------------
+	    final String idSuffix = checkBoxUseUniqueNames.isSelected()
+	        ? utils.getUniqueString()
+	        : "";
+
+	    final String basePolicyName = textFieldPolicyName.getText();
+	    final String baseMarketName = textFieldMarketName.getText();
+
+	    final String policyName = basePolicyName + idSuffix;
+	    final String marketName = baseMarketName + idSuffix;
+	    final boolean newSalesMode = isNewSalesMode();
+
+	    filenameSuggestion = basePolicyName.replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
+	    fileContent = getMetaDataContent(tree, marketName, policyName);
+
+	    // ---------------------------------------------------------------------
+	    // Output tables
+	    // NOTE: using current-coef for minicam-energy-input.
+	    // ---------------------------------------------------------------------
+	    StringBuilder contentP1 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+	        .append(VARIABLE_ID).append(vars.getEol())
+	        .append(HEADER_PART1).append(vars.getEol()).append(vars.getEol())
+	        .append("region,sector,subsector,tech,year,input,current-coef,policy,output-ratio,pMultiplier,price-unit-conversion")
+	        .append(vars.getEol());
+
+	    StringBuilder contentP2 = new StringBuilder(INPUT_TABLE).append(vars.getEol())
+	        .append(VARIABLE_ID).append(vars.getEol())
+	        .append(HEADER_PART2).append(vars.getEol()).append(vars.getEol())
+	        .append("region,policy,market,type,year,constrained")
+	        .append(vars.getEol());
+
+	    final String[] selectedRegions = utils.removeUSADuplicate(utils.getAllSelectedRegions(tree));
+	    final ArrayList<String> targetTableRows = paneForComponentDetails.getDataYrValsArrayList();
+
+	    // ---------------------------------------------------------------------
+	    // Conversion constants
+	    // ---------------------------------------------------------------------
+	    final double gj_per_gal = 0.1203; // GJ / gallon gasoline equivalent
+	    final double km_per_mile = 1.61;
+	    final double km_per_bln_km = 1e9;
+	    final double km_per_mln_km = 1e6;
+
+	    int skippedInvalidRows = 0;
+	    int writtenConstraintRows = 0;
+
+	    // false => GCAM-USA 8.5+ pathway
+	    boolean useMMBTUConversions = vars.getUseTrnMMBTUConversions();
+	    useMMBTUConversions = false; // forced false for testing
+
+	    // ---------------------------------------------------------------------
+	    // Debug bookkeeping
+	    // ---------------------------------------------------------------------
+	    Map<String, Integer> rowsPerTechModelYear = new LinkedHashMap<>();
+	    Map<String, Integer> rowsPerTargetYear = new LinkedHashMap<>();
+	    Map<String, Integer> rowsPerModelYear = new LinkedHashMap<>();
+	    Map<String, Set<String>> policiesPerTechModelYear = new LinkedHashMap<>();
+
+	    System.out.println("======================================================");
+	    System.out.println("Generating MPG Target Scenario Component");
+	    System.out.println("Policy name base: " + basePolicyName);
+	    System.out.println("Market name base: " + baseMarketName);
+	    System.out.println("Policy name final: " + policyName);
+	    System.out.println("Market name final: " + marketName);
+	    System.out.println("Use unique names: " + checkBoxUseUniqueNames.isSelected());
+	    System.out.println("New sales mode: " + newSalesMode);
+	    System.out.println("Using pre-8.5 MMBTU conversions: " + useMMBTUConversions);
+	    System.out.println("======================================================");
+
+	    for (String region : selectedRegions) {
+	        final String subsector = comboBoxSubsector.getValue();
+	        final String sector =
+	            (subsector.equals("Light Truck") || subsector.equals("Medium Truck") || subsector.equals("Heavy Truck"))
+	                ? "trn_freight_road"
+	                : "trn_pass_road_LDV_4W";
+
+	        for (String tableRow : targetTableRows) {
+	            String[] split = utils.splitString(tableRow.replaceAll(" ", "").trim(), ",");
+	            if (split == null || split.length < 2) {
+	                skippedInvalidRows++;
+	                continue;
+	            }
+
+	            final String targetYearStr = split[0];
+	            final Integer targetYearParsed = safeParseInt(targetYearStr);
+	            final Double targetValueParsed = safeParseDouble(split[1]);
+
+	            if (targetYearParsed == null || targetValueParsed == null) {
+	                skippedInvalidRows++;
+	                continue;
+	            }
+
+	            final int targetYear = targetYearParsed;
+	            final double targetMilesPerGal = targetValueParsed;
+
+	            if (targetMilesPerGal <= 0.0 || !Double.isFinite(targetMilesPerGal)) {
+	                skippedInvalidRows++;
+	                continue;
+	            }
+
+	            final String policyKey = getPolicyKeyForTargetYear(policyName, targetYearStr, newSalesMode);
+	            final String marketKey = getMarketKeyForTargetYear(marketName, policyKey, targetYearStr, newSalesMode);
+
+	            boolean activationWritten = false;
+	            boolean hasValidConstraintRow = false;
+
+	            // -----------------------------------------------------------------
+	            // Convert MPG target -> energy intensity target.
+	            //
+	            // Forward conversion:
+	            //   targetIntensity = (1 / MPG) / km_per_mile * gj_per_gal * distanceScale
+	            //
+	            // For 8.5+, we assume comparison on a common vehicle-distance basis.
+	            // -----------------------------------------------------------------
+	            final double targetIntensityGJPerBillionVkt =
+	                (1.0 / targetMilesPerGal) / km_per_mile * gj_per_gal * km_per_bln_km / 1000.0;
+
+	            System.out.println();
+	            System.out.println("------------------------------------------------------");
+	            System.out.println("Region: " + region);
+	            System.out.println("Subsector: " + subsector);
+	            System.out.println("Target year: " + targetYear);
+	            System.out.println("Target MPG/MPGe: " + targetMilesPerGal);
+	            System.out.println("Policy key: " + policyKey);
+	            System.out.println("Market key: " + marketKey);
+	            System.out.println("Target intensity (GJ/billion-vkt, exported basis): " + targetIntensityGJPerBillionVkt);
+	            System.out.println("------------------------------------------------------");
+
+	            for (Integer modelYear : vars.getAllowablePolicyYears()) {
+
+	                // -------------------------------------------------------------
+	                // IMPORTANT:
+	                // In sales mode, targets should generally apply only to the
+	                // corresponding model year, not be propagated forward.
+	                //
+	                // If you later decide to allow forward propagation, make that
+	                // explicit and add separate logging.
+	                // -------------------------------------------------------------
+	                final boolean applyThisTarget;
+	                if (newSalesMode) {
+	                    applyThisTarget = (modelYear == targetYear);
+	                } else {
+	                    applyThisTarget = shouldApplyTargetToModelYear(false, modelYear, targetYear);
+	                }
+
+	                System.out.println(
+	                    "Target-year applicability => " +
+	                    "targetYear=" + targetYear +
+	                    ", modelYear=" + modelYear +
+	                    ", newSalesMode=" + newSalesMode +
+	                    ", apply=" + applyThisTarget
+	                );
+
+	                if (!applyThisTarget) {
+	                    continue;
+	                }
+
+	                final String modelYearStr = Integer.toString(modelYear);
+	                final ObservableList<String> techList = checkComboBoxTech.getCheckModel().getCheckedItems();
+
+	                for (int techIndex = 0; techIndex < techList.size(); techIndex++) {
+	                    final String tech = techList.get(techIndex);
+
+	                    final String loadStr = utils.getTrnVehInfo("load", region, sector, subsector, tech, modelYearStr);
+	                    final String intensityStr = utils.getTrnVehInfo("intensity", region, sector, subsector, tech, modelYearStr);
+
+	                    if (loadStr == null || intensityStr == null) {
+	                        skippedInvalidRows++;
+	                        System.out.println("Skipping row due to missing load/intensity metadata:"
+	                            + " region=" + region
+	                            + ", sector=" + sector
+	                            + ", subsector=" + subsector
+	                            + ", tech=" + tech
+	                            + ", year=" + modelYearStr);
+	                        continue;
+	                    }
+
+	                    final Double loadParsed = safeParseDouble(loadStr);
+	                    final Double rawIntensityParsed = safeParseDouble(intensityStr);
+
+	                    final double load = (loadParsed != null) ? loadParsed : 0.0;
+	                    final double rawTechIntensityGJPerMillionVkt = (rawIntensityParsed != null) ? rawIntensityParsed : 0.0;
+
+	                    if (!Double.isFinite(load) || load <= 0.0 ||
+	                        !Double.isFinite(rawTechIntensityGJPerMillionVkt) || rawTechIntensityGJPerMillionVkt <= 0.0) {
+	                        skippedInvalidRows++;
+	                        System.out.println("Skipping row due to invalid parsed metadata:"
+	                            + " region=" + region
+	                            + ", sector=" + sector
+	                            + ", subsector=" + subsector
+	                            + ", tech=" + tech
+	                            + ", year=" + modelYearStr
+	                            + ", load=" + load
+	                            + ", rawIntensity=" + rawTechIntensityGJPerMillionVkt);
+	                        continue;
+	                    }
+
+	                    double exportedCurrentCoef;
+	                    double exportedOutputRatio;
+	                    double pMultiplier;
+	                    double priceUnitConversion = 1.0;
+
+	                    if (useMMBTUConversions) {
+	                        // -----------------------------------------------------
+	                        // Pre-8.5 legacy branch
+	                        // -----------------------------------------------------
+	                        final double targetIntensityLegacy =
+	                            (1.0 / targetMilesPerGal) / km_per_mile * gj_per_gal * km_per_mln_km / priceUnitConversion;
+
+	                        exportedCurrentCoef = rawTechIntensityGJPerMillionVkt;
+	                        exportedOutputRatio = targetIntensityLegacy;
+	                        pMultiplier = 1e9 * priceUnitConversion;
+	                    } else {
+	                        // -----------------------------------------------------
+	                        // GCAM-USA 8.5+ branch
+	                        //
+	                        // raw intensity from metadata is assumed to be:
+	                        //   GJ / million-vkt
+	                        //
+	                        // export current-coef on a comparable basis.
+	                        // -----------------------------------------------------
+	                        exportedCurrentCoef = rawTechIntensityGJPerMillionVkt * 1000.0;
+	                        exportedOutputRatio = targetIntensityGJPerBillionVkt;
+	                        pMultiplier = 1.0;
+	                    }
+
+	                    // ---------------------------------------------------------
+	                    // Back-conversion diagnostics
+	                    // ---------------------------------------------------------
+	                    final double intensityGap = exportedCurrentCoef - exportedOutputRatio;
+
+	                    final double techBackConvertedMPG =
+	                        (exportedCurrentCoef > 0.0)
+	                            ? (gj_per_gal * km_per_bln_km / 1000.0) / (exportedCurrentCoef * km_per_mile)
+	                            : Double.NaN;
+
+	                    final double targetBackConvertedMPG =
+	                        (exportedOutputRatio > 0.0)
+	                            ? (gj_per_gal * km_per_bln_km / 1000.0) / (exportedOutputRatio * km_per_mile)
+	                            : Double.NaN;
+
+	                    // ---------------------------------------------------------
+	                    // Duplicate detection:
+	                    // key by region / sector / subsector / tech / modelYear
+	                    // ---------------------------------------------------------
+	                    final String rowKey = region + "|" + sector + "|" + subsector + "|" + tech + "|" + modelYearStr;
+	                    rowsPerTechModelYear.put(rowKey, rowsPerTechModelYear.getOrDefault(rowKey, 0) + 1);
+
+	                    policiesPerTechModelYear.computeIfAbsent(rowKey, k -> new LinkedHashSet<>()).add(policyKey);
+
+	                    if (rowsPerTechModelYear.get(rowKey) > 1) {
+	                        System.out.println("WARNING: Multiple policy rows written for same tech/modelYear:"
+	                            + " key=" + rowKey
+	                            + ", count=" + rowsPerTechModelYear.get(rowKey)
+	                            + ", policies=" + policiesPerTechModelYear.get(rowKey));
+	                    }
+
+	                    rowsPerTargetYear.put(targetYearStr, rowsPerTargetYear.getOrDefault(targetYearStr, 0) + 1);
+	                    rowsPerModelYear.put(modelYearStr, rowsPerModelYear.getOrDefault(modelYearStr, 0) + 1);
+
+	                    System.out.println(
+	                        "Tech debug => " +
+	                        "region=" + region +
+	                        ", subsector=" + subsector +
+	                        ", tech=" + tech +
+	                        ", targetYear=" + targetYearStr +
+	                        ", modelYear=" + modelYearStr +
+	                        ", inputMPG=" + targetMilesPerGal +
+	                        ", load=" + load +
+	                        ", rawIntensity(GJ/million-vkt)=" + rawTechIntensityGJPerMillionVkt +
+	                        ", currentCoef(exported)=" + exportedCurrentCoef +
+	                        ", outputRatio(target exported)=" + exportedOutputRatio +
+	                        ", pMultiplier=" + pMultiplier +
+	                        ", priceUnitConversion=" + priceUnitConversion +
+	                        ", intensityGap(current-output)=" + intensityGap +
+	                        ", techBackConvertedMPG=" + techBackConvertedMPG +
+	                        ", targetBackConvertedMPG=" + targetBackConvertedMPG
+	                    );
+
+	                    // ---------------------------------------------------------
+	                    // Write technology-level row
+	                    // ---------------------------------------------------------
+	                    contentP1.append(region).append(",")
+	                        .append(sector).append(",")
+	                        .append(subsector).append(",")
+	                        .append(tech).append(",")
+	                        .append(modelYearStr).append(",")
+	                        .append(policyKey).append(",")
+	                        .append(exportedCurrentCoef).append(",")
+	                        .append(policyKey).append(",")
+	                        .append(exportedOutputRatio).append(",")
+	                        .append(pMultiplier).append(",")
+	                        .append(priceUnitConversion)
+	                        .append(vars.getEol());
+
+	                    hasValidConstraintRow = true;
+	                    writtenConstraintRows++;
+
+	                    // ---------------------------------------------------------
+	                    // Write one policy activation row per target year
+	                    // ---------------------------------------------------------
+	                    if (!activationWritten && hasValidConstraintRow && techIndex == 0) {
+	                        contentP2.append(region).append(",")
+	                            .append(policyKey).append(",")
+	                            .append(marketKey).append(",RES,")
+	                            .append(targetYearStr).append(",1")
+	                            .append(vars.getEol());
+	                        activationWritten = true;
+	                    }
+	                }
+	            }
+	        }
+	    }
+
+	    if (writtenConstraintRows == 0) {
+	        utils.warningMessage(
+	            "No valid CAFE constraint rows were generated.\n" +
+	            "Please verify target table values and transport metadata (load/intensity) for selected years."
+	        );
+	        return;
+	    }
+
+	    if (skippedInvalidRows > 0) {
+	        System.out.println("Skipped invalid CAFE rows: " + skippedInvalidRows);
+	    }
+
+	    fileContent += contentP1.toString() + vars.getEol() + contentP2.toString();
+
+	    // ---------------------------------------------------------------------
+	    // Debug summary
+	    // ---------------------------------------------------------------------
+	    System.out.println("======================================================");
+	    System.out.println("Finished generating MPG target scenario component");
+	    System.out.println("Written constraint rows: " + writtenConstraintRows);
+	    System.out.println("Skipped invalid rows: " + skippedInvalidRows);
+
+	    System.out.println("--- Rows per target year ---");
+	    for (Map.Entry<String, Integer> e : rowsPerTargetYear.entrySet()) {
+	        System.out.println("targetYear=" + e.getKey() + ", rows=" + e.getValue());
+	    }
+
+	    System.out.println("--- Rows per model year ---");
+	    for (Map.Entry<String, Integer> e : rowsPerModelYear.entrySet()) {
+	        System.out.println("modelYear=" + e.getKey() + ", rows=" + e.getValue());
+	    }
+
+	    System.out.println("--- Duplicate policy attachment summary ---");
+	    for (Map.Entry<String, Set<String>> e : policiesPerTechModelYear.entrySet()) {
+	        if (e.getValue().size() > 1) {
+	            System.out.println("WARNING: multiple policies attached to same tech/modelYear:"
+	                + " key=" + e.getKey()
+	                + ", policies=" + e.getValue());
+	        }
+	    }
+
+	    System.out.println("======================================================");
+	}
+
+	
     /**
      * Saves the scenario component for the specified tree of regions.
      * Performs QA checks, generates unique IDs, and builds file content for export.
      *
      * @param tree The TreeView of regions
      */
-    private void saveScenarioComponent(TreeView<String> tree) {
+    private void saveScenarioComponentSaved(TreeView<String> tree) {
         if (!qaInputs()) {
             return;
         }
@@ -559,6 +3401,9 @@ public class TabCafeStd extends PolicyTab implements Runnable {
         int skippedInvalidRows = 0;
         int writtenConstraintRows = 0;
 
+        boolean useMMBTUConversions = vars.getUseTrnMMBTUConversions();  
+        useMMBTUConversions = false; //for testing
+        
         for (String region : listOfSelectedLeaves) {
             String subsector = comboBoxSubsector.getValue();
             String sector = (subsector.equals("Light Truck") || subsector.equals("Medium Truck") || subsector.equals("Heavy Truck"))
@@ -611,8 +3456,9 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 
                         // Intensity-based CAFE formulation: use UCD transport intensity as the exported coefficient value.
 
-                        Double coefParsed = safeParseDouble(coefStr);// * 1000.0;// the multiplier converts from GJ/vkt to KJ/vkt 
-                        double coef = (coefParsed != null) ? coefParsed : 5000.0;
+                        Double coefParsed = safeParseDouble(coefStr);// value is GJ/million-vkt                        
+                        
+                        double coef = (coefParsed != null) ? coefParsed : 0.5;
 
                         if (!Double.isFinite(load) || load <= 0.0 || !Double.isFinite(coef) || coef <= 0.0) {
                             skippedInvalidRows++;
@@ -623,21 +3469,24 @@ public class TabCafeStd extends PolicyTab implements Runnable {
                         double pMultiplier;
                         double priceUnitConversion = 1.0;
                         
-                        boolean useMMBTUConversions = vars.getUseTrnMMBTUConversions();
-                        double target=targetMilesPerGal;
+
+                        double target=0.0;
                         
-//                        if (useMMBTUConversions) {
-////                            outputRatio = 1.0 / (target / gj_per_gal * km_per_mile / veh_per_mln_veh);
-////                            pMultiplier = load*1e9;
-//    					    outputRatio=(float)(1.0/target/1.61*131.76/1e6);
-//    					    pMultiplier=((float)(load*1e9*priceUnitConversion)); 
-//                        } else {
-//                            // GCAM 8.5+
-//                            outputRatio = 1.0 /target/km_per_mile*mj_per_gal/veh_per_bln_veh;
-//                            pMultiplier = load*1e6;
-//                        }
+                        if (useMMBTUConversions) {
+                        	 // prior to GCAM 8.5
+                        	target = 1/targetMilesPerGal/km_per_mile*gj_per_gal*km_per_mln_km/priceUnitConversion; // Convert target from MPG to GJ/vkt, then to price units
+    					    outputRatio=target;
+    					    pMultiplier=1e9*priceUnitConversion; 
+                        } else {
+                            // GCAM 8.5+
+                        	target = 1/targetMilesPerGal/km_per_mile*gj_per_gal*km_per_bln_km/1000.0; // Convert target from MPG to GJ/bln-vkt
+                        	coef*=1000.0; //converts from GJ/million-vkt to GJ/billion-vkt
+                            outputRatio = target;
+                            pMultiplier = 1.0;
+                        }
+                        String conversions = (float)outputRatio+","+(float)pMultiplier;
                         
-                        String conversions = utils.getSubsectorConversions(region, sector, subsector, modelYear.intValue());
+//                        String conversions = utils.getSubsectorConversions(region, sector, subsector, modelYear.intValue());
                         
 ////					    outputRatio=(float)(1.0/target/1.61*131.76/1e6);
 ////					    pMultiplier=((float)(load*1e9)); 

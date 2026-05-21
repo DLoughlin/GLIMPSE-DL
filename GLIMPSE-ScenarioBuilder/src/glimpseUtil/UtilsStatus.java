@@ -38,6 +38,7 @@ package glimpseUtil;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.function.ToDoubleFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -45,6 +46,8 @@ import java.util.regex.Pattern;
  * Utility class for scenario and system status lookups.
  */
 public class UtilsStatus {
+	private static final double BYTES_PER_GB = 1073741824d;
+	private static final long DATABASE_SIZE_CACHE_MILLIS = 30000L;
 
 	private static final Pattern RUNNING_PERIOD_PATTERN = Pattern.compile(
 			"(?:^|[^A-Za-z])(period|final-calibration period|model period|solving period|time period)\\s*[:=]?\\s*(\\d{1,3})(?:[^0-9]|$)",
@@ -55,6 +58,12 @@ public class UtilsStatus {
 
 	private GLIMPSEVariables vars;
 	private GLIMPSEFiles files;
+	private volatile boolean nativeOsMetricsAvailable = true;
+	private volatile boolean nativeOsMetricsWarningLogged = false;
+	private volatile int nativeOsMetricsFailureCount = 0;
+	private volatile String cachedDatabaseSizePath = "";
+	private volatile long cachedDatabaseSizeTimestamp = 0L;
+	private volatile float cachedDatabaseSizeGb = 0f;
 
 	/**
 	 * Initializes the status helper with shared variables and file utilities.
@@ -173,18 +182,14 @@ public class UtilsStatus {
 		boolean warning = false;
 		String status = "";
 		try {
-			com.sun.management.OperatingSystemMXBean os = (com.sun.management.OperatingSystemMXBean) java.lang.management.ManagementFactory
-					.getOperatingSystemMXBean();
-			double gb = 1073741824d;
+			com.sun.management.OperatingSystemMXBean os = getOperatingSystemMxBeanOrNull();
 
-			float physicalMemorySize = (float) (os.getTotalPhysicalMemorySize() / gb);
-			float physicalMemoryFree = (float) (os.getFreePhysicalMemorySize() / gb);
-			float swapSpaceSize = (float) (os.getTotalSwapSpaceSize() / gb);
-			float freeSwapSpace = (float) (os.getFreeSwapSpaceSize() / gb);
+			float physicalMemorySize = readOperatingSystemMetricGb(os, "getTotalPhysicalMemorySize", bean -> bean.getTotalPhysicalMemorySize());
+			float physicalMemoryFree = readOperatingSystemMetricGb(os, "getFreePhysicalMemorySize", bean -> bean.getFreePhysicalMemorySize());
 			File drive = new File("/");
-			float totalSpace = (float) (drive.getTotalSpace() / gb);
-			float freeSpace = (float) (drive.getFreeSpace() / gb);
-			float cpuLoad = (float) os.getSystemCpuLoad();
+			float totalSpace = (float) (drive.getTotalSpace() / BYTES_PER_GB);
+			float freeSpace = (float) (drive.getFreeSpace() / BYTES_PER_GB);
+			float cpuLoad = (float) readOperatingSystemMetric(os, "getSystemCpuLoad", bean -> bean.getSystemCpuLoad());
 
 			String databaseName = vars != null ? vars.getgCamOutputDatabase() : null;
 			String databaseShortName = "";
@@ -192,28 +197,24 @@ public class UtilsStatus {
 			if (databaseName != null && !databaseName.trim().isEmpty()) {
 				File databaseFolder = new File(databaseName);
 				databaseShortName = databaseFolder.getName();
-				if (databaseFolder.exists() && files != null) {
-					Path databasePath = databaseFolder.toPath();
-					databaseSize = (float) (files.getDirectorySize(databasePath) / gb);
-				}
+				databaseSize = getCachedDatabaseSizeGb(databaseFolder);
 			}
 
 			String warningRAM = "";
 			String warningDisk = "";
-			//String warningSwap = "";
 			String warningDb = "";
 			float maxDbSize = vars != null ? vars.getMaxDatabaseSize() : 0f;
 
-			if (physicalMemorySize > 0f && physicalMemoryFree / physicalMemorySize < 0.05f)
+			if (Float.isFinite(physicalMemorySize) && physicalMemorySize > 0f
+					&& Float.isFinite(physicalMemoryFree) && physicalMemoryFree / physicalMemorySize < 0.05f)
 				warningRAM = "*";
-			//if (swapSpaceSize > 0f && freeSwapSpace / swapSpaceSize < 0.05f)
-			//	warningSwap = "*";
 			if (freeSpace < 40.0f)
 				warningDisk = "*";
 			if (maxDbSize > 0f && databaseSize > maxDbSize * .8f)
 				warningDb = "*";
 
-			if ((physicalMemorySize > 0f && physicalMemoryFree / physicalMemorySize < 0.05f)
+			if ((Float.isFinite(physicalMemorySize) && physicalMemorySize > 0f
+					&& Float.isFinite(physicalMemoryFree) && physicalMemoryFree / physicalMemorySize < 0.05f)
 					|| (freeSpace < 40.0f)
 					|| (maxDbSize > 0f && databaseSize > maxDbSize * .8f)) {
 				warning = true;
@@ -221,27 +222,111 @@ public class UtilsStatus {
 
 			String dbFreePct = (maxDbSize > 0f) ? String.format("%,.0f", (1.0f - (databaseSize / maxDbSize)) * 100.0f) : "n/a";
 			status = GLIMPSEUtils.LABEL_RESOURCES
-					+ "CPU: " + String.format("%,.0f", cpuLoad * 100.0f) + "% | "
-					+ "RAM: " + String.format("%,.0f", physicalMemorySize - physicalMemoryFree) + "/"
-					+ String.format("%,.0f", physicalMemorySize) + " GB used ("
-					+ String.format("%,.0f", physicalMemorySize > 0f ? physicalMemoryFree / physicalMemorySize * 100.0f : 0.0f)
-					+ "% Free)" + warningRAM + " | "
+					+ "CPU: " + formatCpuLoad(cpuLoad) + " | "
+					+ "RAM: " + formatRamUsage(physicalMemorySize, physicalMemoryFree, warningRAM) + " | "
 					+ "HD: " + String.format("%,.0f", totalSpace - freeSpace) + "/" + String.format("%,.0f", totalSpace)
 					+ " GB used (" + String.format("%,.0f", totalSpace > 0f ? freeSpace / totalSpace * 100.0f : 0.0f)
 					+ "% Free)" + warningDisk + " | "
-					//+ "Swap: " + String.format("%,.0f", swapSpaceSize - freeSwapSpace) + "/"
-					//+ String.format("%,.0f", swapSpaceSize) + " GB ("
-					//+ String.format("%,.0f", swapSpaceSize > 0f ? freeSwapSpace / swapSpaceSize * 100.0f : 0.0f)
-					//+ "% Free)" + warningSwap + " | " 
 					+ "DB: " + (databaseShortName.isEmpty() ? "(not set)" : databaseShortName) + " "
 					+ String.format("%,.0f", databaseSize) + "/" + (vars != null ? String.format("%,.0f", maxDbSize) : 0f)
 					+ " GB used (" + dbFreePct + "%" + warningDb + " Free)";
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			status = "";
 		}
 		if (warning)
 			status = status.trim() + " !!!";
 		return status;
+	}
+
+	private com.sun.management.OperatingSystemMXBean getOperatingSystemMxBeanOrNull() {
+		if (!nativeOsMetricsAvailable) {
+			return null;
+		}
+		try {
+			java.lang.management.OperatingSystemMXBean bean = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
+			if (bean instanceof com.sun.management.OperatingSystemMXBean) {
+				return (com.sun.management.OperatingSystemMXBean) bean;
+			}
+			disableNativeOsMetrics("OperatingSystemMXBean cast", null);
+		} catch (Throwable t) {
+			disableNativeOsMetrics("ManagementFactory.getOperatingSystemMXBean", t);
+		}
+		return null;
+	}
+
+	private float readOperatingSystemMetricGb(com.sun.management.OperatingSystemMXBean os,
+			String metricName, ToDoubleFunction<com.sun.management.OperatingSystemMXBean> extractor) {
+		double value = readOperatingSystemMetric(os, metricName, extractor);
+		return Double.isFinite(value) ? (float) (value / BYTES_PER_GB) : Float.NaN;
+	}
+
+	private double readOperatingSystemMetric(com.sun.management.OperatingSystemMXBean os,
+			String metricName, ToDoubleFunction<com.sun.management.OperatingSystemMXBean> extractor) {
+		if (os == null || !nativeOsMetricsAvailable) {
+			return Double.NaN;
+		}
+		try {
+			return extractor.applyAsDouble(os);
+		} catch (Throwable t) {
+			disableNativeOsMetrics(metricName, t);
+			return Double.NaN;
+		}
+	}
+
+	private void disableNativeOsMetrics(String metricName, Throwable t) {
+		nativeOsMetricsFailureCount++;
+		nativeOsMetricsAvailable = false;
+		if (nativeOsMetricsWarningLogged) {
+			return;
+		}
+		nativeOsMetricsWarningLogged = true;
+		String where = (metricName == null || metricName.trim().isEmpty())
+				? ""
+				: " (failed on: " + metricName.trim() + ")";
+		String suffix = (t == null || t.getMessage() == null || t.getMessage().trim().isEmpty())
+				? ""
+				: ": " + t.getMessage().trim();
+		System.out.println("OS/JMX resource metrics unavailable; falling back to reduced status reporting"
+				+ where + " [failure-count=" + nativeOsMetricsFailureCount
+				+ "; additional failures suppressed]" + suffix);
+	}
+
+	private float getCachedDatabaseSizeGb(File databaseFolder) {
+		if (databaseFolder == null || !databaseFolder.exists() || files == null) {
+			return 0f;
+		}
+		String folderPath = databaseFolder.getAbsolutePath();
+		long now = System.currentTimeMillis();
+		if (folderPath.equals(cachedDatabaseSizePath)
+				&& now - cachedDatabaseSizeTimestamp < DATABASE_SIZE_CACHE_MILLIS) {
+			return cachedDatabaseSizeGb;
+		}
+		try {
+			Path databasePath = databaseFolder.toPath();
+			cachedDatabaseSizeGb = (float) (files.getDirectorySize(databasePath) / BYTES_PER_GB);
+			cachedDatabaseSizePath = folderPath;
+			cachedDatabaseSizeTimestamp = now;
+			return cachedDatabaseSizeGb;
+		} catch (Throwable t) {
+			return 0f;
+		}
+	}
+
+	private String formatCpuLoad(float cpuLoad) {
+		if (!Float.isFinite(cpuLoad) || cpuLoad < 0f) {
+			return "n/a";
+		}
+		return String.format("%,.0f", cpuLoad * 100.0f) + "%";
+	}
+
+	private String formatRamUsage(float physicalMemorySize, float physicalMemoryFree, String warningRAM) {
+		if (!Float.isFinite(physicalMemorySize) || physicalMemorySize <= 0f || !Float.isFinite(physicalMemoryFree)) {
+			return "n/a";
+		}
+		return String.format("%,.0f", physicalMemorySize - physicalMemoryFree) + "/"
+				+ String.format("%,.0f", physicalMemorySize) + " GB used ("
+				+ String.format("%,.0f", physicalMemoryFree / physicalMemorySize * 100.0f)
+				+ "% Free)" + warningRAM;
 	}
 
 	/**

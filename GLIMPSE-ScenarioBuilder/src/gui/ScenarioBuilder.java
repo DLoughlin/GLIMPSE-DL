@@ -46,6 +46,7 @@ import glimpseUtil.GLIMPSEStyles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
 import glimpseUtil.UtilsDialogs;
+import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
@@ -177,13 +178,26 @@ public class ScenarioBuilder {
 	public void build() {
 		// Initialization of vars/files/utils is done during Client.init().
 		// Avoid repeating it here to reduce startup cost and prevent reinitialization side effects.
-
+		Client.logStartupBuildCheckpoint("ScenarioBuilder.build: createTables start");
 		createTables();
+		Client.logStartupBuildCheckpoint("ScenarioBuilder.build: createTables complete");
+		Client.logStartupBuildCheckpoint("ScenarioBuilder.build: createArrowButtons start");
 		createArrowButtons();
+		Client.logStartupBuildCheckpoint("ScenarioBuilder.build: createArrowButtons complete");
+		Client.logStartupBuildCheckpoint("ScenarioBuilder.build: createComponentLibraryPane start");
 		createComponentLibraryPane();
+		Client.logStartupBuildCheckpoint("ScenarioBuilder.build: createComponentLibraryPane complete");
+		Client.logStartupBuildCheckpoint("ScenarioBuilder.build: createCreateScenarioPane start");
 		createCreateScenarioPane();
+		Client.logStartupBuildCheckpoint("ScenarioBuilder.build: createCreateScenarioPane complete");
+		Client.logStartupBuildCheckpoint("ScenarioBuilder.build: createScenarioLibraryPane start");
 		createScenarioLibraryPane();
-		resizeLabels();
+		Client.logStartupBuildCheckpoint("ScenarioBuilder.build: createScenarioLibraryPane complete");
+		// Defer label resize to the next FX turn to reduce synchronous startup blocking.
+		Platform.runLater(() -> {
+			resizeLabels();
+			Client.logStartupBuildCheckpoint("ScenarioBuilder.build: resizeLabels complete (deferred)");
+		});
 	}
 
 	/**

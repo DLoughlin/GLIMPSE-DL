@@ -231,6 +231,8 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private final ConcurrentHashMap<String, Boolean> liveSuccessMarkedByScenario = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Boolean> windowsPolicyBlockPromptShownByScenario = new ConcurrentHashMap<>();
     private final AtomicBoolean resetToDefaultCreatedSortAndScroll = new AtomicBoolean(true);
+    /** True after a native/JVM linkage failure while reading resource stats; prevents repeated throws each refresh tick. */
+    private final AtomicBoolean resourceStatsUnavailable = new AtomicBoolean(false);
 
     // --- Constructors ---
     /**
@@ -723,7 +725,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 Thread refreshThread = new Thread(() -> {
                     try {
                         updateRunStatus();
-                    } catch (Exception ex) {
+                    } catch (Throwable ex) {
                         System.out.println("Problem during live status refresh: " + ex);
                     } finally {
                         Platform.runLater(() -> liveStatusRefreshInProgress.set(false));
@@ -1171,10 +1173,18 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     private void updateStatusBarComputerStats(String runningScenario) {
+        if (resourceStatsUnavailable.get()) {
+            Client.setStartupStatus(READY_MESSAGE, -1, false);
+            return;
+        }
+
         String statsText = "";
         try {
             statsText = utils.getComputerStatString();
-        } catch (Exception ignored) {}
+        } catch (LinkageError linkageError) {
+            resourceStatsUnavailable.set(true);
+            System.out.println("Resource stats disabled after linkage failure: " + linkageError);
+        } catch (Throwable ignored) {}
 
         String safeStatsText = statsText == null ? "" : statsText.trim();
         if (safeStatsText.isEmpty()) {
