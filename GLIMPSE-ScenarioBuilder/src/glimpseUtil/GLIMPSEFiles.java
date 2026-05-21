@@ -88,10 +88,7 @@ public class GLIMPSEFiles {
     // File content caches
     public ArrayList<String> optionsFileContent = new ArrayList<>();
     //public ArrayList<String> glimpseCSVColumnsFileContent = new ArrayList<>();
-    private ArrayList<String> glimpseXMLHeadersFileContent = new ArrayList<>();
     public ArrayList<String> glimpseTechBoundFileContent = new ArrayList<>();
-    private ArrayList<String> gCamConfigurationTemplateFileContent = new ArrayList<>();
-    private ArrayList<String> resPolicyTemplateFileContent = new ArrayList<>();
     private ArrayList<String> monetaryConversionsFileContent = new ArrayList<>();
 
     /**
@@ -998,35 +995,31 @@ public class GLIMPSEFiles {
      * Load required files into memory.
      */
     public void loadFiles() {
-        final int totalRequiredFiles = 4;
+        final int totalRequiredFiles = 1;
         try {
-            Client.setStartupRequiredFileStatus(vars.getXmlHeaderFilename(), 1, totalRequiredFiles);
-            glimpseXMLHeadersFileContent = getStringArrayFromFile(vars.getXmlHeaderFilename(), COMMENT_CHAR);
-        } catch (Exception e) {
-            System.out.println("\nError opening files needed by GLIMPSE.");
-            System.out.println("Exception " + e);
-        }
-        try {
-            Client.setStartupRequiredFileStatus(vars.getTchBndListFilename(), 2, totalRequiredFiles);
-            glimpseTechBoundFileContent = getStringArrayFromFile(vars.getTchBndListFilename(), COMMENT_CHAR);
-        } catch (Exception e) {
-            System.out.println("Error opening files needed by GLIMPSE.");
-            System.out.println("Exception " + e);
-        }
-        try {
-            Client.setStartupRequiredFileStatus(vars.getConfigurationTemplateFilename(), 3, totalRequiredFiles);
-            gCamConfigurationTemplateFileContent = getStringArrayFromFile(vars.getConfigurationTemplateFilename(), COMMENT_CHAR);
-        } catch (Exception e) {
-            System.out.println("Error opening files needed by GLIMPSE.");
-            System.out.println("Exception " + e);
-        }
-        try {
-            Client.setStartupRequiredFileStatus(vars.getMonetaryConversionsFilename(), 4, totalRequiredFiles);
+            Client.setStartupRequiredFileStatus(vars.getMonetaryConversionsFilename(), 1, totalRequiredFiles);
             setMonetaryConversionsFileContent(getStringArrayFromFile(vars.getMonetaryConversionsFilename(), COMMENT_CHAR));
         } catch (Exception e) {
             System.out.println("Error opening files needed by GLIMPSE.");
             System.out.println("Exception " + e);
         }
+    }
+
+    /**
+     * Lazily loads the tech-bound metadata table when scenario-component tabs need it.
+     */
+    public void ensureTechBoundFileContentLoaded() {
+        if (glimpseTechBoundFileContent != null && !glimpseTechBoundFileContent.isEmpty()) {
+            return;
+        }
+        glimpseTechBoundFileContent = getStringArrayFromFile(vars.getTchBndListFilename(), COMMENT_CHAR);
+    }
+
+    /**
+     * Clears cached tech-bound metadata to release memory after component creation work.
+     */
+    public void clearTechBoundFileContentCache() {
+        glimpseTechBoundFileContent = new ArrayList<>();
     }
 
   /**

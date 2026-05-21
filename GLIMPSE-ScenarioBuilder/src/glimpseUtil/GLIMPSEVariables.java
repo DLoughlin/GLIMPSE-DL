@@ -126,6 +126,7 @@ public class GLIMPSEVariables {
     private String eol = "\n";
     private String debugCreate = "0";
     private String debugRename = "0";
+    private String debugStartupTiming = "0";
     private String startYearForShare = "2010";
     private String[][] techInfo = null;
    
@@ -611,6 +612,43 @@ public class GLIMPSEVariables {
      */
     public void setDebugRename(String s) {
         this.debugRename = s;
+    }
+
+    /**
+     * Returns the startup timing debug flag.
+     *
+     * @return The startup timing debug flag.
+     */
+    public String getDebugStartupTimingValue() {
+        return debugStartupTiming;
+    }
+
+    /**
+     * Sets the startup timing debug flag.
+     *
+     * @param s The startup timing debug flag.
+     */
+    public void setDebugStartupTiming(String s) {
+        if (s == null) {
+            debugStartupTiming = "0";
+            return;
+        }
+        String normalized = s.trim();
+        if (normalized.equalsIgnoreCase("true")) {
+            normalized = "1";
+        } else if (normalized.equalsIgnoreCase("false")) {
+            normalized = "0";
+        }
+        debugStartupTiming = normalized;
+    }
+
+    /**
+     * Returns whether startup timing logs are enabled.
+     *
+     * @return {@code true} when startup timing output should be printed
+     */
+    public boolean getDebugStartupTiming() {
+        return !"0".equals(debugStartupTiming);
     }
 
     /**
@@ -1581,6 +1619,9 @@ public class GLIMPSEVariables {
         case "debugcreate":
             returnVal = debugCreate;
             break;
+        case "debugstartuptiming":
+            returnVal = debugStartupTiming;
+            break;
         case "startyearforshare":
             returnVal = startYearForShare;
             break;
@@ -1835,6 +1876,9 @@ public class GLIMPSEVariables {
             break;
         case "debugcreate":
             setDebugCreate(val);
+            break;
+        case "debugstartuptiming":
+            setDebugStartupTiming(val);
             break;
         case "debugrename":
             setDebugRename(val);
@@ -2229,7 +2273,7 @@ public class GLIMPSEVariables {
                 "maxDatabaseSizeGB","optionsFilename","xmlLibrary","textEditor","xmlEditor",
                 "stopPeriod","runQueueStr",
                 "isGcamUSA","preferredFontSize","useIcons","use_icons","debugRegion",
-                "debugCreate","startYearForShare","debugRename","filesToSave"};
+                "debugCreate","debugStartupTiming","startYearForShare","debugRename","filesToSave"};
         
         ArrayList<String> report=new ArrayList<String>();
         
@@ -2360,7 +2404,7 @@ public class GLIMPSEVariables {
                 if ((physicalMemorySize<12.0)&&(!this.isGcamUSA)) report.add("*** At least 12 GB of RAM are recommended for GCAM. The model may stop unexpectedly if RAM is exhausted. ***");
                 if ((physicalMemorySize<14.0)&&(this.isGcamUSA)) report.add("*** At least 14 GB of RAM are recommended for GCAM-USA, although 16 or more may be required when using complex policies such as RPS or CES. The model may stop unexpectedly if RAM is exhausted. ***");				
                 report.add("");		
-            } catch(Exception e1) {
+              } catch(Throwable e1) {
                 report.add("Java version does not support assessing physical memory.");
                 report.add("");
             }
@@ -2387,7 +2431,7 @@ public class GLIMPSEVariables {
                 report.add(String.format("Total swap space: %.1f GB",swapSpaceSize));	
                 report.add(String.format("Free swap space: %.1f GB",freeSwapSpace));
                 report.add("");		
-            } catch(Exception e1) {
+              } catch(Throwable e1) {
                 report.add("Java version does not support assessing swap space size.");
                 report.add("");
             }			
@@ -2399,7 +2443,7 @@ public class GLIMPSEVariables {
             report.add(String.format("Current usage: %.1f", (float)cpu_load*100.)+"%");
             report.add("");
                         
-        } catch(Exception e) {
+          } catch(Throwable e) {
             System.out.println("Problem checking computer attributes (e.g., RAM)");
         }
         

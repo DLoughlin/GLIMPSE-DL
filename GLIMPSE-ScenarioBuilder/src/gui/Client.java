@@ -226,6 +226,8 @@ public class Client extends Application {
 
     /** Startup timing anchor (nanoseconds). */
     private static final long STARTUP_T0_NANOS = System.nanoTime();
+    /** Optional early timing toggle before options are loaded. */
+    private static volatile boolean bootstrapTimingEnabled = true;
     // endregion
 
     /** True once GLIMPSEFiles.loadFiles() has completed successfully (or at least attempted). */
@@ -257,6 +259,8 @@ public class Client extends Application {
     private static volatile javax.swing.JLabel earlySplashLabel;
     private static volatile javax.swing.JProgressBar earlySplashProgressBar;
     private static final AtomicBoolean earlySplashVisible = new AtomicBoolean(false);
+    /** Log file path captured during init; heavy computer-stat collection is written asynchronously. */
+    private static volatile String deferredStartupLogFilename;
 
     /**
      * Launches the JavaFX application lifecycle for Scenario Builder.
@@ -264,12 +268,17 @@ public class Client extends Application {
      * @param args Command line arguments passed to the application. Supports an options file via -options flag or as a single argument.
      */
     public static void main(String[] args) {
+        logBootstrapCheckpoint("main(): entered");
         showEarlyStartupSplash(EARLY_SPLASH_INITIAL_MESSAGE);
+        logBootstrapCheckpoint("main(): after showEarlyStartupSplash");
         // Ensures JavaFX does not exit implicitly on certain VMs (e.g., when WM_ENDSESSION is called).
         Platform.setImplicitExit(false);
+        logBootstrapCheckpoint("main(): after Platform.setImplicitExit(false)");
         try {
+            logBootstrapCheckpoint("main(): before launch(args)");
             launch(args);
         } finally {
+            logBootstrapCheckpoint("main(): after launch(args)");
             closeEarlyStartupSplash();
         }
     }
@@ -283,9 +292,11 @@ public class Client extends Application {
     public void init() throws Exception {
     	
     		// Install console redirection as early as possible so startup prints are captured.
-        ConsoleOutputRedirect.install();
-
         final long t0 = System.nanoTime();
+        logBootstrapCheckpoint("init(): entered");
+        ConsoleOutputRedirect.install();
+        logBootstrapCheckpoint("init(): after ConsoleOutputRedirect.install");
+
         updateEarlyStartupSplashMessage("Loading settings and options...");
         System.out.println("Loading settings and initializing.");
 
@@ -299,18 +310,20 @@ public class Client extends Application {
 
         // Load options into the vars singleton
         vars.loadOptions(optionsFilename);
+        bootstrapTimingEnabled = vars.getDebugStartupTiming();
+        logStartupCheckpoint("init(): options loaded", t0);
         updateEarlyStartupSplashMessage("Loading GLIMPSE options...");
         final String setup = vars.examineGLIMPSESetup();
         if (setup.length() > 0) {
             System.out.println(setup);
         }
 
-        // Reset log file and log computer stats
+        // Reset startup log immediately; defer expensive computer-stat collection to background.
         String glimpseLogDir = vars.getGlimpseLogDir();
         if (glimpseLogDir != null && glimpseLogDir.trim().length() > 0) {
             String glimpseLogFilename = glimpseLogDir + File.separator + "glimpse_log.txt";
             utils.resetLogFile(glimpseLogFilename);
-            files.appendTextToFile(utils.getComputerStatString() + vars.getEol(), glimpseLogFilename);
+            deferredStartupLogFilename = glimpseLogFilename;
         } else {
             System.out.println("Warning: glimpseLogDir not set; skipping log reset.");
         }
@@ -355,15 +368,22 @@ public class Client extends Application {
 //        primaryStage.centerOnScreen();
 //        primaryStage.show();
                 
+        logStartupCheckpoint("start(): before startup shell setup", t0);
         advanceStartupStep(STARTUP_STEP_WINDOW_LAYOUT, STARTUP_SHELL_MESSAGE);
+        logStartupCheckpoint("start(): after advanceStartupStep", t0);
         setStartupStatus(STARTUP_SHELL_MESSAGE, -1, true);
+        logStartupCheckpoint("start(): after setStartupStatus(shell)", t0);
         setStartupShellWindow();
+        logStartupCheckpoint("start(): after setStartupShellWindow", t0);
         primaryStage.show();
+        logStartupCheckpoint("start(): after primaryStage.show", t0);
         mainWindowDisplayed = true;
         closeEarlyStartupSplash();
+        logStartupCheckpoint("start(): after closeEarlyStartupSplash", t0);
+        startDeferredComputerStatsLogging();
         logStartupCheckpoint("Startup shell shown", t0);
 
-        Platform.runLater(() -> {
+        runAfterInitialFxPulse(() -> {
             // Build heavy panes after first paint so startup is perceived as immediate.
             setStartupStatus(STARTUP_BUILDING_UI_MESSAGE, -1, true);
             logStartupCheckpoint("ScenarioBuilder.build start", STARTUP_T0_NANOS);
@@ -641,10 +661,10 @@ public class Client extends Application {
         center.setAlignment(Pos.CENTER);
         center.setPadding(new Insets(24));
         BorderPane shellRoot = new BorderPane(center);
-        shellRoot.setStyle(styles.getBackgroundStyle());
+        // Keep startup shell styling minimal to reduce first-show CSS work.
+        shellRoot.setStyle("-fx-background-color: #f7f9fc;");
 
         Scene scene = new Scene(shellRoot, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT);
-        applyModernCss(scene);
         primaryStage.setScene(scene);
         primaryStage.setTitle(VERSION);
         primaryStage.setMinHeight(MIN_WINDOW_HEIGHT);
@@ -718,6 +738,30 @@ public class Client extends Application {
                 });
             }
         }, "glimpse-deferred-file-loader");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    /**
+     * Writes the startup computer-status snapshot after first paint so it does not block app launch.
+     */
+    private void startDeferredComputerStatsLogging() {
+        final String logFilename = deferredStartupLogFilename;
+        if (logFilename == null || logFilename.trim().isEmpty()) {
+            return;
+        }
+        final Thread t = new Thread(() -> {
+            final long t0 = System.nanoTime();
+            try {
+                final String stats = utils.getComputerStatString();
+                if (stats != null && !stats.trim().isEmpty()) {
+                    files.appendTextToFile(stats + vars.getEol(), logFilename);
+                }
+                logStartupCheckpoint("Deferred computer stats logged", t0);
+            } catch (Throwable ex) {
+                System.out.println("Deferred computer stats logging failed: " + ex.getMessage());
+            }
+        }, "glimpse-startup-computer-stats");
         t.setDaemon(true);
         t.start();
     }
@@ -1136,7 +1180,7 @@ public class Client extends Application {
 
     private static void logStartupCheckpoint(String label, long t0Nanos) {
         try {
-            if (!GLIMPSEVariables.getInstance().getDebug()) {
+            if (!GLIMPSEVariables.getInstance().getDebugStartupTiming()) {
                 return;
             }
         } catch (Throwable ignored) {
@@ -1147,6 +1191,31 @@ public class Client extends Application {
         final long msSinceT0 = (now - t0Nanos) / 1_000_000L;
         final long msSinceProcessStart = (now - STARTUP_T0_NANOS) / 1_000_000L;
         System.out.println("[startup] " + label + " | +" + msSinceT0 + "ms | total=" + msSinceProcessStart + "ms");
+    }
+
+    /** Emits early bootstrap timings before options/debug flags are loaded. */
+    private static void logBootstrapCheckpoint(String label) {
+        if (!bootstrapTimingEnabled) {
+            return;
+        }
+        final long now = System.nanoTime();
+        final long msSinceProcessStart = (now - STARTUP_T0_NANOS) / 1_000_000L;
+        System.out.println("[startup-bootstrap] " + label + " | total=" + msSinceProcessStart + "ms");
+    }
+
+    /** Package-visible helper so startup builders can emit granular checkpoint logs. */
+    static void logStartupBuildCheckpoint(String label) {
+        logStartupCheckpoint(label, STARTUP_T0_NANOS);
+    }
+
+    /**
+     * Gives JavaFX at least one render pulse after stage show before heavy startup work.
+     */
+    private static void runAfterInitialFxPulse(Runnable task) {
+        if (task == null) {
+            return;
+        }
+        Platform.runLater(() -> Platform.runLater(task));
     }
 
     private static int clampRuntimeFontSize(int requestedFontSize) {
