@@ -348,9 +348,9 @@ public class DiffWindow {
         Scene scene = new Scene(root, lastWidth, lastHeight);
         // Prefer the app's shared modern.css for consistent styling.
         try {
-            java.net.URL cssUrl = DiffWindow.class.getResource("/resources/modern.css");
-            if (cssUrl != null) {
-                scene.getStylesheets().add(cssUrl.toExternalForm());
+            String css = CSSResourceManager.getModernCssUrl();
+            if (css != null) {
+                scene.getStylesheets().add(css);
             }
         } catch (Exception ignored) {
         }

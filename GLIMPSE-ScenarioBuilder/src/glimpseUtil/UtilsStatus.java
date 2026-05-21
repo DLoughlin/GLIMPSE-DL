@@ -61,9 +61,28 @@ public class UtilsStatus {
 	private volatile boolean nativeOsMetricsAvailable = true;
 	private volatile boolean nativeOsMetricsWarningLogged = false;
 	private volatile int nativeOsMetricsFailureCount = 0;
+	private volatile boolean nativeDiskSpaceMetricsAvailable = true;
+	private volatile boolean nativeDiskSpaceWarningLogged = false;
+	private volatile int nativeDiskSpaceFailureCount = 0;
 	private volatile String cachedDatabaseSizePath = "";
 	private volatile long cachedDatabaseSizeTimestamp = 0L;
 	private volatile float cachedDatabaseSizeGb = 0f;
+	private volatile String databaseSizePendingPath = "";
+	private volatile boolean databaseSizeComputeInProgress = false;
+	private volatile Runnable onDatabaseSizeRefreshed = null;
+	private volatile long databaseSizeRequestGeneration = 0L;
+
+	/**
+	 * Registers a callback to be invoked on a background thread whenever an async
+	 * database-size calculation completes. Typically wired to
+	 * {@code Client.refreshStatusBarComputerStats()} so the status bar re-renders
+	 * with the real value instead of showing "calculating...".
+	 *
+	 * @param callback runnable to call when DB size refresh finishes; may be {@code null} to clear
+	 */
+	public void setOnDatabaseSizeRefreshed(Runnable callback) {
+		onDatabaseSizeRefreshed = callback;
+	}
 
 	/**
 	 * Initializes the status helper with shared variables and file utilities.
@@ -187,17 +206,19 @@ public class UtilsStatus {
 			float physicalMemorySize = readOperatingSystemMetricGb(os, "getTotalPhysicalMemorySize", bean -> bean.getTotalPhysicalMemorySize());
 			float physicalMemoryFree = readOperatingSystemMetricGb(os, "getFreePhysicalMemorySize", bean -> bean.getFreePhysicalMemorySize());
 			File drive = new File("/");
-			float totalSpace = (float) (drive.getTotalSpace() / BYTES_PER_GB);
-			float freeSpace = (float) (drive.getFreeSpace() / BYTES_PER_GB);
+			float totalSpace = readDiskSpaceGb(drive, true);
+			float freeSpace = readDiskSpaceGb(drive, false);
 			float cpuLoad = (float) readOperatingSystemMetric(os, "getSystemCpuLoad", bean -> bean.getSystemCpuLoad());
 
 			String databaseName = vars != null ? vars.getgCamOutputDatabase() : null;
 			String databaseShortName = "";
 			float databaseSize = 0f;
+			boolean databaseSizePending = false;
 			if (databaseName != null && !databaseName.trim().isEmpty()) {
 				File databaseFolder = new File(databaseName);
 				databaseShortName = databaseFolder.getName();
 				databaseSize = getCachedDatabaseSizeGb(databaseFolder);
+				databaseSizePending = isDatabaseSizePending(databaseFolder);
 			}
 
 			String warningRAM = "";
@@ -208,28 +229,29 @@ public class UtilsStatus {
 			if (Float.isFinite(physicalMemorySize) && physicalMemorySize > 0f
 					&& Float.isFinite(physicalMemoryFree) && physicalMemoryFree / physicalMemorySize < 0.05f)
 				warningRAM = "*";
-			if (freeSpace < 40.0f)
+			if (Float.isFinite(freeSpace) && freeSpace < 40.0f)
 				warningDisk = "*";
 			if (maxDbSize > 0f && databaseSize > maxDbSize * .8f)
 				warningDb = "*";
 
 			if ((Float.isFinite(physicalMemorySize) && physicalMemorySize > 0f
 					&& Float.isFinite(physicalMemoryFree) && physicalMemoryFree / physicalMemorySize < 0.05f)
-					|| (freeSpace < 40.0f)
+					|| (Float.isFinite(freeSpace) && freeSpace < 40.0f)
 					|| (maxDbSize > 0f && databaseSize > maxDbSize * .8f)) {
 				warning = true;
 			}
 
 			String dbFreePct = (maxDbSize > 0f) ? String.format("%,.0f", (1.0f - (databaseSize / maxDbSize)) * 100.0f) : "n/a";
+			String dbUsageText = databaseSizePending
+					? "calculating..."
+					: String.format("%,.0f", databaseSize) + "/" + (vars != null ? String.format("%,.0f", maxDbSize) : 0f)
+							+ " GB used (" + dbFreePct + "%" + warningDb + " Free)";
 			status = GLIMPSEUtils.LABEL_RESOURCES
 					+ "CPU: " + formatCpuLoad(cpuLoad) + " | "
 					+ "RAM: " + formatRamUsage(physicalMemorySize, physicalMemoryFree, warningRAM) + " | "
-					+ "HD: " + String.format("%,.0f", totalSpace - freeSpace) + "/" + String.format("%,.0f", totalSpace)
-					+ " GB used (" + String.format("%,.0f", totalSpace > 0f ? freeSpace / totalSpace * 100.0f : 0.0f)
-					+ "% Free)" + warningDisk + " | "
+					+ "HD: " + formatDiskUsage(totalSpace, freeSpace, warningDisk) + " | "
 					+ "DB: " + (databaseShortName.isEmpty() ? "(not set)" : databaseShortName) + " "
-					+ String.format("%,.0f", databaseSize) + "/" + (vars != null ? String.format("%,.0f", maxDbSize) : 0f)
-					+ " GB used (" + dbFreePct + "%" + warningDb + " Free)";
+					+ dbUsageText;
 		} catch (Throwable e) {
 			status = "";
 		}
@@ -296,20 +318,139 @@ public class UtilsStatus {
 			return 0f;
 		}
 		String folderPath = databaseFolder.getAbsolutePath();
-		long now = System.currentTimeMillis();
-		if (folderPath.equals(cachedDatabaseSizePath)
-				&& now - cachedDatabaseSizeTimestamp < DATABASE_SIZE_CACHE_MILLIS) {
-			return cachedDatabaseSizeGb;
+		return folderPath.equals(cachedDatabaseSizePath) ? cachedDatabaseSizeGb : 0f;
+	}
+
+	private boolean isDatabaseSizePending(File databaseFolder) {
+		if (databaseFolder == null) {
+			return false;
+		}
+		String folderPath = databaseFolder.getAbsolutePath();
+		return databaseSizeComputeInProgress && folderPath.equals(databaseSizePendingPath)
+				&& !folderPath.equals(cachedDatabaseSizePath);
+	}
+
+	/**
+	 * Requests an asynchronous refresh of the currently configured output database
+	 * size. Call this only on meaningful events (startup, database path changes,
+	 * scenario status refreshes, ModelInterface close, etc.).
+	 *
+	 * @param force when {@code true}, bypass the normal recent-cache short circuit
+	 */
+	public void requestDatabaseSizeRefresh(boolean force) {
+		if (vars == null || files == null) {
+			return;
+		}
+		String databaseName = vars.getgCamOutputDatabase();
+		if (databaseName == null || databaseName.trim().isEmpty()) {
+			return;
+		}
+		final File databaseFolder = new File(databaseName.trim());
+		final String folderPath = databaseFolder.getAbsolutePath();
+		if (!databaseFolder.exists()) {
+			// No folder yet; clear stale state and allow the status bar to stop showing
+			// a previous database value.
+			cachedDatabaseSizePath = folderPath;
+			cachedDatabaseSizeGb = 0f;
+			cachedDatabaseSizeTimestamp = System.currentTimeMillis();
+			databaseSizePendingPath = folderPath;
+			databaseSizeComputeInProgress = false;
+			invokeDatabaseSizeRefreshCallback();
+			return;
+		}
+
+		final long requestGeneration;
+		final long now = System.currentTimeMillis();
+		synchronized (this) {
+			if (!force && folderPath.equals(cachedDatabaseSizePath)
+					&& now - cachedDatabaseSizeTimestamp < DATABASE_SIZE_CACHE_MILLIS
+					&& !databaseSizeComputeInProgress) {
+				return;
+			}
+			if (databaseSizeComputeInProgress && folderPath.equals(databaseSizePendingPath)) {
+				return;
+			}
+			databaseSizeComputeInProgress = true;
+			databaseSizePendingPath = folderPath;
+			databaseSizeRequestGeneration++;
+			requestGeneration = databaseSizeRequestGeneration;
+		}
+
+		Thread t = new Thread(() -> {
+			float sizeGb = 0f;
+			boolean success = false;
+			try {
+				Path databasePath = databaseFolder.toPath();
+				sizeGb = (float) (files.getDirectorySize(databasePath) / BYTES_PER_GB);
+				success = true;
+			} catch (Throwable ignored) {
+			} finally {
+				boolean shouldInvokeCallback = false;
+				synchronized (UtilsStatus.this) {
+					if (requestGeneration == databaseSizeRequestGeneration
+							&& folderPath.equals(databaseSizePendingPath)) {
+						cachedDatabaseSizeGb = success ? sizeGb : 0f;
+						cachedDatabaseSizePath = folderPath;
+						cachedDatabaseSizeTimestamp = System.currentTimeMillis();
+						databaseSizeComputeInProgress = false;
+						shouldInvokeCallback = true;
+					}
+				}
+				if (shouldInvokeCallback) {
+					invokeDatabaseSizeRefreshCallback();
+				}
+			}
+		}, "glimpse-db-size-refresh");
+		t.setDaemon(true);
+		t.start();
+	}
+
+	/**
+	 * Requests an asynchronous refresh of the currently configured output database size.
+	 */
+	public void requestDatabaseSizeRefresh() {
+		requestDatabaseSizeRefresh(false);
+	}
+
+	private void invokeDatabaseSizeRefreshCallback() {
+		final Runnable callback = onDatabaseSizeRefreshed;
+		if (callback != null) {
+			try {
+				callback.run();
+			} catch (Throwable ignored) {
+			}
+		}
+	}
+
+	private float readDiskSpaceGb(File drive, boolean total) {
+		if (!nativeDiskSpaceMetricsAvailable || drive == null) {
+			return Float.NaN;
 		}
 		try {
-			Path databasePath = databaseFolder.toPath();
-			cachedDatabaseSizeGb = (float) (files.getDirectorySize(databasePath) / BYTES_PER_GB);
-			cachedDatabaseSizePath = folderPath;
-			cachedDatabaseSizeTimestamp = now;
-			return cachedDatabaseSizeGb;
+			long bytes = total ? drive.getTotalSpace() : drive.getFreeSpace();
+			return (float) (bytes / BYTES_PER_GB);
 		} catch (Throwable t) {
-			return 0f;
+			disableNativeDiskSpaceMetrics(total ? "File.getTotalSpace" : "File.getFreeSpace", t);
+			return Float.NaN;
 		}
+	}
+
+	private void disableNativeDiskSpaceMetrics(String metricName, Throwable t) {
+		nativeDiskSpaceFailureCount++;
+		nativeDiskSpaceMetricsAvailable = false;
+		if (nativeDiskSpaceWarningLogged) {
+			return;
+		}
+		nativeDiskSpaceWarningLogged = true;
+		String where = (metricName == null || metricName.trim().isEmpty())
+				? ""
+				: " (failed on: " + metricName.trim() + ")";
+		String suffix = (t == null || t.getMessage() == null || t.getMessage().trim().isEmpty())
+				? ""
+				: ": " + t.getMessage().trim();
+		System.out.println("Disk space metrics unavailable; falling back to reduced status reporting"
+				+ where + " [failure-count=" + nativeDiskSpaceFailureCount
+				+ "; additional failures suppressed]" + suffix);
 	}
 
 	private String formatCpuLoad(float cpuLoad) {
@@ -317,6 +458,15 @@ public class UtilsStatus {
 			return "n/a";
 		}
 		return String.format("%,.0f", cpuLoad * 100.0f) + "%";
+	}
+
+	private String formatDiskUsage(float totalSpace, float freeSpace, String warningDisk) {
+		if (!Float.isFinite(totalSpace) || totalSpace <= 0f || !Float.isFinite(freeSpace)) {
+			return "n/a";
+		}
+		return String.format("%,.0f", totalSpace - freeSpace) + "/" + String.format("%,.0f", totalSpace)
+				+ " GB used (" + String.format("%,.0f", freeSpace / totalSpace * 100.0f)
+				+ "% Free)" + warningDisk;
 	}
 
 	private String formatRamUsage(float physicalMemorySize, float physicalMemoryFree, String warningRAM) {
@@ -328,7 +478,6 @@ public class UtilsStatus {
 				+ String.format("%,.0f", physicalMemoryFree / physicalMemorySize * 100.0f)
 				+ "% Free)" + warningRAM;
 	}
-
 	/**
 	 * Returns the executable-side GCAM `main_log.txt` file path.
 	 *

@@ -259,9 +259,9 @@ public final class UtilsErrors {
 
 			Scene scene = new Scene(border);
 			try {
-				java.net.URL cssUrl = GLIMPSEUtils.class.getResource("/resources/modern.css");
-				if (cssUrl != null) {
-					scene.getStylesheets().add(cssUrl.toExternalForm());
+				String css = gui.CSSResourceManager.getModernCssUrl();
+				if (css != null) {
+					scene.getStylesheets().add(css);
 				}
 			} catch (Exception ignored) {
 			}
@@ -773,3 +773,4 @@ public final class UtilsErrors {
 				+ ";small=" + smallMarkets;
 	}
 }
+

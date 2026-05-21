@@ -44,12 +44,16 @@ import glimpseUtil.GLIMPSEStyles;
 import glimpseUtil.GLIMPSEVariables;
 import glimpseUtil.WindowsRuntimePreflight;
 import java.io.File;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.text.SimpleDateFormat;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.swing.SwingUtilities;
 import javafx.animation.FadeTransition;
+import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -138,6 +142,25 @@ public class Client extends Application {
     private static final String STARTUP_DIALOG_HEADING = "GLIMPSE startup:";
     private static final String STARTUP_SHELL_MESSAGE = "Starting ScenarioBuilder...";
     private static final String EARLY_SPLASH_INITIAL_MESSAGE = "Launching ScenarioBuilder...";
+    private static final String EARLY_SPLASH_DISABLE_FLAG = "glimpse.disableEarlySplash";
+    private static final String STARTUP_LAUNCH_WATCHDOG_FLAG = "glimpse.debugLaunchWatchdog";
+    private static final String STARTUP_LAUNCH_THREADS_WATCHDOG_FLAG = "glimpse.debugLaunchThreadsWatchdog";
+    private static final String STARTUP_LAUNCH_JAR_URL_DEBUG_FLAG = "glimpse.debugLaunchJarUrls";
+    private static final String STARTUP_PREWARM_BEFORE_SHOW_FLAG = "glimpse.startupPrewarmBeforeShow";
+    private static final String STARTUP_SHOW_WATCHDOG_FLAG = "glimpse.debugShowWatchdog";
+    private static final String STARTUP_WATCHDOG_VERBOSE_STACK_FLAG = "glimpse.debugWatchdogVerboseStack";
+    private static final int STARTUP_WATCHDOG_INTERVAL_MS = 2000;
+    private static final long DATABASE_REBUILD_WATCH_INTERVAL_MS = 15000L;
+    private static final String[] STARTUP_CRITICAL_ICON_PREWARM_KEYS = new String[] {
+            "left_arrow", "double_left_arrow", "right_arrow", "up_right_arrow"
+    };
+    private static final String[] STARTUP_ICON_PREWARM_KEYS = new String[] {
+            "left_arrow", "double_left_arrow", "right_arrow", "up_right_arrow",
+            "play", "stop", "delete1", "edit1", "refresh1", "compare",
+            "results", "results-selected", "log", "log-selected", "errors", "errors-selected",
+            "open_folder1", "add", "queue",
+            "create", "move_up", "move_down"
+    };
     private static final double STARTUP_OVERLAY_MAX_WIDTH = 420.0;
     private static final int STARTUP_TOTAL_STEPS = 5;
     private static final int STARTUP_STEP_WINDOW_LAYOUT = 1;
@@ -218,6 +241,7 @@ public class Client extends Application {
     private final glimpseUtil.GLIMPSEUtils utils = glimpseUtil.GLIMPSEUtils.getInstance();
     private final StatusBar sb = new StatusBar();
     private final AtomicInteger activeScenarioOperationCount = new AtomicInteger(0);
+    private final AtomicBoolean startupCriticalIconPrewarmDone = new AtomicBoolean(false);
     private ProgressBar scenarioOperationProgressBar;
     private ProgressBar startupOverlayProgressBar;
     private final AtomicBoolean startupOverlayVisible = new AtomicBoolean(false);
@@ -259,8 +283,19 @@ public class Client extends Application {
     private static volatile javax.swing.JLabel earlySplashLabel;
     private static volatile javax.swing.JProgressBar earlySplashProgressBar;
     private static final AtomicBoolean earlySplashVisible = new AtomicBoolean(false);
+    private static volatile boolean initEntered = false;
+    private static volatile boolean startEntered = false;
+    private static final AtomicBoolean databaseTimestampWatchStarted = new AtomicBoolean(false);
+    private static final AtomicBoolean startupResourcePrewarmStarted = new AtomicBoolean(false);
+    private static volatile boolean databaseTimestampWatchStopRequested = false;
+    private static volatile String watchedDatabasePath = "";
+    private static volatile long watchedDatabaseLastModified = Long.MIN_VALUE;
     /** Log file path captured during init; heavy computer-stat collection is written asynchronously. */
     private static volatile String deferredStartupLogFilename;
+    /** Last printed launch thread snapshot signature to avoid repetitive watchdog spam. */
+    private static volatile String lastLaunchThreadsSnapshotSignature = "";
+    /** Last printed classloader URL diagnostic signature to avoid repetitive watchdog spam. */
+    private static volatile String lastLaunchClassLoaderUrlsSignature = "";
 
     /**
      * Launches the JavaFX application lifecycle for Scenario Builder.
@@ -269,15 +304,44 @@ public class Client extends Application {
      */
     public static void main(String[] args) {
         logBootstrapCheckpoint("main(): entered");
-        showEarlyStartupSplash(EARLY_SPLASH_INITIAL_MESSAGE);
+        if (!Boolean.getBoolean(EARLY_SPLASH_DISABLE_FLAG)) {
+            showEarlyStartupSplash(EARLY_SPLASH_INITIAL_MESSAGE);
+        } else {
+            logBootstrapCheckpoint("main(): early splash disabled by -D" + EARLY_SPLASH_DISABLE_FLAG + "=true");
+        }
         logBootstrapCheckpoint("main(): after showEarlyStartupSplash");
-        // Ensures JavaFX does not exit implicitly on certain VMs (e.g., when WM_ENDSESSION is called).
-        Platform.setImplicitExit(false);
-        logBootstrapCheckpoint("main(): after Platform.setImplicitExit(false)");
+        enableLaunchJarUrlDebugIfRequested();
+        // Avoid touching JavaFX platform state before launch(); the toolkit is
+        // configured in start() once the JavaFX runtime is fully initialized.
+
+        final AtomicBoolean launchWatchdogDone = new AtomicBoolean(false);
+        Thread launchWatchdog = null;
+        Thread launchThreadsWatchdog = null;
+        if (Boolean.getBoolean(STARTUP_LAUNCH_WATCHDOG_FLAG)) {
+            launchWatchdog = startStartupWatchdog(
+                    "glimpse-launch-watchdog",
+                    "launch(args) waiting for init()",
+                    Thread.currentThread(),
+                    launchWatchdogDone,
+                    () -> initEntered || startEntered);
+        }
+        if (Boolean.getBoolean(STARTUP_LAUNCH_THREADS_WATCHDOG_FLAG)) {
+            launchThreadsWatchdog = startLaunchPhaseThreadDumpWatchdog(
+                    launchWatchdogDone,
+                    () -> initEntered || startEntered);
+        }
+
         try {
             logBootstrapCheckpoint("main(): before launch(args)");
             launch(args);
         } finally {
+            launchWatchdogDone.set(true);
+            if (launchWatchdog != null) {
+                launchWatchdog.interrupt();
+            }
+            if (launchThreadsWatchdog != null) {
+                launchThreadsWatchdog.interrupt();
+            }
             logBootstrapCheckpoint("main(): after launch(args)");
             closeEarlyStartupSplash();
         }
@@ -293,6 +357,7 @@ public class Client extends Application {
     	
     		// Install console redirection as early as possible so startup prints are captured.
         final long t0 = System.nanoTime();
+        initEntered = true;
         logBootstrapCheckpoint("init(): entered");
         ConsoleOutputRedirect.install();
         logBootstrapCheckpoint("init(): after ConsoleOutputRedirect.install");
@@ -313,10 +378,8 @@ public class Client extends Application {
         bootstrapTimingEnabled = vars.getDebugStartupTiming();
         logStartupCheckpoint("init(): options loaded", t0);
         updateEarlyStartupSplashMessage("Loading GLIMPSE options...");
-        final String setup = vars.examineGLIMPSESetup();
-        if (setup.length() > 0) {
-            System.out.println(setup);
-        }
+        // Defer full setup analysis until after first paint; it performs many
+        // filesystem checks and can significantly delay JavaFX launch.
 
         // Reset startup log immediately; defer expensive computer-stat collection to background.
         String glimpseLogDir = vars.getGlimpseLogDir();
@@ -335,6 +398,10 @@ public class Client extends Application {
         instanceForStatus = this;
 
         logStartupCheckpoint("Client.init complete", t0);
+
+        // Wire event-driven database-size refresh: when the DB path changes,
+        // request a fresh size calculation.
+        vars.setOnGCamOutputDatabaseChanged(() -> Client.requestDatabaseSizeRefresh(true));
     }
 
     /**
@@ -348,9 +415,16 @@ public class Client extends Application {
     @Override
     public void start(Stage primaryStage) {
         final long t0 = System.nanoTime();
+        startEntered = true;
         System.out.println("Starting GLIMPSE Graphical User Interface...");
 
         Client.primaryStage = primaryStage;
+        logStartupCheckpoint("start(): primaryStage assigned", t0);
+
+        // Ensures JavaFX does not exit implicitly on certain VMs
+        // (for example when WM_ENDSESSION is called on Windows).
+        Platform.setImplicitExit(false);
+        logStartupCheckpoint("start(): after Platform.setImplicitExit(false)", t0);
 
         // Ensure threads are properly terminated on window close
         primaryStage.setOnCloseRequest(event -> {
@@ -358,8 +432,9 @@ public class Client extends Application {
             safeShutdownExecutionThreads();
             Platform.exit();
         });
+        logStartupCheckpoint("start(): close handler installed", t0);
 
-//        //testing to see if I can have this appear early
+        //        //testing to see if I can have this appear early
 //        primaryStage.setTitle(VERSION);
 //        primaryStage.setMinHeight(MIN_WINDOW_HEIGHT);
 //        primaryStage.setHeight(MIN_WINDOW_HEIGHT);
@@ -375,43 +450,166 @@ public class Client extends Application {
         logStartupCheckpoint("start(): after setStartupStatus(shell)", t0);
         setStartupShellWindow();
         logStartupCheckpoint("start(): after setStartupShellWindow", t0);
+
+        final boolean prewarmBeforeShow = Boolean.getBoolean(STARTUP_PREWARM_BEFORE_SHOW_FLAG);
+        if (prewarmBeforeShow) {
+            startStartupResourcePrewarm();
+            logStartupCheckpoint("start(): startup resource prewarm queued (pre-show)", t0);
+        }
+
+        final AtomicBoolean showWatchdogDone = new AtomicBoolean(false);
+        Thread showWatchdog = null;
+        if (Boolean.getBoolean(STARTUP_SHOW_WATCHDOG_FLAG)) {
+            showWatchdog = startStartupWatchdog(
+                    "glimpse-show-watchdog",
+                    "primaryStage.show()",
+                    Thread.currentThread(),
+                    showWatchdogDone,
+                    null);
+        }
+        logStartupCheckpoint("start(): before primaryStage.show", t0);
         primaryStage.show();
+        showWatchdogDone.set(true);
+        if (showWatchdog != null) {
+            showWatchdog.interrupt();
+        }
         logStartupCheckpoint("start(): after primaryStage.show", t0);
         mainWindowDisplayed = true;
         closeEarlyStartupSplash();
         logStartupCheckpoint("start(): after closeEarlyStartupSplash", t0);
-        startDeferredComputerStatsLogging();
+        // Computer stats log-write and setup analysis are both deferred to after
+        // initial startup loads finish so they don't compete with the critical startup path.
+        startDeferredSetupAnalysisLogging();
         logStartupCheckpoint("Startup shell shown", t0);
+        if (!prewarmBeforeShow) {
+            startStartupResourcePrewarm();
+            logStartupCheckpoint("start(): startup resource prewarm queued (post-show)", t0);
+        }
 
         runAfterInitialFxPulse(() -> {
             // Build heavy panes after first paint so startup is perceived as immediate.
             setStartupStatus(STARTUP_BUILDING_UI_MESSAGE, -1, true);
-            logStartupCheckpoint("ScenarioBuilder.build start", STARTUP_T0_NANOS);
-            getScenarioBuilder().build();
-            logStartupCheckpoint("ScenarioBuilder.build complete", STARTUP_T0_NANOS);
-            advanceStartupStep(STARTUP_STEP_UI_READY, STARTUP_WINDOW_READY_MESSAGE);
-            setFileDependentUiEnabled(false);
-            setStartupStatus(STARTUP_WINDOW_READY_MESSAGE, -1, true);
-            logStartupCheckpoint("Main window composition start", STARTUP_T0_NANOS);
-            setMainWindow(combineAllElementsIntoOnePane(), createMenuBar());
-            forceStartupRelayoutAfterSceneSwap();
-            logStartupCheckpoint("Main window composition complete", STARTUP_T0_NANOS);
-            utils.setModalDialogsReadyAndFlushWarnings();
-
-            setStartupStatus(STARTUP_POST_SHOW_MESSAGE, -1, true);
-            logStartupCheckpoint("Post-show startup tasks begin", STARTUP_T0_NANOS);
-            setupExecutionThreads();
-
-            final String iconFile = "file:" + vars.getGlimpseResourceDir() + File.separator + "GLIMPSE_icon_large.png";
-            primaryStage.getIcons().add(new Image(iconFile));
-
-            logStartupCheckpoint("Primary stage shown (first FX pulse after show)", STARTUP_T0_NANOS);
-            WindowsRuntimePreflight.ensureMsvcRuntimeAvailableOrWarn(utils, "Startup");
-            setStartupStatus(STARTUP_FILES_MESSAGE, -1, true);
-            startDeferredFileLoading();
+            warmUpFxControlsForStartup();
+            waitForCriticalIconPrewarmThenBuild(0);
         });
 
         logStartupCheckpoint("Client.start complete", t0);
+    }
+
+    /**
+     * Pre-initializes JavaFX rendering pipeline by creating a minimal off-screen stage
+     * and forcing a rendering pulse. This causes glass/prism native libraries to load
+     * before the main stage.show() call, avoiding an 18+ second block on native library
+     * initialization during the critical first render.
+     */
+    private void startStartupResourcePrewarm() {
+        if (!startupResourcePrewarmStarted.compareAndSet(false, true)) {
+            return;
+        }
+        Thread prewarmThread = new Thread(() -> {
+            Client.logStartupBuildCheckpoint("startup prewarm: begin");
+            try {
+                utils.prewarmButtonIcons(STARTUP_CRITICAL_ICON_PREWARM_KEYS);
+            } catch (Throwable ignored) {
+                // Non-critical optimization; button creation falls back to normal icon loading.
+            } finally {
+                startupCriticalIconPrewarmDone.set(true);
+                Client.logStartupBuildCheckpoint("startup prewarm: critical icons complete");
+            }
+            try {
+                utils.prewarmButtonIcons(STARTUP_ICON_PREWARM_KEYS);
+            } catch (Throwable ignored) {
+                // Non-critical optimization; button creation falls back to normal icon loading.
+            }
+
+            // Warm CSS URL lookup without forcing full stream copy/decompression work.
+            try {
+                CSSResourceManager.getModernCssUrl();
+            } catch (Exception ignored) {
+                // Non-critical optimization.
+            }
+            Client.logStartupBuildCheckpoint("startup prewarm: complete");
+        }, "glimpse-startup-resource-prewarm");
+        prewarmThread.setDaemon(true);
+        prewarmThread.start();
+    }
+
+
+    private void waitForCriticalIconPrewarmThenBuild(int attempt) {
+        if (startupCriticalIconPrewarmDone.get() || attempt >= 120) {
+            if (!startupCriticalIconPrewarmDone.get()) {
+                logStartupCheckpoint("startup prewarm: critical icon wait timed out", STARTUP_T0_NANOS);
+            }
+            buildScenarioBuilderAndComposeMainWindow();
+            return;
+        }
+
+        PauseTransition pause = new PauseTransition(Duration.millis(25));
+        pause.setOnFinished(e -> waitForCriticalIconPrewarmThenBuild(attempt + 1));
+        pause.play();
+    }
+
+    private void buildScenarioBuilderAndComposeMainWindow() {
+        logStartupCheckpoint("ScenarioBuilder.build start", STARTUP_T0_NANOS);
+        getScenarioBuilder().build();
+        logStartupCheckpoint("ScenarioBuilder.build complete", STARTUP_T0_NANOS);
+        advanceStartupStep(STARTUP_STEP_UI_READY, STARTUP_WINDOW_READY_MESSAGE);
+        setFileDependentUiEnabled(false);
+        setStartupStatus(STARTUP_WINDOW_READY_MESSAGE, -1, true);
+        logStartupCheckpoint("Main window composition start", STARTUP_T0_NANOS);
+        setMainWindow(combineAllElementsIntoOnePane(), createMenuBar());
+        forceStartupRelayoutAfterSceneSwap();
+        logStartupCheckpoint("Main window composition complete", STARTUP_T0_NANOS);
+        utils.setModalDialogsReadyAndFlushWarnings();
+
+        // Wire DB-size-done callback so the status bar re-renders with the real value
+        // instead of "calculating..." once the async directory scan finishes.
+        utils.setOnDatabaseSizeRefreshed(Client::refreshStatusBarComputerStats);
+        logStartupCheckpoint("DB size refresh callback wired", STARTUP_T0_NANOS);
+
+        // Kick off the first DB-size scan now that the GUI is visible.
+        requestDatabaseSizeRefresh(true);
+        startDatabaseTimestampWatcher();
+
+        setStartupStatus(STARTUP_POST_SHOW_MESSAGE, -1, true);
+        logStartupCheckpoint("Post-show startup tasks begin", STARTUP_T0_NANOS);
+        setupExecutionThreads();
+
+        final String iconFile = "file:" + vars.getGlimpseResourceDir() + File.separator + "GLIMPSE_icon_large.png";
+        primaryStage.getIcons().add(new Image(iconFile));
+
+        logStartupCheckpoint("Primary stage shown (first FX pulse after show)", STARTUP_T0_NANOS);
+        WindowsRuntimePreflight.ensureMsvcRuntimeAvailableOrWarn(utils, "Startup");
+        setStartupStatus(STARTUP_FILES_MESSAGE, -1, true);
+        startDeferredFileLoading();
+    }
+
+    private void warmUpFxControlsForStartup() {
+        logStartupCheckpoint("startup fx warmup: begin", STARTUP_T0_NANOS);
+        try {
+            VBox warmupRoot = new VBox();
+            warmupRoot.setManaged(false);
+            warmupRoot.setVisible(false);
+
+            logStartupCheckpoint("startup fx warmup: createButton start", STARTUP_T0_NANOS);
+            Button warmupButton = utils.createButton("Warmup", styles.getBigButtonWidth(), null);
+            logStartupCheckpoint("startup fx warmup: createButton complete", STARTUP_T0_NANOS);
+            warmupRoot.getChildren().add(warmupButton);
+
+            Scene warmupScene = new Scene(warmupRoot, 1, 1);
+            applyModernCss(warmupScene);
+
+            logStartupCheckpoint("startup fx warmup: applyCss start", STARTUP_T0_NANOS);
+            warmupRoot.applyCss();
+            logStartupCheckpoint("startup fx warmup: applyCss complete", STARTUP_T0_NANOS);
+
+            logStartupCheckpoint("startup fx warmup: layout start", STARTUP_T0_NANOS);
+            warmupRoot.layout();
+            logStartupCheckpoint("startup fx warmup: layout complete", STARTUP_T0_NANOS);
+        } catch (Throwable ignored) {
+            // Non-critical optimization; continue with normal startup path.
+        }
+        logStartupCheckpoint("startup fx warmup: complete", STARTUP_T0_NANOS);
     }
 
     /**
@@ -766,6 +964,32 @@ public class Client extends Application {
         t.start();
     }
 
+    /**
+     * Runs the verbose installation/setup diagnostics after first paint so init()
+     * remains focused on critical startup work.
+     * <p>
+     * When {@code debugStartupTiming} is enabled, individual setup check timings are
+     * emitted as {@code [startup-setup]} lines so the slowest sub-checks are visible
+     * in the startup log.
+     */
+    private void startDeferredSetupAnalysisLogging() {
+        final Thread t = new Thread(() -> {
+            final long t0 = System.nanoTime();
+            logStartupCheckpoint("Deferred setup analysis: begin", t0);
+            try {
+                final String setup = vars.examineGLIMPSESetup();
+                if (setup != null && !setup.trim().isEmpty()) {
+                    System.out.println(setup);
+                }
+                logStartupCheckpoint("Deferred setup analysis: complete", t0);
+            } catch (Throwable ex) {
+                System.out.println("Deferred setup analysis failed: " + ex.getMessage());
+            }
+        }, "glimpse-startup-setup-analysis");
+        t.setDaemon(true);
+        t.start();
+    }
+
     /** Updates the status bar text (safe from any thread). */
     public static void setStartupStatus(String text, double progress, boolean busy) {
         final Client inst = instanceForStatus;
@@ -849,6 +1073,12 @@ public class Client extends Application {
         initialScenarioLoadPending = false;
         advanceStartupStep(STARTUP_STEP_SCENARIOS_READY, STARTUP_READY_MESSAGE);
         applyDeferredStatusBarTextIfReady();
+        // Now that all initial loads are done, write the computer stats snapshot to
+        // the log file without competing with the startup tasks above.
+        final Client inst = instanceForStatus;
+        if (inst != null) {
+            inst.startDeferredComputerStatsLogging();
+        }
     }
 
     /**
@@ -1091,16 +1321,7 @@ public class Client extends Application {
     }
 
     private void applyModernCss(Scene scene) {
-        try {
-            java.net.URL cssUrl = getClass().getResource("/resources/modern.css");
-            if (cssUrl != null) {
-                scene.getStylesheets().add(cssUrl.toExternalForm());
-            } else {
-                System.out.println("Could not find modern.css resource.");
-            }
-        } catch (Exception e) {
-            System.err.println("Error loading modern.css: " + e.getMessage());
-        }
+        CSSResourceManager.applyModernTheme(scene);
     }
 
     private boolean loadSplashScreen() {
@@ -1149,6 +1370,7 @@ public class Client extends Application {
     }
 
     private static void safeShutdownExecutionThreads() {
+        databaseTimestampWatchStopRequested = true;
         try {
             if (Client.gCAMExecutionThread != null) {
                 try {
@@ -1178,6 +1400,71 @@ public class Client extends Application {
         }
     }
 
+    /**
+     * Watches only the database file/folder timestamp and requests a DB-size refresh
+     * when that timestamp changes (for example after external rebuild/delete workflows).
+     */
+    private static void startDatabaseTimestampWatcher() {
+        if (!databaseTimestampWatchStarted.compareAndSet(false, true)) {
+            return;
+        }
+        databaseTimestampWatchStopRequested = false;
+        Thread watcher = new Thread(() -> {
+            while (!databaseTimestampWatchStopRequested) {
+                try {
+                    Thread.sleep(DATABASE_REBUILD_WATCH_INTERVAL_MS);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+                if (!mainWindowDisplayed) {
+                    continue;
+                }
+                Client inst = instanceForStatus;
+                if (inst == null) {
+                    continue;
+                }
+                String configuredDatabase = inst.vars.getgCamOutputDatabase();
+                if (configuredDatabase == null || configuredDatabase.trim().isEmpty()) {
+                    watchedDatabasePath = "";
+                    watchedDatabaseLastModified = Long.MIN_VALUE;
+                    continue;
+                }
+
+                File databaseTarget = new File(configuredDatabase.trim());
+                String absolutePath = databaseTarget.getAbsolutePath();
+                long currentTimestamp = readDatabaseTimestamp(databaseTarget);
+
+                if (!absolutePath.equals(watchedDatabasePath)) {
+                    watchedDatabasePath = absolutePath;
+                    watchedDatabaseLastModified = currentTimestamp;
+                    continue;
+                }
+
+                long previousTimestamp = watchedDatabaseLastModified;
+                if (previousTimestamp != Long.MIN_VALUE && currentTimestamp != previousTimestamp) {
+                    watchedDatabaseLastModified = currentTimestamp;
+                    requestDatabaseSizeRefresh(true);
+                    continue;
+                }
+                watchedDatabaseLastModified = currentTimestamp;
+            }
+        }, "glimpse-db-timestamp-watcher");
+        watcher.setDaemon(true);
+        watcher.start();
+    }
+
+    private static long readDatabaseTimestamp(File databaseTarget) {
+        if (databaseTarget == null || !databaseTarget.exists()) {
+            return -1L;
+        }
+        try {
+            return databaseTarget.lastModified();
+        } catch (Exception ignored) {
+            return -1L;
+        }
+    }
+
     private static void logStartupCheckpoint(String label, long t0Nanos) {
         try {
             if (!GLIMPSEVariables.getInstance().getDebugStartupTiming()) {
@@ -1201,6 +1488,236 @@ public class Client extends Application {
         final long now = System.nanoTime();
         final long msSinceProcessStart = (now - STARTUP_T0_NANOS) / 1_000_000L;
         System.out.println("[startup-bootstrap] " + label + " | total=" + msSinceProcessStart + "ms");
+    }
+
+    /**
+     * Optional launch diagnostic that asks the JDK classpath loader to print URLs
+     * as classes/resources are resolved (including jar URLs opened pre-init()).
+     */
+    private static void enableLaunchJarUrlDebugIfRequested() {
+        if (!Boolean.getBoolean(STARTUP_LAUNCH_JAR_URL_DEBUG_FLAG)) {
+            return;
+        }
+        try {
+            System.setProperty("sun.misc.URLClassPath.debug", "true");
+            logBootstrapCheckpoint("main(): enabled sun.misc.URLClassPath.debug for jar URL diagnostics");
+        } catch (Throwable t) {
+            System.out.println("[startup-bootstrap] unable to enable jar URL diagnostics: " + t.getMessage());
+        }
+    }
+
+    private interface StartupStopCondition {
+        boolean shouldStop();
+    }
+
+    private static Thread startStartupWatchdog(
+            String threadName,
+            String phaseLabel,
+            Thread watchedThread,
+            AtomicBoolean done,
+            StartupStopCondition stopCondition) {
+        Thread t = new Thread(() -> {
+            String lastTopFrame = null;
+             while (!done.get()) {
+                 try {
+                     Thread.sleep(STARTUP_WATCHDOG_INTERVAL_MS);
+                 } catch (InterruptedException ie) {
+                     return;
+                 }
+                 if (done.get()) {
+                    return;
+                 }
+                 if (stopCondition != null && stopCondition.shouldStop()) {
+                    return;
+                 }
+                 if (watchedThread == null) {
+                     continue;
+                 }
+                 StackTraceElement[] trace = watchedThread.getStackTrace();
+                 String top = (trace != null && trace.length > 0) ? trace[0].toString() : "<no-stack>";
+                 System.out.println("[startup-watchdog] " + phaseLabel
+                        + " still busy on thread '" + watchedThread.getName() + "' top=" + top);
+
+                // Optional deeper stack emission for startup stalls dominated by class/resource inflation.
+                if (Boolean.getBoolean(STARTUP_WATCHDOG_VERBOSE_STACK_FLAG)
+                        && trace != null
+                        && trace.length > 0
+                        && !top.equals(lastTopFrame)
+                        && (top.contains("ZipFile") || top.contains("Inflater") || top.contains("ClassLoader"))) {
+                    lastTopFrame = top;
+                    int depth = Math.min(12, trace.length);
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("[startup-watchdog] ").append(phaseLabel)
+                      .append(" stack snapshot:");
+                    for (int i = 0; i < depth; i++) {
+                        sb.append("\n    at ").append(trace[i]);
+                    }
+                    System.out.println(sb.toString());
+                    // When launch stalls in URLJarFile/ZipFile, print classloader URLs so we can
+                    // identify the exact jar/rsrc URL chain being resolved.
+                    logLaunchClassLoaderUrlsForThread(phaseLabel, watchedThread);
+                }
+             }
+         }, threadName);
+         t.setDaemon(true);
+         t.start();
+         return t;
+    }
+
+    private static void logLaunchClassLoaderUrlsForThread(String phaseLabel, Thread thread) {
+        if (thread == null) {
+            return;
+        }
+        try {
+            StringBuilder sb = new StringBuilder();
+            sb.append("[startup-watchdog] ").append(phaseLabel)
+              .append(" classloader URLs:\n");
+            appendClassLoaderUrls(sb, "thread-context", thread.getContextClassLoader());
+            appendClassLoaderUrls(sb, "system", ClassLoader.getSystemClassLoader());
+            String message = sb.toString();
+            if (message.equals(lastLaunchClassLoaderUrlsSignature)) {
+                return;
+            }
+            lastLaunchClassLoaderUrlsSignature = message;
+            System.out.println(message);
+        } catch (Throwable ignored) {
+            // Best-effort diagnostics only.
+        }
+    }
+
+    private static void appendClassLoaderUrls(StringBuilder sb, String label, ClassLoader classLoader) {
+        sb.append("    ").append(label).append(": ");
+        if (classLoader == null) {
+            sb.append("<bootstrap>\n");
+            return;
+        }
+        sb.append(classLoader.getClass().getName()).append("\n");
+        if (classLoader instanceof URLClassLoader) {
+            URL[] urls = ((URLClassLoader) classLoader).getURLs();
+            if (urls == null || urls.length == 0) {
+                sb.append("      <no-urls>\n");
+            } else {
+                for (URL url : urls) {
+                    sb.append("      ").append(url).append("\n");
+                }
+            }
+        }
+
+        ClassLoader parent = classLoader.getParent();
+        int depth = 0;
+        while (parent != null && depth < 5) {
+            sb.append("      parent[").append(depth).append("]: ")
+              .append(parent.getClass().getName()).append("\n");
+            if (parent instanceof URLClassLoader) {
+                URL[] urls = ((URLClassLoader) parent).getURLs();
+                if (urls == null || urls.length == 0) {
+                    sb.append("        <no-urls>\n");
+                } else {
+                    for (URL url : urls) {
+                        sb.append("        ").append(url).append("\n");
+                    }
+                }
+            }
+            parent = parent.getParent();
+            depth++;
+        }
+        if (parent == null) {
+            sb.append("      parent[").append(depth).append("]: <bootstrap>\n");
+        }
+    }
+
+    /**
+     * During launch(args), sample JavaFX/runtime threads to expose where startup
+     * time is spent before Application.init() is entered.
+     */
+    private static Thread startLaunchPhaseThreadDumpWatchdog(
+            AtomicBoolean done,
+            StartupStopCondition stopCondition) {
+        Thread t = new Thread(() -> {
+            while (!done.get()) {
+                try {
+                    Thread.sleep(STARTUP_WATCHDOG_INTERVAL_MS);
+                } catch (InterruptedException ie) {
+                    return;
+                }
+                if (done.get()) {
+                    return;
+                }
+                if (stopCondition != null && stopCondition.shouldStop()) {
+                    return;
+                }
+
+                Map<Thread, StackTraceElement[]> allTraces = Thread.getAllStackTraces();
+                StringBuilder snapshot = new StringBuilder();
+                int tracked = 0;
+
+                for (Map.Entry<Thread, StackTraceElement[]> entry : allTraces.entrySet()) {
+                    Thread thread = entry.getKey();
+                    if (thread == null || !thread.isAlive()) {
+                        continue;
+                    }
+                    String name = thread.getName();
+                    if (!isLaunchDiagnosticThreadName(name)) {
+                        continue;
+                    }
+
+                    StackTraceElement[] trace = entry.getValue();
+                    String top = (trace != null && trace.length > 0) ? trace[0].toString() : "<no-stack>";
+                    snapshot.append(name)
+                            .append("[")
+                            .append(thread.getState())
+                            .append("] top=")
+                            .append(top)
+                            .append(" | ");
+                    tracked++;
+
+                    if (Boolean.getBoolean(STARTUP_WATCHDOG_VERBOSE_STACK_FLAG)
+                            && trace != null
+                            && trace.length > 0
+                            && (top.contains("ZipFile") || top.contains("Inflater") || top.contains("ClassLoader"))) {
+                        int depth = Math.min(10, trace.length);
+                        StringBuilder deep = new StringBuilder();
+                        deep.append("[startup-watchdog] launch(args) thread '")
+                                .append(name)
+                                .append("' stack snapshot:");
+                        for (int i = 0; i < depth; i++) {
+                            deep.append("\n    at ").append(trace[i]);
+                        }
+                        System.out.println(deep.toString());
+                    }
+                }
+
+                if (tracked == 0) {
+                    continue;
+                }
+
+                String signature = snapshot.toString();
+                if (signature.equals(lastLaunchThreadsSnapshotSignature)) {
+                    continue;
+                }
+                lastLaunchThreadsSnapshotSignature = signature;
+                System.out.println("[startup-watchdog] launch(args) active runtime threads: " + signature);
+            }
+        }, "glimpse-launch-threads-watchdog");
+        t.setDaemon(true);
+        t.start();
+        return t;
+    }
+
+    private static boolean isLaunchDiagnosticThreadName(String name) {
+        if (name == null) {
+            return false;
+        }
+        String normalized = name.trim();
+        if (normalized.isEmpty()) {
+            return false;
+        }
+        return normalized.startsWith("JavaFX")
+                || normalized.contains("Launcher")
+                || normalized.contains("Quantum")
+                || normalized.contains("Prism")
+                || normalized.contains("Glass")
+                || normalized.startsWith("AWT-EventQueue");
     }
 
     /** Package-visible helper so startup builders can emit granular checkpoint logs. */
@@ -1309,6 +1826,49 @@ public class Client extends Application {
     public static PaneScenarioLibrary getPaneScenarioLibrary() { return paneScenarioLibrary; }
     /** Returns the component-library pane instance. */
     public static PaneComponentLibrary getPaneComponentLibrary() { return paneComponentLibrary; }
+
+    /**
+     * Triggers a status-bar resource-stats re-render if the scenario pane is available
+     * and startup is no longer busy. Safe to call from any thread.
+     * <p>
+     * Called by {@link glimpseUtil.UtilsStatus} when an async database-size calculation
+     * finishes so the status bar can display the real value without waiting for the
+     * next full scenario refresh cycle.
+     */
+    public static void refreshStatusBarComputerStats() {
+        if (startupBusyState || areInitialLibraryLoadsPending()) {
+            return;
+        }
+        final PaneScenarioLibrary pane = paneScenarioLibrary;
+        if (pane == null) {
+            return;
+        }
+        Runnable task = pane::refreshStatusBarComputerStats;
+        if (Platform.isFxApplicationThread()) {
+            task.run();
+        } else {
+            Platform.runLater(task);
+        }
+    }
+
+    /**
+     * Requests a refresh of the database-size portion of the status bar summary.
+     *
+     * @param force when true, bypass the normal recent-cache reuse behavior
+     */
+    public static void requestDatabaseSizeRefresh(boolean force) {
+        final Client inst = instanceForStatus;
+        if (inst == null) {
+            return;
+        }
+        inst.utils.requestDatabaseSizeRefresh(force);
+        refreshStatusBarComputerStats();
+    }
+
+    /** Requests a refresh of the database-size portion of the status bar summary. */
+    public static void requestDatabaseSizeRefresh() {
+        requestDatabaseSizeRefresh(false);
+    }
     /** Returns the single-right-arrow button. */
     public static Button getButtonRightArrow() { return buttonRightArrow; }
     /** Returns the single-left-arrow button. */

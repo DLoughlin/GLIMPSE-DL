@@ -46,12 +46,15 @@ import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import glimpseElement.ScenarioRow;
@@ -277,24 +280,24 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     private void createScenarioLibraryButtonInstances() {
-        Client.buttonDiffFiles = utils.createButton(DIFF_LABEL, styles.getBigButtonWidth(), DIFF_TOOLTIP, "compare");
-        Client.buttonRefreshScenarioStatus = utils.createButton(REFRESH_LABEL, styles.getBigButtonWidth(), REFRESH_TOOLTIP, "refresh1");
-        Client.buttonConsole = utils.createButton(CONSOLE_LABEL, styles.getBigButtonWidth(), CONSOLE_TOOLTIP, "console");
-        Client.buttonResults = utils.createButton(RESULTS_LABEL, styles.getBigButtonWidth(), RESULTS_TOOLTIP, "results");
-        Client.buttonResultsForSelected = utils.createButton(RESULTS_SELECTED_LABEL, styles.getBigButtonWidth(), RESULTS_SELECTED_TOOLTIP, "results-selected");
-        Client.buttonRunScenario = utils.createButton(PLAY_LABEL, styles.getBigButtonWidth(), PLAY_TOOLTIP, "play");
-        Client.buttonStopScenario = utils.createButton("Stop", styles.getBigButtonWidth(), "Stop the currently running GCAM scenario", "stop");
-        Client.buttonDeleteScenario = utils.createButton(DELETE_LABEL, styles.getBigButtonWidth(), DELETE_TOOLTIP, "delete1");
-        Client.buttonViewConfig = utils.createButton(CONFIG_LABEL, styles.getBigButtonWidth(), CONFIG_TOOLTIP, "edit1");
-        Client.buttonViewLog = utils.createButton(LOG_LABEL, styles.getBigButtonWidth(), LOG_TOOLTIP, "log-selected");
-        Client.buttonViewExeErrors = utils.createButton(EXE_ERRORS_LABEL, styles.getBigButtonWidth(), EXE_ERRORS_TOOLTIP, "errors");
-        Client.buttonViewErrors = utils.createButton(ERRORS_LABEL, styles.getBigButtonWidth(), ERRORS_TOOLTIP, "errors-selected");
-        Client.buttonViewExeLog = utils.createButton(EXE_LOG_LABEL, styles.getBigButtonWidth(), EXE_LOG_TOOLTIP, "log");
-        Client.buttonBrowseScenarioFolder = utils.createButton(BROWSE_LABEL, styles.getBigButtonWidth(), BROWSE_TOOLTIP, "open_folder1");
-        Client.buttonImportScenario = utils.createButton(IMPORT_LABEL, styles.getBigButtonWidth(), IMPORT_TOOLTIP, "import");
-        Client.buttonShowRunQueue = utils.createButton(QUEUE_LABEL, styles.getBigButtonWidth(), QUEUE_TOOLTIP, "queue");
-        Client.buttonArchiveScenario = utils.createButton(ARCHIVE_LABEL, styles.getBigButtonWidth(), ARCHIVE_TOOLTIP, "archive");
-        Client.buttonReport = utils.createButton(REPORT_LABEL, styles.getBigButtonWidth(), REPORT_TOOLTIP, "report");
+        Client.buttonDiffFiles = createTimedScenarioButton("buttonDiffFiles", DIFF_LABEL, styles.getBigButtonWidth(), DIFF_TOOLTIP, "compare");
+        Client.buttonRefreshScenarioStatus = createTimedScenarioButton("buttonRefreshScenarioStatus", REFRESH_LABEL, styles.getBigButtonWidth(), REFRESH_TOOLTIP, "refresh1");
+        Client.buttonConsole = createTimedScenarioButton("buttonConsole", CONSOLE_LABEL, styles.getBigButtonWidth(), CONSOLE_TOOLTIP, "console");
+        Client.buttonResults = createTimedScenarioButton("buttonResults", RESULTS_LABEL, styles.getBigButtonWidth(), RESULTS_TOOLTIP, "results");
+        Client.buttonResultsForSelected = createTimedScenarioButton("buttonResultsForSelected", RESULTS_SELECTED_LABEL, styles.getBigButtonWidth(), RESULTS_SELECTED_TOOLTIP, "results-selected");
+        Client.buttonRunScenario = createTimedScenarioButton("buttonRunScenario", PLAY_LABEL, styles.getBigButtonWidth(), PLAY_TOOLTIP, "play");
+        Client.buttonStopScenario = createTimedScenarioButton("buttonStopScenario", "Stop", styles.getBigButtonWidth(), "Stop the currently running GCAM scenario", "stop");
+        Client.buttonDeleteScenario = createTimedScenarioButton("buttonDeleteScenario", DELETE_LABEL, styles.getBigButtonWidth(), DELETE_TOOLTIP, "delete1");
+        Client.buttonViewConfig = createTimedScenarioButton("buttonViewConfig", CONFIG_LABEL, styles.getBigButtonWidth(), CONFIG_TOOLTIP, "edit1");
+        Client.buttonViewLog = createTimedScenarioButton("buttonViewLog", LOG_LABEL, styles.getBigButtonWidth(), LOG_TOOLTIP, "log-selected");
+        Client.buttonViewExeErrors = createTimedScenarioButton("buttonViewExeErrors", EXE_ERRORS_LABEL, styles.getBigButtonWidth(), EXE_ERRORS_TOOLTIP, "errors");
+        Client.buttonViewErrors = createTimedScenarioButton("buttonViewErrors", ERRORS_LABEL, styles.getBigButtonWidth(), ERRORS_TOOLTIP, "errors-selected");
+        Client.buttonViewExeLog = createTimedScenarioButton("buttonViewExeLog", EXE_LOG_LABEL, styles.getBigButtonWidth(), EXE_LOG_TOOLTIP, "log");
+        Client.buttonBrowseScenarioFolder = createTimedScenarioButton("buttonBrowseScenarioFolder", BROWSE_LABEL, styles.getBigButtonWidth(), BROWSE_TOOLTIP, "open_folder1");
+        Client.buttonImportScenario = createTimedScenarioButton("buttonImportScenario", IMPORT_LABEL, styles.getBigButtonWidth(), IMPORT_TOOLTIP, "add");
+        Client.buttonShowRunQueue = createTimedScenarioButton("buttonShowRunQueue", QUEUE_LABEL, styles.getBigButtonWidth(), QUEUE_TOOLTIP, "queue");
+        Client.buttonArchiveScenario = createTimedScenarioButton("buttonArchiveScenario", ARCHIVE_LABEL, styles.getBigButtonWidth(), ARCHIVE_TOOLTIP, null);
+        Client.buttonReport = createTimedScenarioButton("buttonReport", REPORT_LABEL, styles.getBigButtonWidth(), REPORT_TOOLTIP, null);
     }
 
     private void configureInitialScenarioLibraryButtonState() {
@@ -691,12 +694,38 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         showModelInterfaceLaunchingToast(5000);
 
         try {
-            Client.modelInterfaceExecutionThread.submitCommandWithDirectory(args, modelInterfaceDir.getAbsolutePath());
+            Future<?> modelInterfaceFuture = Client.modelInterfaceExecutionThread.submitCommandWithDirectory(
+                    args,
+                    modelInterfaceDir.getAbsolutePath());
+            monitorModelInterfaceCompletion(modelInterfaceFuture);
         } catch (Exception e) {
             utils.warningMessage("Problem starting up ModelInterface. See console for details.");
             System.out.println("Error in trying to start up ModelInterface:");
             System.out.println(e);
         }
+    }
+
+    /**
+     * Triggers a resource refresh after ModelInterface exits so status-bar database size
+     * reflects any external process changes without waiting for a manual refresh.
+     */
+    private void monitorModelInterfaceCompletion(Future<?> modelInterfaceFuture) {
+        if (modelInterfaceFuture == null) {
+            return;
+        }
+        Thread monitorThread = new Thread(() -> {
+            try {
+                modelInterfaceFuture.get();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                return;
+            } catch (Exception ignored) {
+                // Process completion (success/failure) is enough for refresh trigger.
+            }
+            Client.requestDatabaseSizeRefresh(false);
+        }, "model-interface-completion-monitor");
+        monitorThread.setDaemon(true);
+        monitorThread.start();
     }
 
     // --- Run control ---
@@ -1173,6 +1202,15 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     private void updateStatusBarComputerStats(String runningScenario) {
+        refreshStatusBarComputerStats();
+    }
+
+    /**
+     * Recomputes and applies the resource-stats status bar text.
+     * Package-visible so {@link Client} can trigger a re-render after an async
+     * database-size calculation finishes without performing a full scenario refresh.
+     */
+    void refreshStatusBarComputerStats() {
         if (resourceStatsUnavailable.get()) {
             Client.setStartupStatus(READY_MESSAGE, -1, false);
             return;
@@ -1194,6 +1232,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     private void applyScenarioStatusSnapshots(List<ScenarioStatusSnapshot> snapshots, boolean noScenarios) {
+        boolean refreshDbSizeAfterStatusTransition = hasDbSizeTriggerStatusTransition(snapshots);
         viewStateHelper.applySnapshots(
                 snapshots,
                 noScenarios,
@@ -1205,36 +1244,94 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         pendingRefreshViewState = ScenarioLibraryViewStateHelper.RefreshViewState.empty();
         applyDefaultCreatedSortAndScrollIfRequested();
         refreshScenarioActionButtons();
+        if (refreshDbSizeAfterStatusTransition) {
+            // Strategic trigger: refresh DB-size cache when scenario outcomes move to
+            // terminal states likely to change output-database footprint.
+            Client.requestDatabaseSizeRefresh(false);
+        }
     }
 
-    void requestDefaultCreatedSortAndScrollToBottomOnNextRefresh() {
+    /**
+     * Requests that the next status refresh snaps to the default "newly-created scenario"
+     * view by selecting and scrolling to the newest row (bottom of table).
+     */
+    public void requestDefaultCreatedSortAndScrollToBottomOnNextRefresh() {
         resetToDefaultCreatedSortAndScroll.set(true);
-        if (Platform.isFxApplicationThread()) {
-            applyDefaultCreatedSortAndScrollIfRequested();
-            return;
-        }
-        Platform.runLater(this::applyDefaultCreatedSortAndScrollIfRequested);
     }
 
     private void applyDefaultCreatedSortAndScrollIfRequested() {
-        if (!resetToDefaultCreatedSortAndScroll.get()) {
+        if (!resetToDefaultCreatedSortAndScroll.compareAndSet(true, false)) {
             return;
         }
-        TableView<ScenarioRow> table = ScenarioTable.tableScenariosLibrary;
-        if (table == null || table.getItems() == null || table.getItems().isEmpty()) {
-            // Keep the request armed until the first real snapshot populates the table.
+        if (ScenarioTable.tableScenariosLibrary == null || ScenarioTable.tableScenariosLibrary.getSelectionModel() == null) {
             return;
         }
-        int lastIndex = table.getItems().size() - 1;
-        if (lastIndex >= 0) {
-            final int targetIndex = lastIndex;
-            Platform.runLater(() -> {
-                if (table.getItems() != null && targetIndex >= 0 && targetIndex < table.getItems().size()) {
-                    table.scrollTo(targetIndex);
-                }
-            });
+        int rowCount = ScenarioTable.tableScenariosLibrary.getItems() == null
+                ? 0
+                : ScenarioTable.tableScenariosLibrary.getItems().size();
+        if (rowCount <= 0) {
+            return;
         }
-        resetToDefaultCreatedSortAndScroll.set(false);
+
+        int lastIndex = rowCount - 1;
+        ScenarioTable.tableScenariosLibrary.getSelectionModel().clearSelection();
+        ScenarioTable.tableScenariosLibrary.getSelectionModel().select(lastIndex);
+        if (ScenarioTable.tableScenariosLibrary.getFocusModel() != null) {
+            ScenarioTable.tableScenariosLibrary.getFocusModel().focus(lastIndex);
+        }
+        ScenarioTable.tableScenariosLibrary.scrollTo(lastIndex);
+    }
+
+    private boolean hasDbSizeTriggerStatusTransition(List<ScenarioStatusSnapshot> snapshots) {
+        if (snapshots == null || snapshots.isEmpty()) {
+            return false;
+        }
+        Map<String, String> priorStatusByScenario = new HashMap<>();
+        for (ScenarioRow row : ScenarioTable.listOfScenarioRuns) {
+            if (row == null) {
+                continue;
+            }
+            String scenarioName = row.getScenarioName() == null ? "" : row.getScenarioName().trim();
+            if (scenarioName.isEmpty()) {
+                continue;
+            }
+            priorStatusByScenario.put(scenarioName, normalizeStatusForCompare(row.getStatus()));
+        }
+
+        for (ScenarioStatusSnapshot snapshot : snapshots) {
+            if (snapshot == null) {
+                continue;
+            }
+            String scenarioName = snapshot.scenarioName == null ? "" : snapshot.scenarioName.trim();
+            if (scenarioName.isEmpty()) {
+                continue;
+            }
+            String nextStatus = normalizeStatusForCompare(snapshot.status);
+            if (!isDbSizeTriggerStatus(nextStatus)) {
+                continue;
+            }
+            String priorStatus = priorStatusByScenario.getOrDefault(scenarioName, "");
+            if (!nextStatus.equals(priorStatus)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isDbSizeTriggerStatus(String statusText) {
+        if (statusText == null || statusText.trim().isEmpty()) {
+            return false;
+        }
+        String normalized = statusText.trim().toLowerCase(Locale.ENGLISH);
+        return normalized.equals("success")
+                || normalized.equals("unsolved mkts")
+                || normalized.contains("unsolved")
+                || normalized.contains("problemmkts")
+                || normalized.contains("problem mkts");
+    }
+
+    private String normalizeStatusForCompare(String statusText) {
+        return statusText == null ? "" : statusText.trim().toLowerCase(Locale.ENGLISH);
     }
 
     private void applyLiveStdoutErrorPeriods() {
@@ -1384,6 +1481,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                             Client.markInitialScenarioLoadComplete();
                         }
                         refreshScenarioActionButtons();
+                        if (userInitiated) {
+                            // Non-startup refresh completion is a key moment to update resource stats.
+                            Client.requestDatabaseSizeRefresh(false);
+                        }
                     } finally {
                         scenarioRefreshInProgress.set(false);
                     }
@@ -1838,6 +1939,17 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 dismissThread.start();
             } catch (Throwable ignored) {}
         });
+    }
+
+    private static void logButtonBuildStep(String label) {
+        Client.logStartupBuildCheckpoint("PaneScenarioLibrary: " + label);
+    }
+
+    private javafx.scene.control.Button createTimedScenarioButton(String label, String text, double width, String tooltip, String iconKey) {
+        logButtonBuildStep("createScenarioLibraryButtonInstances: " + label + " start");
+        javafx.scene.control.Button button = utils.createButton(text, (int) width, tooltip, iconKey);
+        logButtonBuildStep("createScenarioLibraryButtonInstances: " + label + " complete");
+        return button;
     }
 
     private enum ScenarioRunStateClearMode {

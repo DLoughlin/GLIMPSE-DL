@@ -12,7 +12,7 @@ set JAVA_JVM_PATH=%JAVA_HOME%\bin\server
 
 set PATH=.;%JAVA_JVM_PATH%;%JAVA_HOME%;%JAVA_HOME%\bin;..\..\ModelInterface;%PATH%
 
-java -Dprism.order=sw -jar .\GLIMPSE-ScenarioBuilder\GLIMPSE-ScenarioBuilder.jar -options options_GCAM-USA-8.2-windows.txt
+java -Djava.util.logging.config.file -Dprism.order=sw -jar .\GLIMPSE-ScenarioBuilder\GLIMPSE-ScenarioBuilder.jar -options options_GCAM-USA-8.2-windows.txt
 
 )
 :END

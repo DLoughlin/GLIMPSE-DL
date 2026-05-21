@@ -420,7 +420,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
      */
     @Override
     public void saveScenarioComponent() {
-        saveScenarioComponentAlt7(paneForCountryStateTree.getTree());
+        saveScenarioComponentAlt8(paneForCountryStateTree.getTree());
     }
 
 private void saveScenarioComponentAlt1(TreeView<String> tree) {

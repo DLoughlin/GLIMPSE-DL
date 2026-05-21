@@ -1,0 +1,25 @@
+<launch4jConfig>
+  <headerType>gui</headerType>
+  <dontWrapJar>false</dontWrapJar>
+  <outfile>..\..\GLIMPSE-global-8.2.exe</outfile>
+  <icon>..\..\resources\GLIMPSE_icon_large.ico</icon>
+  <errTitle>GLIMPSE-CE Launcher Error</errTitle>
+  <cmdLine>-options options_GCAM-global-8.2-windows.txt</cmdLine>
+  <chdir>.</chdir>
+  <priority>normal</priority>
+  <downloadUrl>https://adoptium.net/</downloadUrl>
+  <supportUrl>https://github.com/</supportUrl>
+  <stayAlive>false</stayAlive>
+  <restartOnCrash>false</restartOnCrash>
+  <jar>..\..\GLIMPSE-ScenarioBuilder\GLIMPSE-ScenarioBuilder.jar</jar>
+
+  <jre>
+    <path>amazon-corretto-8.442.06.1-windows-x64-jre</path>
+    <requiresJdk>false</requiresJdk>
+    <requires64Bit>true</requires64Bit>
+    <minVersion>1.8.0</minVersion>
+    <maxVersion>1.8.999</maxVersion>
+    <jdkPreference>preferJre</jdkPreference>
+    <runtimeBits>64</runtimeBits>
+  </jre>
+</launch4jConfig>

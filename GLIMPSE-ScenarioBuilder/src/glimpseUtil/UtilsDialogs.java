@@ -61,12 +61,9 @@ public final class UtilsDialogs {
 			javafx.scene.control.DialogPane pane = dialog.getDialogPane();
 			if (pane == null)
 				return;
-			java.net.URL cssUrl = gui.ScenarioBuilder.class.getResource(gui.ScenarioBuilder.getModernCssResource());
-			if (cssUrl != null) {
-				String css = cssUrl.toExternalForm();
-				if (!pane.getStylesheets().contains(css)) {
-					pane.getStylesheets().add(css);
-				}
+			String css = gui.CSSResourceManager.getModernCssUrl();
+			if (css != null && !pane.getStylesheets().contains(css)) {
+				pane.getStylesheets().add(css);
 			}
 			if (styles != null) {
 				pane.setStyle(styles.getFontStyle());

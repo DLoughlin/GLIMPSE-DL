@@ -71,6 +71,7 @@ import java.util.Date;
 import java.util.Optional;
 import java.util.stream.Stream;
 import javafx.scene.Scene;
+import javafx.scene.Node;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -195,6 +196,7 @@ public class ScenarioBuilder {
 		Client.logStartupBuildCheckpoint("ScenarioBuilder.build: createScenarioLibraryPane complete");
 		// Defer label resize to the next FX turn to reduce synchronous startup blocking.
 		Platform.runLater(() -> {
+			Client.logStartupBuildCheckpoint("ScenarioBuilder.build: resizeLabels start (deferred)");
 			resizeLabels();
 			Client.logStartupBuildCheckpoint("ScenarioBuilder.build: resizeLabels complete (deferred)");
 		});
@@ -282,91 +284,14 @@ public class ScenarioBuilder {
 	}
 
 	/**
-	 * Builds the scenario library pane, including the scenario library label, search field, and action buttons.
-	 * Configures filtering and sorting for the scenario table and sets style for the pane.
+	 * Creates a button and emits per-button startup timing checkpoints so image/icon loading hotspots
+	 * are visible in startup logs.
 	 */
-	private void createScenarioLibraryPane() {
-		labelScenarioLibrary = utils.createLabel(LABEL_SCENARIO_LIBRARY/*, styles.getBigButtonWidth() * 1.75*/);
-		labelScenarioLibrary.getStyleClass().add(STYLE_SECTION_TITLE);
-
-		TextField filterScenarioTextField = utils.createTextField();
-		filterScenarioTextField.setMinWidth(styles.getBigButtonWidth());
-		filterScenarioTextField.setPrefWidth(styles.getBigButtonWidth() * 1.75);
-		filterScenarioTextField.setTooltip(new Tooltip(TOOLTIP_FILTER));
-		filterScenarioTextField.setPromptText("Filter scenarios...");
-
-		// Set up filtered and sorted lists for scenario table
-		ScenarioTable.filteredScenarios = new FilteredList<>(ScenarioTable.tableScenariosLibrary.getItems(), p -> true);
-
-		filterScenarioTextField.textProperty().addListener((observable, oldValue, newValue) ->
-			ScenarioTable.filteredScenarios.setPredicate(scenarioRow -> {
-				if (newValue == null || newValue.isEmpty()) {
-					return true;
-				}
-				String lowerCaseFilter = newValue.toLowerCase();
-				return scenarioRow.getScenarioName().toLowerCase().contains(lowerCaseFilter);
-			})
-		);
-
-		SortedList<ScenarioRow> sortedScenarios = new SortedList<>(ScenarioTable.filteredScenarios);
-		sortedScenarios.comparatorProperty().bind(ScenarioTable.tableScenariosLibrary.comparatorProperty());
-		ScenarioTable.tableScenariosLibrary.setItems(sortedScenarios);
-
-		Client.paneScenarioLibrary = new PaneScenarioLibrary(Client.primaryStage);
-
-		// Ensure the inner scenario table doesn't draw its own border when inside a panel.
-		try {
-			ScenarioTable.tableScenariosLibrary.getStyleClass().add("no-inner-border");
-		} catch (Exception ignored) {}
-
-		HBox buttonHBox = new HBox();
-		buttonHBox.setAlignment(Pos.CENTER_LEFT);
-		buttonHBox.setSpacing(4);
-		buttonHBox.getStyleClass().add(STYLE_TOOLBAR);
-
-		labelSearchScenarios = utils.createLabel(LABEL_SEARCH/*, styles.getBigButtonWidth()*/);
-		labelSearchScenarios.setTextAlignment(TextAlignment.LEFT);
-
-		// Add all relevant controls to the scenario library pane
-		buttonHBox.getChildren().addAll(
-			labelSearchScenarios,
-			filterScenarioTextField,
-			utils.getSeparator(Orientation.VERTICAL, 3, false),
-			Client.buttonEditScenario,
-			Client.buttonViewConfig,
-			Client.buttonBrowseScenarioFolder,
-			utils.getSeparator(Orientation.VERTICAL, 3, false),
-			Client.buttonRunScenario,
-			Client.buttonStopScenario,
-			Client.buttonDeleteScenario,
-			utils.getSeparator(Orientation.VERTICAL, 3, false),
-			Client.buttonResults,
-			Client.buttonResultsForSelected,
-			utils.getSeparator(Orientation.VERTICAL, 3, false),
-			Client.buttonDiffFiles,
-			Client.buttonShowRunQueue,
-			utils.getSeparator(Orientation.VERTICAL, 3, false),
-			Client.buttonViewExeLog, Client.buttonViewExeErrors,
-			Client.buttonViewLog,
-			Client.buttonViewErrors,
-			utils.getSeparator(Orientation.VERTICAL, 3, false),
-			Client.buttonRefreshScenarioStatus,
-			utils.getSeparator(Orientation.VERTICAL, 3, false),
-			Client.buttonConsole
-		);
-
-		VBox content = new VBox(4, buttonHBox, Client.paneScenarioLibrary.gethBox());
-		content.setFillWidth(true);
-		content.setMaxWidth(Double.MAX_VALUE);
-		VBox.setVgrow(Client.paneScenarioLibrary.gethBox(), Priority.ALWAYS);
-
-		vBoxRun = new VBox(6, labelScenarioLibrary, content);
-		vBoxRun.getStyleClass().add(STYLE_PANEL_CARD);
-		// Don't use legacy style1 here: it adds the blue border around the whole Scenario Library pane.
-		vBoxRun.setStyle("");
-		vBoxRun.setFillWidth(true);
-		vBoxRun.setMaxWidth(Double.MAX_VALUE);
-		VBox.setVgrow(content, Priority.ALWAYS);
+	private javafx.scene.control.Button createTimedArrowButton(String name, String text, String tooltip, String imageKey) {
+		logBuildStep("createArrowButtons: " + name + " start");
+		javafx.scene.control.Button button = utils.createButton(text, styles.getBigButtonWidth(), tooltip, imageKey);
+		logBuildStep("createArrowButtons: " + name + " complete");
+		return button;
 	}
 
 	/**
@@ -374,19 +299,35 @@ public class ScenarioBuilder {
 	 * Sets up tooltips, disables by default, and assigns event handlers for each button.
 	 */
 	private void createArrowButtons() {
-		Client.buttonLeftArrow = utils.createButton(null, styles.getBigButtonWidth(), TOOLTIP_REMOVE_SELECTED_COMPONENTS, "left_arrow");
+		Client.buttonLeftArrow = createTimedArrowButton(
+			"left_arrow",
+			null,
+			TOOLTIP_REMOVE_SELECTED_COMPONENTS,
+			"left_arrow");
 		Client.buttonLeftArrow.setDisable(true);
 		Client.buttonLeftArrow.setOnAction(this::removeSelectedComponents);
 
-		Client.buttonLeftDoubleArrow = utils.createButton(null, styles.getBigButtonWidth(), TOOLTIP_REMOVE_ALL_COMPONENTS, "double_left_arrow");
+		Client.buttonLeftDoubleArrow = createTimedArrowButton(
+			"double_left_arrow",
+			null,
+			TOOLTIP_REMOVE_ALL_COMPONENTS,
+			"double_left_arrow");
 		Client.buttonLeftDoubleArrow.setDisable(true);
 		Client.buttonLeftDoubleArrow.setOnAction(this::removeAllComponents);
 
-		Client.buttonRightArrow = utils.createButton(null, styles.getBigButtonWidth(), TOOLTIP_ADD_SELECTED_COMPONENTS, "right_arrow");
+		Client.buttonRightArrow = createTimedArrowButton(
+			"right_arrow",
+			null,
+			TOOLTIP_ADD_SELECTED_COMPONENTS,
+			"right_arrow");
 		Client.buttonRightArrow.setDisable(true);
 		Client.buttonRightArrow.setOnAction(this::addSelectedComponents);
 
-		Client.buttonEditScenario = utils.createButton("Edit", styles.getBigButtonWidth(), TOOLTIP_EDIT_SCENARIO, "up_right_arrow");
+		Client.buttonEditScenario = createTimedArrowButton(
+			"up_right_arrow",
+			"Edit",
+			TOOLTIP_EDIT_SCENARIO,
+			"up_right_arrow");
 		Client.buttonEditScenario.setDisable(true);
 		Client.buttonEditScenario.setOnAction(this::loadSelectedScenarioForEditing);
 
@@ -675,22 +616,13 @@ public class ScenarioBuilder {
 	/**
 	 * Applies the shared modern stylesheet to the provided scene when available.
 	 *
+	 * Delegates to CSSResourceManager which caches the CSS URL after first load
+	 * to avoid repeated JAR file access during startup and dialog creation.
+	 *
 	 * @param scene Scene to style
 	 */
 	public static void applyModernTheme(Scene scene) {
-		if (scene == null)
-			return;
-		try {
-			java.net.URL cssUrl = ScenarioBuilder.class.getResource(getModernCssResource());
-			if (cssUrl != null) {
-				String css = cssUrl.toExternalForm();
-				if (!scene.getStylesheets().contains(css)) {
-					scene.getStylesheets().add(css);
-				}
-			}
-		} catch (Exception ex) {
-			// ignore stylesheet load failures and fall back to default styles
-		}
+		CSSResourceManager.applyModernTheme(scene);
 	}
 
 	/**
@@ -760,5 +692,114 @@ public class ScenarioBuilder {
 	/** Returns the classpath location for the shared modern CSS stylesheet. */
 	public static String getModernCssResource() {
 		return MODERN_CSS_RESOURCE;
+	}
+
+	private static void logBuildStep(String label) {
+		Client.logStartupBuildCheckpoint("ScenarioBuilder.build: " + label);
+	}
+
+	private void addScenarioLibraryControl(HBox row, String name, Node node) {
+		logBuildStep("createScenarioLibraryPane: add " + name + " start");
+		row.getChildren().add(node);
+		logBuildStep("createScenarioLibraryPane: add " + name + " complete");
+	}
+
+	/**
+	 * Builds the scenario library pane, including the scenario library label, search field, and action buttons.
+	 * Configures filtering and sorting for the scenario table and sets style for the pane.
+	 */
+	private void createScenarioLibraryPane() {
+		logBuildStep("createScenarioLibraryPane: label start");
+		labelScenarioLibrary = utils.createLabel(LABEL_SCENARIO_LIBRARY/*, styles.getBigButtonWidth() * 1.75*/);
+		labelScenarioLibrary.getStyleClass().add(STYLE_SECTION_TITLE);
+		logBuildStep("createScenarioLibraryPane: label complete");
+
+		logBuildStep("createScenarioLibraryPane: filter field start");
+		TextField filterScenarioTextField = utils.createTextField();
+		filterScenarioTextField.setMinWidth(styles.getBigButtonWidth());
+		filterScenarioTextField.setPrefWidth(styles.getBigButtonWidth() * 1.75);
+		filterScenarioTextField.setTooltip(new Tooltip(TOOLTIP_FILTER));
+		filterScenarioTextField.setPromptText("Filter scenarios...");
+		logBuildStep("createScenarioLibraryPane: filter field complete");
+
+		// Set up filtered and sorted lists for scenario table
+		logBuildStep("createScenarioLibraryPane: filtered/sorted lists start");
+		ScenarioTable.filteredScenarios = new FilteredList<>(ScenarioTable.tableScenariosLibrary.getItems(), p -> true);
+
+		filterScenarioTextField.textProperty().addListener((observable, oldValue, newValue) ->
+			ScenarioTable.filteredScenarios.setPredicate(scenarioRow -> {
+				if (newValue == null || newValue.isEmpty()) {
+					return true;
+				}
+				String lowerCaseFilter = newValue.toLowerCase();
+				return scenarioRow.getScenarioName().toLowerCase().contains(lowerCaseFilter);
+			})
+		);
+
+		SortedList<ScenarioRow> sortedScenarios = new SortedList<>(ScenarioTable.filteredScenarios);
+		sortedScenarios.comparatorProperty().bind(ScenarioTable.tableScenariosLibrary.comparatorProperty());
+		ScenarioTable.tableScenariosLibrary.setItems(sortedScenarios);
+		logBuildStep("createScenarioLibraryPane: filtered/sorted lists complete");
+
+		logBuildStep("createScenarioLibraryPane: PaneScenarioLibrary start");
+		Client.paneScenarioLibrary = new PaneScenarioLibrary(Client.primaryStage);
+		logBuildStep("createScenarioLibraryPane: PaneScenarioLibrary complete");
+
+		// Ensure the inner scenario table doesn't draw its own border when inside a panel.
+		try {
+			ScenarioTable.tableScenariosLibrary.getStyleClass().add("no-inner-border");
+		} catch (Exception ignored) {}
+
+		logBuildStep("createScenarioLibraryPane: toolbar containers start");
+		HBox buttonHBox = new HBox();
+		buttonHBox.setAlignment(Pos.CENTER_LEFT);
+		buttonHBox.setSpacing(4);
+		buttonHBox.getStyleClass().add(STYLE_TOOLBAR);
+
+		labelSearchScenarios = utils.createLabel(LABEL_SEARCH/*, styles.getBigButtonWidth()*/);
+		labelSearchScenarios.setTextAlignment(TextAlignment.LEFT);
+		logBuildStep("createScenarioLibraryPane: toolbar containers complete");
+
+		// Add all relevant controls to the scenario library pane
+		addScenarioLibraryControl(buttonHBox, "labelSearchScenarios", labelSearchScenarios);
+		addScenarioLibraryControl(buttonHBox, "filterScenarioTextField", filterScenarioTextField);
+		addScenarioLibraryControl(buttonHBox, "sep1", utils.getSeparator(Orientation.VERTICAL, 3, false));
+		addScenarioLibraryControl(buttonHBox, "buttonEditScenario", Client.buttonEditScenario);
+		addScenarioLibraryControl(buttonHBox, "buttonViewConfig", Client.buttonViewConfig);
+		addScenarioLibraryControl(buttonHBox, "buttonBrowseScenarioFolder", Client.buttonBrowseScenarioFolder);
+		addScenarioLibraryControl(buttonHBox, "sep2", utils.getSeparator(Orientation.VERTICAL, 3, false));
+		addScenarioLibraryControl(buttonHBox, "buttonRunScenario", Client.buttonRunScenario);
+		addScenarioLibraryControl(buttonHBox, "buttonStopScenario", Client.buttonStopScenario);
+		addScenarioLibraryControl(buttonHBox, "buttonDeleteScenario", Client.buttonDeleteScenario);
+		addScenarioLibraryControl(buttonHBox, "sep3", utils.getSeparator(Orientation.VERTICAL, 3, false));
+		addScenarioLibraryControl(buttonHBox, "buttonResults", Client.buttonResults);
+		addScenarioLibraryControl(buttonHBox, "buttonResultsForSelected", Client.buttonResultsForSelected);
+		addScenarioLibraryControl(buttonHBox, "sep4", utils.getSeparator(Orientation.VERTICAL, 3, false));
+		addScenarioLibraryControl(buttonHBox, "buttonDiffFiles", Client.buttonDiffFiles);
+		addScenarioLibraryControl(buttonHBox, "buttonShowRunQueue", Client.buttonShowRunQueue);
+		addScenarioLibraryControl(buttonHBox, "sep5", utils.getSeparator(Orientation.VERTICAL, 3, false));
+		addScenarioLibraryControl(buttonHBox, "buttonViewExeLog", Client.buttonViewExeLog);
+		addScenarioLibraryControl(buttonHBox, "buttonViewExeErrors", Client.buttonViewExeErrors);
+		addScenarioLibraryControl(buttonHBox, "buttonViewLog", Client.buttonViewLog);
+		addScenarioLibraryControl(buttonHBox, "buttonViewErrors", Client.buttonViewErrors);
+		addScenarioLibraryControl(buttonHBox, "sep6", utils.getSeparator(Orientation.VERTICAL, 3, false));
+		addScenarioLibraryControl(buttonHBox, "buttonRefreshScenarioStatus", Client.buttonRefreshScenarioStatus);
+		addScenarioLibraryControl(buttonHBox, "sep7", utils.getSeparator(Orientation.VERTICAL, 3, false));
+		addScenarioLibraryControl(buttonHBox, "buttonConsole", Client.buttonConsole);
+
+		logBuildStep("createScenarioLibraryPane: content assembly start");
+		VBox content = new VBox(4, buttonHBox, Client.paneScenarioLibrary.gethBox());
+		content.setFillWidth(true);
+		content.setMaxWidth(Double.MAX_VALUE);
+		VBox.setVgrow(Client.paneScenarioLibrary.gethBox(), Priority.ALWAYS);
+
+		vBoxRun = new VBox(6, labelScenarioLibrary, content);
+		vBoxRun.getStyleClass().add(STYLE_PANEL_CARD);
+		// Don't use legacy style1 here: it adds the blue border around the whole Scenario Library pane.
+		vBoxRun.setStyle("");
+		vBoxRun.setFillWidth(true);
+		vBoxRun.setMaxWidth(Double.MAX_VALUE);
+		VBox.setVgrow(content, Priority.ALWAYS);
+		logBuildStep("createScenarioLibraryPane: content assembly complete");
 	}
 }

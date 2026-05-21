@@ -756,6 +756,25 @@ public class GLIMPSEUtils {
 	}
 
 	/**
+	 * Warms cached button icons so first-use image decode work happens off the critical
+	 * UI startup path.
+	 *
+	 * @param imageNames icon keys without extension (for example "left_arrow")
+	 */
+	public void prewarmButtonIcons(String[] imageNames) {
+		if (imageNames == null || imageNames.length == 0) {
+			return;
+		}
+		if (uiUtils == null) {
+			UtilsUI temp = new UtilsUI();
+			temp.init(vars, styles);
+			temp.prewarmButtonIcons(imageNames);
+			return;
+		}
+		uiUtils.prewarmButtonIcons(imageNames);
+	}
+
+	/**
 	 * Shrinks button text as needed so it fits the current button size.
 	 *
 	 * @param button button to adjust
@@ -1485,6 +1504,38 @@ public class GLIMPSEUtils {
 		if (statusUtils == null)
 			return "";
 		return statusUtils.getComputerStatString();
+	}
+
+	/**
+	 * Registers a callback to invoke after an async database-size calculation
+	 * finishes so callers can re-render status displays with the resolved value.
+	 *
+	 * @param callback runnable to call on the background thread that finished the
+	 *                 calculation; may be {@code null} to clear
+	 */
+	public void setOnDatabaseSizeRefreshed(Runnable callback) {
+		if (statusUtils != null) {
+			statusUtils.setOnDatabaseSizeRefreshed(callback);
+		}
+	}
+
+	/**
+	 * Requests an asynchronous refresh of the configured GCAM output database size.
+	 *
+	 * @param force when {@code true}, refresh even if the last cached value is still
+	 *              considered recent enough for normal reuse
+	 */
+	public void requestDatabaseSizeRefresh(boolean force) {
+		if (statusUtils != null) {
+			statusUtils.requestDatabaseSizeRefresh(force);
+		}
+	}
+
+	/**
+	 * Requests an asynchronous refresh of the configured GCAM output database size.
+	 */
+	public void requestDatabaseSizeRefresh() {
+		requestDatabaseSizeRefresh(false);
 	}
 
 	/**

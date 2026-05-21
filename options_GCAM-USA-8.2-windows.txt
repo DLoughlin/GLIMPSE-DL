@@ -131,6 +131,7 @@ solver = $gCamHomeDir$/input/solution/cal_broyden_config.xml
 debugRegion = USA
 debugCreate = 0
 debugRename = 0
+debugStartupTiming = 0
 
 gCamOutputToSave = $gCamHomeDir$/exe/logs/main_log.txt;$gCamHomeDir$/exe/debug.xml
 #gCamOutputToSave = $gCamHomeDir$/exe/logs/main_log.txt;$gCamHomeDir$/exe/logs/calibration_log.txt;$gCamHomeDir$/exe/logs/solver_log.csv;$gCamHomeDir$/exe/debug.xml

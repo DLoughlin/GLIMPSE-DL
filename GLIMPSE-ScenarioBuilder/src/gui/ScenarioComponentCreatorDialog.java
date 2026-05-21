@@ -227,8 +227,9 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 		stageWithTabs.initModality(APPLICATION_MODAL);
 		Scene scene = new Scene(dialogPane, dialogWidth, dialogHeight);
 		try {
-			if (getClass().getResource("/resources/modern.css") != null) {
-				scene.getStylesheets().add(getClass().getResource("/resources/modern.css").toExternalForm());
+			String css = CSSResourceManager.getModernCssUrl();
+			if (css != null) {
+				scene.getStylesheets().add(css);
 			}
 		} catch (Exception e) {
 			System.out.println("Error loading modern.css: " + e);

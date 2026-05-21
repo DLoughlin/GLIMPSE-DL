@@ -155,6 +155,7 @@ public class GLIMPSEVariables {
     private String trashDir = null;
     private String gCamDataDir = null;
     private String gCamOutputDatabase = null;
+      private transient Runnable onGCamOutputDatabaseChanged = null;
     private String optionsFilename = null;
     private String xmlLibrary = null;
     private String textEditor = null;
@@ -1151,8 +1152,26 @@ public class GLIMPSEVariables {
      * @param s GCAM output database
      */
     public void setgCamOutputDatabase(String s) {
+        String oldValue = this.gCamOutputDatabase;
         this.gCamOutputDatabase = s;
+        if (onGCamOutputDatabaseChanged != null && (oldValue == null ? s != null : !oldValue.equals(s))) {
+          try {
+            onGCamOutputDatabaseChanged.run();
+          } catch (Throwable ignored) {
+          }
+        }
     }
+
+      /**
+       * Registers a callback that fires whenever the configured GCAM output database
+       * path changes.
+       *
+       * @param callback runnable to invoke when the database path changes; may be
+       *                 {@code null} to clear the hook
+       */
+      public void setOnGCamOutputDatabaseChanged(Runnable callback) {
+        this.onGCamOutputDatabaseChanged = callback;
+      }
     
 
     /**
@@ -2254,6 +2273,8 @@ public class GLIMPSEVariables {
      * @return Analysis report
      */
     public String examineGLIMPSESetup() {
+        final long t0setup = System.nanoTime();
+        final boolean timingEnabled = getDebugStartupTiming();
 
         String rtn_str="";
         
@@ -2282,6 +2303,7 @@ public class GLIMPSEVariables {
         
         boolean params_correct=true;
         
+        logSetupCheckpoint(timingEnabled, t0setup, "params+dirs check start");
         for (int i=0;i<params.length;i++) {
             String str=params[i];
             String val=get(str);
@@ -2303,6 +2325,7 @@ public class GLIMPSEVariables {
             }            
         }
         if (params_correct) report.add("No problems found with parameters or folders.");
+        logSetupCheckpoint(timingEnabled, t0setup, "params+dirs check complete");
 
 
         //checks to see if there are spaces in path
@@ -2320,6 +2343,7 @@ public class GLIMPSEVariables {
         //checks to see if folders are nested
         boolean no_nesting=true;
         
+        logSetupCheckpoint(timingEnabled, t0setup, "folder nesting check start");
         String bad_glimpse_path = good_glimpse_folder + File.separator
                 + good_glimpse_folder.substring(good_glimpse_folder.lastIndexOf(File.separator) + 1);
         if (this.testDirExists(bad_glimpse_path)) {
@@ -2330,6 +2354,7 @@ public class GLIMPSEVariables {
         } else {
             report.add("No problem was found with nesting of GLIMPSE folders.");
         }
+        logSetupCheckpoint(timingEnabled, t0setup, "folder nesting check complete");
         
         //checks to make sure the full path is not super long
         boolean path_len_ok=true;
@@ -2345,6 +2370,7 @@ public class GLIMPSEVariables {
         //checks to see if java_home is defined 
         boolean found_java=true;
         
+        logSetupCheckpoint(timingEnabled, t0setup, "JAVA_HOME check start");
         String java_home_folder=System.getenv("JAVA_HOME");
         if (!files.testFolderExists(java_home_folder)) {
             found_java=false;
@@ -2354,6 +2380,7 @@ public class GLIMPSEVariables {
             String s="Your JAVA_HOME folder, "+java_home_folder+", was successfully found.";
             report.add(s); 
         }
+        logSetupCheckpoint(timingEnabled, t0setup, "JAVA_HOME check complete");
         
         if ((found_java)&&(no_nesting)&&(params_correct)&&(path_len_ok)&&(no_spaces_in_path)) {
             report.add("Installation at location "+this.getGlimpseDir()+" appears to be succesful.");
@@ -2363,6 +2390,7 @@ public class GLIMPSEVariables {
         
         report.add(" ");
         report.add("------ Check to verify that key files exist as specified --------");
+        logSetupCheckpoint(timingEnabled, t0setup, "key file checks start");
         String filename=this.getXmlHeaderFilename();
         String s="XML header file: "+filename+" - "+files.doesFileExist(filename);
         report.add(s);
@@ -2377,20 +2405,25 @@ public class GLIMPSEVariables {
         report.add(s);		
         filename=this.getQueryFilename();
         s="Query file: "+filename+" - "+files.doesFileExist(filename);
-        report.add(s);	
+        report.add(s);
+        logSetupCheckpoint(timingEnabled, t0setup, "standard file checks complete");
         filename=this.getgCamExecutableDir()+File.separator+this.getgCamExecutable();
         s="GCAM executable: "+filename+" - "+files.doesFileExist(filename);
-        report.add(s);	
+        report.add(s);
+        logSetupCheckpoint(timingEnabled, t0setup, "GCAM executable check complete");
         filename=this.getModelInterfaceJarDir()+File.separator+this.getModelInterfaceJar();
         s="ModelInterface executable: "+filename+" - "+files.doesFileExist(filename);
-        report.add(s);			
+        report.add(s);
+        logSetupCheckpoint(timingEnabled, t0setup, "ModelInterface check complete");
         
         try {
             report.add(" ");
             report.add("------ Computer Information --------");
             double gb=1073741824;
+            logSetupCheckpoint(timingEnabled, t0setup, "OS MXBean start");
             com.sun.management.OperatingSystemMXBean os = (com.sun.management.OperatingSystemMXBean)
                      java.lang.management.ManagementFactory.getOperatingSystemMXBean();
+            logSetupCheckpoint(timingEnabled, t0setup, "OS MXBean complete");
             
             report.add("-- Memory analysis -- ");
             try {
@@ -2408,10 +2441,12 @@ public class GLIMPSEVariables {
                 report.add("Java version does not support assessing physical memory.");
                 report.add("");
             }
+            logSetupCheckpoint(timingEnabled, t0setup, "memory stats complete");
                 
             Runtime rt = Runtime.getRuntime();
 
             report.add("-- Disk space analysis -- ");			
+            logSetupCheckpoint(timingEnabled, t0setup, "disk space check start");
             File drive = new File("/");
             
             double total_space=(double)(drive.getTotalSpace() /gb);
@@ -2420,6 +2455,7 @@ public class GLIMPSEVariables {
             report.add(String.format("Total space: %.1f GB",total_space));
             report.add(String.format("Free space: %.1f GB",free_space));
             if (free_space<100) report.add("*** Warning: Free space is limited. At least 100 GB is advised. ***");
+            logSetupCheckpoint(timingEnabled, t0setup, "disk space check complete");
 
             try {
 
@@ -2434,14 +2470,17 @@ public class GLIMPSEVariables {
               } catch(Throwable e1) {
                 report.add("Java version does not support assessing swap space size.");
                 report.add("");
-            }			
+            }
+            logSetupCheckpoint(timingEnabled, t0setup, "swap space check complete");
                     
             report.add("-- Processor analysis -- ");
+            logSetupCheckpoint(timingEnabled, t0setup, "CPU load check start");
             int available_processors = rt.availableProcessors();
             report.add("Available processor cores: "+available_processors);
             float cpu_load=(float)(os.getSystemCpuLoad());
             report.add(String.format("Current usage: %.1f", (float)cpu_load*100.)+"%");
             report.add("");
+            logSetupCheckpoint(timingEnabled, t0setup, "CPU load check complete");
                         
           } catch(Throwable e) {
             System.out.println("Problem checking computer attributes (e.g., RAM)");
@@ -2450,8 +2489,22 @@ public class GLIMPSEVariables {
         //utils.displayArrayList(report,"Result of Check Installation",true);
         
         rtn_str=utils.createStringFromArrayList(report);
-        
+
+        logSetupCheckpoint(timingEnabled, t0setup, "examineGLIMPSESetup total complete");
         return rtn_str;
+    }
+
+    /**
+     * Emits a per-phase timing checkpoint for setup analysis.
+     * Only emits when {@code timingEnabled} is true so there is zero overhead in
+     * production runs with {@code debugStartupTiming=false}.
+     */
+    private static void logSetupCheckpoint(boolean timingEnabled, long t0nanos, String label) {
+        if (!timingEnabled) {
+            return;
+        }
+        long elapsedMs = (System.nanoTime() - t0nanos) / 1_000_000L;
+        System.out.println("[startup-setup] " + label + " | +" + elapsedMs + "ms");
     }
 
     /**
