@@ -148,6 +148,7 @@ public class Client extends Application {
     private static final String STARTUP_LAUNCH_JAR_URL_DEBUG_FLAG = "glimpse.debugLaunchJarUrls";
     private static final String STARTUP_PREWARM_BEFORE_SHOW_FLAG = "glimpse.startupPrewarmBeforeShow";
     private static final String STARTUP_SHOW_WATCHDOG_FLAG = "glimpse.debugShowWatchdog";
+    private static final String STARTUP_DEFER_MAIN_UI_UNTIL_READY_FLAG = "glimpse.startupDeferMainUiUntilReady";
     private static final String STARTUP_WATCHDOG_VERBOSE_STACK_FLAG = "glimpse.debugWatchdogVerboseStack";
     private static final int STARTUP_WATCHDOG_INTERVAL_MS = 2000;
     private static final long DATABASE_REBUILD_WATCH_INTERVAL_MS = 15000L;
@@ -273,6 +274,12 @@ public class Client extends Application {
     private static volatile String lastStartupStatusLogged = "";
     /** True once the main ScenarioBuilder window has been shown. */
     private static volatile boolean mainWindowDisplayed = false;
+    /** Keep startup shell visible until full main UI widgets are composed. */
+    private static volatile boolean deferMainUiUntilReady = true;
+    /** Prepared full scene shown once startup gate conditions are met. */
+    private static volatile Scene preparedMainScene;
+    private static volatile VBox preparedMainRoot;
+    private static volatile GridPane preparedMainGridPane;
     /** Initial library loads that must finish before steady-state resource text is restored. */
     private static volatile boolean initialScenarioLoadPending = true;
     private static volatile boolean initialComponentLoadPending = true;
@@ -375,6 +382,7 @@ public class Client extends Application {
 
         // Load options into the vars singleton
         vars.loadOptions(optionsFilename);
+        deferMainUiUntilReady = Boolean.parseBoolean(System.getProperty(STARTUP_DEFER_MAIN_UI_UNTIL_READY_FLAG, "true"));
         bootstrapTimingEnabled = vars.getDebugStartupTiming();
         logStartupCheckpoint("init(): options loaded", t0);
         updateEarlyStartupSplashMessage("Loading GLIMPSE options...");
@@ -474,7 +482,6 @@ public class Client extends Application {
             showWatchdog.interrupt();
         }
         logStartupCheckpoint("start(): after primaryStage.show", t0);
-        mainWindowDisplayed = true;
         closeEarlyStartupSplash();
         logStartupCheckpoint("start(): after closeEarlyStartupSplash", t0);
         // Computer stats log-write and setup analysis are both deferred to after
@@ -557,8 +564,13 @@ public class Client extends Application {
         setFileDependentUiEnabled(false);
         setStartupStatus(STARTUP_WINDOW_READY_MESSAGE, -1, true);
         logStartupCheckpoint("Main window composition start", STARTUP_T0_NANOS);
-        setMainWindow(combineAllElementsIntoOnePane(), createMenuBar());
-        forceStartupRelayoutAfterSceneSwap();
+        setMainWindow(combineAllElementsIntoOnePane(), createMenuBar(), !deferMainUiUntilReady);
+        if (!deferMainUiUntilReady) {
+            forceStartupRelayoutAfterSceneSwap();
+        } else {
+            logStartupCheckpoint("Main window reveal deferred until startup UI is composed", STARTUP_T0_NANOS);
+            tryRevealPreparedMainWindow(false);
+        }
         logStartupCheckpoint("Main window composition complete", STARTUP_T0_NANOS);
         utils.setModalDialogsReadyAndFlushWarnings();
 
@@ -751,7 +763,7 @@ public class Client extends Application {
      * @param mainGridPane The main content pane
      * @param menuBar The menu bar
      */
-    private void setMainWindow(GridPane mainGridPane, MenuBar menuBar) {
+    private void setMainWindow(GridPane mainGridPane, MenuBar menuBar, boolean showImmediately) {
         // Compose the root layout
         sb.setStyle(buildStatusBarStyleForText("", null));
         configureStatusBarRightItems();
@@ -767,6 +779,20 @@ public class Client extends Application {
 
         applyModernCss(scene);
 
+        if (showImmediately) {
+            applyMainScene(scene, root, mainGridPane);
+        } else {
+            preparedMainScene = scene;
+            preparedMainRoot = root;
+            preparedMainGridPane = mainGridPane;
+        }
+    }
+
+    private void applyMainScene(Scene scene, VBox root, GridPane mainGridPane) {
+        if (scene == null || root == null) {
+            return;
+        }
+
         primaryStage.setScene(scene);
         primaryStage.setTitle(VERSION);
         primaryStage.setMinHeight(MIN_WINDOW_HEIGHT);
@@ -781,14 +807,53 @@ public class Client extends Application {
                 root.applyCss();
                 root.layout();
                 mainGridPane.requestLayout();
-                centerStack.requestLayout();
             } catch (Exception ignored) {
             }
         });
+        mainWindowDisplayed = true;
 
         if (vars.getShowSplash()) {
             loadSplashScreen();
         }
+    }
+
+    private static boolean isStartupDataReadyForMainUi() {
+        return startupStepsCompleted >= STARTUP_STEP_UI_READY;
+    }
+
+    private static void tryRevealPreparedMainWindow(boolean forceReveal) {
+        if (!deferMainUiUntilReady || mainWindowDisplayed || preparedMainScene == null) {
+            return;
+        }
+        if (!forceReveal && !isStartupDataReadyForMainUi()) {
+            return;
+        }
+        final Client inst = instanceForStatus;
+        if (inst == null) {
+            return;
+        }
+        Runnable reveal = inst::revealPreparedMainWindowNow;
+        if (Platform.isFxApplicationThread()) {
+            reveal.run();
+        } else {
+            Platform.runLater(reveal);
+        }
+    }
+
+    private void revealPreparedMainWindowNow() {
+        if (mainWindowDisplayed || preparedMainScene == null || primaryStage == null) {
+            return;
+        }
+        Scene scene = preparedMainScene;
+        VBox root = preparedMainRoot;
+        GridPane mainGridPane = preparedMainGridPane;
+        preparedMainScene = null;
+        preparedMainRoot = null;
+        preparedMainGridPane = null;
+
+        applyMainScene(scene, root, mainGridPane);
+        forceStartupRelayoutAfterSceneSwap();
+        logStartupCheckpoint("Main window revealed after startup readiness gate", STARTUP_T0_NANOS);
     }
 
     /**
@@ -925,6 +990,7 @@ public class Client extends Application {
                     } catch (Throwable ignored) {
                     }
                     setFileDependentUiEnabled(true);
+                    tryRevealPreparedMainWindow(false);
                 });
 
             } catch (Throwable ex) {
@@ -933,6 +999,7 @@ public class Client extends Application {
                 Platform.runLater(() -> {
                     setFileDependentUiEnabled(true);
                     setStartupStatus("Error loading required files (see console)", -1, false);
+                    tryRevealPreparedMainWindow(true);
                 });
             }
         }, "glimpse-deferred-file-loader");
@@ -1073,6 +1140,7 @@ public class Client extends Application {
         initialScenarioLoadPending = false;
         advanceStartupStep(STARTUP_STEP_SCENARIOS_READY, STARTUP_READY_MESSAGE);
         applyDeferredStatusBarTextIfReady();
+        tryRevealPreparedMainWindow(false);
         // Now that all initial loads are done, write the computer stats snapshot to
         // the log file without competing with the startup tasks above.
         final Client inst = instanceForStatus;
@@ -1090,6 +1158,7 @@ public class Client extends Application {
         initialComponentLoadPending = false;
         advanceStartupStep(STARTUP_STEP_COMPONENTS_READY, STARTUP_SCENARIO_MESSAGE);
         applyDeferredStatusBarTextIfReady();
+        tryRevealPreparedMainWindow(false);
     }
 
     private VBox createStartupOverlay() {

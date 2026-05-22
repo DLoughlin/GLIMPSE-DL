@@ -148,6 +148,12 @@ public abstract class PolicyTab extends Tab {
             "Initial and Final", "Initial w/% Growth/yr", "Initial w/% Growth/pd",
             "Initial w/Delta/yr", "Initial w/Delta/pd"
     };
+    protected static final String MOD_TYPE_INITIAL_FINAL = "Initial and Final";
+    protected static final String MOD_TYPE_INITIAL_FINAL_PERCENT = "Initial and Final %";
+    protected static final String MOD_TYPE_GROWTH_YR = "Initial w/% Growth/yr";
+    protected static final String MOD_TYPE_GROWTH_PD = "Initial w/% Growth/pd";
+    protected static final String MOD_TYPE_DELTA_YR = "Initial w/Delta/yr";
+    protected static final String MOD_TYPE_DELTA_PD = "Initial w/Delta/pd";
     protected static final String[] CONVERT_FROM_OPTIONS = {
             NONE, "2023$s", "2020$s", "2015$s", "2010$s", "2005$s", "2000$s"
     };
@@ -187,6 +193,7 @@ public abstract class PolicyTab extends Tab {
     protected final GridPane gridPaneLeft = new GridPane();
     protected final VBox vBoxCenter = new VBox();
     protected final HBox hBoxHeaderCenter = new HBox();
+    private boolean modificationTypeSelectionListenerAttached = false;
     
     protected final Label labelPolicyName = createLabel(LABEL_POLICY_NAME, LABEL_WIDTH);
     protected final TextField textFieldPolicyName = createTextField(PREF_WIDTH);
@@ -510,7 +517,7 @@ public abstract class PolicyTab extends Tab {
   protected void setModificationTypeOptions(String... options) {
     comboBoxModificationType.getItems().clear();
     String[] source = (options == null || options.length == 0) ? MODIFICATION_TYPE_OPTIONS : options;
-    final String preferredFirst = "Initial and Final";
+    final String preferredFirst = MOD_TYPE_INITIAL_FINAL;
     for (String option : source) {
       if (option == null) {
         continue;
@@ -538,8 +545,42 @@ public abstract class PolicyTab extends Tab {
     }
     if (!comboBoxModificationType.getItems().isEmpty()) {
       comboBoxModificationType.getSelectionModel().selectFirst();
+      refreshModificationTypeLabels();
     }
   }
+
+    /** Keeps Initial/Growth label text in sync with the selected modification type. */
+    protected void refreshModificationTypeLabels() {
+        applyModificationTypeLabels(comboBoxModificationType.getSelectionModel().getSelectedItem());
+    }
+
+    private void applyModificationTypeLabels(String selected) {
+        if (selected == null) {
+            return;
+        }
+        switch (selected) {
+            case MOD_TYPE_GROWTH_YR:
+            case MOD_TYPE_GROWTH_PD:
+                labelInitialAmount.setText("Initial Val:");
+                labelGrowth.setText("Growth (%):");
+                break;
+            case MOD_TYPE_DELTA_YR:
+            case MOD_TYPE_DELTA_PD:
+                labelInitialAmount.setText("Initial Val:");
+                labelGrowth.setText("Delta:");
+                break;
+            case MOD_TYPE_INITIAL_FINAL:
+                labelInitialAmount.setText("Initial Val:");
+                labelGrowth.setText("Final Val:");
+                break;
+            case MOD_TYPE_INITIAL_FINAL_PERCENT:
+                labelInitialAmount.setText("Initial Val (%):");
+                labelGrowth.setText("Final Val (%):");
+                break;
+            default:
+                break;
+        }
+    }
 	
 	/**
      * Load content into the tab. Implemented by subclasses to define how content is loaded.
@@ -951,30 +992,12 @@ public abstract class PolicyTab extends Tab {
             textFieldPolicyName.setDisable(selected);
             textFieldMarketName.setDisable(selected);
         }));
-        comboBoxModificationType.setOnAction(e -> Platform.runLater(() -> {
-            String selected = comboBoxModificationType.getSelectionModel().getSelectedItem();
-            if (selected == null) return;
-            switch (selected) {
-                case "Initial w/% Growth/yr":
-                case "Initial w/% Growth/pd":
-                	labelInitialAmount.setText("Initial Val:");
-                	labelGrowth.setText("Growth (%):");
-                    break;
-                case "Initial w/Delta/yr":
-                case "Initial w/Delta/pd":
-                	labelInitialAmount.setText("Initial Val:");
-                	labelGrowth.setText("Delta:");
-                    break;
-                case "Initial and Final":
-                	labelInitialAmount.setText("Initial Val:");
-                    labelGrowth.setText("Final Val:");
-                    break;
-                case "Initial and Final %":
-                	labelInitialAmount.setText("Initial Val (%):");
-                    labelGrowth.setText("Final Val (%):");
-                    break;
-            }
-        }));
+        if (!modificationTypeSelectionListenerAttached) {
+            comboBoxModificationType.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) ->
+                    Platform.runLater(() -> applyModificationTypeLabels(newValue)));
+            modificationTypeSelectionListenerAttached = true;
+        }
+        Platform.runLater(this::refreshModificationTypeLabels);
         buttonClear.setOnAction(e -> Platform.runLater(() -> paneForComponentDetails.clearTable()));
         buttonDelete.setOnAction(e -> Platform.runLater(() -> paneForComponentDetails.deleteItemsFromTable()));
         buttonPopulate.setOnAction(e -> Platform.runLater(() -> {

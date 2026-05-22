@@ -562,13 +562,19 @@ final class ScenarioStatusService {
             String trimmedPeriod = period == null ? "" : period.trim();
             String trimmedYear = year == null ? "" : year.trim();
             if (!trimmedPeriod.isEmpty() && !trimmedYear.isEmpty()) {
-                return trimmedPeriod + "," + trimmedYear;
+                // Validate period and year are reasonable before returning
+                if (isValidPeriodAndYear(trimmedPeriod, trimmedYear)) {
+                    return trimmedPeriod + "," + trimmedYear;
+                }
             }
             if (!trimmedPeriod.isEmpty()) {
-                return trimmedPeriod;
+                // Validate period is reasonable before returning alone
+                if (isValidPeriod(trimmedPeriod)) {
+                    return trimmedPeriod;
+                }
             }
             if (!trimmedYear.isEmpty()) {
-                return trimmedYear;
+                // Never return year alone; it's too ambiguous (could match error years like 1701)
             }
         }
         java.util.regex.Matcher matcher = RUNNING_PERIOD_PATTERN.matcher(line);
@@ -576,7 +582,49 @@ final class ScenarioStatusService {
             return "";
         }
         String period = matcher.group(2);
-        return period == null ? "" : period.trim();
+        if (period == null) {
+            return "";
+        }
+        String trimmedPeriod = period.trim();
+        return isValidPeriod(trimmedPeriod) ? trimmedPeriod : "";
+    }
+
+    /**
+     * Validates that a period number is within a reasonable range (0–150 periods typical for GCAM).
+     * Filters out spurious matches like error codes or years.
+     */
+    private boolean isValidPeriod(String period) {
+        if (period == null || period.isEmpty()) {
+            return false;
+        }
+        try {
+            int p = Integer.parseInt(period);
+            // GCAM typically runs 0–32 periods for standard runs, up to ~150 for extended scenarios
+            // Filter out unlikely values (years like 1701-2999, error codes, etc.)
+            return p >= 0 && p <= 200;
+        } catch (NumberFormatException ex) {
+            return false;
+        }
+    }
+
+    /**
+     * Validates that period and year are both reasonable.
+     * Filters out spurious matches like error text or stray numbers.
+     */
+    private boolean isValidPeriodAndYear(String period, String year) {
+        if (!isValidPeriod(period)) {
+            return false;
+        }
+        if (year == null || year.isEmpty()) {
+            return false;
+        }
+        try {
+            int y = Integer.parseInt(year);
+            // Years should be in a reasonable range: 1950–2200
+            return y >= 1950 && y <= 2200;
+        } catch (NumberFormatException ex) {
+            return false;
+        }
     }
 
     private String extractUnsolvedPeriodsFromErrorLine(String line) {
