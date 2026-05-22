@@ -168,8 +168,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
         comboBoxConstraint.getSelectionModel().selectFirst();
         comboBoxTreatment.getItems().addAll(TREATMENT_OPTIONS);
         comboBoxTreatment.getSelectionModel().selectFirst();
-        comboBoxModificationType.getItems().addAll(MODIFICATION_TYPE_OPTIONS);
-        comboBoxModificationType.getSelectionModel().selectFirst();
+		setModificationTypeOptions(MODIFICATION_TYPE_OPTIONS);
         // Widget actions and event handlers
         setupWidgetActions();
 
@@ -348,6 +347,8 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 		});
 		setOnAction(textFieldSubsetFilter, e -> setupCheckComboBoxes());
 		setOnAction(textFieldSupersetFilter, e -> setupCheckComboBoxes());
+		textFieldSubsetFilter.textProperty().addListener((obs, oldVal, newVal) -> setupCheckComboBoxes());
+		textFieldSupersetFilter.textProperty().addListener((obs, oldVal, newVal) -> setupCheckComboBoxes());
 		setOnAction(comboBoxAppliedTo, e -> setPolicyAndMarketNames());
 		setOnAction(comboBoxTreatment, e -> setPolicyAndMarketNames());
 		setOnAction(comboBoxConstraint, e -> setPolicyAndMarketNames());
@@ -379,6 +380,8 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 					: "";
 			String filterTextSup = textFieldSupersetFilter.getText() != null ? textFieldSupersetFilter.getText().trim()
 					: "";
+			String filterTextSubLc = filterTextSub.toLowerCase();
+			String filterTextSupLc = filterTextSup.toLowerCase();
 			boolean useFilterSub = !filterTextSub.isEmpty();
 			boolean useFilterSup = !filterTextSup.isEmpty();
 			String lastLine = "";
@@ -393,7 +396,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 				boolean showSub = !useFilterSub;
 				if (useFilterSub) {
 					for (String temp : tech) {
-						if (temp.contains(filterTextSub)) {
+						if (temp != null && temp.toLowerCase().contains(filterTextSubLc)) {
 							showSub = true;
 							break;
 						}
@@ -404,7 +407,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 				boolean showSup = !useFilterSup;
 				if (useFilterSup) {
 					for (String temp : tech) {
-						if (temp.contains(filterTextSup)) {
+						if (temp != null && temp.toLowerCase().contains(filterTextSupLc)) {
 							showSup = true;
 							break;
 						}

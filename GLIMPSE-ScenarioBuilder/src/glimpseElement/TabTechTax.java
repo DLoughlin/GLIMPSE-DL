@@ -138,10 +138,7 @@ public class TabTechTax extends PolicyTab implements Runnable {
 			comboBoxMeasure.getItems().add(option);
 		}
 		comboBoxMeasure.getSelectionModel().selectFirst();
-		for (String option : MODIFICATION_TYPE_OPTIONS) {
-			comboBoxModificationType.getItems().add(option);
-		}
-		comboBoxModificationType.getSelectionModel().selectFirst();
+		setModificationTypeOptions(MODIFICATION_TYPE_OPTIONS);
 		//comboBoxConvertFrom.getItems().clear();
 		//for (String option : CONVERT_FROM_OPTIONS) {
 		//	comboBoxConvertFrom.getItems().add(option);

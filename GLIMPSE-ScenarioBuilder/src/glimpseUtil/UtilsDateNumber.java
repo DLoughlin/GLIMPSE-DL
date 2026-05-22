@@ -1,6 +1,8 @@
 package glimpseUtil;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -115,12 +117,17 @@ public final class UtilsDateNumber {
 	 * @return formatted numeric string
 	 */
 	public static String toSignificantFiguresString(double val, int significantFigures) {
-		BigDecimal bd = new BigDecimal(val);
-		String test = String.format("%." + significantFigures + "G", bd);
-		if (test.contains("E+")) {
-			test = String.format(Locale.US, "%.0f",
-					Double.valueOf(String.format("%." + significantFigures + "G", bd)));
+		if (Double.isNaN(val) || Double.isInfinite(val)) {
+			return String.valueOf(val);
 		}
-		return test;
+
+		double absVal = Math.abs(val);
+		if (absVal > 0.0 && absVal < 1.0e-4) {
+			String scientific = String.format(Locale.US, "%1." + significantFigures + "E", val);
+			return scientific.replace("E+", "E");
+		}
+
+		BigDecimal rounded = BigDecimal.valueOf(val).round(new MathContext(significantFigures, RoundingMode.HALF_UP));
+		return rounded.stripTrailingZeros().toPlainString();
 	}
 }

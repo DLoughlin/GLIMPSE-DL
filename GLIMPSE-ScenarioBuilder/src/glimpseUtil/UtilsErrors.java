@@ -27,6 +27,7 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -201,12 +202,17 @@ public final class UtilsErrors {
 			viewSelector.getSelectionModel().select(0);
 			viewSelector.setTooltip(new Tooltip("Choose which lines to display"));
 
+			TextField searchTextField = utils.createTextField();
+			searchTextField.setMinWidth(styles.getBigButtonWidth());
+			searchTextField.setTooltip(new Tooltip("Enter text to filter visible lines"));
+
 			Runnable refreshText = () -> {
 				String selectedFilter = viewSelector.getValue();
-				String text = report.buildText(selectedFilter);
-				if ((text == null || text.trim().isEmpty()) && !report.hasVisibleContent(selectedFilter)) {
-					text = "No errors reported" + System.lineSeparator();
+				String baseText = report.buildText(selectedFilter);
+				if ((baseText == null || baseText.trim().isEmpty()) && !report.hasVisibleContent(selectedFilter)) {
+					baseText = "No errors reported" + System.lineSeparator();
 				}
+				String text = filterLinesForSearch(baseText, searchTextField.getText());
 				textArea.setText(text == null ? "" : text);
 				textArea.positionCaret(0);
 				textArea.setScrollTop(0);
@@ -214,6 +220,7 @@ public final class UtilsErrors {
 			};
 			refreshText.run();
 			viewSelector.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> refreshText.run());
+			searchTextField.textProperty().addListener((obs, oldV, newV) -> refreshText.run());
 
 			Button saveAsBtn = new Button("Save As...");
 			saveAsBtn.setTooltip(new Tooltip("Save the currently visible error report as text"));
@@ -228,7 +235,7 @@ public final class UtilsErrors {
 					File chosen = FileChooserPlus.showSaveDialog(stage, "Save Error Report", initialDir, defaultName, txtFilter);
 					if (chosen != null) {
 						ArrayList<String> exportRows = new ArrayList<>();
-						String text = report.buildText(viewSelector.getValue());
+						String text = textArea.getText();
 						if (text != null && !text.isEmpty()) {
 							Collections.addAll(exportRows, text.split("\\R", -1));
 						}
@@ -243,7 +250,12 @@ public final class UtilsErrors {
 			Button closeButton = utils.createButton(GLIMPSEUtils.LABEL_CLOSE, styles.getBigButtonWidth(), null);
 			closeButton.setOnAction(e -> stage.close());
 
-			HBox controls = new HBox(10, new Label("View:"), viewSelector, saveAsBtn);
+			HBox controls = new HBox(10,
+					new Label("View:"),
+					viewSelector,
+					new Label("Search:"),
+					searchTextField,
+					saveAsBtn);
 			controls.setPadding(new Insets(6, 10, 6, 10));
 			controls.setAlignment(Pos.CENTER_LEFT);
 
@@ -269,6 +281,27 @@ public final class UtilsErrors {
 			stage.show();
 		};
 		popupTask.run();
+	}
+
+	private String filterLinesForSearch(String text, String query) {
+		if (text == null) {
+			return "";
+		}
+		String normalizedQuery = query == null ? "" : query.trim().toLowerCase();
+		if (normalizedQuery.isEmpty()) {
+			return text;
+		}
+		StringBuilder filtered = new StringBuilder();
+		String[] lines = text.split("\\R", -1);
+		for (String line : lines) {
+			if (line != null && line.toLowerCase().contains(normalizedQuery)) {
+				if (filtered.length() > 0) {
+					filtered.append(System.lineSeparator());
+				}
+				filtered.append(line);
+			}
+		}
+		return filtered.toString();
 	}
 
 	private ScenarioLibraryReportHelper.ErrorTextReport buildTextReportFromCsv(String title, ArrayList<String> csvData) {

@@ -220,7 +220,7 @@ public class PaneForComponentDetails extends VBox {
             String value = textFieldValue.getText().trim();
             DataPoint dp = new DataPoint(year, value);
             if (dp.qaDataPoint(enforceYrValPair)){
-                data.add(dp);
+                addOrReplacePlaceholderRow(year, value);
                 // clear fields and disable Add until new input is provided
                 textFieldYear.clear();
                 textFieldValue.clear();
@@ -281,29 +281,37 @@ public class PaneForComponentDetails extends VBox {
         addOrReplacePlaceholderRow(year, value);
     }
 
-    /**
-     * Returns true when the table currently contains only the seeded blank placeholder row.
-     */
-    private boolean hasOnlyBlankPlaceholderRow() {
-        if (data == null || data.size() != 1) {
-            return false;
-        }
-        DataPoint first = data.get(0);
-        if (first == null) {
-            return false;
-        }
-        String year = first.getYear() == null ? "" : first.getYear().trim();
-        String value = first.getValue() == null ? "" : first.getValue().trim();
-        return year.isEmpty() && value.isEmpty();
+    private boolean isBlankText(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     /**
-     * Adds a row of data, replacing the starter blank row when real content is first loaded.
+     * Returns the first fully blank row index, or -1 when no blank row exists.
+     */
+    private int findFirstBlankRowIndex() {
+        if (data == null || data.isEmpty()) {
+            return -1;
+        }
+        for (int i = 0; i < data.size(); i++) {
+            DataPoint row = data.get(i);
+            if (row == null) {
+                return i;
+            }
+            if (isBlankText(row.getYear()) && isBlankText(row.getValue())) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Adds a row of data, reusing the first blank row when available.
      */
     private void addOrReplacePlaceholderRow(String year, String value) {
         DataPoint dp = new DataPoint(year, value);
-        if (hasOnlyBlankPlaceholderRow()) {
-            data.set(0, dp);
+        int blankRowIndex = findFirstBlankRowIndex();
+        if (blankRowIndex >= 0) {
+            data.set(blankRowIndex, dp);
         } else {
             data.add(dp);
         }

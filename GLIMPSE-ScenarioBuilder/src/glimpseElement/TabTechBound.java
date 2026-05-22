@@ -254,10 +254,9 @@ public class TabTechBound extends PolicyTab implements Runnable {
 		comboBoxTreatment.getItems().addAll(TREATMENT_OPTIONS);
 		comboBoxTreatment.getSelectionModel().selectFirst();
 		comboBoxConstraint.getItems().addAll(CONSTRAINT_OPTIONS);
-		comboBoxModificationType.getItems().addAll(MODIFICATION_TYPE_OPTIONS);
+		setModificationTypeOptions(MODIFICATION_TYPE_OPTIONS);
 		comboBoxCategory.getSelectionModel().selectFirst();
 		comboBoxConstraint.getSelectionModel().selectFirst();
-		comboBoxModificationType.getSelectionModel().selectFirst();
 		comboBoxAppliedTo.getItems().addAll(APPLIED_TO_OPTIONS);
 		comboBoxAppliedTo.getSelectionModel().selectFirst();
 	}

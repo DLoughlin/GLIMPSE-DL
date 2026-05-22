@@ -225,8 +225,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
         comboBoxWhichUnits.setDisable(true); // Disabled until tech selected
         comboBoxApplicationMode.getItems().addAll(APPLICATION_MODE_OPTIONS);
         comboBoxApplicationMode.getSelectionModel().select(MODE_FLEET_AVERAGE);
-        comboBoxModificationType.getItems().addAll(MOD_TYPE_OPTIONS);
-        comboBoxModificationType.getSelectionModel().selectFirst();
+        setModificationTypeOptions(MOD_TYPE_OPTIONS);
     }
 
     /**

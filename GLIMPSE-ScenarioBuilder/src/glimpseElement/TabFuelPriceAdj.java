@@ -139,8 +139,7 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
 
         // Populate modification type choices
         if (comboBoxModificationType != null) {
-            comboBoxModificationType.getItems().addAll(MODIFICATION_TYPE_OPTIONS);
-            comboBoxModificationType.getSelectionModel().selectFirst();
+            setModificationTypeOptions(MODIFICATION_TYPE_OPTIONS);
         }
 
         setPolicyAndMarketNames();

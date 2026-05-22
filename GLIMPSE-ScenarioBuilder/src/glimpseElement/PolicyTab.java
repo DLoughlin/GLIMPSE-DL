@@ -145,8 +145,8 @@ public abstract class PolicyTab extends Tab {
     
     // === Constants for default values and labels ===
     protected static final String[] MODIFICATION_TYPE_OPTIONS = {
-            "Initial w/% Growth/yr", "Initial w/% Growth/pd",
-            "Initial w/Delta/yr", "Initial w/Delta/pd", "Initial and Final"
+            "Initial and Final", "Initial w/% Growth/yr", "Initial w/% Growth/pd",
+            "Initial w/Delta/yr", "Initial w/Delta/pd"
     };
     protected static final String[] CONVERT_FROM_OPTIONS = {
             NONE, "2023$s", "2020$s", "2015$s", "2010$s", "2005$s", "2000$s"
@@ -501,6 +501,45 @@ public abstract class PolicyTab extends Tab {
 		comboBox.setMinWidth(prefWidth);
          return comboBox;
      }
+
+  /**
+   * Replaces modification-type options while preventing duplicate entries.
+   * Use this from tab constructors/setup so repeated initialization does not
+   * append a second copy of the same choices.
+   */
+  protected void setModificationTypeOptions(String... options) {
+    comboBoxModificationType.getItems().clear();
+    String[] source = (options == null || options.length == 0) ? MODIFICATION_TYPE_OPTIONS : options;
+    final String preferredFirst = "Initial and Final";
+    for (String option : source) {
+      if (option == null) {
+        continue;
+      }
+      String trimmed = option.trim();
+      if (preferredFirst.equalsIgnoreCase(trimmed)) {
+        comboBoxModificationType.getItems().add(preferredFirst);
+        break;
+      }
+    }
+    for (String option : source) {
+      if (option == null) {
+        continue;
+      }
+      String trimmed = option.trim();
+      if (trimmed.isEmpty()) {
+        continue;
+      }
+      if (preferredFirst.equalsIgnoreCase(trimmed)) {
+        continue;
+      }
+      if (!comboBoxModificationType.getItems().contains(trimmed)) {
+        comboBoxModificationType.getItems().add(trimmed);
+      }
+    }
+    if (!comboBoxModificationType.getItems().isEmpty()) {
+      comboBoxModificationType.getSelectionModel().selectFirst();
+    }
+  }
 	
 	/**
      * Load content into the tab. Implemented by subclasses to define how content is loaded.

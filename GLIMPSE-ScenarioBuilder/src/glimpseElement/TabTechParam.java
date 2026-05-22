@@ -202,8 +202,7 @@ public class TabTechParam extends PolicyTab implements Runnable {
         comboBoxParam2.getSelectionModel().selectFirst();
         comboBoxParam2.setDisable(true);
 
-        comboBoxModificationType.getItems().addAll(MODIFICATION_TYPE_OPTIONS);
-        comboBoxModificationType.getSelectionModel().selectFirst();
+        setModificationTypeOptions(MODIFICATION_TYPE_OPTIONS);
 
     }
 

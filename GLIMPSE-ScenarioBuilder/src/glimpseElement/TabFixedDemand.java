@@ -250,8 +250,7 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
     private void setupActions() {
         setupComboBoxSector();
         comboBoxSector.getSelectionModel().selectFirst();
-        comboBoxModificationType.getItems().addAll(MODIFICATION_TYPES);
-        comboBoxModificationType.getSelectionModel().selectFirst();
+        setModificationTypeOptions(MODIFICATION_TYPES);
         
         // Sector selection event: update displayed units when a new sector is chosen.
         registerComboBoxEvent(comboBoxSector, e -> {
