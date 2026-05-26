@@ -223,6 +223,89 @@ public final class UtilsTransport {
 	}
 
 	/**
+	 * Looks up a transportation input-table value for the requested parameter and
+	 * year.
+	 *
+	 * @param param parameter name such as {@code load} or {@code coefficient}
+	 * @param region region name
+	 * @param sector sector name
+	 * @param subsector subsector name
+	 * @param tech technology name
+	 * @param yearStr target year header
+	 * @param units ... if can, converts result to this unit   
+	 * @return table value, or {@code null} when no matching record is found
+	 */
+	public String getTrnVehInfo(String param, String region, String sector, String subsector, String tech, String yearStr, String reqdUnits) {
+		String val = null;
+		String[][] data = getTrnDataForProcessing(sector);
+		if (data == null || data.length == 0 || data[0] == null)
+			return null;
+
+		param = param == null ? "" : param.toLowerCase();
+
+		try {
+			boolean oldFormat = isOldFormatTrnVehInfo(data);
+
+			int paramCol = 0;
+			if (oldFormat)
+				paramCol = -1;
+			int regionCol = paramCol + 1;
+			int subsectorCol = regionCol + 2;
+			int techCol = subsectorCol + 1;
+
+			int yearCol = -1;
+			for (int i = 0; i < data[0].length; i++) {
+				String cmpStr = data[0][i].trim();
+				if (yearStr.equals(cmpStr)) {
+					yearCol = i;
+					break;
+				}
+			}
+
+			int matchRow = -1;
+			if (yearCol > -1) {
+				for (int j = 1; j < data.length; j++) {
+					if (data[j] == null || data[j].length <= Math.max(techCol, yearCol))
+						continue;
+					String temp = data[j][0];
+					if (((oldFormat) && ("load".equals(param))) || (temp.toLowerCase().trim().startsWith(param))) {
+						String dataRegion = data[j][regionCol].trim();
+						String dataSubsector = data[j][subsectorCol].trim();
+						String dataTech = data[j][techCol].trim();
+						if ((region.equals(dataRegion)) && (subsector.equals(dataSubsector))) {
+							if (("load".equals(param)) || ((!"load".equals(param)) && (tech.equals(dataTech)))) {
+								matchRow = j;
+								break;
+							}
+						}
+					}
+				}
+
+				if (matchRow > -1) {
+					val = data[matchRow][yearCol];
+					float valf =(float) Double.parseDouble(val);
+					String units = data[matchRow][data[matchRow].length - 1].trim();
+					if (units.equals("GJ/bln-veh-km") && reqdUnits.equals("MJ/million-veh-km")) {
+						valf *= 1000000.0;
+					} else if (units.equals("MJ/km") && reqdUnits.equals("MJ/million-veh-km")) {
+						valf *= 1000.0;
+					} else if (units.equals("unitless") && reqdUnits.equals("MJ/million-veh-km")) {
+						//valf /= 1000.0;
+					}
+					val=""+valf;
+				}
+			}
+		} catch (Exception e) {
+			System.out.println("Error reading transportation input file. Please check format. Exception: " + e);
+			val = null;
+		}
+		if (val == null)
+			System.out.println("Problem finding " + param + " for " + sector + " / " + subsector + " / " + tech + " in " + region + " for year " + yearStr);
+		return val;
+	}
+
+	
+	/**
 	 * Loads and partitions transportation vehicle information into the cached
 	 * sector-specific tables used by this helper.
 	 */

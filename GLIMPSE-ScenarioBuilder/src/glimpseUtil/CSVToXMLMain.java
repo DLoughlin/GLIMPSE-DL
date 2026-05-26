@@ -88,6 +88,8 @@ public class CSVToXMLMain {
     private static final String ERROR_MSG_PROCESSING = "A critical error occurred during CSV to XML processing.";
     private static final String ERROR_MSG_HEADER_NOT_FOUND = "***** Warning: could not find header (%s) in header file. Skipping table! *****";
     private static final String ERROR_MSG_INVALID_COMMAND = "Invalid command: %s, only 'CSV file' can be run in this mode.";
+    private static final String ERROR_MSG_CSV_ROW_CONTEXT = "Error processing CSV row. headerId=%s, header=%s, line=%s";
+    private static final String ERROR_MSG_CSV_ROW_ARGS = "Header/line argument mapping:%n%s";
     private static final String INPUT_TABLE_KEYWORD = "INPUT_TABLE";
     private static final String VARIABLE_ID_KEYWORD = "Variable ID";
 
@@ -391,9 +393,11 @@ public class CSVToXMLMain {
                 if (!iterator.hasNext()) break;
                 String headerId = trimString(iterator.next());
                 if (tableIdMap.containsKey(headerId)) {
+                    String resolvedHeader = tableIdMap.get(headerId);
                     try {
-                        tree.setHeader(tableIdMap.get(headerId));
+                        tree.setHeader(resolvedHeader);
                     } catch (Exception e) {
+                        System.err.println(String.format("Error setting header. headerId=%s, header=%s", headerId, resolvedHeader));
                         e.printStackTrace();
                     }
                     System.out.println("Using header: " + headerId);
@@ -404,7 +408,7 @@ public class CSVToXMLMain {
                     while (iterator.hasNext()) {
                         line = trimString(iterator.next());
                         if (line.isEmpty() || line.startsWith(",")) break;
-                        processCsvDataRow(line, tree, usePresetRegionList, presetRegionExpansionMap);
+                        processCsvDataRow(line, tree, usePresetRegionList, presetRegionExpansionMap, headerId, resolvedHeader);
                     }
                 } else {
                     System.err.println(String.format(ERROR_MSG_HEADER_NOT_FOUND, headerId));
@@ -425,6 +429,12 @@ public class CSVToXMLMain {
 
     private static void processCsvDataRow(String line, DOMTreeBuilder tree,
                                          boolean usePresetRegionList, Map<String, List<String>> presetRegionExpansionMap) {
+        processCsvDataRow(line, tree, usePresetRegionList, presetRegionExpansionMap, "", "");
+    }
+
+    private static void processCsvDataRow(String line, DOMTreeBuilder tree,
+                                         boolean usePresetRegionList, Map<String, List<String>> presetRegionExpansionMap,
+                                         String headerId, String resolvedHeader) {
         List<String> dataArr = Arrays.stream(line.split(CSV_DELIMITER, -1))
                 .map(String::trim)
                 .collect(Collectors.toList());
@@ -448,6 +458,7 @@ public class CSVToXMLMain {
                 try {
                     tree.addToTree(dataArr);
                 } catch (Exception e) {
+                    logCsvRowError(headerId, resolvedHeader, line);
                     e.printStackTrace();
                 }
             }
@@ -464,6 +475,7 @@ public class CSVToXMLMain {
                     try {
                         tree.addToTree(dataArr);
                     } catch (Exception e) {
+                        logCsvRowError(headerId, resolvedHeader, line);
                         e.printStackTrace();
                     }
                 }
@@ -479,6 +491,7 @@ public class CSVToXMLMain {
                 try {
                     tree.addToTree(dataArr);
                 } catch (Exception e) {
+                    logCsvRowError(headerId, resolvedHeader, line);
                     e.printStackTrace();
                 }
             }
@@ -489,8 +502,47 @@ public class CSVToXMLMain {
         try {
             tree.addToTree(dataArr);
         } catch (Exception e) {
+            logCsvRowError(headerId, resolvedHeader, line);
             e.printStackTrace();
         }
+    }
+
+    private static void logCsvRowError(String headerId, String resolvedHeader, String line) {
+        System.err.println(String.format(ERROR_MSG_CSV_ROW_CONTEXT, headerId, resolvedHeader, line));
+        System.err.println(String.format(ERROR_MSG_CSV_ROW_ARGS, formatHeaderLineArgMapping(resolvedHeader, line)));
+    }
+
+    private static String formatHeaderLineArgMapping(String resolvedHeader, String line) {
+        List<String> headerArgs = splitCsvArgs(trimString(resolvedHeader));
+        List<String> lineArgs = splitCsvArgs(line);
+        int max = Math.max(headerArgs.size(), lineArgs.size());
+        StringBuilder sb = new StringBuilder();
+        sb.append("index | header-arg | line-value").append(System.lineSeparator());
+        for (int i = 0; i < max; i++) {
+            String h = i < headerArgs.size() ? headerArgs.get(i) : "<missing header arg>";
+            String v = i < lineArgs.size() ? lineArgs.get(i) : "<missing line value>";
+            sb.append(i).append(" | ")
+              .append(h)
+              .append(" | ")
+              .append(v)
+              .append(System.lineSeparator());
+        }
+        if (headerArgs.size() != lineArgs.size()) {
+            sb.append("Counts differ: header args=")
+              .append(headerArgs.size())
+              .append(", line values=")
+              .append(lineArgs.size());
+        }
+        return sb.toString();
+    }
+
+    private static List<String> splitCsvArgs(String text) {
+        if (text == null || text.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(text.split(CSV_DELIMITER, -1))
+                .map(String::trim)
+                .collect(Collectors.toList());
     }
 
     // ===================== Batch File Processing =====================

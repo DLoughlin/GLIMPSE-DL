@@ -58,7 +58,7 @@ public class GLIMPSEVariables {
     private GLIMPSEUtils utils;
     private GLIMPSEFiles files;
     private GLIMPSEStyles styles;
-
+    
     // --- Constants ---
     private final String DEFAULT_GLIMPSE_VERSION = "GLIMPSE-CE v2.1";
     public final int DEFAULT_SCENARIO_BUILDER_WIDTH = 1600;

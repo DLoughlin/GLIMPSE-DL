@@ -85,7 +85,7 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 	// === Constants (kept consistent with prior PaneNewScenarioComponent) ===
 	public static final String TAB_MARKET_SHARE = "Market Share";
 	public static final String TAB_FLEX_SHARE = "Flex Share";
-	public static final String TAB_MPG_TARGET = "MPG Target";
+	public static final String TAB_EFF_STND = "CAFE Std";
 	public static final String TAB_TECH_BOUND2 = "Tech Bound";
 	public static final String TAB_TECH_AVAIL = "Tech Avail";
 	public static final String TAB_TECH_PARAM = "Tech Param";
@@ -132,7 +132,7 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 	private TabTechParam techParamTab;
 	private TabTechTax techTaxTab;
 	private TabFuelPriceAdj fuelPriceAdjTab;
-	private TabCafeStd cafeStdTab;
+	private TabCafeStd effStndTab;
 	private TabXMLList xmlListTab;
 
 	// Callback fired only after a successful component save.
@@ -188,8 +188,8 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 		techMarketShareTab.setClosable(false);
 		techBound2Tab = new TabTechBound(TAB_TECH_BOUND2, stageWithTabs);
 		techBound2Tab.setClosable(false);
-		cafeStdTab = new TabCafeStd(TAB_MPG_TARGET, stageWithTabs);
-		cafeStdTab.setClosable(false);
+		effStndTab = new TabCafeStd(TAB_EFF_STND, stageWithTabs);
+		effStndTab.setClosable(false);
 		techAvailTab = new TabTechAvailable(TAB_TECH_AVAIL, stageWithTabs);
 		techAvailTab.setClosable(false);
 		techParamTab = new TabTechParam(TAB_TECH_PARAM, stageWithTabs);
@@ -201,7 +201,7 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 
 		TabPane addComponentTabPane = new TabPane();
 		addComponentTabPane.setStyle(styles.getStyle2());
-		addComponentTabPane.getTabs().addAll(pollTaxCapTab, techMarketShareTab, techBound2Tab, techTaxTab, cafeStdTab,
+		addComponentTabPane.getTabs().addAll(pollTaxCapTab, techMarketShareTab, techBound2Tab, techTaxTab, effStndTab,
 				techParamTab, fuelPriceAdjTab, fixedDemandTab, techAvailTab, xmlListTab);
 		VBox.setVgrow(addComponentTabPane, javafx.scene.layout.Priority.ALWAYS);
 		addComponentTabPane.setMaxHeight(Double.MAX_VALUE);
@@ -391,8 +391,8 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 			case TAB_MARKET_SHARE:
 			case TAB_FLEX_SHARE:
 				return techMarketShareTab;
-			case TAB_MPG_TARGET:
-				return cafeStdTab;
+			case TAB_EFF_STND:
+				return effStndTab;
 			case TAB_TECH_BOUND2:
 				return techBound2Tab;
 			case TAB_TECH_AVAIL:

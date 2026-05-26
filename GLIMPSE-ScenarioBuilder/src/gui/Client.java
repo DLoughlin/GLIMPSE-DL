@@ -593,7 +593,8 @@ public class Client extends Application {
         logStartupCheckpoint("Primary stage shown (first FX pulse after show)", STARTUP_T0_NANOS);
         WindowsRuntimePreflight.ensureMsvcRuntimeAvailableOrWarn(utils, "Startup");
         setStartupStatus(STARTUP_FILES_MESSAGE, -1, true);
-        startDeferredFileLoading();
+        // Start table/data population only after the main panes have had a chance to render once.
+        Platform.runLater(this::startDeferredFileLoading);
     }
 
     private void warmUpFxControlsForStartup() {
@@ -700,6 +701,12 @@ public class Client extends Application {
         VBox createScenarioBox = getScenarioBuilder().getvBoxCreateScenario();
         VBox runBox = getScenarioBuilder().getvBoxRun();
 
+        // Keep panes hidden until all controls are assembled; reveal together after the frame is shown.
+        deferMainPaneDisplayUntilReady(componentLibraryBox);
+        deferMainPaneDisplayUntilReady(arrowBox);
+        deferMainPaneDisplayUntilReady(createScenarioBox);
+        deferMainPaneDisplayUntilReady(runBox);
+
         // Set max sizes to allow proper resizing behavior
         componentLibraryBox.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         createScenarioBox.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
@@ -755,6 +762,44 @@ public class Client extends Application {
         return mainGridPane;
     }
 
+    private static void deferMainPaneDisplayUntilReady(VBox pane) {
+        if (pane == null) {
+            return;
+        }
+        pane.setVisible(false);
+        pane.setManaged(false);
+    }
+
+    private static void revealMainPane(VBox pane) {
+        if (pane == null) {
+            return;
+        }
+        pane.setManaged(true);
+        pane.setVisible(true);
+    }
+
+    private void revealMainPanesIfReady() {
+        VBox componentLibraryBox = getScenarioBuilder().getvBoxComponentLibrary();
+        VBox arrowBox = getScenarioBuilder().getvBoxButton();
+        VBox createScenarioBox = getScenarioBuilder().getvBoxCreateScenario();
+        VBox runBox = getScenarioBuilder().getvBoxRun();
+
+        if (componentLibraryBox == null || arrowBox == null || createScenarioBox == null || runBox == null) {
+            return;
+        }
+        if (componentLibraryBox.getChildren().isEmpty()
+                || arrowBox.getChildren().isEmpty()
+                || createScenarioBox.getChildren().isEmpty()
+                || runBox.getChildren().isEmpty()) {
+            return;
+        }
+
+        revealMainPane(componentLibraryBox);
+        revealMainPane(arrowBox);
+        revealMainPane(createScenarioBox);
+        revealMainPane(runBox);
+    }
+
     /**
      * Sets up the main application window with the provided layout and menu bar.
      *
@@ -804,6 +849,7 @@ public class Client extends Application {
         applyStartupStatus(sb.getText(), calculateStartupProgress(), startupBusyState);
         Platform.runLater(() -> {
             try {
+                revealMainPanesIfReady();
                 root.applyCss();
                 root.layout();
                 mainGridPane.requestLayout();
