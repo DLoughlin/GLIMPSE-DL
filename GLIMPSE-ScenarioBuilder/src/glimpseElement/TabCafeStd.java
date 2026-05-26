@@ -587,7 +587,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 					// now I need to do the scaling to get the output ratio and pMultiplier values
 					// in the correct units for the GCAM version
 					if (vars.getUseTrnMMBTUConversions()) { // gcam 8.2 or earlier\
-						output_ratio = (float) (output_ratio * 1e6 / 1.055); // convert from GJ/million-km to MMBTU/veh-km for older GCAM versions
+						output_ratio = (float) (output_ratio * 1e6 / 1.055); // convert from GJ/million-km to When MMBTU/veh-km for older GCAM versions
 
 						pMultiplier = techLoad * 1e9f; // convert from billion vkt to million vkt and accommodate load
 					}

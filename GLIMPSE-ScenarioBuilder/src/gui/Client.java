@@ -280,6 +280,8 @@ public class Client extends Application {
     private static volatile Scene preparedMainScene;
     private static volatile VBox preparedMainRoot;
     private static volatile GridPane preparedMainGridPane;
+    /** True once the main content panes have been made visible to the user. */
+    private static volatile boolean startupMainPanesRevealed = false;
     /** Initial library loads that must finish before steady-state resource text is restored. */
     private static volatile boolean initialScenarioLoadPending = true;
     private static volatile boolean initialComponentLoadPending = true;
@@ -825,7 +827,7 @@ public class Client extends Application {
         applyModernCss(scene);
 
         if (showImmediately) {
-            applyMainScene(scene, root, mainGridPane);
+            applyMainScene(scene, root, mainGridPane, true);
         } else {
             preparedMainScene = scene;
             preparedMainRoot = root;
@@ -833,7 +835,7 @@ public class Client extends Application {
         }
     }
 
-    private void applyMainScene(Scene scene, VBox root, GridPane mainGridPane) {
+    private void applyMainScene(Scene scene, VBox root, GridPane mainGridPane, boolean showImmediately) {
         if (scene == null || root == null) {
             return;
         }
@@ -847,15 +849,17 @@ public class Client extends Application {
         primaryStage.centerOnScreen();
 
         applyStartupStatus(sb.getText(), calculateStartupProgress(), startupBusyState);
-        Platform.runLater(() -> {
-            try {
-                revealMainPanesIfReady();
-                root.applyCss();
-                root.layout();
-                mainGridPane.requestLayout();
-            } catch (Exception ignored) {
-            }
-        });
+        if (showImmediately) {
+            Platform.runLater(() -> {
+                try {
+                    revealMainPanesIfReady();
+                    root.applyCss();
+                    root.layout();
+                    markMainPanesRevealedThenHideOverlayNextPulse();
+                } catch (Exception ignored) {
+                }
+            });
+        }
         mainWindowDisplayed = true;
 
         if (vars.getShowSplash()) {
@@ -897,7 +901,7 @@ public class Client extends Application {
         preparedMainRoot = null;
         preparedMainGridPane = null;
 
-        applyMainScene(scene, root, mainGridPane);
+        applyMainScene(scene, root, mainGridPane, false);
         forceStartupRelayoutAfterSceneSwap();
         logStartupCheckpoint("Main window revealed after startup readiness gate", STARTUP_T0_NANOS);
     }
@@ -946,12 +950,35 @@ public class Client extends Application {
                         stage.setHeight(targetH + 1);
                         stage.setWidth(targetW);
                         stage.setHeight(targetH);
+
+                        // Only reveal the main panes after the final sizing pass so the user never
+                        // sees the intermediate resize/layout churn.
+                        revealMainPanesIfReady();
+                        root.applyCss();
+                        root.layout();
+                        markMainPanesRevealedThenHideOverlayNextPulse();
                     } catch (Exception ignored) {
                     }
                 });
             } catch (Exception ignored) {
             }
         });
+    }
+
+    private void markMainPanesRevealedThenHideOverlayNextPulse() {
+        startupMainPanesRevealed = true;
+        Platform.runLater(this::hideStartupOverlayIfReady);
+    }
+
+    private void hideStartupOverlayIfReady() {
+        if (startupOverlayBox == null) {
+            return;
+        }
+        if (startupBusyState || !startupMainPanesRevealed) {
+            return;
+        }
+        startupOverlayVisible.set(false);
+        startupOverlayBox.setVisible(false);
     }
 
     /**
@@ -1167,6 +1194,9 @@ public class Client extends Application {
             startupOverlayProgressBar.setProgress(busy ? ProgressIndicator.INDETERMINATE_PROGRESS : 1.0);
         }
         boolean showOverlay = busy && !STARTUP_READY_MESSAGE.equalsIgnoreCase(safeText);
+        if (deferMainUiUntilReady && !startupMainPanesRevealed) {
+            showOverlay = true;
+        }
         startupOverlayVisible.set(showOverlay);
         if (startupOverlayBox != null) {
             startupOverlayBox.setVisible(showOverlay);

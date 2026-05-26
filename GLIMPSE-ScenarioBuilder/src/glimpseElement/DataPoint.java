@@ -35,7 +35,7 @@
 */
 package glimpseElement;
 
-import java.text.DecimalFormat;
+import java.math.BigDecimal;
 
 import glimpseUtil.GLIMPSEUtils;
 import javafx.beans.property.SimpleStringProperty;
@@ -44,8 +44,7 @@ import javafx.beans.property.StringProperty;
 public class DataPoint {
 	private GLIMPSEUtils utils = GLIMPSEUtils.getInstance();
 
-	DecimalFormat nf = new DecimalFormat("#.00");
-	int signficantFigures = 3;
+	private static final BigDecimal SCI_NOTATION_THRESHOLD = new BigDecimal("0.000001");
 
 	private StringProperty year;
 	private StringProperty value;
@@ -58,8 +57,47 @@ public class DataPoint {
 	public DataPoint(int yr, double val) {
 		String str_yr = "" + yr;
 		setYear(str_yr);
-		// setValue(nf.format(val));
-		setValue(utils.toSignificantFiguresString(val, signficantFigures));
+		setValue(formatNumericValue(val));
+	}
+
+	static String formatNumericValue(double value) {
+		if (Double.isNaN(value) || Double.isInfinite(value)) {
+			return String.valueOf(value);
+		}
+		return formatNumericValue(BigDecimal.valueOf(value));
+	}
+
+	static String formatNumericValue(String value) {
+		if (value == null) {
+			return null;
+		}
+		String trimmed = value.trim();
+		if (trimmed.isEmpty()) {
+			return trimmed;
+		}
+		try {
+			return formatNumericValue(new BigDecimal(trimmed));
+		} catch (Exception firstParse) {
+			try {
+				return formatNumericValue(BigDecimal.valueOf(Double.parseDouble(trimmed)));
+			} catch (Exception secondParse) {
+				return trimmed;
+			}
+		}
+	}
+
+	private static String formatNumericValue(BigDecimal value) {
+		if (value == null) {
+			return null;
+		}
+		if (value.signum() == 0) {
+			return "0";
+		}
+		BigDecimal normalized = value.stripTrailingZeros();
+		if (normalized.abs().compareTo(SCI_NOTATION_THRESHOLD) < 0) {
+			return normalized.toString();
+		}
+		return normalized.toPlainString();
 	}
 
 	public void setYear(String yr) {
@@ -77,7 +115,7 @@ public class DataPoint {
 	}
 
 	public void setValue(String val) {
-		valueProperty().set(val);
+		valueProperty().set(formatNumericValue(val));
 	}
 
 	public String getValue() {

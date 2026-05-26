@@ -35,8 +35,6 @@
 */
 package glimpseElement;
 
-import java.math.BigDecimal;
-import java.math.MathContext;
 import java.util.ArrayList;
 
 import glimpseUtil.GLIMPSEStyles;
@@ -576,17 +574,11 @@ public class PaneForComponentDetails extends VBox {
     }
 
     /**
-     * Formats a numeric value for table display using 4 significant digits.
+     * Formats a numeric value for table display using standard notation unless
+     * the magnitude is smaller than 1e-6.
      */
     private String formatValueForDisplay(double value) {
-        if (Double.isNaN(value) || Double.isInfinite(value)) {
-            return String.valueOf(value);
-        }
-        if (value == 0d) {
-            return "0";
-        }
-        BigDecimal rounded = BigDecimal.valueOf(value).round(new MathContext(4));
-        return rounded.stripTrailingZeros().toString();
+        return DataPoint.formatNumericValue(value);
     }
 
     /**
