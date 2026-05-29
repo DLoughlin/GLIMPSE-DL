@@ -467,6 +467,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 		if ("MPG".equals(comboBoxWhichUnits.getValue())) {
 			double gjPerGallon = 0.1203;
 			for (int i = 0; i < valuef_list.length; i++) {
+				//converted values on order of 1e3
 				double targetGJPerMillionKm = (gjPerGallon / (1.61 * valuef_list[i])) * 1e6;
 				valuef_list[i] = targetGJPerMillionKm;
 			}
@@ -479,19 +480,6 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 		contentP1.append(INPUT_TABLE).append(vars.getEol());
 		contentP1.append(VARIABLE_ID).append(vars.getEol());
 		contentP1.append(HEADER_PART1).append(vars.getEol())
-//    contentP1.append("world/+{name;nocreate=1}region,")
-//             .append("region/+{name}policy-portfolio-standard,")
-//             .append("policy-portfolio-standard/+market,")
-//             .append("policy-portfolio-standard/+policyType,")
-//             .append("policy-portfolio-standard/+isShareBased,")
-//             .append("policy-portfolio-standard/+{year}constraint,")
-//             .append("policy-portfolio-standard/+constraint")
-//             .append("policy-portfolio-standard/+{year}min-price,")
-//             .append("policy-portfolio-standard/+min-price")             
-//             .append("policy-portfolio-standard/+{year}max-price,")
-//             .append("policy-portfolio-standard/+max-price")  
-//             .append("policy-portfolio-standard/+price-unit,")
-//             .append("policy-portfolio-standard/+output-unit")
 				.append(vars.getEol())
 				.append("region,policy,market,type,isShare,constraint-year,constrained,minprice-year,min-price,maxprice-year,max-price,price-unit,output-unit")
 				.append(vars.getEol());
@@ -501,14 +489,6 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 		contentP2.append(INPUT_TABLE).append(vars.getEol());
 		contentP2.append(VARIABLE_ID).append(vars.getEol());
 		contentP2.append(HEADER_PART2).append(vars.getEol())
-//    contentP2.append("world/+{name;nocreate=1}region,")
-//             .append("region/+{name;nocreate=1}supplysector,")
-//             .append("supplysector/+{name;nocreate=1}subsector,")
-//             .append("subsector/+{name;nocreate=1}stub-technology,")
-//             .append("stub-technology/+{year}period,")
-//             .append("period/+{name}secondary-output,")
-//             .append("secondary-output/+output-ratio,")
-//             .append("secondary-output/+pMultiplier,")
 				.append(vars.getEol())
 				.append("region,sector,subsector,tech,year,secondary-output,output-ratio,pMultiplier")
 				.append(vars.getEol());
@@ -523,37 +503,24 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 				if (targetYear == null)
 					continue;
 
-				// market key constructed the same way as the existing method
+				// Create year-scoped policy and market keys so each target can activate independently
 				String policyKey = getPolicyKeyForTargetYear(policy_name, targetYearStr, newSalesMode);
 				String marketKey = getMarketKeyForTargetYear(market_name, policyKey, targetYearStr, newSalesMode);
 
-				// Part1: one activation row per region + target year
-				contentP1.append(region).append(",").append(policyKey).append(",") // policy name is target-year scoped
-																					// to allow independent activation
-																					// of each target
-						.append(marketKey).append(",") // market name is same as policy key for fleet average mode, but
-														// target-year based for new sales mode
-						.append("RES").append(",") // type = RES since this is a credit-generating target, not a tax or
-													// fee-based constraint
-						.append("0").append(",") // isShareBased = 0 since this is a credit-generating target, not a
-													// share-based constraint
-						.append(targetYearStr).append(",") // constraint year is the target year
-						.append("1").append(",") // constrained = 1 to activate the policy when the target efficiency is
-													// not met; actual constraint value is determined endogenously based
-													// on the output ratio and pMultiplier values in the secondary
-													// output rows
-						.append(targetYearStr).append(",") // min-price year = target year (not used since min price is
-															// 0, but included for completeness)
-						.append("0").append(",") // min-price = 0 since this is a credit-generating target, so no
-													// penalty if target is not met
-						.append(targetYearStr).append(",") // max-price year = target year (not used since max price is
-															// unset, but included for completeness)
-						.append("1000000").append(",") // max-price set to a very high value to effectively remove the
-														// upper bound on the price of credits; adjust as needed based
-														// on expected credit values and policy design
-						.append("1975$/EJ-credit").append(",") // price-unit for the credits; adjust as needed based on
-																// policy design
-						.append("EJ-credit") // output-unit for the credits; adjust as needed based on policy design
+				// Part1: Policy-portfolio-standard activation row (one per region + target year)
+				// Specifies constraint type (RES for credit-generating), binding status, and price bounds
+				contentP1.append(region).append(",").append(policyKey).append(",")
+						.append(marketKey).append(",")
+						.append("RES").append(",") // type = RES: credit-generating constraint
+						.append("0").append(",") // isShareBased = 0: not a market-share constraint
+						.append(targetYearStr).append(",") // constraint activates in target year
+						.append("1").append(",") // constrained = 1: GCAM must satisfy constraint via credit system
+						.append(targetYearStr).append(",") // min-price year
+						.append("0").append(",") // min-price = 0: no penalty if target not met
+						.append(targetYearStr).append(",") // max-price year
+						.append("1000000").append(",") // max-price: very high upper bound on credit cost
+						.append("1975$/EJ-credit").append(",") // price unit for reporting
+						.append("EJ-credit") // output unit for credit constraint
 						.append(vars.getEol());
 
 				// Part2: one row per region + tech + model year covered by this target
@@ -562,34 +529,35 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 					float pMultiplier = (float) 1.0;
 					float techEff = 0.0f;
 					float techLoad = 1.0f;
-					// desired units are specified in last field
+					// Fetch technology-specific efficiency and load factor
 					String techEffS = utils.getTrnVehInfo("intensity", region, sector, subsector, tech, targetYearStr,
-							"MJ/million-veh-km");
+							"GJ/million-veh-km");
 					String techLoadS = utils.getTrnVehInfo("load", region, sector, subsector, tech, targetYearStr);
 
 					if ((techEffS == null) || (techLoadS == null)) {
-						// System.out.println("Missing data for " + region + ", " + sector + ", " +
-						// subsector + ", " + tech + " in year " + targetYearStr);
 						break;
 					}
 
 					try {
-						techEff = (float) Double.parseDouble(techEffS);
+						techEff = (float) Double.parseDouble(techEffS);  
 						techLoad = (float) Double.parseDouble(techLoadS);
+
 					} catch (Exception e) {
 						System.out.println("Error parsing tech efficiency or load for " + region + ", " + sector + ", "
 								+ subsector + ", " + tech + " in year " + targetYearStr);
 						break;
 					}
-					// targetEff is in GJ/million-km
+					
+					// Calculate output_ratio: the efficiency gap (target minus tech baseline)
 					float output_ratio = (float) (targetEff - techEff);
+					System.out.println(region + "," + tech + "," + targetYearStr + "," + targetEff + "," + techEff + "," + output_ratio);
 
-					// now I need to do the scaling to get the output ratio and pMultiplier values
-					// in the correct units for the GCAM version
-					if (vars.getUseTrnMMBTUConversions()) { // gcam 8.2 or earlier\
-						output_ratio = (float) (output_ratio * 1e6 / 1.055); // convert from GJ/million-km to When MMBTU/veh-km for older GCAM versions
-
-						pMultiplier = techLoad * 1e9f; // convert from billion vkt to million vkt and accommodate load
+					// Convert coefficients to GCAM 8.2 internal units
+					if (vars.getUseTrnMMBTUConversions()) {
+						output_ratio = (float) (output_ratio / 1e6);
+						pMultiplier = 1e9f;
+					} else {
+						pMultiplier = 1.0f;
 					}
 
 					List<Integer> allModelYears = vars.getAllowablePolicyYears();
@@ -598,18 +566,14 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 							continue;
 						}
 
-						contentP2.append(region).append(",") // region
-								.append(sector).append(",") // sector
-								.append(subsector).append(",") // subsector
-								.append(tech).append(",") // technology
-								.append(modelYear).append(",") // year (year for new sales or fleet average constraint)
-								.append(policyKey).append(",") // policy name, which is the same as the secondary output
-																// name, so that the credit output is linked to the
-																// correct policy activation
-								.append(output_ratio).append(",") // output ratio (target efficiency minus tech
-																	// efficiency); units are GJ/million-vkt if input
-																	// was in MPG, otherwise same units as input
-								.append(pMultiplier) // pMultiplier scales results, including accounting for load/veh
+						contentP2.append(region).append(",")
+								.append(sector).append(",")
+								.append(subsector).append(",")
+								.append(tech).append(",")
+								.append(modelYear).append(",")
+								.append(policyKey).append(",")
+								.append(output_ratio).append(",")
+								.append(pMultiplier)
 								.append(vars.getEol());
 					}
 				}

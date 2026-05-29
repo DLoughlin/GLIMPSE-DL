@@ -283,16 +283,12 @@ public final class UtilsTransport {
 
 				if (matchRow > -1) {
 					val = data[matchRow][yearCol];
-					float valf =(float) Double.parseDouble(val);
+					double valf = Double.parseDouble(val);
 					String units = data[matchRow][data[matchRow].length - 1].trim();
-					if (units.equals("GJ/bln-veh-km") && reqdUnits.equals("MJ/million-veh-km")) {
-						valf *= 1000000.0;
-					} else if (units.equals("MJ/km") && reqdUnits.equals("MJ/million-veh-km")) {
-						valf *= 1000.0;
-					} else if (units.equals("unitless") && reqdUnits.equals("MJ/million-veh-km")) {
-						//valf /= 1000.0;
+					Double convertedVal = convertTransportUnits(valf, units, reqdUnits);
+					if (convertedVal != null) {
+						val = "" + convertedVal;
 					}
-					val=""+valf;
 				}
 			}
 		} catch (Exception e) {
@@ -304,7 +300,160 @@ public final class UtilsTransport {
 		return val;
 	}
 
-	
+	/**
+	 * Converts transportation values between metric-style units such as
+	 * {@code kJ/service-km}, {@code GJ/million-service-km}, and
+	 * {@code EJ/billion-service-km}.
+	 * <p>
+	 * The method also supports common variants (for example, {@code bln} and
+	 * {@code billion}), and denominator labels such as {@code service-km} and
+	 * {@code veh-km}. Conversion is based on energy magnitude and denominator scale.
+	 * </p>
+	 *
+	 * @param value value in {@code fromUnits}
+	 * @param fromUnits source units string
+	 * @param toUnits target units string
+	 * @return converted value in {@code toUnits}, or {@code null} when conversion is
+	 *         not possible
+	 */
+	public Double convertTransportUnits(double value, String fromUnits, String toUnits) {
+		UnitScale from = parseUnitScale(fromUnits);
+		UnitScale to = parseUnitScale(toUnits);
+
+		if (from == null || to == null) {
+			return null;
+		}
+
+		if (from.unitless && to.unitless) {
+			return value;
+		}
+		if (from.unitless || to.unitless) {
+			return null;
+		}
+
+		double baseValueJPerM = value * from.energyToJoule / from.denominatorToMeter;
+		double convertedValue = baseValueJPerM * to.denominatorToMeter / to.energyToJoule;
+		return convertedValue;
+	}
+
+	private UnitScale parseUnitScale(String units) {
+		if (units == null) {
+			return null;
+		}
+
+		String normalized = units.trim().toLowerCase().replace(" ", "");
+		if (normalized.isEmpty()) {
+			return null;
+		}
+		if ("unitless".equals(normalized)) {
+			return UnitScale.unitless();
+		}
+
+		String[] split = normalized.split("/");
+		if (split.length != 2) {
+			return null;
+		}
+
+		double energyToJoule = getEnergyToJouleFactor(split[0]);
+		double denominatorToMeter = getDenominatorToMeterFactor(split[1]);
+		if (!Double.isFinite(energyToJoule) || !Double.isFinite(denominatorToMeter) || energyToJoule <= 0.0
+				|| denominatorToMeter <= 0.0) {
+			return null;
+		}
+
+		return new UnitScale(energyToJoule, denominatorToMeter, false);
+	}
+
+	private double getEnergyToJouleFactor(String token) {
+		if (token == null) {
+			return Double.NaN;
+		}
+		String t = token.trim().toLowerCase();
+		switch (t) {
+		case "j":
+			return 1.0;
+		case "kj":
+			return 1.0e3;
+		case "mj":
+			return 1.0e6;
+		case "gj":
+			return 1.0e9;
+		case "tj":
+			return 1.0e12;
+		case "pj":
+			return 1.0e15;
+		case "ej":
+			return 1.0e18;
+		default:
+			return Double.NaN;
+		}
+	}
+
+	private double getDenominatorToMeterFactor(String token) {
+		if (token == null) {
+			return Double.NaN;
+		}
+		String t = token.trim().toLowerCase();
+		double scale = 1.0;
+
+		if (t.startsWith("thousand-")) {
+			scale = 1.0e3;
+			t = t.substring("thousand-".length());
+		} else if (t.startsWith("million-")) {
+			scale = 1.0e6;
+			t = t.substring("million-".length());
+		} else if (t.startsWith("billion-")) {
+			scale = 1.0e9;
+			t = t.substring("billion-".length());
+		} else if (t.startsWith("bln-")) {
+			scale = 1.0e9;
+			t = t.substring("bln-".length());
+		} else if (t.startsWith("trillion-")) {
+			scale = 1.0e12;
+			t = t.substring("trillion-".length());
+		}
+
+		double distanceToMeter = getDistanceToMeterFactor(t);
+		if (!Double.isFinite(distanceToMeter) || distanceToMeter <= 0.0) {
+			return Double.NaN;
+		}
+
+		return scale * distanceToMeter;
+	}
+
+	private double getDistanceToMeterFactor(String token) {
+		if (token == null || token.isEmpty()) {
+			return Double.NaN;
+		}
+
+		String[] pieces = token.split("-");
+		String base = pieces[pieces.length - 1];
+
+		if ("km".equals(base)) {
+			return 1.0e3;
+		}
+		if ("m".equals(base)) {
+			return 1.0;
+		}
+		return Double.NaN;
+	}
+
+	private static final class UnitScale {
+		private final double energyToJoule;
+		private final double denominatorToMeter;
+		private final boolean unitless;
+
+		private UnitScale(double energyToJoule, double denominatorToMeter, boolean unitless) {
+			this.energyToJoule = energyToJoule;
+			this.denominatorToMeter = denominatorToMeter;
+			this.unitless = unitless;
+		}
+
+		private static UnitScale unitless() {
+			return new UnitScale(1.0, 1.0, true);
+		}
+	}
+
 	/**
 	 * Loads and partitions transportation vehicle information into the cached
 	 * sector-specific tables used by this helper.
