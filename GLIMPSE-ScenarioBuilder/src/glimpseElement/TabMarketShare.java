@@ -989,8 +989,8 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 										//adjusts scaling for transportation fuels when user has selected to use MMBTU conversions
 										//done to make small region transportation marketshare targets easier to work   
 										if (utils.shouldApplyTrnUnitPriceConversion(sector_name)) {
-											conv = "1e-3";
-											val *= 1000.;
+											conv = "1e-2";
+											val *= 100.;
 										}
 										String line = state + "," + sector_name + "," + subsector_name + "," + tech_name
 												+ "," + t + "," + use_this_policy_name + "," + year_list[i] + "," + val
