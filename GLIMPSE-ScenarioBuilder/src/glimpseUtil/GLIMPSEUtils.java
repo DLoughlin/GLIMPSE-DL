@@ -40,6 +40,9 @@ import gui.DiffLineRow;
 import gui.ScenarioLibraryReportHelper;
 
 import java.io.File;
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -1325,7 +1328,28 @@ public class GLIMPSEUtils {
 	// pMultiplier : the service output scale factor used by GCAM to convert
 	//     internal model units back to the reported service unit (pass-km or ton-km).
 	// Must match the scale assumed in the data inputs.
+	public boolean shouldApplyTrnUnitPriceConversion(String sector) {
+		if (sector == null || !sector.startsWith("trn")) {
+			return false;
+		}
+		boolean useMMBTUConversions = true;
+		if (vars != null) {
+			useMMBTUConversions = vars.getUseTrnMMBTUConversions();
+		}
+		return useMMBTUConversions;
+	}
+
 	public String getSubsectorConversions(String region, String sector, String subsector, int year) {
+		return getSubsectorConversions(region, sector, subsector, year,
+				shouldApplyTrnUnitPriceConversion(sector));
+	}
+
+	/**
+	 * Builds transport subsector conversion metadata using an explicit flag that
+	 * indicates whether part-1 unit-price-conv scaling was applied.
+	 */
+	public String getSubsectorConversions(String region, String sector, String subsector, int year,
+			boolean unitPriceConversionApplied) {
 
 		double output_ratio = 1.0; // default to a 1:1 ratio when no conversion is needed
 		double pMultiplier = 1.0; // default to a 1:1 ratio when no conversion is needed
@@ -1344,11 +1368,8 @@ public class GLIMPSEUtils {
 				return null;
 			}
 
-			// Default to legacy MMBTU-style conversions unless overridden in vars.
-			boolean useMMBTUConversions = true;
-			if (vars != null) {
-				useMMBTUConversions = vars.getUseTrnMMBTUConversions();
-			}
+			// Keep this path explicitly coupled to whether part-1 unit-price-conv scaling was applied.
+			boolean useMMBTUConversions = unitPriceConversionApplied;
 
 			if (useMMBTUConversions) {
 				// Legacy GLIMPSE / GCAM 8.2-era transport policy path.
@@ -1366,7 +1387,21 @@ public class GLIMPSEUtils {
 			}
 		}
 
-		return output_ratio + "," + pMultiplier;
+		String outputRatioFormatted = formatToSignificantDigits(output_ratio, 6);
+		return outputRatioFormatted + "," + pMultiplier;
+	}
+
+	private String formatToSignificantDigits(double value, int significantDigits) {
+		if (Double.isNaN(value) || Double.isInfinite(value)) {
+			return String.valueOf(value);
+		}
+		if (value == 0.0) {
+			return "0";
+		}
+		BigDecimal rounded = BigDecimal.valueOf(value)
+				.round(new MathContext(significantDigits, RoundingMode.HALF_UP))
+				.stripTrailingZeros();
+		return rounded.toString();
 	}
 
 	/**

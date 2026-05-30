@@ -317,12 +317,7 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
 
             filenameSuggestion = "";
 
-            String ID = null;
-            if (checkBoxUseUniqueNames.isSelected()) {
-                ID = utils.getUniqueString();
-            } else {
-                ID="";
-            }
+                  String ID = resolveUniqueSuffix(checkBoxUseUniqueNames.isSelected(), this.textFieldMarketName.getText());
 
             filenameSuggestion = textFieldPolicyName.getText().replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
             String policyName = textFieldPolicyName.getText() + ID;

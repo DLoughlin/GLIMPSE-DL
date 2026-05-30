@@ -534,12 +534,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 
 		String bound_type = comboBoxConstraint.getSelectionModel().getSelectedItem().trim().toLowerCase();
 
-        String ID = null;
-        if (checkBoxUseUniqueNames.isSelected()) { 
-        	ID = utils.getUniqueString();
-        } else {
-        	ID="";
-        }
+		String ID = resolveUniqueSuffix(checkBoxUseUniqueNames.isSelected(), this.textFieldMarketName.getText());
 		String policy_name = this.textFieldPolicyName.getText() + ID;
 		String market_name = this.textFieldMarketName.getText() + ID;
 		filenameSuggestion = this.textFieldPolicyName.getText().replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";

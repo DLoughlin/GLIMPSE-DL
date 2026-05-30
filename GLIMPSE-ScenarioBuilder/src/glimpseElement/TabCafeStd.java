@@ -421,7 +421,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 		}
 
 		// --- Names and filename ---
-		String ID = utils.getUniqueString();
+		String ID = resolveUniqueSuffix(this.textFieldMarketName.getText());
 		String policy_name = this.textFieldPolicyName.getText() + ID;
 		String market_name = this.textFieldMarketName.getText() + ID;
 		filenameSuggestion = this.textFieldPolicyName.getText().replaceAll("/", "-").replaceAll(" ", "_") + ".csv";
@@ -592,7 +592,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 
 			//// setting up policy name and suggested file name
 
-			String ID = utils.getUniqueString();
+			String ID = resolveUniqueSuffix(this.textFieldMarketName.getText());
 			String policy_name = this.textFieldPolicyName.getText() + ID;
 			String market_name = this.textFieldMarketName.getText() + ID;
 			filenameSuggestion = this.textFieldPolicyName.getText().replaceAll("/", "-").replaceAll(" ", "_") + ".csv";

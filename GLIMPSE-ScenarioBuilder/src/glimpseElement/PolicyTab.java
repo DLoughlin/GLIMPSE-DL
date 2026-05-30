@@ -154,6 +154,7 @@ public abstract class PolicyTab extends Tab {
     protected static final String MOD_TYPE_GROWTH_PD = "Initial w/% Growth/pd";
     protected static final String MOD_TYPE_DELTA_YR = "Initial w/Delta/yr";
     protected static final String MOD_TYPE_DELTA_PD = "Initial w/Delta/pd";
+    protected static final int TABLE_VALUE_SIG_FIGS = 6;
     protected static final String[] CONVERT_FROM_OPTIONS = {
             NONE, "2023$s", "2020$s", "2015$s", "2010$s", "2005$s", "2000$s"
     };
@@ -1032,7 +1033,8 @@ public abstract class PolicyTab extends Tab {
 				
 					for (int year : policyYears) {
 						if (year > finalYear) {
-							values.add(year + "," + finalValue);
+              String formattedValue = utils.toSignificantFiguresString(finalValue, TABLE_VALUE_SIG_FIGS);
+              values.add(year + "," + formattedValue);
 						}
 					}										
                 }
@@ -1053,6 +1055,47 @@ public abstract class PolicyTab extends Tab {
                 textFieldInitialAmount.getText().isEmpty() ||
                 textFieldGrowth.getText().isEmpty());
     }
+
+  /**
+   * Returns true when the supplied market name contains additional text after the
+   * "Mkt" token (for example, "myPolicy_Mkt12345").
+   */
+  protected boolean hasTextAfterMktToken(String marketName) {
+    if (marketName == null) {
+      return false;
+    }
+    int idx = marketName.lastIndexOf("Mkt");
+    if (idx < 0) {
+      return false;
+    }
+    String suffix = marketName.substring(idx + 3).trim();
+    return !suffix.isEmpty();
+  }
+
+  /**
+   * Generates a unique suffix only when unique names are enabled and the current
+   * market name does not already contain text after "Mkt".
+   */
+  protected String resolveUniqueSuffix(boolean uniqueNamesEnabled, String marketName) {
+    if (!uniqueNamesEnabled) {
+      return "";
+    }
+    if (hasTextAfterMktToken(marketName)) {
+      return "";
+    }
+    return utils.getUniqueString();
+  }
+
+  /**
+   * Generates a unique suffix for tabs that always use unique IDs unless the
+   * current market name already includes a suffix after "Mkt".
+   */
+  protected String resolveUniqueSuffix(String marketName) {
+    if (hasTextAfterMktToken(marketName)) {
+      return "";
+    }
+    return utils.getUniqueString();
+  }
     
 	protected void initializeTempFiles() {
 		/**

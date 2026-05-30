@@ -621,12 +621,7 @@ public class TabTechTax extends PolicyTab implements Runnable {
 			utils.returnAppendedString(listOfSelectedLeaves);
 			filenameSuggestion = "";
 			String taxOrSubsidy = comboBoxMeasure.getSelectionModel().getSelectedItem().trim().toLowerCase();
-            String ID = null;
-            if (checkBoxUseUniqueNames.isSelected()) { 
-            	ID = utils.getUniqueString();
-            } else {
-            	ID="";
-            }
+			String ID = resolveUniqueSuffix(checkBoxUseUniqueNames.isSelected(), this.textFieldMarketName.getText());
 			String policyName = this.textFieldPolicyName.getText() + ID;
 			String marketName = this.textFieldMarketName.getText() + ID;
 			filenameSuggestion = this.textFieldPolicyName.getText().replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";

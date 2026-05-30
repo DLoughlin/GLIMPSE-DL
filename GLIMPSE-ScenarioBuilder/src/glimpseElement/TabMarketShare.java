@@ -865,12 +865,8 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 
 		// 2. Gather all required values up front
 		String which = this.comboBoxConstraint.getValue().toLowerCase();
-        String ID = null;
-        if (checkBoxUseUniqueNames.isSelected()) { 
-        	ID = utils.getUniqueString();
-        } else {
-        	ID="";
-        }		String policy_name = this.textFieldPolicyName.getText() + ID;
+		String ID = resolveUniqueSuffix(checkBoxUseUniqueNames.isSelected(), this.textFieldMarketName.getText());
+		String policy_name = this.textFieldPolicyName.getText() + ID;
 		String market_name = this.textFieldMarketName.getText() + ID;
 		filenameSuggestion = this.textFieldPolicyName.getText().replaceAll("[^a-zA-Z0-9_]", "_") + ".csv";
 
@@ -992,7 +988,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 										String conv = "1.0";
 										//adjusts scaling for transportation fuels when user has selected to use MMBTU conversions
 										//done to make small region transportation marketshare targets easier to work   
-										if ((vars.getUseTrnMMBTUConversions())&&(sector_name.startsWith("trn"))) {
+										if (utils.shouldApplyTrnUnitPriceConversion(sector_name)) {
 											conv = "1e-3";
 											val *= 1000.;
 										}
@@ -1062,10 +1058,9 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 								no_non_nested++;
 							}
 							
-							double val = 1.0;
-							
+							boolean unitPriceConversionApplied = utils.shouldApplyTrnUnitPriceConversion(sector_name);
 							String conversions = utils.getSubsectorConversions(state, sector_name, subsector_name,
-									t);
+									t, unitPriceConversionApplied);
 							
 							if ((vars.isGcamUSA()) && (state.toLowerCase().equals("usa"))
 									&& (listOfSelectedLeaves.length > 1)) {

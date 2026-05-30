@@ -81,6 +81,8 @@ import javafx.util.Callback;
  * @version 1.0
  */
 public class PaneForComponentDetails extends VBox {
+    private static final int POPULATE_SIG_FIGS = 6;
+
     // Singleton utility and style instances
     private GLIMPSEVariables vars = GLIMPSEVariables.getInstance();
     private GLIMPSEStyles styles = GLIMPSEStyles.getInstance();
@@ -578,7 +580,7 @@ public class PaneForComponentDetails extends VBox {
      * the magnitude is smaller than 1e-6.
      */
     private String formatValueForDisplay(double value) {
-        return DataPoint.formatNumericValue(value);
+        return utils.toSignificantFiguresString(value, POPULATE_SIG_FIGS);
     }
 
     /**
