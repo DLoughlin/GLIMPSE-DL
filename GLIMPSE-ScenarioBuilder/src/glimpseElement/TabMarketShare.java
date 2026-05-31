@@ -390,7 +390,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 				if (line.equals(lastLine))
 					continue; // skip duplicate entries
 				lastLine = line;
-				if (tech.length >= 7) {
+				if (tech.length >= 8) {
 					line += " : " + tech[6] + " : " + tech[7];
 				}
 				boolean showSub = !useFilterSub;
@@ -480,7 +480,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 			if (policyType.contains("Sector:Trn-ALM"))
 				showSectorTrnAlm = true;
 			if (policyType.contains("Sector:Other"))
-				showSectorTrnAlm = true;
+				showSectorOther = true;
 
 			// Evaluate each candidate tech line for inclusion
 			for (String techLine : techListSub) {
@@ -738,7 +738,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 				}
 				checkComboBoxSuperset.getCheckModel().checkAll();
 			}
-			if (policyType.contains("Heat pump")) {
+			if (policyType.contains("Heat pumps")) {
 				for (int i = 0; i < checkComboBoxSubset.getItems().size(); i++) {
 					String itemText = checkComboBoxSubset.getItems().get(i).toLowerCase();
 					if (itemText.indexOf("heat pump") >= 0)
@@ -746,7 +746,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 				}
 				checkComboBoxSuperset.getCheckModel().checkAll();
 			}
-			if (policyType.contains("Biofuel")) {
+			if (policyType.contains("Biofuels")) {
 				for (int i = 0; i < checkComboBoxSubset.getItems().size(); i++) {
 					String itemText = checkComboBoxSubset.getItems().get(i).toLowerCase();
 					if (itemText.indexOf("bio") >= 0)
@@ -989,11 +989,12 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 										//adjusts scaling for transportation fuels when user has selected to use MMBTU conversions
 										//done to make small region transportation marketshare targets easier to work   
 										if (utils.shouldApplyTrnUnitPriceConversion(sector_name)) {
-											conv = "1e-2";
-											val *= 100.;
+											conv = "1e-3";
+											val *= 1000.;
 										}
+													String formattedVal = formatDisplayValue(val);
 										String line = state + "," + sector_name + "," + subsector_name + "," + tech_name
-												+ "," + t + "," + use_this_policy_name + "," + year_list[i] + "," + val
+															+ "," + t + "," + use_this_policy_name + "," + year_list[i] + "," + formattedVal
 												+ "," + conv + vars.getEol();
 										files.writeToBufferedFile(bw, line);
 									}

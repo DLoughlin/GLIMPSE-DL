@@ -559,6 +559,8 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 					} else {
 						pMultiplier = 1.0f;
 					}
+					String formattedOutputRatio = formatDisplayValue(output_ratio);
+					String formattedPMultiplier = formatDisplayValue(pMultiplier);
 
 					List<Integer> allModelYears = vars.getAllowablePolicyYears();
 					for (Integer modelYear : allModelYears) {
@@ -572,8 +574,8 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 								.append(tech).append(",")
 								.append(modelYear).append(",")
 								.append(policyKey).append(",")
-								.append(output_ratio).append(",")
-								.append(pMultiplier)
+								.append(formattedOutputRatio).append(",")
+								.append(formattedPMultiplier)
 								.append(vars.getEol());
 					}
 				}
@@ -695,14 +697,14 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 						if (false) { // for GCAM8.2 and earlier versions
 							// coef is already in GJ/million-km; outputratio is target intensity on same
 							// basis
-							outputratio = Double.toString((float) targetGJPerMillionKm);
-							pMultiplier = Double.toString((float) (load * 1e9));
+							outputratio = formatDisplayValue((float) targetGJPerMillionKm);
+							pMultiplier = formatDisplayValue((float) (load * 1e9));
 						} else { // for GCAM8.5 and later versions
 							// coef is in MJ/km; convert to GJ/million-km for consistency with 8.2 workflow
 							coef *= 1000000.0; // convert from GJ/km to GJ/million km
-							outputratio = Double.toString((float) targetGJPerMillionKm);
+							outputratio = formatDisplayValue((float) targetGJPerMillionKm);
 							// pMultiplier=Double.toString((float)(load*1e9));
-							pMultiplier = "1.0";
+							pMultiplier = formatDisplayValue(1.0);
 						}
 
 						content_p1 += region + "," + sector + "," + subsector + "," + tech + "," + yr + "," + io + ","

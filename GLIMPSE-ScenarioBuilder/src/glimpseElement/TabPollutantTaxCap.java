@@ -597,7 +597,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 				// Convert units if necessary
 				if (pol_menu.contains("(MT CO2)")) {
 					data_val = data_val / 3.667;
-					data_str = data_yr + "," + data_val;
+					data_str = data_yr + "," + formatDisplayValue(data_val);
 				}
 				files.writeToBufferedFile(bw0, state + "," + pol + "," + market_name + "," + data_str + vars.getEol());
 			}

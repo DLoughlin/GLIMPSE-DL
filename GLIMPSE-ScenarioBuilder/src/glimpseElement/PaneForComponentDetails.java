@@ -584,6 +584,26 @@ public class PaneForComponentDetails extends VBox {
     }
 
     /**
+     * Format only the rendered text for the Value column; this does not mutate
+     * the underlying DataPoint value string.
+     */
+    private String formatValueCellText(String rawValue) {
+        if (rawValue == null) {
+            return "";
+        }
+        String trimmed = rawValue.trim();
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+        try {
+            double parsed = Double.parseDouble(trimmed);
+            return utils.toSignificantFiguresString(parsed, vars.getValueDisplaySigFigs());
+        } catch (NumberFormatException nfe) {
+            return trimmed;
+        }
+    }
+
+    /**
      * Sets the table data from an array list of strings in which first row: years, second row: values.
      * @param values ArrayList of strings formatted as "year,value"
      */
@@ -706,7 +726,11 @@ public class PaneForComponentDetails extends VBox {
                     setText(null);
                     setGraphic(textField);
                 } else {
-                    setText(getString());
+                    String displayText = getString();
+                    if (getTableColumn() == colValue) {
+                        displayText = formatValueCellText(displayText);
+                    }
+                    setText(displayText);
                     setGraphic(null);
                 }
             }

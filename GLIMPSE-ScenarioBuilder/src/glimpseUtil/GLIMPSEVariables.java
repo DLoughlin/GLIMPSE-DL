@@ -75,6 +75,7 @@ public class GLIMPSEVariables {
     private final boolean DEFAULT_USE_TRN_MMBTU_CONVERSIONS = true;
     private final boolean DEFAULT_USE_TRN_1990_DOLLAR_CONVERSIONS = true;
     private final boolean DEFAULT_DEBUG_TRN_CONVERSION_SKIPS = false;
+    private final int DEFAULT_VALUE_DISPLAY_SIG_FIGS = 4;
     private final int DEFAULT_PERIOD_INCREMENT = 5; // Default period increment for GCAM
     private final List<String> DEFAULT_REGION_LIST = new ArrayList<>(Arrays.asList("USA", "Canada", "EU-15", "Europe_Non_EU", "European Free Trade Association", "Japan", "Australia_NZ", "Central Asia", "Russia", "China", "Middle East", "Africa_Eastern", "Africa_Northern", "Africa_Southern", "Africa_Western", "South Africa", "Brazil", "Central America and Caribbean", "Mexico", "South America_Northern", "South America_Southern", "Argentina", "Colombia", "Indonesia", "Pakistan", "South Asia", "Southeast Asia", "Taiwan", "Europe_Eastern", "EU-12", "South Korea", "India", "Ukraine"));
     private final List<String> DEFAULT_SUBREGION_LIST = new ArrayList<>(Arrays.asList("AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"));
@@ -128,6 +129,7 @@ public class GLIMPSEVariables {
     private String debugRename = "0";
     private String debugStartupTiming = "0";
     private String startYearForShare = "2010";
+    private int valueDisplaySigFigs = DEFAULT_VALUE_DISPLAY_SIG_FIGS;
     private String[][] techInfo = null;
    
     private boolean isGcamUSA = false;
@@ -563,6 +565,24 @@ public class GLIMPSEVariables {
      */
     public String getStartYearForShare() {
         return startYearForShare;
+    }
+
+    /**
+     * Returns the standard significant-figures convention used for displaying
+     * numeric values in Scenario Builder tables and generated text output.
+     */
+    public int getValueDisplaySigFigs() {
+        return valueDisplaySigFigs;
+    }
+
+    /**
+     * Sets the standard significant-figures convention for display/output
+     * formatting. Values less than 1 are ignored.
+     */
+    public void setValueDisplaySigFigs(int sigFigs) {
+        if (sigFigs >= 1) {
+            valueDisplaySigFigs = sigFigs;
+        }
     }
 
     /**

@@ -154,7 +154,6 @@ public abstract class PolicyTab extends Tab {
     protected static final String MOD_TYPE_GROWTH_PD = "Initial w/% Growth/pd";
     protected static final String MOD_TYPE_DELTA_YR = "Initial w/Delta/yr";
     protected static final String MOD_TYPE_DELTA_PD = "Initial w/Delta/pd";
-    protected static final int TABLE_VALUE_SIG_FIGS = 6;
     protected static final String[] CONVERT_FROM_OPTIONS = {
             NONE, "2023$s", "2020$s", "2015$s", "2010$s", "2005$s", "2000$s"
     };
@@ -1033,13 +1032,20 @@ public abstract class PolicyTab extends Tab {
 				
 					for (int year : policyYears) {
 						if (year > finalYear) {
-              String formattedValue = utils.toSignificantFiguresString(finalValue, TABLE_VALUE_SIG_FIGS);
-              values.add(year + "," + formattedValue);
+							String formattedValue = formatDisplayValue(finalValue);
+							values.add(year + "," + formattedValue);
 						}
-					}										
+					}
                 }
                 paneForComponentDetails.setValues(values);
         }));
+    }
+
+    /**
+     * Formats numeric values with the shared significant-figures convention.
+     */
+    protected String formatDisplayValue(double value) {
+        return utils.toSignificantFiguresString(value, vars.getValueDisplaySigFigs());
     }
 
     /**

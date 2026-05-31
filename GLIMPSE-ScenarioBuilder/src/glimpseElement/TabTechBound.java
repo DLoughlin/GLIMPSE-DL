@@ -754,12 +754,13 @@ public class TabTechBound extends PolicyTab implements Runnable {
 					}
 
 					if (vars.getUseTrnMMBTUConversions()) {
-						valf = valf / (1.0e9 * loadFactor / 1.055) ; 
+						valf = valf / (1.0e9 * loadFactor / 1.055);
 					} else {
-						valf = valf / loadFactor; 
+						valf = valf / loadFactor;
 					}
-					val = "" + valf;
 				}
+
+				val = formatDisplayValue(valf);
 
 				if (bound_type.equals("fixed bound")) {
 					constraintBuffer.append(state).append(",").append(use_this_policy_name1).append(",")
