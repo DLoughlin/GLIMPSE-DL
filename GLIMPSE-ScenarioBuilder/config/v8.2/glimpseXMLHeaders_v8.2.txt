@@ -27,9 +27,15 @@ GLIMPSESolutionFloor, scenario/solution-info-param-parser, solution-info-param-p
 ##,
 GLIMPSEPFStdAdjCoef-v2, world/+{name;nocreate=1}region, region/+{name;nocreate=1}supplysector, supplysector/+{name;nocreate=1}subsector, subsector/+{name;nocreate=1}stub-technology, stub-technology/+{year}period, period/+{name}minicam-energy-input, minicam-energy-input/+{year}current-coef,  minicam-energy-input/+current-coef, minicam-energy-input/+price-unit-conversion, scenario, scenario/world 
 GLIMPSEPFStdAdjCoef-Nest-v2, world/+{name}region, region/+{name;nocreate=1}supplysector, supplysector/+{name;nocreate=1}nesting-subsector, nesting-subsector/+{name;nocreate=1}subsector, subsector/+{name;nocreate=1}stub-technology, stub-technology/+{year}period, period/+{name}minicam-energy-input, minicam-energy-input/+{year}current-coef,  minicam-energy-input/+current-coef, minicam-energy-input/+price-unit-conversion, scenario, scenario/world 
-##,
-GLIMPSECAFETargets, world/+{name;nocreate=1}region, region/+{name;nocreate=1}supplysector, supplysector/+{name;nocreate=1}tranSubsector, tranSubsector/+{name;nocreate=1}tranTechnology, tranTechnology/+{year}period, period/+{name}minicam-energy-input, minicam-energy-input/+coefficient, period/+{name}res-secondary-output, res-secondary-output/+output-ratio,res-secondary-output/+pMultiplier, scenario, scenario/world 
 
+###, headers for efficiency standards
+GLIMPSEEffCreditTargets-Part1, world/+{name;nocreate=1}region, region/+{name}policy-portfolio-standard, policy-portfolio-standard/+market, policy-portfolio-standard/+policyType, policy-portfolio-standard/+isShareBased, policy-portfolio-standard/+{year}constraint, policy-portfolio-standard/+constraint
+GLIMPSEEffCreditTargets-Part2, world/+{name;nocreate=1}region, region/+{name;nocreate=1}supplysector, supplysector/+{name;nocreate=1}subsector, subsector/+{name;nocreate=1}stub-technology, stub-technology/+{year}period, period/+{name}secondary-output, secondary-output/+market-name, secondary-output/+output-ratio, secondary-output/+pMultiplier 
+
+###, headers for CAFE standards
+GLIMPSECAFECreditTargets-Part1, world/+{name;nocreate=1}region,region/+{name}policy-portfolio-standard,policy-portfolio-standard/+market,policy-portfolio-standard/+policyType,policy-portfolio-standard/+isShareBased,policy-portfolio-standard/+{year}constraint,policy-portfolio-standard/+constraint,policy-portfolio-standard/+{year}min-price,policy-portfolio-standard/+min-price,policy-portfolio-standard/+{year}max-price,policy-portfolio-standard/+max-price,policy-portfolio-standard/+price-unit,policy-portfolio-standard/+output-unit, scenario, scenario/world  
+
+GLIMPSECAFECreditTargets-Part2,world/+{name;nocreate=1}region,region/+{name;nocreate=1}supplysector,supplysector/+{name;nocreate=1}subsector,subsector/+{name;nocreate=1}stub-technology,stub-technology/+{year}period,period/+{name}secondary-output,secondary-output/+output-ratio,secondary-output/+pMultiplier, scenario, scenario/world
 #####,share constraint based on sector output
 GLIMPSEPFStdSectorShareLoBoundP1, world/+{name}region, region/+{name;nocreate=1}supplysector, supplysector/+{name;nocreate=1}subsector, subsector/+{name;nocreate=1}stub-technology, stub-technology/+{year}period, period/+{name}input-subsidy, scenario, scenario/world 
 GLIMPSEPFStdSectorShareUpBoundP1, world/+{name}region, region/+{name;nocreate=1}supplysector, supplysector/+{name;nocreate=1}subsector, subsector/+{name;nocreate=1}stub-technology, stub-technology/+{year}period, period/+{name}input-tax, scenario, scenario/world 
