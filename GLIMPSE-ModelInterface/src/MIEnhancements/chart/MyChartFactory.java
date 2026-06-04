@@ -208,6 +208,7 @@ public class MyChartFactory {
 			String column, String[] units, String[][] transposedData) {
 		// TODO Auto-generated method stub
 		String newSeriesString = String.join(",", newSeriesNames);
+		String[] axisUnits = new String[] { null, resolveAggregateUnitLabel(units) };
 
 		String[] titles = new String[2];
 		titles[0] = queryName;
@@ -217,7 +218,7 @@ public class MyChartFactory {
 				chartName, // previously was series, now its own graph
 				meta, // meta not currently used? Not sure this is needed, but doesn't like null
 				titles, // titles need to pass or construct this
-				units, // list of units
+				axisUnits, // axis labels [x, y]
 				newSeriesString, // list of new series for transposed chart, used as legend
 				column, // column not used in transpose chart
 				(String[][]) null, // no annotations for transpose chart
@@ -232,11 +233,55 @@ public class MyChartFactory {
 			for (int i = 0; i < newSeriesNames.length; i++) {
 				if (i < units.length) {
 					// Normalize key just like in ThumbnailUtilNew
-					unitLookup.put(newSeriesNames[i].trim().replace(",", "-"), units[i]);
+					unitLookup.put(newSeriesNames[i].trim().replace(",", "-"), normalizeUnitToken(units[i]));
 				}
 			}
 			chart.setUnitsLookup(unitLookup);
 		}
 		return chart;
+	}
+
+	private static String resolveAggregateUnitLabel(String[] units) {
+		if (units == null || units.length == 0) {
+			return "";
+		}
+		String chosen = null;
+		for (String unit : units) {
+			String normalized = normalizeUnitToken(unit);
+			if (normalized.isEmpty()) {
+				continue;
+			}
+			if (chosen == null) {
+				chosen = normalized;
+			} else if (!chosen.equalsIgnoreCase(normalized)) {
+				return "various";
+			}
+		}
+		return chosen == null ? "" : chosen;
+	}
+
+	private static String normalizeUnitToken(String rawUnit) {
+		if (rawUnit == null) {
+			return "";
+		}
+		String unit = rawUnit.trim();
+		if (unit.isEmpty()) {
+			return "";
+		}
+		int openParen = unit.lastIndexOf('(');
+		int closeParen = unit.endsWith(")") ? unit.length() - 1 : -1;
+		if (openParen >= 0 && closeParen > openParen) {
+			String token = unit.substring(openParen + 1, closeParen).trim();
+			if (!token.isEmpty()) {
+				unit = token;
+			}
+		}
+		if ("none".equalsIgnoreCase(unit)) {
+			return "unitless";
+		}
+		if ("none specified".equalsIgnoreCase(unit)) {
+			return "None specified";
+		}
+		return unit;
 	}
 }

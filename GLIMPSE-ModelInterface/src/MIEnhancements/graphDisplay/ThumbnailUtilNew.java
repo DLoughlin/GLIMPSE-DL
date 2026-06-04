@@ -183,8 +183,8 @@ public class ThumbnailUtilNew {
  							}
  						}
  					}
- 					// Compose unit string for chart
- 					my_unit[1] = item_shown + " (" + str_unit + ")";
+						// Compose Y-axis label while preserving explicit unitless/various labels.
+						my_unit[1] = buildYAxisLabel(item_shown, str_unit);
  					// Extract legend and data
  					for (int k = 0; k < l.length; k++) {
  						l[k] = temp[k][0].trim().replace(",", "-");
@@ -258,9 +258,11 @@ public class ThumbnailUtilNew {
 			if (totalSeries > MAX_SERIES_PER_CHART || dataSeriesSum > MAX_TOTAL_SERIES) {
 				LOGGER.log(Level.WARNING, "Too many series for transposed charts: series={0} dataSeries={1}",
 					new Object[]{totalSeries, dataSeriesSum});
-				Chart[] abortChart = new Chart[1];
-				abortChart[0] = new Chart(new String[] { queryName, "Too many series to generate thumbnails" });
-				return abortChart;
+				if (!confirmSeriesLimitOverride(queryName, totalSeries, dataSeriesSum)) {
+					Chart[] abortChart = new Chart[1];
+					abortChart[0] = new Chart(new String[] { queryName, "Too many series to generate thumbnails" });
+					return abortChart;
+				}
 			}
 		} catch (Exception e) {
 			LOGGER.log(Level.FINE, "Pre-check for transpose charts failed, proceeding: " + e.getMessage());
@@ -301,6 +303,84 @@ public class ThumbnailUtilNew {
  		}
  		return chartL.toArray(new Chart[0]);
  	}
+
+		private static boolean confirmSeriesLimitOverride(String queryName, int totalSeries, int dataSeriesSum) {
+			final String title = "Large Chart Warning";
+			final String message = "This chart exceeds thumbnail safety limits and may be slow or run out of memory.\n\n"
+					+ "Query: " + queryName + "\n"
+					+ "Series count: " + totalSeries + " (limit " + MAX_SERIES_PER_CHART + ")\n"
+					+ "Data series count: " + dataSeriesSum + " (limit " + MAX_TOTAL_SERIES + ")\n\n"
+					+ "Do you want to continue anyway?";
+
+			if (java.awt.GraphicsEnvironment.isHeadless()) {
+				return false;
+			}
+
+			if (SwingUtilities.isEventDispatchThread()) {
+				int choice = JOptionPane.showConfirmDialog(InterfaceMain.getInstance().getFrame(), message, title,
+						JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+				return choice == JOptionPane.YES_OPTION;
+			}
+
+			final boolean[] proceed = new boolean[] { false };
+			try {
+				SwingUtilities.invokeAndWait(() -> {
+					int choice = JOptionPane.showConfirmDialog(InterfaceMain.getInstance().getFrame(), message, title,
+							JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+					proceed[0] = choice == JOptionPane.YES_OPTION;
+				});
+			} catch (Exception e) {
+				LOGGER.log(Level.WARNING, "Unable to show series-limit override dialog.", e);
+				return false;
+			}
+			return proceed[0];
+		}
+
+		private static String buildYAxisLabel(String itemShown, String rawUnit) {
+			String normalizedUnit = normalizeUnitToken(rawUnit);
+			if (normalizedUnit.isEmpty()) {
+				return itemShown == null ? "" : itemShown.trim();
+			}
+			if ("unitless".equalsIgnoreCase(normalizedUnit)) {
+				return "unitless";
+			}
+			if ("none specified".equalsIgnoreCase(normalizedUnit)) {
+				return "None specified";
+			}
+			if ("various".equalsIgnoreCase(normalizedUnit)) {
+				return "various";
+			}
+			String cleanItem = itemShown == null ? "" : itemShown.trim();
+			if (cleanItem.isEmpty()) {
+				return normalizedUnit;
+			}
+			return cleanItem + " (" + normalizedUnit + ")";
+		}
+
+		private static String normalizeUnitToken(String rawUnit) {
+			if (rawUnit == null) {
+				return "";
+			}
+			String unit = rawUnit.trim();
+			if (unit.isEmpty()) {
+				return "";
+			}
+			int openParen = unit.lastIndexOf('(');
+			int closeParen = unit.endsWith(")") ? unit.length() - 1 : -1;
+			if (openParen >= 0 && closeParen > openParen) {
+				String token = unit.substring(openParen + 1, closeParen).trim();
+				if (!token.isEmpty()) {
+					unit = token;
+				}
+			}
+			if ("none".equalsIgnoreCase(unit)) {
+				return "unitless";
+			}
+			if ("none specified".equalsIgnoreCase(unit)) {
+				return "None specified";
+			}
+			return unit;
+		}
 
 	// --- Utility Methods ---
 	/**
