@@ -2164,10 +2164,14 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			try {
 				scheduleDeferredStartupQueryTreeExpansion();
 				logStartup("deferredUiHydration:scheduleDeferredStartupQueryTreeExpansion", deferredStart);
+			} catch (Exception ex) {
+				System.err.println("DbViewer deferred UI hydration failed: " + ex);
+			}
+			try {
 				setupPresetRegionDropdown();
 				logStartup("deferredUiHydration:setupPresetRegionDropdown", deferredStart);
 			} catch (Exception ex) {
-				System.err.println("DbViewer deferred UI hydration failed: " + ex);
+				System.err.println("DbViewer preset-region strip setup failed: " + ex);
 			}
 		});
 		deferredUiTimer.setRepeats(false);
@@ -2388,7 +2392,12 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		if (scenarioRegionSplit == null || !(scenarioRegionSplit.getRightComponent() instanceof JPanel)) {
 			return;
 		}
-		loadRegionListToDropdown();
+		try {
+			loadRegionListToDropdown();
+		} catch (Exception e) {
+			preset_choices = null;
+			System.out.println("Problem parsing preset_region_list.txt. Showing Total checkbox without preset dropdown.");
+		}
 		JPanel presetRegionsPanel = new JPanel();
 		presetRegionsPanel.setLayout(new BoxLayout(presetRegionsPanel, BoxLayout.X_AXIS));
 		presetRegionsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -2408,7 +2417,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		//doTotalCheckBox.setBackground(Color.WHITE);
 		presetRegionsPanel.add(doTotalCheckBox);
 
-		if (preset_choices != null && preset_choices.length > 0) {
+		if (preset_choices != null && preset_choices.length > 1) {
 			presetRegionsPanel.add(Box.createHorizontalStrut(5));
 			JLabel listLabel = new JLabel("Group:");
 			listLabel.setAlignmentY(Component.CENTER_ALIGNMENT);
@@ -2445,7 +2454,10 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		}
 			// Add the preset panel to BorderLayout.SOUTH of the right wrapper.
 		// getRightComponent() returns the rightWrapper (BorderLayout) we set in setupSplitPanes.
-		((JPanel) scenarioRegionSplit.getRightComponent()).add(presetRegionsPanel, BorderLayout.SOUTH);
+		JPanel rightWrapper = (JPanel) scenarioRegionSplit.getRightComponent();
+		rightWrapper.add(presetRegionsPanel, BorderLayout.SOUTH);
+		rightWrapper.revalidate();
+		rightWrapper.repaint();
 
 	}
 
@@ -3825,22 +3837,31 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 
 	private void loadRegionListToDropdown() {
 		String region_list_file = "config/preset_region_list.txt";
+		preset_region_list.clear();
+		subregion_list.clear();
+		preset_choices = null;
 		try {
 			preset_region_list = getStringArrayFromFile(region_list_file, "#");
 			if (preset_region_list.size() > 0) {
-				preset_choices = new String[preset_region_list.size() + 1];
-				preset_choices[0] = "(optional)";
+				ArrayList<String> choiceList = new ArrayList<String>();
+				choiceList.add("(optional)");
 				for (int i = 0; i < preset_region_list.size(); i++) {
 					String line = preset_region_list.get(i);
 					int index = line.indexOf(":");
 					if (index > 0) {
-						String name = line.substring(0, index);
-						preset_choices[i + 1] = name;
+						String name = line.substring(0, index).trim();
+						if (name.isEmpty()) {
+							continue;
+						}
+						choiceList.add(name);
 						String[] subregions = splitString(line.substring(index + 1), ",");
 						for (int j = 0; j < subregions.length; j++) {
 							subregion_list.add(subregions[j]);
 						}
 					}
+				}
+				if (choiceList.size() > 1) {
+					preset_choices = choiceList.toArray(new String[0]);
 				}
 			}
 		} catch (IOException e) {
