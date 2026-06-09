@@ -85,7 +85,6 @@ monetaryConversionsFilename = $scenarioBuilderDir$/config/v8.2/monetary_conversi
 # The shipped GCAM-USA 8.2 transport metadata in this workspace still uses
 # million pass-km / million ton-km service units and 1990$ assumptions.
 isGCAMVersionPre8.5 = true
-debugTrnConversionSkips = false
 
 #allowable years for populating scenario builder
 allYearList = 1990,2005,2010,2015,2021,2025,2030,2035,2040,2045,2050,2055,2060,2065,2070,2075,2080,2085,2090,2095,2100
