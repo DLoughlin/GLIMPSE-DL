@@ -81,9 +81,8 @@ csvColumnFilename = $scenarioBuilderDir$/config/v8.2/glimpseCSVColumnsForTechPar
 #file with conversion factors to convert to 1990 $ years
 monetaryConversionsFilename = $scenarioBuilderDir$/config/v8.2/monetary_conversions.csv
 
-#transportation conversion toggles (legacy defaults)
-useTrnMMBTUConversions = true
-useTrn1990DollarConversions = true
+#isGCAMVersionPre8.5: true = use 1990$s + MMBTU conversions (pre-8.5 GCAM); false = use 1975$s without MMBTU conversions
+isGCAMVersionPre8.5 = true
 debugTrnConversionSkips = false
 
 #allowable years for populating scenario builder
