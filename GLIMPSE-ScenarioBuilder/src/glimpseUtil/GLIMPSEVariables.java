@@ -72,8 +72,7 @@ public class GLIMPSEVariables {
     private final String DEFAULT_DEBUG_REGION = "USA";
     private final boolean DEFAULT_SHOW_SPLASH = true;
     private final boolean DEFAULT_USE_ALL_AVAILABLE_PROCESSORS = true;
-    private final boolean DEFAULT_USE_TRN_MMBTU_CONVERSIONS = true;
-    private final boolean DEFAULT_USE_TRN_1990_DOLLAR_CONVERSIONS = true;
+    private final boolean DEFAULT_GCAM_VERSION_PRE8_5 = true;
     private final boolean DEFAULT_DEBUG_TRN_CONVERSION_SKIPS = false;
     private final int DEFAULT_VALUE_DISPLAY_SIG_FIGS = 4;
     private final int DEFAULT_PERIOD_INCREMENT = 5; // Default period increment for GCAM
@@ -117,8 +116,7 @@ public class GLIMPSEVariables {
     private int simulationYearIncrement = DEFAULT_SIMULATION_YEAR_INCREMENT;
     private boolean showSplash = DEFAULT_SHOW_SPLASH;
     private boolean useAllAvailableProcessors = DEFAULT_USE_ALL_AVAILABLE_PROCESSORS;
-    private boolean useTrnMMBTUConversions = DEFAULT_USE_TRN_MMBTU_CONVERSIONS;
-    private boolean useTrn1990DollarConversions = DEFAULT_USE_TRN_1990_DOLLAR_CONVERSIONS;
+    private boolean gcamVersionPre8_5 = DEFAULT_GCAM_VERSION_PRE8_5;
     private boolean debugTrnConversionSkips = DEFAULT_DEBUG_TRN_CONVERSION_SKIPS;
     private String executeCmdShort = "cmd /C ";
     private String executeCmd = "cmd /C start ";
@@ -454,61 +452,91 @@ public class GLIMPSEVariables {
     }
 
     /**
-     * Returns whether transportation calculations should use MMBTU-style conversion factors.
+     * Returns whether the current workflow uses pre-8.5 GCAM transportation
+     * conventions. When {@code true}, transportation calculations use 1990$s and
+     * the MMBTU conversion path; when {@code false}, they use 1975$s and do not
+     * apply the MMBTU conversion path.
      *
-     * @return True to use MMBTU conversions, false otherwise.
+     * @return {@code true} for pre-8.5 GCAM transport conventions, {@code false} otherwise.
+     */
+    public boolean isGcamVersionPre8_5() {
+        return gcamVersionPre8_5;
+    }
+
+    /**
+     * Sets whether the current workflow should use pre-8.5 GCAM transportation
+     * conventions.
+     *
+     * @param b {@code true} for pre-8.5 GCAM transport conventions, {@code false} otherwise.
+     */
+    public void setGcamVersionPre8_5(boolean b) {
+        gcamVersionPre8_5 = b;
+    }
+
+    /**
+     * Sets whether the current workflow should use pre-8.5 GCAM transportation
+     * conventions from a string.
+     *
+     * @param str "true" or "yes" to enable, "false" otherwise.
+     */
+    public void setGcamVersionPre8_5(String str) {
+        boolean b = false;
+        if ((str.toLowerCase().equals("true")) || (str.toLowerCase().equals("yes"))) b = true;
+        gcamVersionPre8_5 = b;
+    }
+
+    /**
+     * Backward-compatible alias for the legacy transportation MMBTU flag.
+     *
+     * @return {@code true} when pre-8.5 GCAM transport conventions are enabled.
      */
     public boolean getUseTrnMMBTUConversions() {
-        return useTrnMMBTUConversions;
+        return isGcamVersionPre8_5();
     }
 
     /**
-     * Sets whether transportation calculations should use MMBTU-style conversion factors.
+     * Backward-compatible alias for the legacy transportation MMBTU flag.
      *
-     * @param b True to use MMBTU conversions, false otherwise.
+     * @param b {@code true} to enable pre-8.5 GCAM transport conventions.
      */
     public void setUseTrnMMBTUConversions(boolean b) {
-        useTrnMMBTUConversions = b;
+        setGcamVersionPre8_5(b);
     }
 
     /**
-     * Sets whether transportation calculations should use MMBTU-style conversion factors from a string.
+     * Backward-compatible alias for the legacy transportation MMBTU flag.
      *
      * @param str "true" or "yes" to enable, "false" otherwise.
      */
     public void setUseTrnMMBTUConversions(String str) {
-        boolean b = false;
-        if ((str.toLowerCase().equals("true")) || (str.toLowerCase().equals("yes"))) b = true;
-        useTrnMMBTUConversions = b;
+        setGcamVersionPre8_5(str);
     }
 
     /**
-     * Returns whether transportation calculations should use 1990-dollar assumptions.
+     * Backward-compatible alias for the legacy transportation 1990-dollar flag.
      *
-     * @return True to use 1990-dollar assumptions, false otherwise.
+     * @return {@code true} when pre-8.5 GCAM transport conventions are enabled.
      */
     public boolean getUseTrn1990DollarConversions() {
-        return useTrn1990DollarConversions;
+        return isGcamVersionPre8_5();
     }
 
     /**
-     * Sets whether transportation calculations should use 1990-dollar assumptions.
+     * Backward-compatible alias for the legacy transportation 1990-dollar flag.
      *
-     * @param b True to use 1990-dollar assumptions, false otherwise.
+     * @param b {@code true} to enable pre-8.5 GCAM transport conventions.
      */
     public void setUseTrn1990DollarConversions(boolean b) {
-        useTrn1990DollarConversions = b;
+        setGcamVersionPre8_5(b);
     }
 
     /**
-     * Sets whether transportation calculations should use 1990-dollar assumptions from a string.
+     * Backward-compatible alias for the legacy transportation 1990-dollar flag.
      *
      * @param str "true" or "yes" to enable, "false" otherwise.
      */
     public void setUseTrn1990DollarConversions(String str) {
-        boolean b = false;
-        if ((str.toLowerCase().equals("true")) || (str.toLowerCase().equals("yes"))) b = true;
-        useTrn1990DollarConversions = b;
+        setGcamVersionPre8_5(str);
     }
 
     /**
@@ -1471,13 +1499,15 @@ public class GLIMPSEVariables {
         case "showsplash":
             returnVal = ""+showSplash;
             break;
+        case "isgcamversionpre8.5":
+        case "isgcamversionpre8_5":
+        case "gcamversionpre8.5":
+        case "gcamversionpre8_5":
         case "usetrnmmbtuconversions":
         case "usemmbtuconversionsintransportationcalculations":
-            returnVal = "" + useTrnMMBTUConversions;
-            break;
         case "usetrn1990dollarconversions":
         case "use1990dollarsintransportationcalculations":
-            returnVal = "" + useTrn1990DollarConversions;
+            returnVal = "" + gcamVersionPre8_5;
             break;
         case "debugtrnconversionskips":
         case "debugtransportconversionskips":
@@ -1722,13 +1752,15 @@ public class GLIMPSEVariables {
         case "showsplash":
             setShowSplash(val);
             break;
+        case "isgcamversionpre8.5":
+        case "isgcamversionpre8_5":
+        case "gcamversionpre8.5":
+        case "gcamversionpre8_5":
         case "usetrnmmbtuconversions":
         case "usemmbtuconversionsintransportationcalculations":
-            setUseTrnMMBTUConversions(val);
-            break;
         case "usetrn1990dollarconversions":
         case "use1990dollarsintransportationcalculations":
-            setUseTrn1990DollarConversions(val);
+            setGcamVersionPre8_5(val);
             break;
         case "debugtrnconversionskips":
         case "debugtransportconversionskips":

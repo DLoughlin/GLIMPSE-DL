@@ -525,7 +525,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	 */
 	private void saveScenarioComponent(TreeView<String> tree) {
 
-		System.out.println("Use trnMMBTUConversions: " + vars.getUseTrnMMBTUConversions());
+		System.out.println("isGCAMVersionPre8.5: " + vars.isGcamVersionPre8_5());
 		
 		if (!qaInputs()) {
 			// Abort save if validation fails
@@ -753,7 +753,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 						}
 					}
 
-					if (vars.getUseTrnMMBTUConversions()) {
+					if (vars.isGcamVersionPre8_5()) {
 						valf = valf / (1.0e9 * loadFactor / 1.055);
 					} else {
 						valf = valf / loadFactor;

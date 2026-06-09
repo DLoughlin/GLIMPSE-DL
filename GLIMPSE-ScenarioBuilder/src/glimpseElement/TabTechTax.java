@@ -897,7 +897,7 @@ public class TabTechTax extends PolicyTab implements Runnable {
 		case "million ton-km":
 		case "billion pass-km":
 		case "billion ton-km":
-			label = vars.getUseTrn1990DollarConversions() ? LABEL_UNITS_PASSKM_1990 : LABEL_UNITS_PASSKM_1975;
+			label = vars.isGcamVersionPre8_5() ? LABEL_UNITS_PASSKM_1990 : LABEL_UNITS_PASSKM_1975;
 			break;
 		case "":
 			label = "";

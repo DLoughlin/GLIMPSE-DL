@@ -49,7 +49,7 @@ import glimpseElement.ComponentLibraryTable;
 import glimpseElement.ComponentRow;
 import glimpseElement.PolicyTab;
 import glimpseElement.TabCafeStd;
-import glimpseElement.TabFixedDemand;
+import glimpseElement.TabModifyDemand;
 import glimpseElement.TabFuelPriceAdj;
 import glimpseElement.TabMarketShare;
 import glimpseElement.TabPollutantTaxCap;
@@ -93,7 +93,8 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 	public static final String TAB_XML_LIST = "XML List";
 	public static final String TAB_POLLUTANT_TAX_CAP = "Pollutant Tax/Cap";
 	public static final String TAB_FUEL_PRICE_ADJ = "Fuel Price Adj";
-	public static final String TAB_FIXED_DEMAND = "Fixed Demand";
+	public static final String TAB_MODIFY_DEMAND = "Modify Demand";
+	public static final String TAB_FIXED_DEMAND_LEGACY = "Fixed Demand";
 
 	private static final String BUTTON_LABEL_SAVE = "Save";
 	private static final String BUTTON_LABEL_CLOSE = "Close";
@@ -128,7 +129,7 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 	private TabMarketShare techMarketShareTab;
 	private TabTechBound techBound2Tab;
 	private TabTechAvailable techAvailTab;
-	private TabFixedDemand fixedDemandTab;
+	private TabModifyDemand fixedDemandTab;
 	private TabTechParam techParamTab;
 	private TabTechTax techTaxTab;
 	private TabFuelPriceAdj fuelPriceAdjTab;
@@ -196,7 +197,7 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 		techParamTab.setClosable(false);
 		techTaxTab = new TabTechTax(TAB_TECH_TAX, stageWithTabs);
 		techTaxTab.setClosable(false);
-		fixedDemandTab = new TabFixedDemand(TAB_FIXED_DEMAND, stageWithTabs);
+		fixedDemandTab = new TabModifyDemand(TAB_MODIFY_DEMAND, stageWithTabs);
 		fixedDemandTab.setClosable(false);
 
 		TabPane addComponentTabPane = new TabPane();
@@ -407,7 +408,8 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 				return pollTaxCapTab;
 			case TAB_FUEL_PRICE_ADJ:
 				return fuelPriceAdjTab;
-			case TAB_FIXED_DEMAND:
+			case TAB_MODIFY_DEMAND:
+			case TAB_FIXED_DEMAND_LEGACY:
 				return fixedDemandTab;
 			default:
 				return null;
@@ -423,6 +425,14 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 				if (policyTab instanceof TabMarketShare) {
 					((TabMarketShare) policyTab).setEditing(true);
 				}
+				policyTab.loadContent(contentToLoad);
+				tp.getSelectionModel().select(policyTab);
+				break;
+			}
+			// Backward compatibility: open legacy "Fixed Demand" components in the renamed tab.
+			if (t instanceof PolicyTab && TAB_FIXED_DEMAND_LEGACY.equals(whichTab)
+					&& TAB_MODIFY_DEMAND.equals(t.getText())) {
+				PolicyTab policyTab = (PolicyTab) t;
 				policyTab.loadContent(contentToLoad);
 				tp.getSelectionModel().select(policyTab);
 				break;

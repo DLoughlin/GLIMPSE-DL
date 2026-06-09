@@ -133,6 +133,7 @@ public abstract class PolicyTab extends Tab {
     protected static final String BUTTON_DELETE = "Delete";
     protected static final String BUTTON_CLEAR = "Clear";
     protected static final String TRANSPORT_CONVERSION_NOTICE_TITLE = "Transport Conversion Settings Notice";
+    protected static final String METADATA_GCAM_VERSION_PRE8_5 = "#isGCAMVersionPre8.5: ";
     protected static final String METADATA_USE_TRN_MMBTU_CONVERSIONS = "#Transport Use MMBTU Conversions: ";
     protected static final String METADATA_USE_TRN_1990_DOLLAR_CONVERSIONS = "#Transport Use 1990 Dollar Conversions: ";
     protected static final String LABEL_POLICY_NAME = "Policy: ";
@@ -249,11 +250,8 @@ public abstract class PolicyTab extends Tab {
         if (metadataBuilder == null) {
             return;
         }
-        metadataBuilder.append(METADATA_USE_TRN_MMBTU_CONVERSIONS)
-                .append(vars.getUseTrnMMBTUConversions())
-                .append(vars.getEol());
-        metadataBuilder.append(METADATA_USE_TRN_1990_DOLLAR_CONVERSIONS)
-                .append(vars.getUseTrn1990DollarConversions())
+        metadataBuilder.append(METADATA_GCAM_VERSION_PRE8_5)
+                .append(vars.isGcamVersionPre8_5())
                 .append(vars.getEol());
     }
 
@@ -268,19 +266,26 @@ public abstract class PolicyTab extends Tab {
             return null;
         }
 
-        if (line.startsWith(METADATA_USE_TRN_MMBTU_CONVERSIONS)) {
+        if (line.startsWith(METADATA_GCAM_VERSION_PRE8_5)) {
+            String value = line.substring(METADATA_GCAM_VERSION_PRE8_5.length()).trim();
+            Boolean saved = parseBooleanMetadataValue(value);
+            if (saved != null && saved.booleanValue() != vars.isGcamVersionPre8_5()) {
+                return "GCAM version pre-8.5 transport conventions saved as " + saved
+                        + "; current options set this to " + vars.isGcamVersionPre8_5() + ".";
+            }
+        } else if (line.startsWith(METADATA_USE_TRN_MMBTU_CONVERSIONS)) {
             String value = line.substring(METADATA_USE_TRN_MMBTU_CONVERSIONS.length()).trim();
             Boolean saved = parseBooleanMetadataValue(value);
-            if (saved != null && saved.booleanValue() != vars.getUseTrnMMBTUConversions()) {
+            if (saved != null && saved.booleanValue() != vars.isGcamVersionPre8_5()) {
                 return "Transport MMBTU conversions saved as " + saved
-                        + "; current options set this to " + vars.getUseTrnMMBTUConversions() + ".";
+                        + "; current options set this to " + vars.isGcamVersionPre8_5() + ".";
             }
         } else if (line.startsWith(METADATA_USE_TRN_1990_DOLLAR_CONVERSIONS)) {
             String value = line.substring(METADATA_USE_TRN_1990_DOLLAR_CONVERSIONS.length()).trim();
             Boolean saved = parseBooleanMetadataValue(value);
-            if (saved != null && saved.booleanValue() != vars.getUseTrn1990DollarConversions()) {
+            if (saved != null && saved.booleanValue() != vars.isGcamVersionPre8_5()) {
                 return "Transport 1990-dollar conversions saved as " + saved
-                        + "; current options set this to " + vars.getUseTrn1990DollarConversions() + ".";
+                        + "; current options set this to " + vars.isGcamVersionPre8_5() + ".";
             }
         }
 
@@ -305,13 +310,13 @@ public abstract class PolicyTab extends Tab {
 
         StringBuilder message = new StringBuilder();
         message.append("The saved ").append(componentName)
-                .append(" component was created with transport conversion settings that differ from the current options file.")
+                .append(" component was created with GCAM transport-version settings that differ from the current options file.")
                 .append(vars.getEol()).append(vars.getEol());
         for (String warning : warnings) {
             message.append("- ").append(warning).append(vars.getEol());
         }
         message.append(vars.getEol())
-                .append("Loaded component values were not changed. Review the current options if you want future calculations and saves to use matching transport settings.");
+                .append("Loaded component values were not changed. Review the current options if you want future calculations and saves to use matching GCAM transport settings.");
 
         utils.displayString(message.toString(), TRANSPORT_CONVERSION_NOTICE_TITLE + " - " + componentName);
     }

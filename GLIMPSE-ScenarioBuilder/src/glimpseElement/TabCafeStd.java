@@ -552,8 +552,8 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 					float output_ratio = (float) (targetEff - techEff);
 					System.out.println(region + "," + tech + "," + targetYearStr + "," + targetEff + "," + techEff + "," + output_ratio);
 
-					// Convert coefficients to GCAM 8.2 internal units
-					if (vars.getUseTrnMMBTUConversions()) {
+					// Convert coefficients according to the selected GCAM transport version
+					if (vars.isGcamVersionPre8_5()) {
 						output_ratio = (float) (output_ratio / 1e6);
 						pMultiplier = 1e9f;
 					} else {
@@ -691,10 +691,9 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 						double gjPerGallon = 0.1203;
 						double targetGJPerMillionKm = (gjPerGallon / (1.61 * val)) * 1e6;
 
-						boolean which = vars.getUseTrnMMBTUConversions();
-						which = false;
+									boolean which = vars.isGcamVersionPre8_5();
 
-						if (false) { // for GCAM8.2 and earlier versions
+									if (which) { // for GCAM8.2 and earlier versions
 							// coef is already in GJ/million-km; outputratio is target intensity on same
 							// basis
 							outputratio = formatDisplayValue((float) targetGJPerMillionKm);

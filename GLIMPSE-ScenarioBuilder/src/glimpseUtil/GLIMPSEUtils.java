@@ -1214,6 +1214,7 @@ public class GLIMPSEUtils {
 	 * @param toYear   target dollar-year label
 	 * @return conversion factor between the two labels
 	 */
+	//todo: support additional years and use conversions from monetary conversion file
 	public double getConversionFactor(String fromYear, String toYear) {
 		double d = 1.0;
 
@@ -1334,7 +1335,7 @@ public class GLIMPSEUtils {
 		}
 		boolean useMMBTUConversions = true;
 		if (vars != null) {
-			useMMBTUConversions = vars.getUseTrnMMBTUConversions();
+			useMMBTUConversions = vars.isGcamVersionPre8_5();
 		}
 		return useMMBTUConversions;
 	}
@@ -1372,16 +1373,16 @@ public class GLIMPSEUtils {
 			boolean useMMBTUConversions = unitPriceConversionApplied;
 
 			if (useMMBTUConversions) {
-				// Legacy GLIMPSE / GCAM 8.2-era transport policy path.
-				// The shipped 8.2 includes service in million pass-km or million ton-km and energy in MMBTU
-				// requiring these conversions
+				// Pre-8.5 GCAM transport policy path.
+				// The older workflow includes service in million pass-km or million ton-km and energy in MMBTU,
+				// requiring these conversions.
 				// output_ratio units: [MMBTU per million service-km] / [load/veh]
 				output_ratio = (1.0e-6 / loadFactor) * 1.055;
 				pMultiplier = 1.0e6;
 			} else {
-				// GCAM v8.5-style path: 
-				// output divided by loadFactor to make constraint veh-km-based
-				// additional output ration and pMultiplier conversions not necessary
+				// GCAM v8.5+ style path:
+				// output divided by loadFactor to make constraint veh-km-based;
+				// additional output-ratio and pMultiplier conversions are not necessary.
 				output_ratio = 1.0 / loadFactor;
 				pMultiplier = 1.0;
 			}

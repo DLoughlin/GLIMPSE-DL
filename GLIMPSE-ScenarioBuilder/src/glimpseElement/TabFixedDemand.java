@@ -53,9 +53,9 @@ import javafx.stage.Stage;
 
 /**
  * TabFixedDemand provides the user interface and logic for creating or editing
- * Fixed Demand scenario components in the GLIMPSE Scenario Builder.
+ * Modify Demand scenario components in the GLIMPSE Scenario Builder.
  * <p>
- * This tab allows users to specify fixed demand for a sector in selected regions over a time period,
+ * This tab allows users to modify demand for a sector in selected regions over a time period,
  * using various modification types (e.g., initial/final, growth rates, deltas).
  * Users can populate, edit, and clear demand values, and save the scenario component as a CSV file.
  * </p>
@@ -71,7 +71,7 @@ import javafx.stage.Stage;
  *
  * <h2>Usage</h2>
  * <pre>
- * TabFixedDemand tab = new TabFixedDemand("Fixed Demand", stage);
+ * TabFixedDemand tab = new TabFixedDemand("Modify Demand", stage);
  * // Add to TabPane, interact via UI
  * </pre>
  *
@@ -179,7 +179,7 @@ public class TabFixedDemand extends PolicyTab implements Runnable {
 
     /**
      * Constructs a TabFixedDemand for the given title and stage.
-     * Initializes UI controls, layout, and event handlers for the Fixed Demand tab.
+     * Initializes UI controls, layout, and event handlers for the Modify Demand tab.
      *
      * @param title Tab title to display
      * @param stageX JavaFX Stage (not used directly, but may be used for dialogs)
