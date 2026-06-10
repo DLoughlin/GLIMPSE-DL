@@ -97,7 +97,7 @@ public class PaneForCountryStateTree extends VBox {
     private void setupUI() {
         this.setStyle(styles.getFontStyle());
         treeView = createTreeViewWithRegions(); // Create tree with regions
-        if (vars.isGcamUSA()) treeView = addSubregionsToTreeView(); // Add subregions if GCAM-USA mode
+        if (vars.isUseSubregions()) treeView = addSubregionsToTreeView(); // Add configured subregions when enabled
 
         labelAppliedTo = utils.createLabel("Select region(s):");
         labelPresetRegions = utils.createLabel("Presets:");
@@ -301,7 +301,7 @@ public class PaneForCountryStateTree extends VBox {
     }
 
     /**
-     * Adds subregions to the tree view if GCAM-USA mode is enabled.
+     * Adds configured subregions to the tree view.
      * @return The updated TreeView with subregions.
      */
     public TreeView<String> addSubregionsToTreeView() {

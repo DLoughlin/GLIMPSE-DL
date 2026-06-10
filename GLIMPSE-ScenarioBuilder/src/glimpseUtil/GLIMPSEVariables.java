@@ -38,7 +38,9 @@ package glimpseUtil;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -131,6 +133,8 @@ public class GLIMPSEVariables {
     private String[][] techInfo = null;
    
     private boolean isGcamUSA = false;
+    private boolean isGcamChina = false;
+    private boolean isUseSubregions = false;
     private String glimpseDir = null;
     private String glimpseResourceDir = null;
     private String glimpseDocDir = null;
@@ -179,6 +183,7 @@ public class GLIMPSEVariables {
     //TODO: override region lists if files are present
     private List<String> regionList = null;
     private List<String> subRegionList = null;
+    private transient Map<String, List<String>> configuredSubregionsByRegion = null;
 
     /**
      * Private constructor for singleton pattern.
@@ -332,6 +337,8 @@ public class GLIMPSEVariables {
      */
     public void setSubRegionsFilename(String s) {
         subRegionListFilename = s;
+        subRegionList = null;
+        configuredSubregionsByRegion = null;
     }
 
     /**
@@ -745,6 +752,185 @@ public class GLIMPSEVariables {
      */
     public void setIsGcamUSA(boolean b) {
         this.isGcamUSA = b;
+        refreshUseSubregions();
+    }
+
+    /**
+     * Returns whether GCAM China mode is enabled.
+     *
+     * @return True if GCAM China mode is enabled, false otherwise.
+     */
+    public boolean isGcamChina() {
+        return isGcamChina;
+    }
+
+    /**
+     * Sets whether GCAM China mode is enabled.
+     *
+     * @param b True to enable GCAM China mode, false otherwise.
+     */
+    public void setIsGcamChina(boolean b) {
+        this.isGcamChina = b;
+        refreshUseSubregions();
+    }
+
+    /**
+     * Returns whether subregions should be used anywhere subregion-aware region
+     * handling is supported.
+     *
+     * @return True when subregions are enabled by any supported option.
+     */
+    public boolean isUseSubregions() {
+        return isUseSubregions;
+    }
+
+    /**
+     * Sets the explicit subregion toggle from the options file.
+     *
+     * @param b True to explicitly enable subregions, false otherwise.
+     */
+    public void setIsUseSubregions(boolean b) {
+        this.isUseSubregions = b;
+        refreshUseSubregions();
+    }
+
+    /**
+     * Updates the effective subregion flag using all supported subregion options.
+     */
+    private void refreshUseSubregions() {
+        isUseSubregions = isGcamUSA || isGcamChina || isUseSubregions;
+    }
+
+    /**
+     * Parses a boolean-like options value.
+     *
+     * @param value option value text
+     * @return true for true/yes/1, false otherwise
+     */
+    private boolean isEnabledOption(String value) {
+        if (value == null) {
+            return false;
+        }
+        String normalized = value.trim();
+        return normalized.equalsIgnoreCase("true") || normalized.equalsIgnoreCase("yes") || normalized.equals("1");
+    }
+
+    /**
+     * Removes aggregated parent regions from a selection list when their
+     * configured subregions are also selected.
+     *
+     * @param selectedRegions selected region names
+     * @return normalized selection list with configured parent regions removed as needed
+     */
+    public String[] normalizeSelectedRegionsForSubregions(String[] selectedRegions) {
+        if (!isUseSubregions || selectedRegions == null || selectedRegions.length < 2) {
+            return selectedRegions;
+        }
+
+        Map<String, List<String>> configuredSubregions = getConfiguredSubregionsByRegion();
+        if (configuredSubregions.isEmpty()) {
+            return selectedRegions;
+        }
+
+        ArrayList<String> normalized = new ArrayList<>();
+        for (String region : selectedRegions) {
+            if (!shouldSkipAggregatedSubregionRegion(region, selectedRegions, configuredSubregions)) {
+                normalized.add(region);
+            }
+        }
+        return normalized.toArray(new String[0]);
+    }
+
+    /**
+     * Returns whether the given selected region should be skipped because one of
+     * its configured subregions is also selected.
+     *
+     * @param region selected region under consideration
+     * @param selectedRegions full selected region list
+     * @param configuredSubregions configured subregion map keyed by parent region
+     * @return true when the region is an aggregated parent that should be omitted
+     */
+    private boolean shouldSkipAggregatedSubregionRegion(String region, String[] selectedRegions,
+            Map<String, List<String>> configuredSubregions) {
+        if (region == null) {
+            return false;
+        }
+
+        String normalizedRegion = region.trim();
+        if (normalizedRegion.isEmpty()) {
+            return false;
+        }
+
+        List<String> configuredChildren = configuredSubregions.get(normalizedRegion.toLowerCase());
+        if (configuredChildren == null || configuredChildren.isEmpty()) {
+            return false;
+        }
+
+        for (String selectedRegion : selectedRegions) {
+            if (selectedRegion == null || selectedRegion.trim().equalsIgnoreCase(normalizedRegion)) {
+                continue;
+            }
+            for (String childRegion : configuredChildren) {
+                if (selectedRegion.trim().equalsIgnoreCase(childRegion)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Loads configured subregions keyed by their parent region.
+     *
+     * @return map of parent region name to configured subregion names
+     */
+    private Map<String, List<String>> getConfiguredSubregionsByRegion() {
+        if (configuredSubregionsByRegion == null) {
+            configuredSubregionsByRegion = new LinkedHashMap<>();
+            List<String> configuredLines = new ArrayList<>();
+
+            try {
+                if (files != null && subRegionListFilename != null && !subRegionListFilename.trim().isEmpty()) {
+                    configuredLines = files.getStringListFromFile(getSubRegionsFilename(), "#");
+                }
+            } catch (Exception ignored) {
+                configuredLines = new ArrayList<>();
+            }
+
+            if (configuredLines.isEmpty()) {
+                configuredLines.add("USA:" + String.join(",", DEFAULT_SUBREGION_LIST));
+            }
+
+            for (String line : configuredLines) {
+                if (line == null) {
+                    continue;
+                }
+                int delimiterIndex = line.indexOf(":");
+                if (delimiterIndex <= 0) {
+                    continue;
+                }
+
+                String parentRegion = line.substring(0, delimiterIndex).trim();
+                if (parentRegion.isEmpty()) {
+                    continue;
+                }
+
+                ArrayList<String> childRegions = new ArrayList<>();
+                String[] subregions = line.substring(delimiterIndex + 1).split(",");
+                for (String subregion : subregions) {
+                    String trimmedSubregion = subregion.trim();
+                    if (!trimmedSubregion.isEmpty()) {
+                        childRegions.add(trimmedSubregion);
+                    }
+                }
+
+                if (!childRegions.isEmpty()) {
+                    configuredSubregionsByRegion.put(parentRegion.toLowerCase(), childRegions);
+                }
+            }
+        }
+
+        return configuredSubregionsByRegion;
     }
 
     /**
@@ -1661,6 +1847,12 @@ public class GLIMPSEVariables {
         case "isgcamusa":
             returnVal = String.valueOf(isGcamUSA);
             break;
+        case "isgcamchina":
+            returnVal = String.valueOf(isGcamChina);
+            break;
+        case "isusesubregions":
+            returnVal = String.valueOf(isUseSubregions);
+            break;
         case "csvcolumnfilename":
             returnVal = csvColumnFilename;
             break;
@@ -1843,7 +2035,7 @@ public class GLIMPSEVariables {
             regionListFilename = fixDir(val);
             break;
         case "subregionlistfilename":
-            subRegionListFilename = fixDir(val);
+            setSubRegionsFilename(fixDir(val));
             break;            
         case "trashdir":
             trashDir = fixDir(val);
@@ -1920,9 +2112,13 @@ public class GLIMPSEVariables {
             eol = val;
             break;
         case "isgcamusa":
-            isGcamUSA = false;
-            if (val.toLowerCase().trim().equals("true"))
-                isGcamUSA = true;
+            setIsGcamUSA(isEnabledOption(val));
+            break;
+        case "isgcamchina":
+            setIsGcamChina(isEnabledOption(val));
+            break;
+        case "isusesubregions":
+            setIsUseSubregions(isEnabledOption(val));
             break;
         case "csvcolumnfilename":
             csvColumnFilename = fixDir(val);
@@ -2345,7 +2541,7 @@ public class GLIMPSEVariables {
                 "resourceDir","trashDir","gCamDataDir","gCamOutputDatabase",
                 "maxDatabaseSizeGB","optionsFilename","xmlLibrary","textEditor","xmlEditor",
                 "stopPeriod","runQueueStr",
-                "isGcamUSA","preferredFontSize","useIcons","use_icons","debugRegion",
+                "isGcamUSA","isGcamChina","isUseSubregions","preferredFontSize","useIcons","use_icons","debugRegion",
                 "debugCreate","debugStartupTiming","startYearForShare","debugRename","filesToSave"};
         
         ArrayList<String> report=new ArrayList<String>();

@@ -109,8 +109,13 @@ gCamDataDir = $gCamHomeDir$/input/gcamdata
 xmlLibrary = $gCamHomeDir$/input
 
 #-----Miscl GUI setup options-----
-#Are you using GCAM-USA? If so, indicate "true". This enables state-level items in tree
+#Subregion controls: if any of these are true, subregions are enabled in the region tree
+#Legacy switch for GCAM-USA workflows
 isGcamUSA = false
+#Optional switch for GCAM-China workflows
+isGcamChina = false
+#Generic override for any workflow that should use configured subregions
+isUseSubregions = false
 
 #thresholds for warnings
 maxDatabaseSizeGB = 38

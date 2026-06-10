@@ -886,19 +886,15 @@ public class TabTechParam extends PolicyTab implements Runnable {
     }
 
     /**
-     * Return a comma-separated list of selected leaf regions, handling a GCAM-
-     * USA special-case where "USA" may be represented differently.
+     * Return a comma-separated list of selected leaf regions, omitting any
+     * configured parent region when its subregions are also selected.
      *
      * @param tree TreeView of regions
      * @return comma-separated selected regions string
      */
     private String getSelectedLeaves(TreeView<String> tree) {
-        String[] listOfSelectedLeaves = utils.getAllSelectedRegions(tree);
-        String states = utils.returnAppendedString(listOfSelectedLeaves);
-        if ((states.contains("USA")) && (vars.isGcamUSA())) {
-            states = states.replace(",USA", "");
-        }
-        return states;
+        String[] listOfSelectedLeaves = vars.normalizeSelectedRegionsForSubregions(utils.getAllSelectedRegions(tree));
+        return utils.returnAppendedString(listOfSelectedLeaves);
     }
 
     /**

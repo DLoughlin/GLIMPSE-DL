@@ -809,8 +809,8 @@ public class TabMarketShare extends PolicyTab implements Runnable {
                         constraint = "_Fx";
                     }
 
-                    String[] listOfSelectedLeaves = utils.getAllSelectedRegions(paneForCountryStateTree.getTree());
-                    listOfSelectedLeaves = utils.removeUSADuplicate(listOfSelectedLeaves);
+					String[] listOfSelectedLeaves = vars.normalizeSelectedRegionsForSubregions(
+							utils.removeUSADuplicate(utils.getAllSelectedRegions(paneForCountryStateTree.getTree())));
                     String stateStr = utils.returnAppendedString(listOfSelectedLeaves).replace(",", "");
                     if (stateStr.length() < 9) {
                         state = "_"+stateStr;
@@ -889,7 +889,8 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 		int no_non_nested = 0;
 
 		String treatment = comboBoxTreatment.getValue().toLowerCase().trim();
-		String[] listOfSelectedLeaves = utils.removeUSADuplicate(utils.getAllSelectedRegions(tree));
+		String[] listOfSelectedLeaves = vars.normalizeSelectedRegionsForSubregions(
+				utils.removeUSADuplicate(utils.getAllSelectedRegions(tree)));
 		utils.returnAppendedString(listOfSelectedLeaves);
 		
 		ObservableList<String> subset_list = checkComboBoxSubset.getCheckModel().getCheckedItems();
@@ -979,26 +980,21 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 								} else {
 									no_non_nested++;
 								}
-								if ((vars.isGcamUSA()) && (state.toLowerCase().equals("usa"))
-										&& (listOfSelectedLeaves.length > 1)) {
-									// skip entries for national USA when also processing states
-								} else {
-									if (is_subsector_in_region) {
-										Double val = valuef_list[i];
-										String conv = "1.0";
-										//adjusts scaling for transportation fuels when user has selected to use MMBTU conversions
-										//done to make small region transportation marketshare targets easier to work   
-										if (utils.shouldApplyTrnUnitPriceConversion(sector_name)) {
-											conv = "1e-3";
-											val *= 1000.;
-										}
-													String formattedVal = formatDisplayValue(val);
-										String line = state + "," + sector_name + "," + subsector_name + "," + tech_name
-															+ "," + t + "," + use_this_policy_name + "," + year_list[i] + "," + formattedVal
-												+ "," + conv + vars.getEol();
-										files.writeToBufferedFile(bw, line);
-									}
-								}
+											if (is_subsector_in_region) {
+												Double val = valuef_list[i];
+												String conv = "1.0";
+												//adjusts scaling for transportation fuels when user has selected to use MMBTU conversions
+												//done to make small region transportation marketshare targets easier to work   
+												if (utils.shouldApplyTrnUnitPriceConversion(sector_name)) {
+													conv = "1e-3";
+													val *= 1000.;
+												}
+																String formattedVal = formatDisplayValue(val);
+												String line = state + "," + sector_name + "," + subsector_name + "," + tech_name
+																	+ "," + t + "," + use_this_policy_name + "," + year_list[i] + "," + formattedVal
+														+ "," + conv + vars.getEol();
+												files.writeToBufferedFile(bw, line);
+											}
 							}
 						}
 					}
@@ -1063,10 +1059,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 							String conversions = utils.getSubsectorConversions(state, sector_name, subsector_name,
 									t, unitPriceConversionApplied);
 							
-							if ((vars.isGcamUSA()) && (state.toLowerCase().equals("usa"))
-									&& (listOfSelectedLeaves.length > 1)) {
-								// skip national USA when states are also present
-							} else if (conversions != null) {
+							if (conversions != null) {
 								if (conversions.startsWith(","))
 									conversions = conversions.substring(1);
 								String line = state + "," + sector_name + "," + subsector_name + "," + tech_name + ","
@@ -1121,19 +1114,15 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 					use_this_market_name += "-" + year_list[i];
 				 use_this_policy_name += "-" + year_list[i];
 				}
-				if ((vars.isGcamUSA()) && (state.toLowerCase().equals("usa")) && (listOfSelectedLeaves.length > 1)) {
-					// skip national USA when states are also present
+				String line = "";
+				if (which.equals("fixed")) {
+					line = state + "," + use_this_policy_name + "," + use_this_market_name + ",RES," + year_list[i]
+							+ ",1," + year_list[i] + ",-100" + vars.getEol();
 				} else {
-					String line = "";
-					if (which.equals("fixed")) {
-						line = state + "," + use_this_policy_name + "," + use_this_market_name + ",RES," + year_list[i]
-								+ ",1," + year_list[i] + ",-100" + vars.getEol();
-					} else {
-						line = state + "," + use_this_policy_name + "," + use_this_market_name + ",RES," + year_list[i]
-								+ ",1" + vars.getEol();
-					}
-					files.writeToBufferedFile(bw0, line);
+					line = state + "," + use_this_policy_name + "," + use_this_market_name + ",RES," + year_list[i]
+							+ ",1" + vars.getEol();
 				}
+				files.writeToBufferedFile(bw0, line);
 			}
 			updateProgressBar((double) s / (listOfSelectedLeaves.length - 1));
 		}
@@ -1199,8 +1188,8 @@ public class TabMarketShare extends PolicyTab implements Runnable {
         rtnStr.append(METADATA_MARKET_NAME).append(market).append(vars.getEol());
 		appendTransportConversionMetadata(rtnStr);
 
-        String[] listOfSelectedLeaves = utils.getAllSelectedRegions(tree);
-        listOfSelectedLeaves = utils.removeUSADuplicate(listOfSelectedLeaves);
+		String[] listOfSelectedLeaves = vars.normalizeSelectedRegionsForSubregions(
+				utils.removeUSADuplicate(utils.getAllSelectedRegions(tree)));
         String states = utils.returnAppendedString(listOfSelectedLeaves);
         rtnStr.append(METADATA_REGIONS).append(states).append(vars.getEol());
 

@@ -9,8 +9,13 @@ gCamPPExecutable = modelInterface_1_15_20.jar
 #gCamPPExecutable = enhancedModelInterface-Old.jar
 gCamPPExecutableDir = #gCamGuiDir#\EnhancedModelInterface
 
-#Are you using GCAM-USA? If so, indicate "true". This enables state-level items in tree
+#Subregion controls: if any of these are true, subregions are enabled in the region tree
+#Legacy switch for GCAM-USA workflows
 isGcamUSA = true
+#Optional switch for GCAM-China workflows
+isGcamChina = false
+#Generic override for any workflow that should use configured subregions
+isUseSubregions = false
 
 #Provides system with additional info on GCAM setup, including what database to use for output
 gCamDataDir = #gCamHomeDir#\Main_User_Workspace\input\gcam-data-system\xml
@@ -59,6 +64,7 @@ xmlEditor = notepad.exe
 #These values are inserted into the scenario-specific configuration file when it created. Comment with # to use default
 stopPeriod = 11
 solver = #gCamHomeDir#\Main_User_Workspace\input\solution\cal_broyden_config_mod_062217.xml
+debugStartupTiming = 0
 
 gCamOutputToSave = #gCamHomeDir#\\Main_User_Workspace\\exe\\logs\\main_log.txt;#gCamHomeDir#\\Main_User_Workspace\\exe\\logs\\calibration_log.txt
 

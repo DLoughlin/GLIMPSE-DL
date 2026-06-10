@@ -605,7 +605,7 @@ class PaneCreateScenario extends ScenarioBuilder {
 			default_years = utils.createStringArrayFromListOfIntegers(vars.getAllowablePolicyYears());
 		}
     	List<String> tempList = new ArrayList<>();
-    	if (vars.isGcamUSA() && vars.getSubRegionList() != null && vars.getSubRegionList().size() > 0) {
+      if (vars.isUseSubregions() && vars.getSubRegionList() != null && vars.getSubRegionList().size() > 0) {
 			tempList.addAll(vars.getSubRegionList());
 		}
     	if (vars.getRegionList() != null && vars.getRegionList().size() > 0) {
