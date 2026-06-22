@@ -271,6 +271,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     PaneScenarioLibrary() {}
 
     // --- UI setup ---
+    /**
+     * Orchestrates the creation of all scenario library action buttons and their configuration.
+     */
     private void createScenarioLibraryButtons() {
         createScenarioLibraryButtonInstances();
         configureInitialScenarioLibraryButtonState();
@@ -279,6 +282,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         refreshScenarioActionButtons();
     }
 
+    /**
+     * Creates instances of all scenario library buttons and stores them in static Client fields.
+     */
     private void createScenarioLibraryButtonInstances() {
         Client.buttonDiffFiles = createTimedScenarioButton("buttonDiffFiles", DIFF_LABEL, styles.getBigButtonWidth(), DIFF_TOOLTIP, "compare");
         Client.buttonRefreshScenarioStatus = createTimedScenarioButton("buttonRefreshScenarioStatus", REFRESH_LABEL, styles.getBigButtonWidth(), REFRESH_TOOLTIP, "refresh1");
@@ -300,6 +306,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         Client.buttonReport = createTimedScenarioButton("buttonReport", REPORT_LABEL, styles.getBigButtonWidth(), REPORT_TOOLTIP, null);
     }
 
+    /**
+     * Sets initial disabled/enabled state for all scenario library buttons based on current selection.
+     */
     private void configureInitialScenarioLibraryButtonState() {
         ScenarioLibrarySelectionState selectionState = ScenarioLibrarySelectionState.capture();
         Client.buttonRunScenario.setDisable(!selectionState.hasSelection);
@@ -318,6 +327,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         Client.buttonReport.setDisable(false);
     }
 
+    /**
+     * Attaches action event handlers to all scenario library buttons.
+     */
     private void bindScenarioLibraryButtonHandlers() {
         Client.buttonRefreshScenarioStatus.setOnAction(e -> {
             refreshScenarioStatusAsync(true);
@@ -351,6 +363,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         Client.buttonShowRunQueue.setOnAction(e -> handleShowRunQueue());
     }
 
+    /**
+     * Configures the layout properties and visibility of all scenario library buttons.
+     */
     private void configureScenarioLibraryButtonLayout() {
         Client.buttonResults.setAlignment(Pos.CENTER);
         Client.buttonResultsForSelected.setAlignment(Pos.CENTER);
@@ -371,6 +386,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         Client.buttonReport.setVisible(false);
     }
 
+    /**
+     * Wires the table selection model to refresh button states whenever selection changes.
+     */
     private void wireScenarioSelectionButtonRefresh() {
         if (ScenarioTable.tableScenariosLibrary == null || ScenarioTable.tableScenariosLibrary.getSelectionModel() == null) {
             return;
@@ -381,6 +399,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 (javafx.collections.ListChangeListener<ScenarioRow>) change -> refreshScenarioActionButtons());
     }
 
+    /**
+     * Refreshes scenario action buttons by capturing selection state and applying button enable/disable logic.
+     * Marshals the update to the JavaFX application thread if needed.
+     */
     private void refreshScenarioActionButtons() {
         if (Platform.isFxApplicationThread()) {
             applyScenarioActionButtonState();
@@ -389,6 +411,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         Platform.runLater(this::applyScenarioActionButtonState);
     }
 
+    /**
+     * Applies arrow status and button enable/disable logic based on current selection state.
+     */
     private void applyScenarioActionButtonState() {
         try {
             setArrowAndButtonStatus();
@@ -396,6 +421,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         } catch (Exception ignored) {}
     }
 
+    /**
+     * Applies enable/disable state to individual scenario action buttons based on selection state.
+     *
+     * @param selectionState the current selection state snapshot
+     */
     private void applyScenarioLibrarySelectionState(ScenarioLibrarySelectionState selectionState) {
         if (selectionState == null) {
             return;
@@ -447,6 +477,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     // --- UI actions ---
+    /**
+     * Handles the Archive Scenario button action after user confirmation.
+     */
     private void handleArchiveScenario() {
         if (!utils.confirmArchiveScenario()) {
             return;
@@ -454,6 +487,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         scenarioFileActionService.archiveScenarios(ScenarioSelection.capture());
     }
 
+    /**
+     * Handles the Delete Scenario button action after user confirmation.
+     * Dequeues scenarios, clears run state, and delegates file deletion to the service.
+     */
     private void handleDeleteScenario() {
         if (!utils.confirmDelete()) {
             return;
@@ -471,6 +508,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
+    /**
+     * Handles the Results button action to open ModelInterface with all available output databases.
+     */
     private void handleResults() {
         if (!hasModelInterfaceLocationConfigured()) {
             utils.warningMessage("Please specify modelInterfaceDir in options file.");
@@ -484,6 +524,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
+    /**
+     * Handles the Results-Selected button action to open ModelInterface with the selected scenario's database.
+     */
     private void handleResultsForSelected() {
         if (!hasModelInterfaceLocationConfigured()) {
             utils.warningMessage("Please specify modelInterfaceDir in options file.");
@@ -507,10 +550,17 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
+    /**
+     * Handles the Browse Scenario Folder button action to open selected scenario directories.
+     */
     private void handleBrowseScenarioFolder() {
         scenarioFileActionService.openScenarioFolders(ScenarioSelection.capture());
     }
 
+    /**
+     * Handles the Import Scenario button action to import an existing configuration file as a new scenario.
+     * Prompts user for overwrite if scenario already exists.
+     */
     private void handleImportScenario() {
         File newConfigFile = FileChooserPlus.showOpenDialog(null, "Select scenario configuration file", new File(vars.getgCamExecutableDir()), FileChooserPlus.createExtensionFilter(XML_FILE_FILTER_LABEL, XML_FILE_FILTER_EXT));
         if (newConfigFile == null) {
@@ -543,18 +593,30 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
+    /**
+     * Handles the Config button action to open the configuration file of the selected scenario.
+     */
     private void handleViewConfig() {
         scenarioFileActionService.openScenarioConfigs(ScenarioSelection.capture());
     }
 
+    /**
+     * Handles the Log button action to view the main_log.txt file of the selected scenario.
+     */
     private void handleViewLog() {
         scenarioFileActionService.openScenarioLogs(ScenarioSelection.capture());
     }
 
+    /**
+     * Handles the ExeLog button action to view the main_log.txt file in the GCAM executable log folder.
+     */
     private void handleViewExeLog() {
         scenarioFileActionService.openExeLog();
     }
 
+    /**
+     * Handles the Diff button action to compare configuration files of the two selected scenarios side-by-side.
+     */
     private void handleDiffFiles() {
         ObservableList<ScenarioRow> selectedFiles = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItems();
         if (selectedFiles.size() != 2) {
@@ -575,6 +637,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
+    /**
+     * Handles the Queue button action to display the list of queued, running, and completed scenarios.
+     */
     private void handleShowRunQueue() {
         List<String> queuedRuns = runController.getQueuedRuns();
         List<String> completedRuns = runController.getCompletedRuns();
@@ -599,11 +664,20 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
+    /**
+     * Launches ModelInterface with the configured GCAM output database.
+     */
     private void runModelInterface() {
         String database = vars.getgCamOutputDatabase();
         runModelInterfaceWhich(database);
     }
 
+    /**
+     * Launches ModelInterface with a specific output database path.
+     * Validates configuration and command-line arguments before launch.
+     *
+     * @param databasePath the absolute path to the output database
+     */
     private void runModelInterfaceWhich(String databasePath) {
         final String modelInterfaceDirStr = vars.getModelInterfaceDir();
         final File modelInterfaceDir = (modelInterfaceDirStr == null) ? null : new File(modelInterfaceDirStr);
@@ -706,8 +780,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     /**
-     * Triggers a resource refresh after ModelInterface exits so status-bar database size
-     * reflects any external process changes without waiting for a manual refresh.
+     * Monitors ModelInterface process completion and triggers a database size refresh on exit.
+     *
+     * @param modelInterfaceFuture the future representing the running ModelInterface process
      */
     private void monitorModelInterfaceCompletion(Future<?> modelInterfaceFuture) {
         if (modelInterfaceFuture == null) {
@@ -729,14 +804,28 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     // --- Run control ---
+    /**
+     * Returns the GCAM run controller managing current and queued scenario executions.
+     *
+     * @return the active run controller
+     */
     private GcamRunController getRunController() {
         return runController;
     }
 
+    /**
+     * Checks whether a GCAM scenario is currently running.
+     *
+     * @return true if GCAM is actively running a scenario, false otherwise
+     */
     private boolean hasActiveGcamRun() {
         return runController.hasActiveRun();
     }
 
+    /**
+     * Creates and configures the live status refresh timeline if not already initialized.
+     * The timeline periodically updates scenario status while GCAM is running.
+     */
     private void ensureLiveStatusRefreshTimeline() {
         if (liveStatusRefreshTimeline != null) {
             return;
@@ -767,6 +856,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         liveStatusRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
     }
 
+    /**
+     * Starts the live status refresh timeline when a GCAM run begins.
+     */
     private void startLiveStatusRefresh() {
         if (!Platform.isFxApplicationThread()) {
             Platform.runLater(this::startLiveStatusRefresh);
@@ -778,6 +870,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
+    /**
+     * Stops the live status refresh timeline when GCAM run completes or is stopped.
+     */
     private void stopLiveStatusRefresh() {
         if (!Platform.isFxApplicationThread()) {
             Platform.runLater(this::stopLiveStatusRefresh);
@@ -788,7 +883,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
-    /** Prepares queued runs by confirming reuse, clearing prior logs, optionally switching to archive config, and then launches GCAM. */
+    /**
+     * Prepares queued runs by confirming reuse, clearing prior logs, optionally switching to archive config, and then launches GCAM.
+     */
     private void runGcamOnSelected() throws IOException {
         if (!WindowsRuntimePreflight.ensureMsvcRuntimeAvailableOrWarn(utils, "GCAM run")) {
             System.out.println("GCAM launch blocked: missing Microsoft Visual C++ runtime.");
@@ -814,6 +911,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         runGcamModel(preparationResult.getConfigFiles());
     }
 
+    /**
+     * Executes GCAM with the provided configuration files, queuing runs and monitoring for completion.
+     *
+     * @param configFiles array of configuration file paths to process
+     */
     private void runGcamModel(String[] configFiles) {
         if (configFiles == null || configFiles.length == 0) {
             return;
@@ -879,6 +981,13 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         refreshScenarioActionButtons();
     }
 
+    /**
+     * Shows user a dialog when Windows policy blocks GCAM startup for a scenario.
+     * Only shows once per scenario per session via deduplication.
+     *
+     * @param scenarioName the scenario name where the startup was blocked
+     * @param result process result containing error details
+     */
     private void maybePromptWindowsPolicyBlockOnStartupFailure(String scenarioName, ProcessResult result) {
         if (!isWindowsPolicyBlockStartupFailure(result)) {
             return;
@@ -922,6 +1031,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         });
     }
 
+    /**
+     * Detects whether a process failure was caused by Windows Application Control policy blocking GCAM.
+     *
+     * @param result the process result to analyze
+     * @return true if the failure was due to Windows policy block, false otherwise
+     */
     private boolean isWindowsPolicyBlockStartupFailure(ProcessResult result) {
         String os = System.getProperty("os.name", "");
         if (!os.toLowerCase(Locale.ENGLISH).startsWith("windows") || result == null) {
@@ -939,7 +1054,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 || normalized.contains(WINDOWS_POLICY_BLOCK_TEXT);
     }
 
-    /** Stops the current GCAM run. "Stop All" also clears queued scenarios while leaving existing output untouched. */
+    /**
+     * Stops the current GCAM run. "Stop All" also clears queued scenarios while leaving existing output untouched.
+     */
     private void stopCurrentGcamRun() {
         if (!runController.hasActiveRun()) {
             return;
@@ -1001,6 +1118,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         });
     }
 
+    /**
+     * Extracts the scenario name from a configuration file path.
+     *
+     * @param configFile the absolute path to the configuration file
+     * @return the scenario name, or an empty string if not found
+     */
     private String scenarioNameFromConfigPath(String configFile) {
         if (configFile == null || configFile.trim().isEmpty()) {
             return "";
@@ -1019,6 +1142,14 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         return "";
     }
 
+    /**
+     * Processes a single line of output from the running GCAM process.
+     * Handles error parsing, interactive prompts, and success markers.
+     *
+     * @param scenarioName the running scenario name
+     * @param line the output line
+     * @param stderr true if line is from stderr, false if from stdout
+     */
     private void handleGcamProcessLine(String scenarioName, String line, boolean stderr) {
         if (line == null) {
             return;
@@ -1044,6 +1175,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
+    /**
+     * Prompts user when GCAM is blocked waiting for the output database to be released by ModelInterface.
+     *
+     * @param promptLine the prompt line from GCAM stdout
+     */
     private void maybePromptForDatabaseRelease(String promptLine) {
         if (!looksLikeDatabaseSavePrompt(promptLine)) {
             return;
@@ -1155,6 +1291,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         });
     }
 
+    /**
+     * Updates scenario status to "Success" when a GCAM stdout success marker is detected.
+     * Clears any previously recorded live unsolved market errors for the scenario.
+     *
+     * @param line the stdout line to check for success markers
+     */
     private void maybeMarkLiveGcamSuccess(String line) {
         if (line == null) {
             return;
@@ -1201,6 +1343,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         Platform.runLater(() -> applyScenarioStatusSnapshots(refreshResult.getSnapshots(), refreshResult.isNoScenarios()));
     }
 
+    /**
+     * Updates the status bar with current computer resource statistics (CPU, memory, disk).
+     *
+     * @param runningScenario the name of the currently running scenario, if any
+     */
     private void updateStatusBarComputerStats(String runningScenario) {
         refreshStatusBarComputerStats();
     }
@@ -1231,6 +1378,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         Client.setStartupStatus(safeStatsText, -1, false);
     }
 
+    /**
+     * Applies refreshed scenario status snapshots to the table and triggers view state restoration.
+     *
+     * @param snapshots list of updated scenario status snapshots
+     * @param noScenarios true if no scenarios exist, false otherwise
+     */
     private void applyScenarioStatusSnapshots(List<ScenarioStatusSnapshot> snapshots, boolean noScenarios) {
         boolean refreshDbSizeAfterStatusTransition = hasDbSizeTriggerStatusTransition(snapshots);
         viewStateHelper.applySnapshots(
@@ -1259,6 +1412,10 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         resetToDefaultCreatedSortAndScroll.set(true);
     }
 
+    /**
+     * Applies the default created sort and scroll position if a refresh was requested.
+     * Selects the last row and scrolls to it.
+     */
     private void applyDefaultCreatedSortAndScrollIfRequested() {
         if (!resetToDefaultCreatedSortAndScroll.compareAndSet(true, false)) {
             return;
@@ -1282,6 +1439,13 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         ScenarioTable.tableScenariosLibrary.scrollTo(lastIndex);
     }
 
+    /**
+     * Checks if any scenario status changed to a database-size-trigger state
+     * (Success, Unsolved Mkts, DNF, etc.).
+     *
+     * @param snapshots the list of scenario status snapshots
+     * @return true if any scenario transitioned to a DB-size-trigger status, false otherwise
+     */
     private boolean hasDbSizeTriggerStatusTransition(List<ScenarioStatusSnapshot> snapshots) {
         if (snapshots == null || snapshots.isEmpty()) {
             return false;
@@ -1318,6 +1482,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         return false;
     }
 
+    /**
+     * Checks if a status text represents a terminal state that may change database footprint.
+     *
+     * @param statusText the status text to check
+     * @return true if status is a database-size-trigger status, false otherwise
+     */
     private boolean isDbSizeTriggerStatus(String statusText) {
         if (statusText == null || statusText.trim().isEmpty()) {
             return false;
@@ -1330,10 +1500,19 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 || normalized.contains("problem mkts");
     }
 
+    /**
+     * Normalizes status text for case-insensitive comparison.
+     *
+     * @param statusText the status text to normalize
+     * @return lowercase trimmed status text, or empty string if null
+     */
     private String normalizeStatusForCompare(String statusText) {
         return statusText == null ? "" : statusText.trim().toLowerCase(Locale.ENGLISH);
     }
 
+    /**
+     * Applies live unsolved market error periods to the table for currently running scenarios.
+     */
     private void applyLiveStdoutErrorPeriods() {
         if (liveStdoutErrorPeriodsByScenario.isEmpty()) {
             return;
@@ -1358,6 +1537,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
+    /**
+     * Checks whether a stdout line is a live error line (starts with ERROR prefix).
+     *
+     * @param line the line to check
+     * @return true if line is a live error, false otherwise
+     */
     private boolean isLiveStdoutErrorLine(String line) {
         if (line == null) {
             return false;
@@ -1365,6 +1550,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         return line.trim().startsWith(LIVE_STDOUT_ERROR_PREFIX);
     }
 
+    /**
+     * Extracts unsolved market period numbers from a live error line using regex pattern matching.
+     *
+     * @param line the error line to parse
+     * @return a LinkedHashSet of period numbers found in the line
+     */
     private LinkedHashSet<String> extractLiveErrorPeriods(String line) {
         LinkedHashSet<String> periods = new LinkedHashSet<>();
         if (line == null) {
@@ -1392,6 +1583,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         return periods;
     }
 
+    /**
+     * Formats a set of period numbers into a comma-separated string.
+     *
+     * @param periods the set of period numbers to format
+     * @return formatted period string or empty string if no periods
+     */
     private String formatLiveErrorPeriods(java.util.Set<String> periods) {
         if (periods == null || periods.isEmpty()) {
             return "";
@@ -1399,6 +1596,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         return String.join(",", periods);
     }
 
+    /**
+     * Records unsolved market periods from a live GCAM stdout error line for a specific scenario.
+     *
+     * @param scenarioName the scenario name
+     * @param line the error line containing period information
+     */
     private void recordLiveStdoutError(String scenarioName, String line) {
         String normalizedScenarioName = scenarioName == null ? "" : scenarioName.trim();
         if (normalizedScenarioName.isEmpty()) {
@@ -1426,6 +1629,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         });
     }
 
+    /**
+     * Clears recorded unsolved market periods for a specific scenario.
+     *
+     * @param scenarioName the scenario to clear error records for
+     */
     private void clearLiveStdoutError(String scenarioName) {
         if (scenarioName == null || scenarioName.trim().isEmpty()) {
             return;
@@ -1433,6 +1641,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         liveStdoutErrorPeriodsByScenario.remove(scenarioName.trim());
     }
 
+    /**
+     * Applies live runtime updates to the currently running scenario's table row.
+     */
     private void applyLiveRuntimeForActiveScenario() {
         GcamRunController.ExecutionState executionState = runController.snapshot();
         String scenarioName = executionState.currentScenarioName;
@@ -1454,12 +1665,18 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         });
     }
 
-    /** Triggers an asynchronous scenario status refresh. */
+    /**
+     * Triggers an asynchronous scenario status refresh.
+     */
     public void clearAndRefreshScenarioTable() {
         refreshScenarioStatusAsync(true);
     }
 
-    /** Captures table view state before refresh and restores it after refreshed snapshots are applied. */
+    /**
+     * Captures table view state before refresh and restores it after refreshed snapshots are applied.
+     *
+     * @param userInitiated true if refresh was initiated by user, false for automatic refresh
+     */
     public void refreshScenarioStatusAsync(boolean userInitiated) {
         if (!scenarioRefreshInProgress.compareAndSet(false, true)) {
             return;
@@ -1506,6 +1723,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         refreshThread.start();
     }
 
+    /**
+     * Captures the current view state (selection, sort order, scroll position) before a refresh.
+     *
+     * @return the captured refresh view state
+     */
     private ScenarioLibraryViewStateHelper.RefreshViewState capturePendingRefreshViewState() {
         if (Platform.isFxApplicationThread()) {
             return viewStateHelper.capture();
@@ -1529,6 +1751,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         return capturedState[0] == null ? ScenarioLibraryViewStateHelper.RefreshViewState.empty() : capturedState[0];
     }
 
+    /**
+     * Builds a status refresh request with current execution state and queued scenarios.
+     *
+     * @return a new refresh request with current run state
+     */
     private ScenarioStatusService.RefreshRequest buildScenarioStatusRefreshRequest() {
         GcamRunController.ExecutionState executionState = runController.snapshot();
         return new ScenarioStatusService.RefreshRequest(
@@ -1541,6 +1768,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                 executionState.isScenarioActivelyRunning(executionState.currentScenarioName));
     }
 
+    /**
+     * Reconciles the internal run queue tracking with the refresh result.
+     *
+     * @param refreshResult the status refresh result containing queue updates
+     */
     private void reconcileQueuedRunTracking(ScenarioStatusRefreshResult refreshResult) {
         if (refreshResult == null) {
             return;
@@ -1548,20 +1780,41 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         runController.replaceQueuedRuns(refreshResult.getQueuedRuns());
     }
 
+    /**
+     * Marks a scenario as stopped (for manual stop) and updates the table row.
+     *
+     * @param scenarioName the scenario to mark as stopped
+     */
     private void markScenarioStoppedDnF(String scenarioName) {
         markScenarioStopped(scenarioName);
     }
 
+    /**
+     * Marks a scenario as stopped and updates its terminal status.
+     *
+     * @param scenarioName the scenario to mark as stopped
+     */
     private void markScenarioStopped(String scenarioName) {
         clearLiveStdoutError(scenarioName);
         updateScenarioTerminalStatus(scenarioName, ScenarioStatusService.STATUS_STOPPED);
     }
 
+    /**
+     * Marks a scenario as Did Not Finish (DNF) with appropriate error status.
+     *
+     * @param scenarioName the scenario to mark as DNF
+     */
     private void markScenarioDnF(String scenarioName) {
         clearLiveStdoutError(scenarioName);
         updateScenarioTerminalStatus(scenarioName, ScenarioStatusService.STATUS_DNF);
     }
 
+    /**
+     * Updates a scenario's terminal status (e.g., "Success", "DNF", "Stopped") and completion date.
+     *
+     * @param scenarioName the scenario to update
+     * @param statusText the new status text
+     */
     private void updateScenarioTerminalStatus(String scenarioName, String statusText) {
         if (scenarioName == null || scenarioName.trim().isEmpty() || statusText == null || statusText.trim().isEmpty()) {
             return;
@@ -1586,6 +1839,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         });
     }
 
+    /**
+     * Persists a "stopped" status marker to the scenario's main_log.txt file.
+     *
+     * @param scenarioName the scenario to mark as stopped in logs
+     */
     private void persistStoppedStatusMarker(String scenarioName) {
         if (scenarioName == null || scenarioName.trim().isEmpty()) {
             return;
@@ -1617,6 +1875,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
+    /**
+     * Moves the executable's main_log.txt to the scenario's folder after a manual stop.
+     *
+     * @param scenarioName the scenario folder to move the log to
+     */
     private void moveExeMainLogToScenarioFolder(String scenarioName) {
         if (scenarioName == null || scenarioName.trim().isEmpty()) {
             return;
@@ -1640,6 +1903,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
+    /**
+     * Copies run artifact files (logs, errors, output) from the executable folder to the scenario folder.
+     *
+     * @param scenarioName the scenario folder to copy artifacts to
+     */
     private void finalizeScenarioRunArtifacts(String scenarioName) {
         if (scenarioName == null || scenarioName.trim().isEmpty()) {
             return;
@@ -1669,6 +1937,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     // --- Reports ---
+    /**
+     * Generates and displays a comprehensive scenario execution report.
+     */
     private void generateRunReport() {
         ArrayList<String> txtArray = ScenarioLibraryReportHelper.createScenarioExecutionReport(
                 files,
@@ -1685,6 +1956,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         utils.displayArrayList(txtArray, "Scenario Execution Report");
     }
 
+    /**
+     * Generates and displays errors found in the GCAM executable log folder.
+     */
     private void generateExeErrorReport() {
         ScenarioLibraryReportHelper.ErrorTextReport report = ScenarioLibraryReportHelper.createExecutableErrorTextReport(
                 files,
@@ -1696,6 +1970,9 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         utils.showTextErrorReport(report, 910, 600);
     }
 
+    /**
+     * Generates and displays errors found in the selected scenario's main_log.txt file.
+     */
     private void generateErrorReport() {
         ScenarioSelection selection = ScenarioSelection.capture();
         if (scenarioFileActionService.warnIfAnyScenarioMainLogMissing(selection)) {
@@ -1713,31 +1990,68 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     // --- Helpers ---
+    /**
+     * Checks if a text line looks like a GCAM database save prompt.
+     *
+     * @param line the line to check
+     * @return true if line looks like a database save prompt, false otherwise
+     */
     private static boolean looksLikeDatabaseSavePrompt(String line) {
         return ScenarioLibraryPromptHelper.looksLikeDatabaseSavePrompt(line);
     }
 
+    /**
+     * Normalizes a database prompt text by removing common formatting characters.
+     *
+     * @param text the prompt text to normalize
+     * @return the normalized prompt text
+     */
     private static String normalizeDatabasePromptText(String text) {
         return ScenarioLibraryPromptHelper.normalizeDatabasePromptText(text);
     }
 
+    /**
+     * Captures the names of all currently selected scenarios.
+     *
+     * @return a list of selected scenario names
+     */
     private List<String> captureSelectedScenarioNames() {
         return new ArrayList<>(ScenarioSelection.capture().getScenarioNames());
     }
 
+    /**
+     * Checks if the ModelInterface location has been configured in the options file.
+     *
+     * @return true if ModelInterface directory is configured, false otherwise
+     */
     private boolean hasModelInterfaceLocationConfigured() {
         String modelInterfaceDir = vars.getModelInterfaceDir();
         return modelInterfaceDir != null && !modelInterfaceDir.trim().isEmpty();
     }
 
+    /**
+     * Returns the name of the scenario that was requested to be stopped.
+     *
+     * @return the scenario name, or null if no stop was requested
+     */
     private String getStopRequestedScenarioName() {
         return runController.getStopRequestedScenarioName();
     }
 
+    /**
+     * Clears transient run state for scenarios that were deleted.
+     *
+     * @param selection the scenarios being deleted
+     */
     private void clearDeletedScenarioRunState(ScenarioSelection selection) {
         clearScenarioTransientRunState(selection, ScenarioRunStateClearMode.DELETE);
     }
 
+    /**
+     * Dequeues scenarios from the run queue and clears their "In queue" status.
+     *
+     * @param scenariosToDequeue the scenarios to dequeue
+     */
     private void dequeueScenariosAndClearStatus(ObservableList<ScenarioRow> scenariosToDequeue) {
         if (scenariosToDequeue == null || scenariosToDequeue.isEmpty()) {
             return;
@@ -1775,10 +2089,21 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         clearScenarioTransientRunState(scenarioName, ScenarioRunStateClearMode.RECREATE_OVERWRITE);
     }
 
+    /**
+     * Clears terminal run-result fields when importing/overwriting an existing scenario.
+     *
+     * @param scenarioName scenario to reset
+     */
     private void clearImportedScenarioRunResultFields(String scenarioName) {
         clearScenarioTransientRunState(scenarioName, ScenarioRunStateClearMode.IMPORT_OVERWRITE);
     }
 
+    /**
+     * Clears transient run state for all scenarios in the selection.
+     *
+     * @param selection the scenarios to clear
+     * @param mode the type of clear operation (prepare run, delete, etc.)
+     */
     private void clearScenarioTransientRunState(ScenarioSelection selection, ScenarioRunStateClearMode mode) {
         if (selection == null) {
             return;
@@ -1788,6 +2113,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
     }
 
+    /**
+     * Clears transient run state for a specific scenario.
+     *
+     * @param scenarioName scenario to clear
+     * @param mode the type of clear operation (prepare run, delete, etc.)
+     */
     private void clearScenarioTransientRunState(String scenarioName, ScenarioRunStateClearMode mode) {
         if (scenarioName == null || scenarioName.trim().isEmpty()) {
             return;
@@ -1826,6 +2157,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         return scenarioLibraryHBox;
     }
 
+    /**
+     * Handles a table refresh while preserving the current selection and applying an optional update action.
+     *
+     * @param updateAction optional action to run during the refresh
+     */
     private void handleSelectionPreservingTableRefresh(Runnable updateAction) {
         if (Platform.isFxApplicationThread()) {
             viewStateHelper.preserveSelectionAndRefresh(updateAction);
@@ -1838,12 +2174,26 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         });
     }
 
+    /**
+     * Checks if two text strings are equal after null-safe comparison.
+     *
+     * @param left first string (may be null)
+     * @param right second string (may be null)
+     * @return true if both strings are equal or both are null, false otherwise
+     */
     private static boolean sameText(String left, String right) {
         String normalizedLeft = left == null ? "" : left;
         String normalizedRight = right == null ? "" : right;
         return normalizedLeft.equals(normalizedRight);
     }
 
+    /**
+     * Updates a scenario row in-place using a provided predicate update function.
+     * Marshals the update to the JavaFX thread if needed.
+     *
+     * @param scenarioName the scenario to find and update
+     * @param rowUpdate predicate that updates the row and returns true if changed
+     */
     private void updateScenarioRowInPlace(String scenarioName, java.util.function.Predicate<ScenarioRow> rowUpdate) {
         if (scenarioName == null || scenarioName.trim().isEmpty() || rowUpdate == null) {
             return;
@@ -1865,6 +2215,13 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         Platform.runLater(applyUpdate);
     }
 
+    /**
+     * Formats elapsed time between start and current time into a human-readable runtime string.
+     *
+     * @param runStartTimeMillis the start time in milliseconds
+     * @param currentTimeMillis the current time in milliseconds
+     * @return formatted runtime string (e.g., "> 2 hr 30 min 45 sec") or empty string if invalid
+     */
     private static String formatLiveRuntime(long runStartTimeMillis, long currentTimeMillis) {
         if (runStartTimeMillis <= 0L || currentTimeMillis <= runStartTimeMillis) {
             return "";
@@ -1941,10 +2298,25 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         });
     }
 
+    /**
+     * Logs a button build step to the startup checkpoint system.
+     *
+     * @param label the description of the build step
+     */
     private static void logButtonBuildStep(String label) {
         Client.logStartupBuildCheckpoint("PaneScenarioLibrary: " + label);
     }
 
+    /**
+     * Creates a scenario library action button with timing telemetry.
+     *
+     * @param label the button ID label
+     * @param text the button display text
+     * @param width the button width
+     * @param tooltip the tooltip text
+     * @param iconKey the icon key from the styles system
+     * @return the configured button
+     */
     private javafx.scene.control.Button createTimedScenarioButton(String label, String text, double width, String tooltip, String iconKey) {
         logButtonBuildStep("createScenarioLibraryButtonInstances: " + label + " start");
         javafx.scene.control.Button button = utils.createButton(text, (int) width, tooltip, iconKey);
