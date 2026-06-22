@@ -231,7 +231,7 @@ class PaneCreateScenario extends ScenarioBuilder {
         Client.buttonCreateScenarioConfigFile.setOnAction(e -> {
             boolean created = processScenarioComponentList(Client.getPrimaryStage(), false);
             if (created && Client.paneScenarioLibrary != null) {
-                Client.paneScenarioLibrary.requestDefaultCreatedSortAndScrollToBottomOnNextRefresh();
+                Client.paneScenarioLibrary.requestDefaultCreatedSortAndScrollToTopOnNextRefresh();
             }
             if (created) {
                 Client.buttonRefreshScenarioStatus.fire();

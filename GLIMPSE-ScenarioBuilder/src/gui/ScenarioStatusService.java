@@ -104,7 +104,8 @@ final class ScenarioStatusService {
                 noScenarios = true;
             } else {
                 Arrays.sort(scenarioFolders, Comparator.comparingLong(this::getScenarioConfigCreatedTime)
-                        .thenComparing(folder -> folder == null ? "" : folder.getName(), String.CASE_INSENSITIVE_ORDER));
+                        .thenComparing(folder -> folder == null ? "" : folder.getName(), String.CASE_INSENSITIVE_ORDER)
+                        .reversed());
                 for (File scenarioFolder : scenarioFolders) {
                     ScenarioStatusSnapshot snapshot = buildScenarioStatusSnapshot(
                             scenarioFolder,

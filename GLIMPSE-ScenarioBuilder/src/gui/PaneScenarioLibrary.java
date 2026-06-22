@@ -78,6 +78,7 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -99,7 +100,7 @@ import javafx.stage.Stage;
  *
  * <b>Usage:</b> Constructed by {@link ScenarioBuilder} during UI build. Call
  * {@link #refreshScenarioStatusAsync(boolean)} to update table content and
- * {@link #requestDefaultCreatedSortAndScrollToBottomOnNextRefresh()} after adding/importing scenarios.
+ * {@link #requestDefaultCreatedSortAndScrollToTopOnNextRefresh()} after adding/importing scenarios.
  * <p>
  * <b>Thread Safety:</b> UI updates are marshaled to JavaFX. Log parsing and refresh work run on
  * background daemon threads.
@@ -257,7 +258,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         if (ScenarioTable.tableScenariosLibrary != null) {
             ScenarioTable.tableScenariosLibrary.setPlaceholder(utils.createLabel(LOADING_SCENARIOS_MESSAGE));
         }
-        requestDefaultCreatedSortAndScrollToBottomOnNextRefresh();
+        requestDefaultCreatedSortAndScrollToTopOnNextRefresh();
         refreshScenarioActionButtons();
         if (startupTime == 0) {
             startupTime = (new Date()).getTime();
@@ -587,7 +588,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             }
             ScenarioRow[] newRun = { importResult.getScenarioRow() };
             ScenarioTable.addToListOfRunFiles(newRun);
-            requestDefaultCreatedSortAndScrollToBottomOnNextRefresh();
+            requestDefaultCreatedSortAndScrollToTopOnNextRefresh();
         } finally {
             Client.endScenarioOperationProgress();
         }
@@ -1379,6 +1380,24 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     }
 
     /**
+     * Finds the "Created" date column in the scenario library table.
+     *
+     * @param table the scenario table
+     * @return the Created column, or null if not found
+     */
+    private TableColumn<ScenarioRow, ?> findCreatedColumn(TableView<ScenarioRow> table) {
+        if (table == null || table.getColumns() == null) {
+            return null;
+        }
+        for (TableColumn<ScenarioRow, ?> column : table.getColumns()) {
+            if (column != null && "Created".equals(column.getText())) {
+                return column;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Applies refreshed scenario status snapshots to the table and triggers view state restoration.
      *
      * @param snapshots list of updated scenario status snapshots
@@ -1395,7 +1414,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         applyLiveStdoutErrorPeriods();
         applyLiveRuntimeForActiveScenario();
         pendingRefreshViewState = ScenarioLibraryViewStateHelper.RefreshViewState.empty();
-        applyDefaultCreatedSortAndScrollIfRequested();
+        applyDefaultCreatedSortAndScrollToTopIfRequested();
         refreshScenarioActionButtons();
         if (refreshDbSizeAfterStatusTransition) {
             // Strategic trigger: refresh DB-size cache when scenario outcomes move to
@@ -1406,17 +1425,18 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
     /**
      * Requests that the next status refresh snaps to the default "newly-created scenario"
-     * view by selecting and scrolling to the newest row (bottom of table).
+     * view by selecting and scrolling to the newest row (top of table).
      */
-    public void requestDefaultCreatedSortAndScrollToBottomOnNextRefresh() {
+    public void requestDefaultCreatedSortAndScrollToTopOnNextRefresh() {
         resetToDefaultCreatedSortAndScroll.set(true);
     }
 
     /**
      * Applies the default created sort and scroll position if a refresh was requested.
-     * Selects the last row and scrolls to it.
+     * Sorts by Created column (descending, newest first), selects the first row,
+     * and scrolls to it (top of table where newest scenarios appear).
      */
-    private void applyDefaultCreatedSortAndScrollIfRequested() {
+    private void applyDefaultCreatedSortAndScrollToTopIfRequested() {
         if (!resetToDefaultCreatedSortAndScroll.compareAndSet(true, false)) {
             return;
         }
@@ -1430,13 +1450,21 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             return;
         }
 
-        int lastIndex = rowCount - 1;
-        ScenarioTable.tableScenariosLibrary.getSelectionModel().clearSelection();
-        ScenarioTable.tableScenariosLibrary.getSelectionModel().select(lastIndex);
-        if (ScenarioTable.tableScenariosLibrary.getFocusModel() != null) {
-            ScenarioTable.tableScenariosLibrary.getFocusModel().focus(lastIndex);
+        // Apply descending sort on the "Created" column to show newest scenarios first
+        TableColumn<ScenarioRow, ?> createdColumn = findCreatedColumn(ScenarioTable.tableScenariosLibrary);
+        if (createdColumn != null) {
+            createdColumn.setSortType(TableColumn.SortType.DESCENDING);
+            ScenarioTable.tableScenariosLibrary.getSortOrder().setAll(createdColumn);
+            ScenarioTable.tableScenariosLibrary.sort();
         }
-        ScenarioTable.tableScenariosLibrary.scrollTo(lastIndex);
+
+        int firstIndex = 0;
+        ScenarioTable.tableScenariosLibrary.getSelectionModel().clearSelection();
+        ScenarioTable.tableScenariosLibrary.getSelectionModel().select(firstIndex);
+        if (ScenarioTable.tableScenariosLibrary.getFocusModel() != null) {
+            ScenarioTable.tableScenariosLibrary.getFocusModel().focus(firstIndex);
+        }
+        ScenarioTable.tableScenariosLibrary.scrollTo(firstIndex);
     }
 
     /**
