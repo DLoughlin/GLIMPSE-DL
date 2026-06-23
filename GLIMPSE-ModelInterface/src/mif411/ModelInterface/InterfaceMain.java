@@ -445,7 +445,6 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 	private JMenuItem selectQueryMenu;
 	private JMenuItem editQueryFileMenu; // Open current query file in XML editor
 
-	private JMenuItem toggleAutoGraphicsMenu;
 	private Properties savedProperties;
 	private final Object propertiesLock = new Object();
 	private UndoManager undoManager;
@@ -1894,6 +1893,9 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 		if (!savedProperties.containsKey("compress_tree")) {
 			savedProperties.setProperty("compress_tree", "true");
 		}
+		if (!savedProperties.containsKey("limitSigDigits")) {
+			savedProperties.setProperty("limitSigDigits", "false");
+		}
 		if (!savedProperties.containsKey(FONT_SIZE_PROPERTY)) {
 			savedProperties.setProperty(FONT_SIZE_PROPERTY, Integer.toString(configuredFontSize));
 		}
@@ -1968,6 +1970,11 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			// added by Dan to allow query file to be specified as runtime argument
 			if (queryFilename != null)
 				savedProperties.setProperty("queryFile", queryFilename);
+			
+			// Initialize DbViewer.disableSigDigits based on limitSigDigits property
+			String propLimitSigDigits = savedProperties.getProperty("limitSigDigits", "false");
+			boolean limitSigDigits = "true".equalsIgnoreCase(propLimitSigDigits);
+			DbViewer.disableSigDigits = !limitSigDigits;  // Inverse: if limiting is enabled, disabling is off
 		}
 
 	}
@@ -2172,14 +2179,6 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 		JMenu viewMenu = new JMenu("View");
 		viewMenu.setMnemonic(KeyEvent.VK_V);
 		menuMan.addMenuItem(viewMenu, VIEW_MENU_POS);
-		
-		// View -> Enable/Disable Auto Graphics (restored)
-		MenuManager viewMM = menuMan.getSubMenuManager(VIEW_MENU_POS);
-		if (viewMM != null) {
-			toggleAutoGraphicsMenu = makeMenuItem(autoGenerateGraphics ? "Disable Auto Graphics" : "Enable Auto Graphics");
-			// Place it above DbViewer's separator at position 20 (i.e., before "Select Years to Show").
-			viewMM.addMenuItem(toggleAutoGraphicsMenu, 12);
-		}
 	}
 
 	private void addToolsMenu(MenuManager menuMan) {
@@ -2397,16 +2396,6 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 		case "Edit Queries File":
 			openConfiguredQueryFileInXmlEditor();
 			break;
-		case "Enable Auto Graphics":
-			autoGenerateGraphics = true;
-			if (toggleAutoGraphicsMenu != null) toggleAutoGraphicsMenu.setText("Disable Auto Graphics");
-			setProperty("autoGenerateGraphics", "true");
-			break;
-		case "Disable Auto Graphics":
-			autoGenerateGraphics = false;
-			if (toggleAutoGraphicsMenu != null) toggleAutoGraphicsMenu.setText("Enable Auto Graphics");
-			setProperty("autoGenerateGraphics", "false");
-			break;
 		case "Select Units File": {
 			FileChooser fc = FileChooserFactory.getFileChooser();
 			File start = InterfaceMain.unitFileLocation != null ? new File(InterfaceMain.unitFileLocation)
@@ -2526,6 +2515,17 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 
 	private void showPreferencesDialog() {
 		new PreferenceDialog(this).showDialog();
+		// Reload auto graphics setting from properties after dialog closes
+		synchronized (propertiesLock) {
+			if (savedProperties != null) {
+				String propAutoGraphics = savedProperties.getProperty("autoGenerateGraphics", "false");
+				autoGenerateGraphics = "true".equalsIgnoreCase(propAutoGraphics);
+				// Reload limit significant digits setting and apply to DbViewer
+				String propLimitSigDigits = savedProperties.getProperty("limitSigDigits", "false");
+				boolean limitSigDigits = "true".equalsIgnoreCase(propLimitSigDigits);
+				DbViewer.disableSigDigits = !limitSigDigits;  // Inverse: if limiting is enabled, disabling is off
+			}
+		}
 	}
 
 	/**
@@ -2923,4 +2923,4 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			}
 		}
 	}
-}
+}

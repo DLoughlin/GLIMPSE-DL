@@ -600,7 +600,6 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	private JMenuItem queriesEditMenu;
 	private JMenuItem queriesRemoveMenu;
 	private JMenuItem queriesUpdateMenu;
-	private JMenuItem significantDigitsMenu;
 	private JMenuItem enableUnitConversionsMenu;
 	private JMenuItem createFavoritesMenu;// YD Feb-2024
 	private JMenuItem loadFavoritesMenu;
@@ -1237,23 +1236,6 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addMenuItem(winCl, 2);
 		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addSeparator(3);
 
-		// Significant Digits Toggle
-		significantDigitsMenu = new JMenuItem("Disable Significant Digits");
-		significantDigitsMenu.addActionListener(this);
-		significantDigitsMenu.setEnabled(true);
-		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addMenuItem(significantDigitsMenu, 10);
-
-		// Unit Conversions Toggle
-		enableUnitConversionsMenu = new JMenuItem("Disable Unit Conversions");
-		enableUnitConversionsMenu.addActionListener(this);
-		enableUnitConversionsMenu.setEnabled(true);
-		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addMenuItem(enableUnitConversionsMenu, 11);
-
-		// Select Years
-		JMenuItem yearsMn = new JMenuItem("Select Years to Show");
-		yearsMn.addActionListener(e -> new FilterTreePaneYears());
-		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addSeparator(20);
-		menuMan.getSubMenuManager(InterfaceMain.VIEW_MENU_POS).addMenuItem(yearsMn, 21);
 	}
 
 	/**
@@ -1396,12 +1378,6 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			break;
 		case "Save As":
 			handleSaveAs();
-			break;
-		case "Disable Significant Digits":
-			handleDisableSigDigits();
-			break;
-		case "Enable Significant Digits":
-			handleEnableSigDigits();
 			break;
 		case "Disable Unit Conversions":
 			handleDisableUnitConversions();
@@ -1720,24 +1696,6 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 				writeQueries();
 			}
 		}
-	}
-
-	/**
-	 * Handles the "Disable Significant Digits" action. Updates the menu item and
-	 * sets the flag to disable formatting to specific number of significant digits.
-	 */
-	private void handleDisableSigDigits() {
-		significantDigitsMenu.setText("Enable Significant Digits");
-		disableSigDigits = true;
-	}
-
-	/**
-	 * Handles the "Enable Significant Digits" action. Updates the menu item and
-	 * sets the flag to enable formatting to 3 significant digits.
-	 */
-	private void handleEnableSigDigits() {
-		significantDigitsMenu.setText("Disable Significant Digits");
-		disableSigDigits = false;
 	}
 
 	/**

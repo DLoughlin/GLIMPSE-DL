@@ -69,6 +69,10 @@ final class PreferenceDialog {
 	private javax.swing.JCheckBox zipExportedScenariosCheckbox;
 	private javax.swing.JCheckBox copyIncludeQueryNameCheckbox;
 	private javax.swing.JCheckBox compressTreeCheckbox;
+	private javax.swing.JCheckBox autoGenerateGraphicsCheckbox;
+	private javax.swing.JCheckBox limitSigDigitsCheckbox;
+	private javax.swing.JCheckBox disableUnitConversionsCheckbox;
+	private javax.swing.JComboBox<String> selectYearsCombo;
 
 	// ---------------------------------------------------------------------------
 	// Construction
@@ -102,7 +106,7 @@ final class PreferenceDialog {
 
 		javax.swing.JTabbedPane tabs = new javax.swing.JTabbedPane();
 		tabs.addTab("General",          buildGeneralScroll(props));
-		tabs.addTab("Graphics",         buildGraphicsScroll(props));
+		tabs.addTab("Text and Graphics",         buildGraphicsScroll(props));
 		tabs.addTab("Optional Features", buildOptionalScroll(props));
 		ensureOptionalTabIsLast(tabs);
 
@@ -136,6 +140,14 @@ final class PreferenceDialog {
 					p.setProperty("copyIncludeQueryName", Boolean.toString(copyIncludeQueryNameCheckbox.isSelected()));
 				if (compressTreeCheckbox != null)
 					p.setProperty("compress_tree", Boolean.toString(compressTreeCheckbox.isSelected()));
+				if (limitSigDigitsCheckbox != null)
+					p.setProperty("limitSigDigits", Boolean.toString(limitSigDigitsCheckbox.isSelected()));
+				if (disableUnitConversionsCheckbox != null)
+					p.setProperty("disableUnitConversions", Boolean.toString(disableUnitConversionsCheckbox.isSelected()));
+				if (selectYearsCombo != null && selectYearsCombo.getSelectedItem() != null)
+					p.setProperty("selectYearsToShow", selectYearsCombo.getSelectedItem().toString());
+				if (autoGenerateGraphicsCheckbox != null)
+					p.setProperty("autoGenerateGraphics", Boolean.toString(autoGenerateGraphicsCheckbox.isSelected()));
 				if (unitsFileField != null) p.setProperty("unitsFile", safeTrim(unitsFileField.getText()));
 				if (regionsFileField != null) p.setProperty("presetRegionList", safeTrim(regionsFileField.getText()));
 				if (mapResourceFolderField != null) p.setProperty("mapResourceFolder", safeTrim(mapResourceFolderField.getText()));
@@ -180,15 +192,61 @@ final class PreferenceDialog {
 		panel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
 		java.awt.GridBagConstraints gc = defaultGbc();
 
-		// Section header
-		javax.swing.JLabel fileEditorsLbl = new javax.swing.JLabel("File editors:");
-		fileEditorsLbl.setFont(fileEditorsLbl.getFont().deriveFont(java.awt.Font.BOLD));
-		gc.gridwidth = 3; gc.weightx = 1.0;
-		panel.add(fileEditorsLbl, gc);
+		// ---- Table options section ----
+		javax.swing.JLabel tableOptionsLbl = new javax.swing.JLabel("Table options:");
+		tableOptionsLbl.setFont(tableOptionsLbl.getFont().deriveFont(java.awt.Font.BOLD));
+		gc.gridwidth = 2; gc.weightx = 1.0;
+		panel.add(tableOptionsLbl, gc);
 		gc.gridwidth = 1;
 
+		// Limit Significant Digits checkbox
+		gc.gridy++; gc.gridx = 0; gc.gridwidth = 2; gc.weightx = 1.0;
+		limitSigDigitsCheckbox = new javax.swing.JCheckBox("Limit significant digits");
+		limitSigDigitsCheckbox.setSelected(parseBooleanProp(props, "limitSigDigits", false));
+		panel.add(limitSigDigitsCheckbox, gc);
+		gc.gridwidth = 1;
+
+		// Significant digits combo — compact width (no fill/expand)
+		gc.gridy++; gc.gridx = 0; gc.gridwidth = 1; gc.weightx = 0.0;
+		panel.add(new javax.swing.JLabel("Significant digits for results:"), gc);
+		gc.gridx = 1; gc.weightx = 0.0; gc.gridwidth = 1;
+		gc.fill = java.awt.GridBagConstraints.NONE;
+		sigDigitsCombo = new JComboBox<>(new String[] { "2", "3", "4", "5" });
+		sigDigitsCombo.setSelectedItem(props.getProperty("significantDigits", "3"));
+		panel.add(sigDigitsCombo, gc);
+		gc.fill = java.awt.GridBagConstraints.HORIZONTAL; // restore for subsequent rows
+
+		// Disable unit conversions checkbox
+		gc.gridy++; gc.gridx = 0; gc.gridwidth = 2; gc.weightx = 1.0;
+		disableUnitConversionsCheckbox = new javax.swing.JCheckBox("Disable unit conversions");
+		disableUnitConversionsCheckbox.setSelected(parseBooleanProp(props, "disableUnitConversions", false));
+		panel.add(disableUnitConversionsCheckbox, gc);
+		gc.gridwidth = 1;
+
+		// Select years to show combo — compact width (no fill/expand)
+		gc.gridy++; gc.gridx = 0; gc.gridwidth = 1; gc.weightx = 0.0;
+		panel.add(new javax.swing.JLabel("Select years to show:"), gc);
+		gc.gridx = 1; gc.weightx = 0.0; gc.gridwidth = 1;
+		gc.fill = java.awt.GridBagConstraints.NONE;
+		selectYearsCombo = new JComboBox<>(new String[] { "All", "Model years only", "Custom range" });
+		selectYearsCombo.setSelectedItem(props.getProperty("selectYearsToShow", "All"));
+		panel.add(selectYearsCombo, gc);
+		gc.fill = java.awt.GridBagConstraints.HORIZONTAL; // restore for subsequent rows
+
+		// Separator
+		gc.gridy++; gc.gridx = 0; gc.gridwidth = 2; gc.weightx = 1.0; gc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+		panel.add(new javax.swing.JSeparator(javax.swing.SwingConstants.HORIZONTAL), gc);
+		gc.gridwidth = 1; gc.weightx = 0.0; gc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+
+		// ---- File editors section ----
+		gc.gridy++; gc.gridx = 0; gc.gridwidth = 2; gc.weightx = 1.0;
+		javax.swing.JLabel fileEditorsLbl = new javax.swing.JLabel("File editors:");
+		fileEditorsLbl.setFont(fileEditorsLbl.getFont().deriveFont(java.awt.Font.BOLD));
+		panel.add(fileEditorsLbl, gc);
+		gc.gridwidth = 1; gc.weightx = 0.0;
+
 		// XML / CSV / TXT editor rows
-		gc.gridy++; gc.weightx = 0.0;
+		gc.gridy++; gc.gridx = 0;
 		panel.add(new javax.swing.JLabel("XML editor command:"), gc);
 		gc.gridx = 1; gc.weightx = 1.0;
 		xmlEditorField = new javax.swing.JTextField(props.getProperty("xmlEditor", ""));
@@ -228,6 +286,13 @@ final class PreferenceDialog {
 		panel.add(new javax.swing.JSeparator(javax.swing.SwingConstants.HORIZONTAL), gc);
 		gc.gridwidth = 1;
 
+		// ---- Other options section ----
+		gc.gridy++; gc.gridx = 0; gc.gridwidth = 2; gc.weightx = 1.0;
+		javax.swing.JLabel otherOptionsLbl = new javax.swing.JLabel("Other options:");
+		otherOptionsLbl.setFont(otherOptionsLbl.getFont().deriveFont(java.awt.Font.BOLD));
+		panel.add(otherOptionsLbl, gc);
+		gc.gridwidth = 1;
+
 		// Checkboxes
 		gc.gridy++; gc.gridx = 0; gc.gridwidth = 2; gc.weightx = 1.0;
 		zipExportedScenariosCheckbox = new javax.swing.JCheckBox("Automatically zip scenarios when exported");
@@ -244,40 +309,10 @@ final class PreferenceDialog {
 		compressTreeCheckbox.setSelected(parseBooleanProp(props, "compress_tree", true));
 		panel.add(compressTreeCheckbox, gc);
 
-		// Significant digits combo — compact width (no fill/expand)
-		gc.gridy++; gc.gridx = 0; gc.gridwidth = 1; gc.weightx = 0.0;
-		panel.add(new javax.swing.JLabel("Significant digits for results:"), gc);
-		gc.gridx = 1; gc.weightx = 0.0; gc.gridwidth = 1;
-		gc.fill = java.awt.GridBagConstraints.NONE;
-		sigDigitsCombo = new JComboBox<>(new String[] { "2", "3", "4", "5" });
-		sigDigitsCombo.setSelectedItem(props.getProperty("significantDigits", "3"));
-		panel.add(sigDigitsCombo, gc);
-		gc.fill = java.awt.GridBagConstraints.HORIZONTAL; // restore for subsequent rows
-
-		// Font size combo — compact width (no fill/expand)
-		gc.gridy++; gc.gridx = 0; gc.gridwidth = 1; gc.weightx = 0.0;
-		panel.add(new javax.swing.JLabel("Font size:"), gc);
-		gc.gridx = 1; gc.weightx = 0.0; gc.gridwidth = 1;
-		gc.fill = java.awt.GridBagConstraints.NONE;
-		fontSizeCombo = new JComboBox<>(InterfaceMain.getGeneralFontSizeOptions());
-		fontSizeCombo.setEditable(true);
-		fontSizeCombo.setPrototypeDisplayValue("24"); // prevents the editable text field from inflating the width
-		fontSizeCombo.setSelectedItem(Integer.toString(InterfaceMain.resolveConfiguredFontSize(props)));
-		fontSizeCombo.addActionListener(ev -> {
-			Object sel = fontSizeCombo.getSelectedItem();
-			int previewSize = InterfaceMain.parseFontSizeValue(sel == null ? null : sel.toString(), callbacks.getCurrentFontSize());
-			if (previewSize != callbacks.getCurrentFontSize()) callbacks.applyFontSize(previewSize);
-		});
-		panel.add(fontSizeCombo, gc);
-
-		// Both combos get the same preferred width — the larger of their natural sizes.
+		// Equalize combo widths (for sigDigitsCombo)
 		{
-			int w = Math.max(sigDigitsCombo.getPreferredSize().width,
-			                 fontSizeCombo.getPreferredSize().width);
 			sigDigitsCombo.setPreferredSize(
-					new java.awt.Dimension(w, sigDigitsCombo.getPreferredSize().height));
-			fontSizeCombo.setPreferredSize(
-					new java.awt.Dimension(w, fontSizeCombo.getPreferredSize().height));
+					new java.awt.Dimension(sigDigitsCombo.getPreferredSize().width, sigDigitsCombo.getPreferredSize().height));
 		}
 
 		gc.fill = java.awt.GridBagConstraints.HORIZONTAL; // restore for subsequent rows
@@ -290,12 +325,45 @@ final class PreferenceDialog {
 		panel.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
 		java.awt.GridBagConstraints gc = defaultGbc();
 
+		// ---- Font size combo (at the top) ----
+		gc.gridx = 0; gc.gridwidth = 1; gc.weightx = 0.0;
+		gc.fill = java.awt.GridBagConstraints.NONE;
+		panel.add(new javax.swing.JLabel("Font size:"), gc);
+		gc.gridx = 1; gc.weightx = 0.0; gc.gridwidth = 1;
+		fontSizeCombo = new JComboBox<>(InterfaceMain.getGeneralFontSizeOptions());
+		fontSizeCombo.setEditable(true);
+		fontSizeCombo.setPrototypeDisplayValue("24"); // prevents the editable text field from inflating the width
+		fontSizeCombo.setSelectedItem(Integer.toString(InterfaceMain.resolveConfiguredFontSize(props)));
+		fontSizeCombo.addActionListener(ev -> {
+			Object sel = fontSizeCombo.getSelectedItem();
+			int previewSize = InterfaceMain.parseFontSizeValue(sel == null ? null : sel.toString(), callbacks.getCurrentFontSize());
+			if (previewSize != callbacks.getCurrentFontSize()) callbacks.applyFontSize(previewSize);
+		});
+		panel.add(fontSizeCombo, gc);
+		gc.fill = java.awt.GridBagConstraints.HORIZONTAL; // restore for subsequent rows
+
+		// ---- Separator ----
+		gc.gridy++; gc.gridx = 0; gc.gridwidth = 2; gc.weightx = 1.0; gc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+		panel.add(new javax.swing.JSeparator(javax.swing.SwingConstants.HORIZONTAL), gc);
+		gc.gridwidth = 1; gc.weightx = 0.0;
+
+		// ---- Auto Graphics checkbox (at the top) ----
+		gc.gridy++; gc.gridwidth = 2; gc.weightx = 1.0;
+		autoGenerateGraphicsCheckbox = new javax.swing.JCheckBox("Enable auto graphics");
+		autoGenerateGraphicsCheckbox.setSelected(parseBooleanProp(props, "autoGenerateGraphics", false));
+		panel.add(autoGenerateGraphicsCheckbox, gc);
+
+		// ---- Separator ----
+		gc.gridy++; gc.gridx = 0; gc.gridwidth = 2; gc.weightx = 1.0; gc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+		panel.add(new javax.swing.JSeparator(javax.swing.SwingConstants.HORIZONTAL), gc);
+		gc.gridwidth = 1; gc.weightx = 0.0;
+
 		// ---- Thumbnail settings (first) ----
+		gc.gridy++; gc.gridx = 0; gc.gridwidth = 2; gc.weightx = 1.0; gc.fill = java.awt.GridBagConstraints.HORIZONTAL;
 		javax.swing.JLabel thumbnailHdr = new javax.swing.JLabel("Thumbnail settings");
 		thumbnailHdr.setFont(thumbnailHdr.getFont().deriveFont(java.awt.Font.BOLD));
-		gc.gridwidth = 2; gc.weightx = 1.0;
 		panel.add(thumbnailHdr, gc);
-		gc.gridwidth = 1; gc.weightx = 0.0;
+		gc.gridwidth = 1; gc.weightx = 0.0; gc.fill = java.awt.GridBagConstraints.HORIZONTAL;
 
 		gc.gridy++; gc.gridx = 0; gc.fill = java.awt.GridBagConstraints.HORIZONTAL;
 		panel.add(new javax.swing.JLabel("Thumbnail font size:"), gc);
