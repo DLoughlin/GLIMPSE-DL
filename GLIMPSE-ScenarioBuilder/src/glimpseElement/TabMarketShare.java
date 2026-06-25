@@ -416,11 +416,12 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 				if (showSup)
 					techListSup.add(line.trim());
 			}
-		 // clear previous entries before repopulating
-			checkComboBoxSubset.getCheckModel().clearChecks();
-			checkComboBoxSubset.getItems().clear();
-			checkComboBoxSuperset.getCheckModel().clearChecks();
-			checkComboBoxSuperset.getItems().clear();
+			//I think the following was confusing for some users; commenting out for now. 2024-06-05
+//		 // clear previous entries before repopulating
+//			checkComboBoxSubset.getCheckModel().clearChecks();
+//			checkComboBoxSubset.getItems().clear();
+//			checkComboBoxSuperset.getCheckModel().clearChecks();
+//			checkComboBoxSuperset.getItems().clear();
 
 			// Flags that control which techs to show based on policy type
 			boolean showEgu = false;

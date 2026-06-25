@@ -505,10 +505,10 @@ public class TabTechParam extends PolicyTab implements Runnable {
             if (this.techInfo == null) return;
             boolean isAllCat = cat.equals(ALL);
             try {
-                if (!checkComboBoxTech.getItems().isEmpty()) {
-                    checkComboBoxTech.getCheckModel().clearChecks();
-                    checkComboBoxTech.getItems().clear();
-                }
+//                if (!checkComboBoxTech.getItems().isEmpty()) {
+//                    checkComboBoxTech.getCheckModel().clearChecks();
+//                    checkComboBoxTech.getItems().clear();
+//                }
                 if (cat != null) {
                     String lastLine = "";
                     String filterText = textFieldFilter.getText() != null ? textFieldFilter.getText().trim() : "";
