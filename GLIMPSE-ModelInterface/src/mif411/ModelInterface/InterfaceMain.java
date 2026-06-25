@@ -961,7 +961,7 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 					File dbFile = new File(path);
 					if (!dbFile.exists()) {
 						int response = main.showOptionDialog(
-								"The database '" + path + "' does not exist. Would you like to create it?",
+								"The database '" + path + "' does not exist. \nWould you like to create it?",
 								"Create Database?",
 								new Object[] { "Create", "Cancel" },
 								JOptionPane.QUESTION_MESSAGE,
@@ -2327,7 +2327,9 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			if (menuAdders != null) {
 				menuAdders.add(inputView);
 			}
-			System.out.println("[startup] lazy init InputViewer in " + elapsedMillis(start) + " ms");
+			if (shouldOutputStartupTimings()) {
+				System.out.println("[startup] lazy init InputViewer in " + elapsedMillis(start) + " ms");
+			}
 		}
 		return inputView;
 	}
@@ -2339,7 +2341,9 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			if (menuAdders != null) {
 				menuAdders.add(ppView);
 			}
-			System.out.println("[startup] lazy init PPViewer in " + elapsedMillis(start) + " ms");
+			if (shouldOutputStartupTimings()) {
+				System.out.println("[startup] lazy init PPViewer in " + elapsedMillis(start) + " ms");
+			}
 		}
 		return ppView;
 	}
@@ -2351,7 +2355,9 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			if (menuAdders != null) {
 				menuAdders.add(confEditor);
 			}
-			System.out.println("[startup] lazy init ConfigurationEditor in " + elapsedMillis(start) + " ms");
+			if (shouldOutputStartupTimings()) {
+				System.out.println("[startup] lazy init ConfigurationEditor in " + elapsedMillis(start) + " ms");
+			}
 		}
 		return confEditor;
 	}
@@ -2923,4 +2929,4 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			}
 		}
 	}
-}
+}

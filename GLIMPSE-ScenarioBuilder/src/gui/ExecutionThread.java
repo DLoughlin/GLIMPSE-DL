@@ -905,8 +905,16 @@ public class ExecutionThread implements AutoCloseable {
     private <T> Callable<T> wrapCallableForTracking(Callable<T> delegate, java.util.concurrent.atomic.AtomicReference<Future<?>> futureRef) {
         return () -> {
             currentRunningFuture = futureRef.get();
+            String jobLabel = jobLabels.getOrDefault(futureRef.get(), "unknown job");
+            System.out.println("[ExecutorService] EXECUTING: " + jobLabel + " (thread: " + Thread.currentThread().getName() + ")");
             try {
-                return delegate.call();
+                T result = delegate.call();
+                System.out.println("[ExecutorService] COMPLETED: " + jobLabel);
+                return result;
+            } catch (Exception ex) {
+                System.err.println("[ExecutorService] FAILED: " + jobLabel + " - " + ex.getMessage());
+                ex.printStackTrace(System.err);
+                throw ex;
             } finally {
                 // Only clear if we still point at ourselves.
                 if (currentRunningFuture == futureRef.get()) {
@@ -919,8 +927,15 @@ public class ExecutionThread implements AutoCloseable {
     private Runnable wrapRunnableForTracking(Runnable delegate, java.util.concurrent.atomic.AtomicReference<Future<?>> futureRef) {
         return () -> {
             currentRunningFuture = futureRef.get();
+            String jobLabel = jobLabels.getOrDefault(futureRef.get(), "unknown job");
+            System.out.println("[ExecutorService] EXECUTING: " + jobLabel + " (thread: " + Thread.currentThread().getName() + ")");
             try {
                 delegate.run();
+                System.out.println("[ExecutorService] COMPLETED: " + jobLabel);
+            } catch (Exception ex) {
+                System.err.println("[ExecutorService] FAILED: " + jobLabel + " - " + ex.getMessage());
+                ex.printStackTrace(System.err);
+                throw ex;
             } finally {
                 if (currentRunningFuture == futureRef.get()) {
                     currentRunningFuture = null;

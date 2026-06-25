@@ -766,7 +766,7 @@ class PaneCreateScenario extends ScenarioBuilder {
 
             createTask.setOnSucceeded(evt -> {
                 resultHolder[0] = ScenarioDialogResult.confirmed(metadata);
-                stage.close();
+                Platform.runLater(stage::close);
             });
             createTask.setOnFailed(evt -> {
                 Throwable ex = createTask.getException();
@@ -779,6 +779,7 @@ class PaneCreateScenario extends ScenarioBuilder {
                  for (javafx.scene.Node node : disableWhileRunning) {
                     node.setDisable(false);
                  }
+                 Platform.runLater(stage::close);
                  utils.exitOnException();
             });
 

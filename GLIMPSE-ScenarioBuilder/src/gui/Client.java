@@ -180,6 +180,8 @@ public class Client extends Application {
     public static Stage primaryStage;
     private static String optionsFilename = null;
     public static boolean exit_on_exception = false; // Retained public for potential external access
+    /** When true, startup status messages are printed to stdout. Default is false. */
+    private static volatile boolean reportStartupStatus = false;
     // endregion
 
     // region GUI Panels
@@ -1343,9 +1345,20 @@ public class Client extends Application {
         return percent + "%";
     }
 
-  /** Returns the singleton {@link ScenarioBuilder} used by this application instance. */
+    /**
+     * Returns the singleton {@link ScenarioBuilder} used by this application instance. */
 	public ScenarioBuilder getScenarioBuilder() {
 		return scenarioBuilder;
+	}
+
+	/** Returns whether startup status diagnostics are reported to stdout. */
+	public static boolean isReportStartupStatus() {
+		return reportStartupStatus;
+	}
+
+	/** Enables or disables reporting of startup status diagnostics to stdout. */
+	public static void setReportStartupStatus(boolean report) {
+		reportStartupStatus = report;
 	}
 
     private static void setFileDependentUiEnabled(boolean enabled) {
@@ -1390,6 +1403,9 @@ public class Client extends Application {
     }
 
     private void logStartupStatusToStdout(String text, boolean busy) {
+        if (!reportStartupStatus) {
+            return;
+        }
         if (!busy && mainWindowDisplayed && shouldApplyDeferredStatusAfter(text)) {
             return;
         }
@@ -1612,7 +1628,7 @@ public class Client extends Application {
 
     private static void logStartupCheckpoint(String label, long t0Nanos) {
         try {
-            if (!GLIMPSEVariables.getInstance().getDebugStartupTiming()) {
+            if (!GLIMPSEVariables.getInstance().getDebugStartupTiming() || !reportStartupStatus) {
                 return;
             }
         } catch (Throwable ignored) {
@@ -1627,7 +1643,7 @@ public class Client extends Application {
 
     /** Emits early bootstrap timings before options/debug flags are loaded. */
     private static void logBootstrapCheckpoint(String label) {
-        if (!bootstrapTimingEnabled) {
+        if (!bootstrapTimingEnabled || !reportStartupStatus) {
             return;
         }
         final long now = System.nanoTime();
@@ -1647,7 +1663,9 @@ public class Client extends Application {
             System.setProperty("sun.misc.URLClassPath.debug", "true");
             logBootstrapCheckpoint("main(): enabled sun.misc.URLClassPath.debug for jar URL diagnostics");
         } catch (Throwable t) {
-            System.out.println("[startup-bootstrap] unable to enable jar URL diagnostics: " + t.getMessage());
+            if (reportStartupStatus) {
+                System.out.println("[startup-bootstrap] unable to enable jar URL diagnostics: " + t.getMessage());
+            }
         }
     }
 
@@ -1655,62 +1673,64 @@ public class Client extends Application {
         boolean shouldStop();
     }
 
-    private static Thread startStartupWatchdog(
-            String threadName,
-            String phaseLabel,
-            Thread watchedThread,
-            AtomicBoolean done,
-            StartupStopCondition stopCondition) {
-        Thread t = new Thread(() -> {
-            String lastTopFrame = null;
-             while (!done.get()) {
-                 try {
-                     Thread.sleep(STARTUP_WATCHDOG_INTERVAL_MS);
-                 } catch (InterruptedException ie) {
+     private static Thread startStartupWatchdog(
+             String threadName,
+             String phaseLabel,
+             Thread watchedThread,
+             AtomicBoolean done,
+             StartupStopCondition stopCondition) {
+         Thread t = new Thread(() -> {
+             String lastTopFrame = null;
+              while (!done.get()) {
+                  try {
+                      Thread.sleep(STARTUP_WATCHDOG_INTERVAL_MS);
+                  } catch (InterruptedException ie) {
+                      return;
+                  }
+                  if (done.get()) {
                      return;
-                 }
-                 if (done.get()) {
-                    return;
-                 }
-                 if (stopCondition != null && stopCondition.shouldStop()) {
-                    return;
-                 }
-                 if (watchedThread == null) {
-                     continue;
-                 }
-                 StackTraceElement[] trace = watchedThread.getStackTrace();
-                 String top = (trace != null && trace.length > 0) ? trace[0].toString() : "<no-stack>";
-                 System.out.println("[startup-watchdog] " + phaseLabel
-                        + " still busy on thread '" + watchedThread.getName() + "' top=" + top);
+                  }
+                  if (stopCondition != null && stopCondition.shouldStop()) {
+                     return;
+                  }
+                  if (watchedThread == null) {
+                      continue;
+                  }
+                  StackTraceElement[] trace = watchedThread.getStackTrace();
+                  String top = (trace != null && trace.length > 0) ? trace[0].toString() : "<no-stack>";
+                  if (reportStartupStatus) {
+                      System.out.println("[startup-watchdog] " + phaseLabel
+                             + " still busy on thread '" + watchedThread.getName() + "' top=" + top);
+                  }
 
-                // Optional deeper stack emission for startup stalls dominated by class/resource inflation.
-                if (Boolean.getBoolean(STARTUP_WATCHDOG_VERBOSE_STACK_FLAG)
-                        && trace != null
-                        && trace.length > 0
-                        && !top.equals(lastTopFrame)
-                        && (top.contains("ZipFile") || top.contains("Inflater") || top.contains("ClassLoader"))) {
-                    lastTopFrame = top;
-                    int depth = Math.min(12, trace.length);
-                    StringBuilder sb = new StringBuilder();
-                    sb.append("[startup-watchdog] ").append(phaseLabel)
-                      .append(" stack snapshot:");
-                    for (int i = 0; i < depth; i++) {
-                        sb.append("\n    at ").append(trace[i]);
-                    }
-                    System.out.println(sb.toString());
-                    // When launch stalls in URLJarFile/ZipFile, print classloader URLs so we can
-                    // identify the exact jar/rsrc URL chain being resolved.
-                    logLaunchClassLoaderUrlsForThread(phaseLabel, watchedThread);
-                }
-             }
-         }, threadName);
-         t.setDaemon(true);
-         t.start();
-         return t;
-    }
+                 // Optional deeper stack emission for startup stalls dominated by class/resource inflation.
+                 if (reportStartupStatus && Boolean.getBoolean(STARTUP_WATCHDOG_VERBOSE_STACK_FLAG)
+                         && trace != null
+                         && trace.length > 0
+                         && !top.equals(lastTopFrame)
+                         && (top.contains("ZipFile") || top.contains("Inflater") || top.contains("ClassLoader"))) {
+                     lastTopFrame = top;
+                     int depth = Math.min(12, trace.length);
+                     StringBuilder sb = new StringBuilder();
+                     sb.append("[startup-watchdog] ").append(phaseLabel)
+                       .append(" stack snapshot:");
+                     for (int i = 0; i < depth; i++) {
+                         sb.append("\n    at ").append(trace[i]);
+                     }
+                     System.out.println(sb.toString());
+                     // When launch stalls in URLJarFile/ZipFile, print classloader URLs so we can
+                     // identify the exact jar/rsrc URL chain being resolved.
+                     logLaunchClassLoaderUrlsForThread(phaseLabel, watchedThread);
+                 }
+              }
+          }, threadName);
+          t.setDaemon(true);
+          t.start();
+          return t;
+     }
 
     private static void logLaunchClassLoaderUrlsForThread(String phaseLabel, Thread thread) {
-        if (thread == null) {
+        if (thread == null || !reportStartupStatus) {
             return;
         }
         try {
@@ -1776,78 +1796,80 @@ public class Client extends Application {
      * time is spent before Application.init() is entered.
      */
     private static Thread startLaunchPhaseThreadDumpWatchdog(
-            AtomicBoolean done,
-            StartupStopCondition stopCondition) {
-        Thread t = new Thread(() -> {
-            while (!done.get()) {
-                try {
-                    Thread.sleep(STARTUP_WATCHDOG_INTERVAL_MS);
-                } catch (InterruptedException ie) {
-                    return;
-                }
-                if (done.get()) {
-                    return;
-                }
-                if (stopCondition != null && stopCondition.shouldStop()) {
-                    return;
-                }
+             AtomicBoolean done,
+             StartupStopCondition stopCondition) {
+         Thread t = new Thread(() -> {
+             while (!done.get()) {
+                 try {
+                     Thread.sleep(STARTUP_WATCHDOG_INTERVAL_MS);
+                 } catch (InterruptedException ie) {
+                     return;
+                 }
+                 if (done.get()) {
+                     return;
+                 }
+                 if (stopCondition != null && stopCondition.shouldStop()) {
+                     return;
+                 }
 
-                Map<Thread, StackTraceElement[]> allTraces = Thread.getAllStackTraces();
-                StringBuilder snapshot = new StringBuilder();
-                int tracked = 0;
+                 Map<Thread, StackTraceElement[]> allTraces = Thread.getAllStackTraces();
+                 StringBuilder snapshot = new StringBuilder();
+                 int tracked = 0;
 
-                for (Map.Entry<Thread, StackTraceElement[]> entry : allTraces.entrySet()) {
-                    Thread thread = entry.getKey();
-                    if (thread == null || !thread.isAlive()) {
-                        continue;
-                    }
-                    String name = thread.getName();
-                    if (!isLaunchDiagnosticThreadName(name)) {
-                        continue;
-                    }
+                 for (Map.Entry<Thread, StackTraceElement[]> entry : allTraces.entrySet()) {
+                     Thread thread = entry.getKey();
+                     if (thread == null || !thread.isAlive()) {
+                         continue;
+                     }
+                     String name = thread.getName();
+                     if (!isLaunchDiagnosticThreadName(name)) {
+                         continue;
+                     }
 
-                    StackTraceElement[] trace = entry.getValue();
-                    String top = (trace != null && trace.length > 0) ? trace[0].toString() : "<no-stack>";
-                    snapshot.append(name)
-                            .append("[")
-                            .append(thread.getState())
-                            .append("] top=")
-                            .append(top)
-                            .append(" | ");
-                    tracked++;
+                     StackTraceElement[] trace = entry.getValue();
+                     String top = (trace != null && trace.length > 0) ? trace[0].toString() : "<no-stack>";
+                     snapshot.append(name)
+                             .append("[")
+                             .append(thread.getState())
+                             .append("] top=")
+                             .append(top)
+                             .append(" | ");
+                     tracked++;
 
-                    if (Boolean.getBoolean(STARTUP_WATCHDOG_VERBOSE_STACK_FLAG)
-                            && trace != null
-                            && trace.length > 0
-                            && (top.contains("ZipFile") || top.contains("Inflater") || top.contains("ClassLoader"))) {
-                        int depth = Math.min(10, trace.length);
-                        StringBuilder deep = new StringBuilder();
-                        deep.append("[startup-watchdog] launch(args) thread '")
-                                .append(name)
-                                .append("' stack snapshot:");
-                        for (int i = 0; i < depth; i++) {
-                            deep.append("\n    at ").append(trace[i]);
-                        }
-                        System.out.println(deep.toString());
-                    }
-                }
+                     if (reportStartupStatus && Boolean.getBoolean(STARTUP_WATCHDOG_VERBOSE_STACK_FLAG)
+                             && trace != null
+                             && trace.length > 0
+                             && (top.contains("ZipFile") || top.contains("Inflater") || top.contains("ClassLoader"))) {
+                         int depth = Math.min(10, trace.length);
+                         StringBuilder deep = new StringBuilder();
+                         deep.append("[startup-watchdog] launch(args) thread '")
+                                 .append(name)
+                                 .append("' stack snapshot:");
+                         for (int i = 0; i < depth; i++) {
+                             deep.append("\n    at ").append(trace[i]);
+                         }
+                         System.out.println(deep.toString());
+                     }
+                 }
 
-                if (tracked == 0) {
-                    continue;
-                }
+                 if (tracked == 0) {
+                     continue;
+                 }
 
-                String signature = snapshot.toString();
-                if (signature.equals(lastLaunchThreadsSnapshotSignature)) {
-                    continue;
-                }
-                lastLaunchThreadsSnapshotSignature = signature;
-                System.out.println("[startup-watchdog] launch(args) active runtime threads: " + signature);
-            }
-        }, "glimpse-launch-threads-watchdog");
-        t.setDaemon(true);
-        t.start();
-        return t;
-    }
+                 String signature = snapshot.toString();
+                 if (signature.equals(lastLaunchThreadsSnapshotSignature)) {
+                     continue;
+                 }
+                 lastLaunchThreadsSnapshotSignature = signature;
+                 if (reportStartupStatus) {
+                     System.out.println("[startup-watchdog] launch(args) active runtime threads: " + signature);
+                 }
+             }
+         }, "glimpse-launch-threads-watchdog");
+         t.setDaemon(true);
+         t.start();
+         return t;
+     }
 
     private static boolean isLaunchDiagnosticThreadName(String name) {
         if (name == null) {

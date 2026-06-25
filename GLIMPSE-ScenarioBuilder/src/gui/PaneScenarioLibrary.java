@@ -234,6 +234,8 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
     private ScenarioLibraryViewStateHelper.RefreshViewState pendingRefreshViewState = ScenarioLibraryViewStateHelper.RefreshViewState.empty();
     private final ConcurrentHashMap<String, Boolean> liveSuccessMarkedByScenario = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Boolean> windowsPolicyBlockPromptShownByScenario = new ConcurrentHashMap<>();
+    /** Maps scenario name to the command submitted to the executor (for error reporting). */
+    private final ConcurrentHashMap<String, String> submittedCommandByScenario = new ConcurrentHashMap<>();
     private final AtomicBoolean resetToDefaultCreatedSortAndScroll = new AtomicBoolean(true);
     /** True after a native/JVM linkage failure while reading resource stats; prevents repeated throws each refresh tick. */
     private final AtomicBoolean resourceStatsUnavailable = new AtomicBoolean(false);
@@ -341,9 +343,14 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             try {
                 runGcamOnSelected();
             } catch (Exception ex) {
-                utils.warningMessage("Problem running GCAM.");
+                String diagnostics = buildRunFailureDiagnostics(ex);
+                String fullMessage = "Problem running GCAM." + vars.getEol() + vars.getEol() + diagnostics;
+                utils.warningMessage(fullMessage);
                 System.out.println("Error trying to run GCAM.");
-                System.out.println("Error: " + ex);
+                System.out.println("Full diagnostics:");
+                System.out.println(diagnostics);
+                System.out.println("Exception: " + ex);
+                ex.printStackTrace();
                 utils.exitOnException();
             }
             refreshScenarioStatusAsync(true);
@@ -540,14 +547,28 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         String scenName = selectedFiles.get(0).getScenarioName();
         String configFilename = ScenarioLibraryPathHelper.scenarioConfigFile(vars.getScenarioDir(), scenName);
         File configFile = new File(configFilename);
-        String databaseLine = files.searchForTextInFileS(configFile, "xmldb-location", "#");
-        String databaseName = utils.getStringBetweenCharSequences(databaseLine, ">", "</");
-        String updatedName = files.getResolvedPath(vars.getgCamExecutableDir(), databaseName);
+        String workingScenarioLog = ScenarioLibraryPathHelper.glimpseRunsFile(vars.getGlimpseLogDir());
+        File workingScenariosFile = new File(workingScenarioLog);
+        boolean doesScenarioExist = files.searchForTextAtStartOfLinesInFile(workingScenariosFile, scenName + ",", "#");
+        String confirmMsg = doesScenarioExist ? "Overwrite existing scenario " + scenName + "?" : "Import " + scenName + " into GLIMPSE?";
+        if (!utils.confirmAction(confirmMsg)) {
+            return;
+        }
+
+        Client.beginScenarioOperationProgress();
         try {
-            runModelInterfaceWhich(updatedName);
-        } catch (Exception e) {
-            e.printStackTrace();
-            utils.exitOnException();
+            ScenarioFileActionService.ImportResult importResult = scenarioFileActionService.importScenarioConfig(configFile);
+            if (!importResult.wasImported()) {
+                return;
+            }
+            if (doesScenarioExist) {
+                clearImportedScenarioRunResultFields(scenName);
+            }
+            ScenarioRow[] newRun = { importResult.getScenarioRow() };
+            ScenarioTable.addToListOfRunFiles(newRun);
+            requestDefaultCreatedSortAndScrollToTopOnNextRefresh();
+        } finally {
+            Client.endScenarioOperationProgress();
         }
     }
 
@@ -939,6 +960,11 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
             command.add(executable);
             command.add("-C");
             command.add(configFile);
+            
+            // Store the command for error reporting
+            String commandStr = String.join(" ", command);
+            submittedCommandByScenario.put(scenarioName, commandStr);
+            
             runController.beginRun(
                     Client.gCAMExecutionThread,
                     new GcamRunController.RunRequest(scenarioName, command, workingDir),
@@ -963,9 +989,12 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                                     markScenarioStopped(finishedScenarioName);
                                 } else {
                                     maybePromptWindowsPolicyBlockOnStartupFailure(finishedScenarioName, result);
+                                    reportRunFailureDetails(finishedScenarioName, result);
                                     markScenarioDnF(finishedScenarioName);
                                 }
                             }
+                            // Clean up the stored command
+                            submittedCommandByScenario.remove(finishedScenarioName);
                             Platform.runLater(() -> {
                                 try {
                                     updateRunStatus();
@@ -1053,6 +1082,132 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         }
         return normalized.contains(WINDOWS_POLICY_BLOCK_ERROR_CODE)
                 || normalized.contains(WINDOWS_POLICY_BLOCK_TEXT);
+    }
+
+    /**
+     * Reports GCAM run failure details to the console, including the submitted command and exit code.
+     * This helps users understand why GCAM failed to start or complete.
+     *
+     * @param scenarioName the scenario name that failed
+     * @param result the process result containing exit code and error details
+     */
+    private void reportRunFailureDetails(String scenarioName, ProcessResult result) {
+        try {
+            if (result == null) {
+                return;
+            }
+            
+            StringBuilder failureReport = new StringBuilder();
+            failureReport.append("=== GCAM RUN FAILURE DIAGNOSTICS ===").append(vars.getEol());
+            failureReport.append("Scenario: ").append(scenarioName).append(vars.getEol());
+            
+            // Add the submitted command if available
+            String submittedCommand = submittedCommandByScenario.get(scenarioName);
+            if (submittedCommand != null && !submittedCommand.trim().isEmpty()) {
+                failureReport.append("Command submitted to executor: ").append(vars.getEol());
+                failureReport.append("  ").append(submittedCommand).append(vars.getEol());
+            }
+            
+            // Add exit code information
+            if (result.isTimedOut()) {
+                failureReport.append("Status: Process timed out after ").append(result.getDurationMillis()).append(" ms").append(vars.getEol());
+            } else {
+                int exitCode = result.getExitCode();
+                failureReport.append("Exit Code: ").append(exitCode).append(vars.getEol());
+                
+                // Add Windows-specific exit code interpretation
+                String windowsInterpretation = interpretWindowsExitCode(exitCode);
+                if (!windowsInterpretation.isEmpty()) {
+                    failureReport.append("Windows Exit Code Interpretation: ").append(windowsInterpretation).append(vars.getEol());
+                }
+            }
+            
+            // Add stdout if available
+            String stdout = result.getStdout();
+            if (stdout != null && !stdout.trim().isEmpty()) {
+                failureReport.append("Process stdout:").append(vars.getEol());
+                String[] stdoutLines = stdout.split("\n");
+                for (String line : stdoutLines) {
+                    String trimmedLine = line.trim();
+                    if (!trimmedLine.isEmpty()) {
+                        failureReport.append("  ").append(trimmedLine).append(vars.getEol());
+                    }
+                }
+            }
+            
+            // Add stderr if available
+            String stderr = result.getStderr();
+            if (stderr != null && !stderr.trim().isEmpty()) {
+                failureReport.append("Process stderr:").append(vars.getEol());
+                String[] errorLines = stderr.split("\n");
+                for (String errorLine : errorLines) {
+                    String trimmedLine = errorLine.trim();
+                    if (!trimmedLine.isEmpty()) {
+                        failureReport.append("  ").append(trimmedLine).append(vars.getEol());
+                    }
+                }
+            }
+            
+            failureReport.append("=== END DIAGNOSTICS ===").append(vars.getEol());
+            
+            String report = failureReport.toString();
+            
+            // Log to console - try multiple times with different approaches
+            try {
+                ConsoleManager.appendLine(
+                        ConsoleManager.StreamSource.GCAM_STDOUT,
+                        ConsoleManager.MessageKind.STDERR,
+                        report);
+            } catch (Exception e) {
+                System.err.println("Failed to append to ConsoleManager: " + e.getMessage());
+            }
+            
+            // Always print to stderr for visibility
+            System.err.println(report);
+            
+            // Try to append to a log file as well for persistence
+            try {
+                Path logDir = Paths.get(vars.getGlimpseLogDir(), "failures");
+                if (!Files.exists(logDir)) {
+                    Files.createDirectories(logDir);
+                }
+                Path logFile = logDir.resolve("gcam_failures.log");
+                String timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+                String logEntry = "[" + timestamp + "] " + report + vars.getEol();
+                Files.write(logFile, logEntry.getBytes(StandardCharsets.UTF_8), 
+                        StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            } catch (Exception e) {
+                System.err.println("Could not write failure log: " + e.getMessage());
+            }
+        } catch (Exception ignored) {
+            // Silently ignore any errors in failure reporting
+            System.err.println("Error in reportRunFailureDetails: " + ignored.getMessage());
+            ignored.printStackTrace();
+        }
+    }
+
+    /**
+     * Interprets common Windows process exit codes to provide helpful error messages.
+     * Negative exit codes are typically Windows NT NTSTATUS error codes.
+     *
+     * @param exitCode the process exit code
+     * @return human-readable interpretation of the exit code, or empty string if unknown
+     */
+    private String interpretWindowsExitCode(int exitCode) {
+        switch (exitCode) {
+            case -1073741515: // 0xC0000139 - STATUS_ENTRYPOINT_NOT_FOUND
+                return "Missing DLL export or entrypoint not found - possibly a missing runtime library or dependency";
+            case -1073741819: // 0xC0000005 - STATUS_ACCESS_VIOLATION
+                return "Access violation - possibly a memory corruption or incompatible executable";
+            case -1073741571: // 0xC0000263 - STATUS_DLL_NOT_FOUND
+                return "Cannot find DLL - a required runtime library or dependency is missing";
+            case -1073741670: // 0xC00000FE - STATUS_STACK_OVERFLOW
+                return "Stack overflow - the program used too much stack memory";
+            case -1: // Generic failure from GLIMPSE
+                return "GLIMPSE failed to start the process (see above for details)";
+            default:
+                return "";
+        }
     }
 
     /**
@@ -2363,5 +2518,119 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         ScenarioRunStateClearMode(String statusText) {
             this.statusText = statusText;
         }
+    }
+    /**
+     * Builds detailed diagnostic information when a GCAM run fails.
+     * Checks for common issues like missing config files, GCAM executable, and invalid paths.
+     *
+     * @param ex the exception that occurred during run initialization
+     * @return formatted diagnostic string suitable for display to the user
+     */
+    private String buildRunFailureDiagnostics(Exception ex) {
+        StringBuilder diagnostics = new StringBuilder();
+        
+        // Add exception message
+        diagnostics.append("Error details:").append(vars.getEol());
+        if (ex != null && ex.getMessage() != null) {
+            diagnostics.append("  ").append(ex.getMessage()).append(vars.getEol());
+        }
+        diagnostics.append(vars.getEol());
+        
+        // Check GCAM executable
+        diagnostics.append("Configuration checks:").append(vars.getEol());
+        try {
+            String gcamExeDir = vars.getgCamExecutableDir();
+            if (gcamExeDir == null || gcamExeDir.trim().isEmpty()) {
+                diagnostics.append("  ✗ GCAM executable directory not configured").append(vars.getEol());
+            } else {
+                File exeDir = new File(gcamExeDir);
+                if (!exeDir.exists()) {
+                    diagnostics.append("  ✗ GCAM executable directory does not exist:").append(vars.getEol());
+                    diagnostics.append("    ").append(gcamExeDir).append(vars.getEol());
+                } else {
+                    diagnostics.append("  ✓ GCAM directory found: ").append(gcamExeDir).append(vars.getEol());
+                }
+                
+                String gcamExe = vars.getgCamExecutable();
+                if (gcamExe != null && !gcamExe.trim().isEmpty()) {
+                    String fullExePath = files.getResolvedPath(gcamExeDir, gcamExe);
+                    File exeFile = new File(fullExePath);
+                    if (!exeFile.exists()) {
+                        diagnostics.append("  ✗ GCAM executable not found:").append(vars.getEol());
+                        diagnostics.append("    ").append(fullExePath).append(vars.getEol());
+                    } else {
+                        diagnostics.append("  ✓ GCAM executable found").append(vars.getEol());
+                    }
+                } else {
+                    diagnostics.append("  ✗ GCAM executable name not configured").append(vars.getEol());
+                }
+            }
+        } catch (Exception e) {
+            diagnostics.append("  ? Could not check GCAM executable: ").append(e.getMessage()).append(vars.getEol());
+        }
+        
+        // Check scenario directory
+        try {
+            String scenarioDir = vars.getScenarioDir();
+            if (scenarioDir == null || scenarioDir.trim().isEmpty()) {
+                diagnostics.append("  ✗ Scenario directory not configured").append(vars.getEol());
+            } else {
+                File scenDir = new File(scenarioDir);
+                if (!scenDir.exists()) {
+                    diagnostics.append("  ✗ Scenario directory does not exist:").append(vars.getEol());
+                    diagnostics.append("    ").append(scenarioDir).append(vars.getEol());
+                } else {
+                    diagnostics.append("  ✓ Scenario directory found").append(vars.getEol());
+                }
+            }
+        } catch (Exception e) {
+            diagnostics.append("  ? Could not check scenario directory: ").append(e.getMessage()).append(vars.getEol());
+        }
+        
+        // Check selected scenarios and their config files
+        try {
+            ScenarioSelection selection = ScenarioSelection.capture();
+            int selectedCount = selection.getRows().size();
+            diagnostics.append(vars.getEol()).append("Selected scenarios (").append(selectedCount).append("):").append(vars.getEol());
+            
+            for (ScenarioRow row : selection.getRows()) {
+                String scenarioName = ScenarioSelection.normalizeScenarioName(row);
+                if (scenarioName.isEmpty()) {
+                    diagnostics.append("  ✗ Could not get scenario name from selected row").append(vars.getEol());
+                } else {
+                    String configFile = ScenarioLibraryPathHelper.scenarioConfigFile(vars.getScenarioDir(), scenarioName);
+                    File configFileObj = new File(configFile);
+                    if (!configFileObj.exists()) {
+                        diagnostics.append("  ✗ Config missing for '").append(scenarioName).append("':").append(vars.getEol());
+                        diagnostics.append("    ").append(configFile).append(vars.getEol());
+                    } else {
+                        diagnostics.append("  ✓ Config found for '").append(scenarioName).append("'").append(vars.getEol());
+                    }
+                }
+            }
+            
+            if (selectedCount == 0) {
+                diagnostics.append("  ! No scenarios selected").append(vars.getEol());
+            }
+        } catch (Exception e) {
+            diagnostics.append("  ? Could not check selected scenarios: ").append(e.getMessage()).append(vars.getEol());
+        }
+        
+        // Check GCAM execution thread
+        diagnostics.append(vars.getEol()).append("Runtime state:").append(vars.getEol());
+        if (Client.gCAMExecutionThread == null) {
+            diagnostics.append("  ✗ GCAM execution thread not initialized").append(vars.getEol());
+        } else {
+            diagnostics.append("  ✓ GCAM execution thread available").append(vars.getEol());
+        }
+        
+        // Add suggestion
+        diagnostics.append(vars.getEol()).append("Suggested actions:").append(vars.getEol());
+        diagnostics.append("  1. Check that all GCAM paths are configured correctly").append(vars.getEol());
+        diagnostics.append("  2. Verify that at least one scenario is selected").append(vars.getEol());
+        diagnostics.append("  3. Verify that scenario configuration files exist").append(vars.getEol());
+        diagnostics.append("  4. Check the console output for additional error details").append(vars.getEol());
+        
+        return diagnostics.toString();
     }
 }
