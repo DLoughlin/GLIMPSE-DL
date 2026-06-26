@@ -5,6 +5,7 @@
 NOTICES: 
 * If you would like to use GLIMPSE-CE, please see the link to the releases to the right. The releases include all necessary files and libraries, including a version of the Jave JRE that includes the JavaFX libraries used by the Scenario Builder.
 * In a recent commit, the gcam 8.2 files were removed from the GCAM-Model folder. These files are included in the downloadable releases.
+* GLIMPSE startup has recently been very slow on some Windows computers. We believe this is because Defender actively scans the java.exe file within the included Amazon Corretto Java 1.8 distribution. You can avoid the slowdowns by excluding the java.exe file from scanning, or you can install Amazon Corretto JDK or JRE 1.8 on your own computer. If you install Corretto, you may need to set the JAVA_HOME location in the run*.bat files to point to the equivalent folder in your installed version.
 
 ## Overview
 
