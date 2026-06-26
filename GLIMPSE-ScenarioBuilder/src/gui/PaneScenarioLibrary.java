@@ -534,6 +534,8 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
 
     /**
      * Handles the Results-Selected button action to open ModelInterface with the selected scenario's database.
+     * Reads the xmldb-location from the selected scenario's configuration file and launches ModelInterface
+     * pointed at that database.
      */
     private void handleResultsForSelected() {
         if (!hasModelInterfaceLocationConfigured()) {
@@ -547,28 +549,40 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
         String scenName = selectedFiles.get(0).getScenarioName();
         String configFilename = ScenarioLibraryPathHelper.scenarioConfigFile(vars.getScenarioDir(), scenName);
         File configFile = new File(configFilename);
-        String workingScenarioLog = ScenarioLibraryPathHelper.glimpseRunsFile(vars.getGlimpseLogDir());
-        File workingScenariosFile = new File(workingScenarioLog);
-        boolean doesScenarioExist = files.searchForTextAtStartOfLinesInFile(workingScenariosFile, scenName + ",", "#");
-        String confirmMsg = doesScenarioExist ? "Overwrite existing scenario " + scenName + "?" : "Import " + scenName + " into GLIMPSE?";
-        if (!utils.confirmAction(confirmMsg)) {
+        if (!configFile.exists()) {
+            utils.warningMessage("Configuration file not found for scenario: " + scenName);
             return;
         }
 
-        Client.beginScenarioOperationProgress();
+        // Read the database path stored in the scenario's config XML.
+        String databasePath = "";
         try {
-            ScenarioFileActionService.ImportResult importResult = scenarioFileActionService.importScenarioConfig(configFile);
-            if (!importResult.wasImported()) {
-                return;
+            String databaseLine = files.searchForTextInFileS(configFile, "xmldb-location", "#");
+            String rawPath = utils.getStringBetweenCharSequences(databaseLine, ">", "</");
+            if (rawPath != null) {
+                rawPath = rawPath.trim();
+                // The stored path may be relative to the GCAM executable directory.
+                File candidate = new File(rawPath);
+                if (!candidate.isAbsolute()) {
+                    candidate = new File(vars.getgCamExecutableDir(), rawPath);
+                }
+                databasePath = candidate.getAbsolutePath();
             }
-            if (doesScenarioExist) {
-                clearImportedScenarioRunResultFields(scenName);
-            }
-            ScenarioRow[] newRun = { importResult.getScenarioRow() };
-            ScenarioTable.addToListOfRunFiles(newRun);
-            requestDefaultCreatedSortAndScrollToTopOnNextRefresh();
-        } finally {
-            Client.endScenarioOperationProgress();
+        } catch (Exception e) {
+            System.err.println("Could not read database path from config for scenario " + scenName + ": " + e.getMessage());
+        }
+
+        if (databasePath.isEmpty()) {
+            utils.warningMessage("Could not determine the output database for scenario: " + scenName
+                    + ".\nPlease check that the configuration file contains an xmldb-location entry.");
+            return;
+        }
+
+        try {
+            runModelInterfaceWhich(databasePath);
+        } catch (Exception e) {
+            e.printStackTrace();
+            utils.exitOnException();
         }
     }
 

@@ -2,3 +2,4 @@
 bin/
 GLIMPSE*.jar
 
+/build_tmp/

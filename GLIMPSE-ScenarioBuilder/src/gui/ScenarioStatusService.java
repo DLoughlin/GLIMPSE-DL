@@ -70,6 +70,7 @@ final class ScenarioStatusService {
     private final GLIMPSEFiles files;
     private final GLIMPSEUtils utils;
     private final GcamPromptMonitor gcamPromptMonitor;
+    private final Set<String> writingPhaseScenarios = new HashSet<>();
     private final Map<String, CachedConfigMetadata> configMetadataCache = new HashMap<>();
     private final Map<String, CachedLogAnalysis> logAnalysisCache = new HashMap<>();
 
@@ -168,6 +169,17 @@ final class ScenarioStatusService {
 
         LogAnalysis scenarioLogAnalysis = mainLogExists ? analyzeLogFile(mainLogFile) : LogAnalysis.empty();
         LogAnalysis scenarioStdoutAnalysis = analyzeScenarioStdoutFile(scenarioFolder);
+
+        // If no process handle is active and this scenario has no run artifacts yet,
+        // don't mark it as Running solely from the executable main_log's last config line.
+        if (activeScenario && !request.isScenarioActivelyRunning(scenarioName) && !mainLogExists
+                && scenarioStdoutAnalysis.runtimeLine.isEmpty()
+                && scenarioStdoutAnalysis.unsolvedLine.isEmpty()
+                && scenarioStdoutAnalysis.statusText.isEmpty()
+                && !scenarioStdoutAnalysis.successMarkerFound
+                && !queuedScenario) {
+            activeScenario = false;
+        }
         if (mainLogExists) {
             completedDate = mainLogFile.lastModified();
             if (scenarioLogAnalysis.successMarkerFound) {
@@ -229,6 +241,15 @@ final class ScenarioStatusService {
                     String explicitRunState = getExplicitRunStateLabel(scenarioName, currentMainLogFile, runningStatus, request);
                     if (!explicitRunState.isEmpty()) {
                         status = explicitRunState;
+                        if (STATUS_WRITING.equals(explicitRunState)) {
+                            writingPhaseScenarios.add(scenarioName);
+                        }
+                    } else if (writingPhaseScenarios.contains(scenarioName)
+                            && !runningStatus.contains(",ERR")
+                            && !scenarioLogAnalysis.successMarkerFound
+                            && !scenarioStdoutAnalysis.successMarkerFound) {
+                        // Keep Writing sticky for the active run until terminal completion/error markers appear.
+                        status = STATUS_WRITING;
                     } else if (runningStatus.contains("ERROR:")) {
                         String temp = runningStatus.substring(0, runningStatus.indexOf(","));
                         status = status + "(" + temp + ")";
@@ -244,6 +265,11 @@ final class ScenarioStatusService {
             } else if (queuedScenario) {
                 status = STATUS_IN_QUEUE;
             }
+        }
+
+        if (!activeScenario || STATUS_SUCCESS.equals(status) || STATUS_UNSOLVED.equals(status)
+                || STATUS_DNF.equals(status) || STATUS_STOPPED.equals(status)) {
+            writingPhaseScenarios.remove(scenarioName);
         }
         if (!queuedScenario && !activeScenario
                 && (STATUS_SUCCESS.equals(status) || STATUS_UNSOLVED.equals(status)

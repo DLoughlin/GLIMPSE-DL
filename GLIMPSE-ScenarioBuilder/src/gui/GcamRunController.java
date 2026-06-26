@@ -1,6 +1,8 @@
 package gui;
 
 import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -219,32 +221,32 @@ final class GcamRunController {
             long startMillis = System.currentTimeMillis();
             try {
                 // Log that we're about to start this scenario
-                System.out.println("[GCAM-RUN] Starting execution for scenario: " + request.scenarioName);
-                System.out.println("[GCAM-RUN] Command: " + String.join(" ", request.command));
-                System.out.println("[GCAM-RUN] Working directory: " + (request.workingDirectory != null ? request.workingDirectory.getAbsolutePath() : "current"));
+                appendGcamInfo("[GCAM-RUN] Starting execution for scenario: " + request.scenarioName);
+                appendGcamInfo("[GCAM-RUN] Command: " + String.join(" ", request.command));
+                appendGcamInfo("[GCAM-RUN] Working directory: " + (request.workingDirectory != null ? request.workingDirectory.getAbsolutePath() : "current"));
                 
                 // Pre-flight checks
                 if (!request.command.isEmpty()) {
                     String executable = request.command.get(0);
                     java.io.File exeFile = new java.io.File(executable);
-                    System.out.println("[GCAM-RUN] Executable path: " + exeFile.getAbsolutePath());
-                    System.out.println("[GCAM-RUN] Executable exists: " + exeFile.exists());
-                    System.out.println("[GCAM-RUN] Executable is file: " + exeFile.isFile());
-                    System.out.println("[GCAM-RUN] Executable can read: " + exeFile.canRead());
-                    System.out.println("[GCAM-RUN] Executable can execute: " + exeFile.canExecute());
+                    appendGcamInfo("[GCAM-RUN] Executable path: " + exeFile.getAbsolutePath());
+                    appendGcamInfo("[GCAM-RUN] Executable exists: " + exeFile.exists());
+                    appendGcamInfo("[GCAM-RUN] Executable is file: " + exeFile.isFile());
+                    appendGcamInfo("[GCAM-RUN] Executable can read: " + exeFile.canRead());
+                    appendGcamInfo("[GCAM-RUN] Executable can execute: " + exeFile.canExecute());
                 }
                 
                 if (request.workingDirectory != null) {
-                    System.out.println("[GCAM-RUN] Working dir exists: " + request.workingDirectory.exists());
-                    System.out.println("[GCAM-RUN] Working dir is dir: " + request.workingDirectory.isDirectory());
-                    System.out.println("[GCAM-RUN] Working dir can read: " + request.workingDirectory.canRead());
+                    appendGcamInfo("[GCAM-RUN] Working dir exists: " + request.workingDirectory.exists());
+                    appendGcamInfo("[GCAM-RUN] Working dir is dir: " + request.workingDirectory.isDirectory());
+                    appendGcamInfo("[GCAM-RUN] Working dir can read: " + request.workingDirectory.canRead());
                 }
                 
                 // Build environment with CLASSPATH for GCAM
                 java.util.Map<String, String> environment = new java.util.HashMap<>(System.getenv());
                 String classpath = "." + java.io.File.pathSeparator + ".." + java.io.File.separator + "libs" + java.io.File.separator + "jars" + java.io.File.separator + "*" + java.io.File.pathSeparator + "XMLDBDriver.jar";
                 environment.put("CLASSPATH", classpath);
-                System.out.println("[GCAM-RUN] Setting CLASSPATH: " + classpath);
+                appendGcamInfo("[GCAM-RUN] Setting CLASSPATH: " + classpath);
                 
                 run = ProcessRunner.start(
                         request.command,
@@ -261,27 +263,27 @@ final class GcamRunController {
                             }
                         });
                 controller.markRunStarted(request.scenarioName, run);
-                System.out.println("[GCAM-RUN] Process started successfully for scenario: " + request.scenarioName);
+                appendGcamInfo("[GCAM-RUN] Process started successfully for scenario: " + request.scenarioName);
                 if (lifecycleListener != null) {
                     lifecycleListener.onRunStarted(request.scenarioName);
                 }
                 result = run.waitForResult(null);
                 long elapsed = System.currentTimeMillis() - startMillis;
-                System.out.println("[GCAM-RUN] Process completed for scenario: " + request.scenarioName + ", exit code: " + result.getExitCode() + ", duration: " + elapsed + "ms");
+                appendGcamInfo("[GCAM-RUN] Process completed for scenario: " + request.scenarioName + ", exit code: " + result.getExitCode() + ", duration: " + elapsed + "ms");
                 if (result.getExitCode() != 0) {
-                    System.out.println("[GCAM-RUN] Exit code " + result.getExitCode() + " (0x" + Integer.toHexString(result.getExitCode() & 0xFFFFFFFF) + ")");
+                    appendGcamError("[GCAM-RUN] Exit code " + result.getExitCode() + " (0x" + Integer.toHexString(result.getExitCode() & 0xFFFFFFFF) + ")");
                     if (result.getStderr() != null && !result.getStderr().isEmpty()) {
-                        System.out.println("[GCAM-RUN] Process stderr: " + result.getStderr());
+                        appendGcamError("[GCAM-RUN] Process stderr: " + result.getStderr());
                     }
                 }
                 return result;
             } catch (Exception ex) {
                 long elapsed = Math.max(0L, System.currentTimeMillis() - startMillis);
                 String errorText = "GLIMPSE failed to start GCAM for scenario '" + request.scenarioName + "': " + ex;
-                System.err.println("[GCAM-RUN-ERROR] " + errorText);
-                System.err.println("[GCAM-RUN-ERROR] Exception type: " + ex.getClass().getName());
-                System.err.println("[GCAM-RUN-ERROR] Exception message: " + ex.getMessage());
-                ex.printStackTrace(System.err);
+                appendGcamError("[GCAM-RUN-ERROR] " + errorText);
+                appendGcamError("[GCAM-RUN-ERROR] Exception type: " + ex.getClass().getName());
+                appendGcamError("[GCAM-RUN-ERROR] Exception message: " + ex.getMessage());
+                appendThrowableToGcamConsole(ex);
                 if (lineListener != null) {
                     try {
                         lineListener.onLine(request.scenarioName, errorText, true);
@@ -295,6 +297,40 @@ final class GcamRunController {
                     lifecycleListener.onRunFinished(request.scenarioName, result);
                 }
             }
+        }
+
+        private void appendGcamInfo(String message) {
+            try {
+                ConsoleManager.appendLine(
+                        ConsoleManager.StreamSource.GCAM_STDOUT,
+                        ConsoleManager.MessageKind.GLIMPSE_INFO,
+                        message == null ? "" : message);
+            } catch (Exception ignored) {}
+        }
+
+        private void appendGcamError(String message) {
+            try {
+                ConsoleManager.appendLine(
+                        ConsoleManager.StreamSource.GCAM_STDOUT,
+                        ConsoleManager.MessageKind.STDERR,
+                        message == null ? "" : message);
+            } catch (Exception ignored) {}
+        }
+
+        private void appendThrowableToGcamConsole(Throwable throwable) {
+            if (throwable == null) {
+                return;
+            }
+            try {
+                StringWriter sw = new StringWriter();
+                PrintWriter pw = new PrintWriter(sw);
+                throwable.printStackTrace(pw);
+                pw.flush();
+                String[] lines = sw.toString().split("\\R");
+                for (String line : lines) {
+                    appendGcamError(line);
+                }
+            } catch (Exception ignored) {}
         }
     }
 

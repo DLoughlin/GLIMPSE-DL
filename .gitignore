@@ -25,3 +25,5 @@
 # Oversized files (GitHub 100MB limit)
 /Contrib/DeepDecarb/TrnShareweightUpdates-Decarb/Delete-TrnTechSWs-Rules-Linear.xml
 /Contrib/DeepDecarb/TrnShareweightUpdates-Decarb/Delete-TrnTechSWs-Rules-SCurve.xml
+/auxiliary/
+/GLIMPSE-USA-8.2.exe
