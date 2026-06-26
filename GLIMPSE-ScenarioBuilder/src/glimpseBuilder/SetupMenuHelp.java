@@ -66,7 +66,7 @@ public final class SetupMenuHelp {
             createWebMenuItem("GLIMPSE-CE GitHub site (web)", "https://github.com/DLoughlin/GLIMPSE-CE"),
             createWebMenuItem("GLIMPSE-CE GitHub documentation (web)", "https://dloughlin.github.io/GLIMPSE-CE"),
             new SeparatorMenuItem(),
-            createMenuItem("About GLIMPSE-CE 2.1", this::showAboutDialog)
+            createMenuItem("About GLIMPSE-CE 2.2", this::showAboutDialog)
             //new SeparatorMenuItem(),
             //new MenuItem(vars.getGLIMPSEVersion()) // Version display item
         );
@@ -76,7 +76,7 @@ public final class SetupMenuHelp {
         try {
             String filename = Paths.get(vars.getGlimpseResourceDir(), "About-text.txt").toString();
             ArrayList<String> aboutLines = files.getStringArrayFromFile(filename, "#");
-            utils.showInformationDialog("About GLIMPSE-CE 2.1", "Information about the GLIMPSE-CE software", utils.createStringFromArrayList(aboutLines), ABOUT_DIALOG_WIDTH_SCALE);
+            utils.showInformationDialog("About GLIMPSE-CE 2.2", "Information about the GLIMPSE-CE software", utils.createStringFromArrayList(aboutLines), ABOUT_DIALOG_WIDTH_SCALE);
         } catch (Exception e) {
             utils.warningMessage("Problem trying to display the About information.");
             System.err.println("Error trying to display About information.");
