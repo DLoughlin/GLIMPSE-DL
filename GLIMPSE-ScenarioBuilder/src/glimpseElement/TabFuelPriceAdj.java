@@ -134,8 +134,10 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         // Populate fuel options from technology info
         String[][] tech_list = vars.getTechInfo();
         extractInfoFromTechList(tech_list);
-        if (checkComboBoxFuel != null && fuelList != null)
-            checkComboBoxFuel.getItems().addAll(fuelList);
+        if (checkComboBoxFuel != null && fuelList != null) {
+            resetCheckComboBoxItems(checkComboBoxFuel, fuelList);
+            configureCheckComboBoxSelectionTitle(checkComboBoxFuel, "Select One or More", "Selected");
+        }
 
         // Populate modification type choices
         if (comboBoxModificationType != null) {
@@ -163,7 +165,7 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         createLabel("Names:"), labelPolicyName, labelMarketName, new Label(), new Separator(),
         createLabel("Populate:"), labelModificationType, labelStartYear, labelEndYear, labelInitialAmount,
         labelGrowth, labelConvertFrom);
-        gridPaneLeft.addColumn(1, createLabel("Select one or more:"),checkComboBoxFuel, new Label(), labelUnitsValue, new Label(),
+        gridPaneLeft.addColumn(1, createLabel(""),checkComboBoxFuel, new Label(), labelUnitsValue, new Label(),
         new Separator(), hBoxAutoUnique, textFieldPolicyName, textFieldMarketName, new Label(),
         new Separator(), new Label(), comboBoxModificationType, textFieldStartYear, textFieldEndYear,
         textFieldInitialAmount, textFieldGrowth, comboBoxConvertFrom);
@@ -432,11 +434,9 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
                 }
                 if (param.equals("policy name") && textFieldPolicyName != null) {
                     textFieldPolicyName.setText(value);
-                    textFieldPolicyName.fireEvent(new ActionEvent());
                 }
                 if (param.equals("market name") && textFieldMarketName != null) {
                     textFieldMarketName.setText(value);
-                    textFieldMarketName.fireEvent(new ActionEvent());
                 }
                 if (param.equals("regions") && paneForCountryStateTree != null) {
                     String[] regions = utils.splitString(value, ",");
@@ -560,56 +560,6 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
             c.setMaxWidth(max);
             c.setPrefWidth(pref);
         }
-    }
-
-    /**
-     * Add the provided items to the given ComboBox.
-     *
-     * @param comboBox the ComboBox to populate
-     * @param items    items to add
-     */
-    private void addItemsToComboBox(ComboBox<String> comboBox, String[] items) {
-        comboBox.getItems().addAll(items);
-    }
-
-    /**
-     * Add the provided items to the given CheckComboBox.
-     *
-     * @param checkComboBox the CheckComboBox to populate
-     * @param items         items to add
-     */
-    private void addItemsToCheckComboBox(CheckComboBox<String> checkComboBox, String[] items) {
-        checkComboBox.getItems().addAll(items);
-    }
-
-    /**
-     * Register an ActionEvent handler with the provided ComboBox.
-     *
-     * @param comboBox the ComboBox to register the handler on
-     * @param handler  handler invoked when the selection changes
-     */
-    private void registerComboBoxEvent(ComboBox<String> comboBox, javafx.event.EventHandler<ActionEvent> handler) {
-        comboBox.setOnAction(handler);
-    }
-
-    /**
-     * Register an ActionEvent handler with the provided CheckBox.
-     *
-     * @param checkBox the CheckBox to register the handler on
-     * @param handler  handler invoked when the checkbox state changes
-     */
-    private void registerCheckBoxEvent(CheckBox checkBox, javafx.event.EventHandler<ActionEvent> handler) {
-        checkBox.setOnAction(handler);
-    }
-
-    /**
-     * Register an ActionEvent handler with the provided Button.
-     *
-     * @param button  the Button to register the handler on
-     * @param handler handler invoked when the button is pressed
-     */
-    private void registerButtonEvent(Button button, javafx.event.EventHandler<ActionEvent> handler) {
-        button.setOnAction(handler);
     }
 
 }

@@ -113,11 +113,12 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 	private static final String LABEL_APPLICATION_MODE = "Apply to:";
 	private static final String MODE_FLEET_AVERAGE = "All Stock";
 	private static final String MODE_NEW_SALES = "Sales";
+	private static final String SELECT_ONE_OR_MORE = "Select One or More";
 	private static final String[] APPLICATION_MODE_OPTIONS = { MODE_FLEET_AVERAGE, MODE_NEW_SALES };
-	private static final String[] SUBSECTOR_OPTIONS = { "Select One", "Car", "Large Car and Truck", "Light Truck",
+	private static final String[] SUBSECTOR_OPTIONS = { "Car", "Large Car and Truck", "Light Truck",
 			"Medium Truck", "Heavy Truck" };
 	private static final String[] TECH_OPTIONS = { "BEV", "FCEV", "Hybrid Liquids", "Liquids", "NG" };
-	private static final String[] UNITS_OPTIONS = { "Select One", "MPG", "MJ/vkt" };
+	private static final String[] UNITS_OPTIONS = { "MPG", "MJ/vkt" };
 	private static final String[] MOD_TYPE_OPTIONS = { "Initial and Final", "Initial w/% Growth/yr",
 			"Initial w/% Growth/pd", "Initial w/Delta/yr", "Initial w/Delta/pd" };
 	// private static final String HEADER_PART1 = "GLIMPSEEffCreditTargets-Part1";
@@ -131,6 +132,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 	private static final String VARIABLE_ID = "Variable ID";
 	private static final String NO_MATCH = "No match";
 	private static final String SELECT_ONE = "Select One";
+
 	private static final String REG = "Reg";
 	private static final String MARKET_SUFFIX = "_Mkt";
 	private static final String METADATA_APPLICATION_MODE = "#Application mode: ";
@@ -199,15 +201,15 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 	 * setupCenterColumn, setupRightColumn.
 	 */
 	private void setupUIControls() {
-		comboBoxSubsector.getItems().addAll(SUBSECTOR_OPTIONS);
-		comboBoxSubsector.getSelectionModel().select(SELECT_ONE);
-		checkComboBoxTech.getItems().addAll(TECH_OPTIONS);
-		checkComboBoxTech.getCheckModel().checkAll(); // Default: all techs selected
+		resetComboBoxItems(comboBoxSubsector, java.util.Arrays.asList(SUBSECTOR_OPTIONS));
+		setComboBoxPrompt(comboBoxSubsector, SELECT_ONE, false);
+		resetCheckComboBoxItems(checkComboBoxTech, java.util.Arrays.asList(TECH_OPTIONS), true);
+		configureCheckComboBoxSelectionTitle(checkComboBoxTech, SELECT_ONE_OR_MORE, "Selected");
 		checkComboBoxTech.setDisable(true); // Disabled until subsector selected
-		comboBoxWhichUnits.getItems().addAll(UNITS_OPTIONS);
+		resetComboBoxItems(comboBoxWhichUnits, java.util.Arrays.asList(UNITS_OPTIONS));
 		comboBoxWhichUnits.getSelectionModel().select("MPG");
 		comboBoxWhichUnits.setDisable(true); // Disabled until tech selected
-		comboBoxApplicationMode.getItems().addAll(APPLICATION_MODE_OPTIONS);
+		resetComboBoxItems(comboBoxApplicationMode, java.util.Arrays.asList(APPLICATION_MODE_OPTIONS));
 		comboBoxApplicationMode.getSelectionModel().select(MODE_FLEET_AVERAGE);
 		setModificationTypeOptions(MOD_TYPE_OPTIONS);
 	}
@@ -283,7 +285,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 		});
 		// Enable/disable tech selection based on subsector
 		comboBoxSubsector.setOnAction(e -> {
-			if (comboBoxSubsector.getSelectionModel().getSelectedIndex() > 0) {
+			if (!isSelectionMissing(comboBoxSubsector)) {
 				checkComboBoxTech.setDisable(false); // Enable tech selection
 			} else {
 				checkComboBoxTech.setDisable(true); // Disable tech selection
@@ -367,9 +369,8 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 				String state = "--";
 				try {
 					String s = comboBoxSubsector.getValue();
-					if (s != null && !s.equals(SELECT_ONE)) {
-						s = s.replace(" ", "_");
-						s = utils.capitalizeOnlyFirstLetterOfString(s);
+					if (s != null) {
+						s = utils.capitalizeOnlyFirstLetterOfString(normalizeNamePart(s));
 						sector = s;
 					}
 					String[] listOfSelectedLeaves = utils.getAllSelectedRegions(paneForCountryStateTree.getTree());
@@ -377,15 +378,12 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 						listOfSelectedLeaves = utils.removeUSADuplicate(listOfSelectedLeaves);
 						String stateStr = utils.returnAppendedString(listOfSelectedLeaves).replace(",", "");
 						if (stateStr.length() < 9) {
-							state = stateStr;
+							state = normalizeNamePart(stateStr);
 						} else {
 							state = REG;
 						}
 					}
-					String name = policyType + "_" + sector + "_" + state;
-					// Clean up name string
-					name = name.replaceAll(" ", "_").replaceAll("-", "_").replaceAll("--", "_").replaceAll("_-_", "_")
-							.replaceAll("---", "");
+					String name = normalizeNamePart(policyType + "_" + sector + "_" + state);
 					textFieldMarketName.setText(name + MARKET_SUFFIX);
 					textFieldPolicyName.setText(name);
 				} catch (Exception e) {
@@ -774,33 +772,27 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 				switch (param) {
 				case "subsector":
 					comboBoxSubsector.setValue(value);
-					comboBoxSubsector.fireEvent(new ActionEvent());
 					break;
 				case "technologies":
 					checkComboBoxTech.getCheckModel().clearChecks();
 					String[] set = utils.splitString(value, ";");
 					for (String item : set) {
 						checkComboBoxTech.getCheckModel().check(item.trim());
-						checkComboBoxTech.fireEvent(new ActionEvent());
 					}
 					break;
 				case "units":
 					comboBoxWhichUnits.setValue(value);
-					comboBoxWhichUnits.fireEvent(new ActionEvent());
 					break;
 				case "application mode":
 					if (APPLICATION_MODE_OPTIONS[0].equals(value) || APPLICATION_MODE_OPTIONS[1].equals(value)) {
 						comboBoxApplicationMode.setValue(value);
-						comboBoxApplicationMode.fireEvent(new ActionEvent());
 					}
 					break;
 				case "policy name":
 					textFieldPolicyName.setText(value);
-					textFieldPolicyName.fireEvent(new ActionEvent());
 					break;
 				case "market name":
 					textFieldMarketName.setText(value);
-					textFieldMarketName.fireEvent(new ActionEvent());
 					break;
 				case "regions":
 					String[] regions = utils.splitString(value, ",");
@@ -858,61 +850,20 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 		int errorCount = 0;
 		StringBuilder message = new StringBuilder();
 		try {
-			// Check for at least one selected region
-			if (utils.getAllSelectedRegions(tree).length < 1) {
-				message.append("Must select at least one region from tree").append(vars.getEol());
-				errorCount++;
-			}
-			// Check for at least one data entry
-			if (paneForComponentDetails.table.getItems().isEmpty()) {
-				message.append("Data table must have at least one entry").append(vars.getEol());
-				errorCount++;
-			} else {
-				boolean match = validateTableDataYears();
-				if (!match) {
-					message.append("Years specified in table must match allowable policy years").append(vars.getEol());
-					errorCount++;
-				}
-			}
-			// Check subsector selection
-			String selectedSubsector = comboBoxSubsector.getSelectionModel().getSelectedItem();
-			if (selectedSubsector == null || selectedSubsector.equals(SELECT_ONE)) {
-				message.append("Sector comboBox must have a selection").append(vars.getEol());
-				errorCount++;
-			}
-			// Check tech selection
-			if (checkComboBoxTech == null || checkComboBoxTech.getCheckModel().getCheckedItems().isEmpty()) {
-				message.append("Tech checkComboBox must have at least one selection").append(vars.getEol());
-				errorCount++;
-			}
-			// Check units selection
-			String selectedUnits = comboBoxWhichUnits.getSelectionModel().getSelectedItem();
-			if (selectedUnits == null || selectedUnits.equals(SELECT_ONE)) {
-				message.append("Treatment comboBox must have a selection").append(vars.getEol());
-				errorCount++;
-			}
-			// Check market and policy name fields
-			if (textFieldMarketName.getText() == null || textFieldMarketName.getText().isEmpty()) {
-				message.append("A market name must be provided").append(vars.getEol());
-				errorCount++;
-			}
-			if (textFieldPolicyName.getText() == null || textFieldPolicyName.getText().isEmpty()) {
-				message.append("A policy name must be provided").append(vars.getEol());
-				errorCount++;
-			}
+			errorCount += validateRegionSelection(tree, message);
+			boolean hasRows = paneForComponentDetails != null && !paneForComponentDetails.table.getItems().isEmpty();
+			boolean yearsMatch = !hasRows || validateTableDataYears();
+			errorCount += validateTableEntries(message, hasRows, yearsMatch);
+			errorCount += validateRequiredSelection(message, comboBoxSubsector, "Sector");
+			errorCount += validateRequiredSelection(message, checkComboBoxTech, "Tech");
+			errorCount += validateRequiredSelection(message, comboBoxWhichUnits, "Treatment");
+			errorCount += validateRequiredText(message, textFieldMarketName, "market name");
+			errorCount += validateRequiredText(message, textFieldPolicyName, "policy name");
 		} catch (Exception e1) {
 			errorCount++;
 			message.append("Error in QA of entries").append(vars.getEol());
 		}
-		// Display warnings or errors if any
-		if (errorCount > 0) {
-			if (errorCount == 1) {
-				utils.warningMessage(message.toString());
-			} else if (errorCount > 1) {
-				utils.displayString(message.toString(), "Parsing Errors");
-			}
-		}
-		return errorCount == 0;
+		return finalizeQaValidation(errorCount, message);
 	}
 
 	/**
@@ -950,8 +901,6 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 				item = "";
 			}
 		}
-		if (unit.trim().equals("Select One or More"))
-			unit = "";
 		return unit;
 	}
 }

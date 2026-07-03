@@ -42,9 +42,7 @@ import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
-import javafx.event.ActionEvent;
 import javafx.geometry.Pos;
-import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
@@ -250,11 +248,11 @@ public class TabModifyDemand extends PolicyTab implements Runnable {
      */
     private void setupActions() {
         setupComboBoxSector();
-        comboBoxSector.getSelectionModel().selectFirst();
+        setComboBoxPrompt(comboBoxSector, SECTOR_SELECT_ONE);
         setModificationTypeOptions(MODIFICATION_TYPES);
         
         // Sector selection event: update displayed units when a new sector is chosen.
-        registerComboBoxEvent(comboBoxSector, e -> {
+        setOnAction(comboBoxSector, e -> {
             String selectedItem = comboBoxSector.getSelectionModel().getSelectedItem();
             if (selectedItem == null) return;
             if (SECTOR_OTHER.equals(selectedItem)) {
@@ -264,8 +262,8 @@ public class TabModifyDemand extends PolicyTab implements Runnable {
             }
         });
         
-        // Initialize state by firing initial event
-        comboBoxSector.fireEvent(new ActionEvent());
+        // Initialize state directly instead of dispatching a synthetic action event.
+        updateSectorOutputAndUnits();
     }
 
     /**
@@ -301,11 +299,13 @@ public class TabModifyDemand extends PolicyTab implements Runnable {
      */
     private void setupComboBoxSector() {
         try {
+            List<String> sectorNames = new ArrayList<>();
             for (String[] sector : sectorInfo) {
-                comboBoxSector.getItems().add(sector[0]);
+                if (sector != null && sector.length > 0) {
+                    sectorNames.add(sector[0]);
+                }
             }
-            comboBoxSector.getItems().add(SECTOR_SELECT_ONE);
-            comboBoxSector.getSelectionModel().select(SECTOR_SELECT_ONE);
+            resetComboBoxItems(comboBoxSector, sectorNames);
         } catch (Exception e) {
             utils.warningMessage("Problem reading sector list.");
             System.out.println("  ---> " + e);
@@ -471,7 +471,7 @@ public class TabModifyDemand extends PolicyTab implements Runnable {
                 
                 if (param.equals("sector")) {
                     comboBoxSector.setValue(value);
-                    comboBoxSector.fireEvent(new ActionEvent());
+                    updateSectorOutputAndUnits();
                 }
                 if (param.equals("regions")) {
                     String[] regions = utils.splitString(value, ",");
@@ -524,65 +524,18 @@ public class TabModifyDemand extends PolicyTab implements Runnable {
         int errorCount = 0;
         StringBuilder message = new StringBuilder();
         try {
-            // Check if at least one region is selected
-			if (utils.getAllSelectedRegions(tree).length < 1) {
-				message.append("Must select at least one region from tree").append(vars.getEol());
-				errorCount++;
-			}
+            errorCount += validateRegionSelection(tree, message);
             
             // Check if table has data
-			if (paneForComponentDetails == null || paneForComponentDetails.table.getItems().size() == 0) {
-				message.append("Data table must have at least one entry").append(vars.getEol());
-				errorCount++;
-			} else {
-                // Validate years in table against allowable policy years
-				boolean match = validateTableDataYears();
-				if (!match) {
-					message.append("Years specified in table must match allowable policy years (")
-						.append(vars.getAllowablePolicyYears()).append(")").append(vars.getEol());
-					errorCount++;
-				}
-			}
+            boolean hasRows = paneForComponentDetails != null && paneForComponentDetails.table.getItems().size() > 0;
+            boolean yearsMatch = hasRows && validateTableDataYears();
+            errorCount += validateTableEntries(message, hasRows, yearsMatch);
             
-            // Check if sector is selected
-            String selected = comboBoxSector.getSelectionModel().getSelectedItem();
-            if (selected == null || selected.equals(SECTOR_SELECT_ONE)) {
-                message.append("Sector comboBox must have a selection").append(vars.getEol());
-                errorCount++;
-            }
+            errorCount += validateRequiredSelection(message, comboBoxSector, "Sector", SECTOR_SELECT_ONE);
         } catch (Exception e1) {
             errorCount++;
             message.append("Error in QA of entries").append(vars.getEol());
         }
-        
-        if (errorCount > 0) {
-            if (errorCount == 1) {
-                utils.warningMessage(message.toString());
-            } else {
-                utils.warningMessage("More than one issue with inputs");
-                utils.displayString(message.toString(), "Parsing Errors");
-            }
-        }
-        return errorCount == 0;
-    }
-    
-    /**
-     * Registers an event handler for a ComboBox's ActionEvent.
-     *
-     * @param comboBox the ComboBox to register the event for
-     * @param handler the event handler
-     */
-    private void registerComboBoxEvent(ComboBox<String> comboBox, javafx.event.EventHandler<ActionEvent> handler) {
-        comboBox.setOnAction(handler);
-    }
-
-    /**
-     * Registers an event handler for a Button's ActionEvent.
-     *
-     * @param button The Button to register the event for.
-     * @param handler The event handler to execute on action.
-     */
-    private void registerButtonEvent(Button button, javafx.event.EventHandler<ActionEvent> handler) {
-        button.setOnAction(handler);
+        return finalizeQaValidation(errorCount, message);
     }
 }

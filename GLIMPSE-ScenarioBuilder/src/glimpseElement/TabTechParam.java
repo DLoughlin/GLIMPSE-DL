@@ -90,14 +90,13 @@ public class TabTechParam extends PolicyTab implements Runnable {
     // === Constants for UI Texts and Options ===
     // UI text constants for labels, options, and warnings
     private static final String SELECT_ONE = "Select One";
-    private static final String SELECT_ONE_OR_MORE = "Select One or More";
     private static final String ALL = "All";
     private static final String[] PARAM_OPTIONS = {
-            SELECT_ONE , "Shareweight", "Subsector Shareweight", "Nested-Subsector Shareweight", "Levelized Non-Energy Cost",
+            "Shareweight", "Subsector Shareweight", "Nested-Subsector Shareweight", "Levelized Non-Energy Cost",
             "Capacity Factor", "Fixed Output", "Lifetime", "Halflife"
     };
     private static final String[] EMISSION_OPTIONS = {
-            SELECT_ONE, "NOx", "SO2", "PM10", "PM2.5", "CO", "NH3", "NMVOC", "BC", "OC"
+            "NOx", "SO2", "PM10", "PM2.5", "CO", "NH3", "NMVOC", "BC", "OC"
     };
     private static final String WARNING_UNITS_MISMATCH = "Warning - Units do not match!";
     private static final String UNIT_UNITLESS = "unitless";
@@ -115,6 +114,7 @@ public class TabTechParam extends PolicyTab implements Runnable {
     private static final String LABEL_OUTPUT = "Output: ";
     private static final String LABEL_UNITS = "Units: ";
     private static final String LABEL_MANUAL_YEAR_VALUE_PAIRS = "Year-Value Pairs:";
+    private static final String SELECT_ONE_OR_MORE = "Select One or More";
     
 
     // === Layout and UI Components ===
@@ -169,8 +169,6 @@ public class TabTechParam extends PolicyTab implements Runnable {
         setupEventHandlers(); // register event handlers
         techInfo = vars.getTechInfo(); // load technology metadata
         setupComboBoxCategory(); // populate Category combo box
-
-        //checkComboBoxTech.setDisable(true);
     }
 
     /**
@@ -179,9 +177,8 @@ public class TabTechParam extends PolicyTab implements Runnable {
      * Keeps the UI in a known default state before any data is loaded.
      */
     private void setupUIControls() {
-        checkComboBoxTech.getItems().clear();
-        checkComboBoxTech.getItems().add(SELECT_ONE_OR_MORE);
-        checkComboBoxTech.getCheckModel().check(0);
+        resetCheckComboBoxItems(checkComboBoxTech, null);
+        configureCheckComboBoxSelectionTitle(checkComboBoxTech, SELECT_ONE_OR_MORE, "Selected");
         checkComboBoxTech.setDisable(true);
         textFieldFilter.setDisable(true);
 
@@ -194,12 +191,11 @@ public class TabTechParam extends PolicyTab implements Runnable {
         labelComboBoxParam2.setVisible(false);
         comboBoxParam2.setVisible(false);
 
-        comboBoxParam.getItems().addAll(PARAM_OPTIONS);
-        comboBoxParam.getSelectionModel().selectFirst();
+        resetComboBoxItems(comboBoxParam, java.util.Arrays.asList(PARAM_OPTIONS));
+        setComboBoxPrompt(comboBoxParam, SELECT_ONE, false);
         comboBoxParam.setDisable(false);
 
-        comboBoxParam2.getItems().addAll(SELECT_ONE);
-        comboBoxParam2.getSelectionModel().selectFirst();
+        setComboBoxPrompt(comboBoxParam2, SELECT_ONE);
         comboBoxParam2.setDisable(true);
 
         setModificationTypeOptions(MODIFICATION_TYPE_OPTIONS);
@@ -297,19 +293,6 @@ public class TabTechParam extends PolicyTab implements Runnable {
         button.setOnAction(handler);
     }
     /**
-     * Register an action handler for a ComboBox.
-     */
-    private void registerComboBoxEvent(ComboBox<String> comboBox, javafx.event.EventHandler<ActionEvent> handler) {
-        comboBox.setOnAction(handler);
-    }
-    /**
-     * Register an action handler for a TextField.
-     */
-    private void registerTextFieldEvent(TextField textField, javafx.event.EventHandler<ActionEvent> handler) {
-        textField.setOnAction(handler);
-    }
-
-    /**
      * Configure event handlers for user interactions in the tab. This includes
      * filter updates, category/parameter selection and reacting to changes in
      * the checked technologies list.
@@ -319,7 +302,7 @@ public class TabTechParam extends PolicyTab implements Runnable {
         super.setupEventHandlers();
         
         // Update tech list when filter text is changed (press Enter)
-        registerTextFieldEvent(textFieldFilter, e -> { updateCheckComboTechs(); });
+        setOnAction(textFieldFilter, e -> { updateCheckComboTechs(); });
         
         // Double-clicking the tech label toggles selection when enabled
         labelCheckComboBoxTech.setOnMouseClicked(e -> {
@@ -336,15 +319,11 @@ public class TabTechParam extends PolicyTab implements Runnable {
 
         });
         // Category selection controls enabling/disabling of tech selection and filter
-        registerComboBoxEvent(comboBoxCategory, e -> {
+        setOnAction(comboBoxCategory, e -> {
             String selectedItem = comboBoxCategory.getSelectionModel().getSelectedItem();
-            if (selectedItem == null) return;
-            if (selectedItem.equals(SELECT_ONE)) {
+            if (isSelectionMissing(comboBoxCategory)) {
                 // Reset tech selection UI when no category chosen
-                checkComboBoxTech.getCheckModel().clearChecks();
-                checkComboBoxTech.getItems().clear();
-                checkComboBoxTech.getItems().add(SELECT_ONE_OR_MORE);
-                checkComboBoxTech.getCheckModel().check(0);
+                resetCheckComboBoxItems(checkComboBoxTech, null);
                 checkComboBoxTech.setDisable(true);
                 labelTextFieldUnits2.setText("");
                 textFieldFilter.setText("");
@@ -358,39 +337,45 @@ public class TabTechParam extends PolicyTab implements Runnable {
             setUnitsLabel();
         });
         // Parameter selection may reveal a secondary parameter (e.g., emissions)
-        registerComboBoxEvent(comboBoxParam, e -> {
-            comboBoxParam2.getSelectionModel().selectFirst();
-            comboBoxParam2.setDisable(true);
-            comboBoxParam2.setVisible(false);
-            try {
-                String selectedItem = comboBoxParam.getSelectionModel().getSelectedItem();
-                if (selectedItem != null && selectedItem.contains("Emis")) {
-                    comboBoxParam2.getItems().clear();
-                    for (String option : EMISSION_OPTIONS) {
-                        comboBoxParam2.getItems().add(option);
-                    }
-                    comboBoxParam2.getSelectionModel().select(0);
-                    comboBoxParam2.setDisable(false);
-                    comboBoxParam2.setVisible(true);
-                } else {
-                    comboBoxParam2.getSelectionModel().select(0);
-                    comboBoxParam2.setDisable(true);
-                }
-                if (selectedItem != null && selectedItem.equals("Levelized Non-Energy Cost")) {
-                    labelConvertFrom.setVisible(true);
-                    comboBoxConvertFrom.setVisible(true);
-                }
-                setUnitsLabel();
-            } catch (Exception ex) {
-                // guard against unexpected nulls or index errors - do not propagate
-            }
-        });
+        setOnAction(comboBoxParam, e -> applyParameterSelection());
 
         // When the set of checked technologies changes, update displayed IO units
         checkComboBoxTech.getCheckModel().getCheckedItems().addListener((ListChangeListener<String>) c -> Platform.runLater(() -> {
             updateInputOutputUnits();
             setUnitsLabel();
         }));
+    }
+
+    /**
+     * Applies parameter-dependent UI state (secondary parameter visibility and
+     * conversion controls) and refreshes units.
+     */
+    private void applyParameterSelection() {
+        comboBoxParam2.getSelectionModel().clearSelection();
+        comboBoxParam2.setDisable(true);
+        comboBoxParam2.setVisible(false);
+        try {
+            String selectedItem = comboBoxParam.getSelectionModel().getSelectedItem();
+            if (selectedItem != null && selectedItem.contains("Emis")) {
+                comboBoxParam2.getItems().clear();
+                for (String option : EMISSION_OPTIONS) {
+                    comboBoxParam2.getItems().add(option);
+                }
+                setComboBoxPrompt(comboBoxParam2, SELECT_ONE);
+                comboBoxParam2.setDisable(false);
+                comboBoxParam2.setVisible(true);
+            } else {
+                comboBoxParam2.getSelectionModel().clearSelection();
+                comboBoxParam2.setDisable(true);
+            }
+            if (selectedItem != null && selectedItem.equals("Levelized Non-Energy Cost")) {
+                labelConvertFrom.setVisible(true);
+                comboBoxConvertFrom.setVisible(true);
+            }
+            setUnitsLabel();
+        } catch (Exception ex) {
+            // guard against unexpected nulls or index errors - do not propagate
+        }
     }
 
     /**
@@ -456,12 +441,10 @@ public class TabTechParam extends PolicyTab implements Runnable {
      * categories are removed.
      */
     private void setupComboBoxCategory() {
-        comboBoxCategory.getItems().clear();
-        comboBoxCategory.getItems().addAll(SELECT_ONE, ALL);
-         comboBoxCategory.getSelectionModel().selectFirst();
+         ArrayList<String> categoryList = new ArrayList<>();
+         categoryList.add(ALL);
          try {
             if (this.techInfo == null) return;
-             ArrayList<String> categoryList = new ArrayList<>();
  
             for (String[] tech : this.techInfo) {
                  if (tech == null || tech.length == 0) continue;
@@ -478,9 +461,8 @@ public class TabTechParam extends PolicyTab implements Runnable {
                  }
              }
              categoryList = utils.getUniqueItemsFromStringArrayList(categoryList);
-             for (String cat : categoryList) {
-                 if (cat != null) comboBoxCategory.getItems().add(cat.trim());
-             }
+             resetComboBoxItems(comboBoxCategory, categoryList, ALL, false);
+             setComboBoxPrompt(comboBoxCategory, SELECT_ONE);
 
          } catch (NullPointerException e) {
              utils.warningMessage("Problem reading tech list: Null value encountered.");
@@ -505,10 +487,7 @@ public class TabTechParam extends PolicyTab implements Runnable {
             if (this.techInfo == null) return;
             boolean isAllCat = cat.equals(ALL);
             try {
-//                if (!checkComboBoxTech.getItems().isEmpty()) {
-//                    checkComboBoxTech.getCheckModel().clearChecks();
-//                    checkComboBoxTech.getItems().clear();
-//                }
+                resetCheckComboBoxItems(checkComboBoxTech, null);
                 if (cat != null) {
                     String lastLine = "";
                     String filterText = textFieldFilter.getText() != null ? textFieldFilter.getText().trim() : "";
@@ -589,19 +568,29 @@ public class TabTechParam extends PolicyTab implements Runnable {
                 String value = line.substring(pos + 1).trim();
                 if (param.equals("category")) {
                     comboBoxCategory.setValue(value);
-                    comboBoxCategory.fireEvent(new ActionEvent());
+                    if (isSelectionMissing(comboBoxCategory)) {
+                        resetCheckComboBoxItems(checkComboBoxTech, null);
+                        checkComboBoxTech.setDisable(true);
+                        labelTextFieldUnits2.setText("");
+                        textFieldFilter.setText("");
+                        textFieldFilter.setDisable(true);
+                    } else {
+                        updateCheckComboTechs();
+                        checkComboBoxTech.setDisable(false);
+                        textFieldFilter.setDisable(false);
+                    }
+                    setUnitsLabel();
                 }
                 if (param.equals("technologies")) {
                     // mark each technology in the checked list
                     String[] set = utils.splitString(value, ";");
                     for (String item : set) {
                         checkComboBoxTech.getCheckModel().check(item.trim());
-                        checkComboBoxTech.fireEvent(new ActionEvent());
                     }
                 }
                 if (param.equals("parameter")) {
                     comboBoxParam.setValue(value);
-                    comboBoxParam.fireEvent(new ActionEvent());
+                    applyParameterSelection();
                 }
                 if (param.equals("regions")) {
                     String[] regions = utils.splitString(value, ",");
@@ -719,7 +708,7 @@ public class TabTechParam extends PolicyTab implements Runnable {
                 // ignore malformed lines and continue
             }
         }
-        if (unit.equals(SELECT_ONE_OR_MORE)) unit = "";
+        if (unit.trim().isEmpty()) unit = "";
         return unit;
     }
 
@@ -929,33 +918,16 @@ public class TabTechParam extends PolicyTab implements Runnable {
         int errorCount = 0;
         StringBuilder message = new StringBuilder();
         try {
-            if (utils.getAllSelectedRegions(tree).length < 1) {
-                message.append("Must select at least one region from tree").append(vars.getEol());
-                errorCount++;
+            errorCount += validateRegionSelection(tree, message);
+            boolean hasRows = paneForComponentDetails != null && !paneForComponentDetails.table.getItems().isEmpty();
+            boolean yearsMatch = !hasRows || validateTableDataYears();
+            errorCount += validateTableEntries(message, hasRows, yearsMatch);
+            if (checkComboBoxTech != null) {
+                errorCount += validateRequiredSelection(message, checkComboBoxTech, "Tech");
             }
-            if (paneForComponentDetails == null || paneForComponentDetails.table.getItems().size() == 0) {
-                message.append("Data table must have at least one entry").append(vars.getEol());
-                errorCount++;
-            } else {
-                boolean match = validateTableDataYears();
-                if (!match) {
-                    message.append("Years specified in table must match allowable policy years (").append(vars.getAllowablePolicyYears()).append(")").append(vars.getEol());
-                    errorCount++;
-                }
-            }            
-            if (checkComboBoxTech != null && ((checkComboBoxTech.getCheckModel().getCheckedItems().size() == 0) )) {
-                message.append("Tech checkComboBox must have at least one selection").append(vars.getEol());
-                errorCount++;
-            }
-            if (comboBoxParam.getSelectionModel().getSelectedItem().equals(SELECT_ONE)) {
-                message.append("Parameter comboBox must have a selection").append(vars.getEol());
-                errorCount++;
-            }
+            errorCount += validateRequiredSelection(message, comboBoxParam, "Parameter");
             if (comboBoxParam2.isVisible()) {
-                if (comboBoxParam2.getSelectionModel().getSelectedItem().equals(SELECT_ONE)) {
-                    message.append("Parameter2 comboBox must have a selection").append(vars.getEol());
-                    errorCount++;
-                }
+                errorCount += validateRequiredSelection(message, comboBoxParam2, "Parameter2");
             }
         } catch (Exception e1) {
             errorCount++;
@@ -963,14 +935,6 @@ public class TabTechParam extends PolicyTab implements Runnable {
             message.append("  ---> ").append(e1).append(vars.getEol());
             System.out.println(message.toString());
         }
-        if (errorCount > 0) {
-            if (errorCount == 1) {
-                utils.warningMessage(message.toString());
-            } else if (errorCount > 1) {
-                utils.displayString(message.toString(), "Parsing Errors");
-            }
-        }
-        return errorCount == 0;
+        return finalizeQaValidation(errorCount, message);
     }
 }
-

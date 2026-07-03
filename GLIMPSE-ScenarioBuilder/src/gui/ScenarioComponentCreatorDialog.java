@@ -129,7 +129,7 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 	private TabMarketShare techMarketShareTab;
 	private TabTechBound techBound2Tab;
 	private TabTechAvailable techAvailTab;
-	private TabModifyDemand fixedDemandTab;
+	private TabModifyDemand modifyDemandTab;
 	private TabTechParam techParamTab;
 	private TabTechTax techTaxTab;
 	private TabFuelPriceAdj fuelPriceAdjTab;
@@ -197,13 +197,13 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 		techParamTab.setClosable(false);
 		techTaxTab = new TabTechTax(TAB_TECH_TAX, stageWithTabs);
 		techTaxTab.setClosable(false);
-		fixedDemandTab = new TabModifyDemand(TAB_MODIFY_DEMAND, stageWithTabs);
-		fixedDemandTab.setClosable(false);
+		modifyDemandTab = new TabModifyDemand(TAB_MODIFY_DEMAND, stageWithTabs);
+		modifyDemandTab.setClosable(false);
 
 		TabPane addComponentTabPane = new TabPane();
 		addComponentTabPane.setStyle(styles.getStyle2());
 		addComponentTabPane.getTabs().addAll(pollTaxCapTab, techMarketShareTab, techBound2Tab, techTaxTab, effStndTab,
-				techParamTab, fuelPriceAdjTab, fixedDemandTab, techAvailTab, xmlListTab);
+				techParamTab, fuelPriceAdjTab, modifyDemandTab, techAvailTab, xmlListTab);
 		VBox.setVgrow(addComponentTabPane, javafx.scene.layout.Priority.ALWAYS);
 		addComponentTabPane.setMaxHeight(Double.MAX_VALUE);
 		addComponentTabPane.setPrefHeight(Double.MAX_VALUE);
@@ -410,7 +410,7 @@ public class ScenarioComponentCreatorDialog extends gui.ScenarioBuilder {
 				return fuelPriceAdjTab;
 			case TAB_MODIFY_DEMAND:
 			case TAB_FIXED_DEMAND_LEGACY:
-				return fixedDemandTab;
+				return modifyDemandTab;
 			default:
 				return null;
 		}

@@ -76,7 +76,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
     private static final double MAX_WIDTH = 225;
     private static final double MIN_WIDTH = 175;
 	private static final double PREF_WIDTH = LABEL_WIDTH;
-	private static final String[] MEASURE_OPTIONS = { "Select One", "Emission Cap (Mt)", "Emission Tax ($/t)" };
+	private static final String[] MEASURE_OPTIONS = { "Emission Tax ($/t)", "Emission Cap (Mt)"  };
 	//private static final String[] POLLUTANT_OPTIONS = { "Select One", "CO2 (MT C)", "CO2 (MT CO2)", "GHG (MT CO2E)",
 	//		"NOx (Tg)", "SO2 (Tg)", "PM2.5 (Tg)", "NMVOC (Tg)", "CO (Tg)", "NH3 (Tg)", "CH4 (Tg)", "N2O (Tg)" };
 	private static final String LABEL_MEASURE = "Measure: ";
@@ -86,6 +86,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	private static final String TAX = "Tax";
 	private static final String CAP = "Cap";
 	private static final String SELECT_ONE = "Select One";
+	private static final String SELECT_ONE_OR_MORE = "Select One or More";
 	private static final String ALL = "All";
 	private static final String INPUT_TABLE = "INPUT_TABLE";
 	private static final String VARIABLE_ID = "Variable ID";
@@ -143,6 +144,8 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 		setComponentWidths();
 		setupUILayout();
 		setPolicyAndMarketNames();
+		
+
 	}
 
 	/**
@@ -162,7 +165,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 		for (String option : MEASURE_OPTIONS) {
 			comboBoxMeasure.getItems().add(option);
 		}
-		comboBoxPollutant.getItems().add("Select One");
+
 		String[] pollutantOptions = vars.getPollutantList();
 		for (String option : pollutantOptions) {
 			comboBoxPollutant.getItems().add(option);
@@ -171,8 +174,11 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 			checkComboBoxCategory.getItems().add(option);
 		}
 
-		comboBoxMeasure.getSelectionModel().selectFirst();
-		comboBoxPollutant.getSelectionModel().selectFirst();
+		//initialize pulldown menus to default values
+		comboBoxPollutant.setPromptText(SELECT_ONE);
+		comboBoxMeasure.setPromptText(SELECT_ONE);
+		configureCheckComboBoxSelectionTitle(checkComboBoxCategory, SELECT_ONE_OR_MORE, "Selected");
+		
 		checkComboBoxCategory.getCheckModel().clearChecks();
 		checkComboBoxCategory.getCheckModel().check(ALL);
 		checkComboBoxCategory.setDisable(true);
@@ -222,31 +228,47 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 
 		// Listener for measure selection changes
 		setOnAction(comboBoxMeasure, e -> {
-			// Show/hide conversion controls based on measure type
-			if (comboBoxMeasure.getSelectionModel().getSelectedItem().startsWith(EMISSION_TAX)) {
-				labelConvertFrom.setVisible(true);
-				comboBoxConvertFrom.setVisible(true);
-			} else {
-				labelConvertFrom.setVisible(false);
-				comboBoxConvertFrom.setVisible(false);
-			}
-			setPolicyAndMarketNames();
+			applyMeasureSelection();
 		});
 		// Listener for pollutant selection changes
 		setOnAction(comboBoxPollutant, e -> {
-			String selectedItem = comboBoxPollutant.getSelectionModel().getSelectedItem();
-			if (!SELECT_ONE.equals(selectedItem)) {
-				if (selectedItem.startsWith(CO2)) {
-					checkComboBoxCategory.setDisable(false);
-				} else {
-					checkComboBoxCategory.getCheckModel().clearChecks();
-					checkComboBoxCategory.getCheckModel().check(ALL);
-					checkComboBoxCategory.setDisable(true);
-				}
-			}
-			setPolicyAndMarketNames();
+			applyPollutantSelection();
 		});
 
+	}
+
+	/**
+	 * Applies measure-dependent UI state (conversion controls visibility) and
+	 * refreshes generated names.
+	 */
+	private void applyMeasureSelection() {
+		String selectedMeasure = comboBoxMeasure.getSelectionModel().getSelectedItem();
+		if (selectedMeasure != null && selectedMeasure.startsWith(EMISSION_TAX)) {
+			labelConvertFrom.setVisible(true);
+			comboBoxConvertFrom.setVisible(true);
+		} else {
+			labelConvertFrom.setVisible(false);
+			comboBoxConvertFrom.setVisible(false);
+		}
+		setPolicyAndMarketNames();
+	}
+
+	/**
+	 * Applies pollutant-dependent category enable/disable behavior and refreshes
+	 * generated names.
+	 */
+	private void applyPollutantSelection() {
+		String selectedItem = comboBoxPollutant.getSelectionModel().getSelectedItem();
+		if (selectedItem != null && !SELECT_ONE.equals(selectedItem)) {
+			if (selectedItem.startsWith(CO2)) {
+				checkComboBoxCategory.setDisable(false);
+			} else {
+				checkComboBoxCategory.getCheckModel().clearChecks();
+				checkComboBoxCategory.getCheckModel().check(ALL);
+				checkComboBoxCategory.setDisable(true);
+			}
+		}
+		setPolicyAndMarketNames();
 	}
 
 	/**
@@ -882,11 +904,11 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 				switch (param) {
 				case "measure":
 					comboBoxMeasure.setValue(value);
-					comboBoxMeasure.fireEvent(new ActionEvent());
+					applyMeasureSelection();
 					break;
 				case "pollutant":
 					comboBoxPollutant.setValue(value);
-					comboBoxPollutant.fireEvent(new ActionEvent());
+					applyPollutantSelection();
 					break;
 				case "categories":
 					checkComboBoxCategory.getCheckModel().clearChecks();
@@ -898,15 +920,13 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 							checkComboBoxCategory.getCheckModel().check(item);
 						}
 					}
-					checkComboBoxCategory.fireEvent(new ActionEvent());
+					setPolicyAndMarketNames();
 					break;
 				case "policy name":
 					textFieldPolicyName.setText(value);
-					textFieldPolicyName.fireEvent(new ActionEvent());
 					break;
 				case "market name":
 					textFieldMarketName.setText(value);
-					textFieldMarketName.fireEvent(new ActionEvent());
 					break;
 				case "regions":
 					String[] regions = utils.splitString(value, ",");

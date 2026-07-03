@@ -114,10 +114,10 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	private static final String CONSTRAINT_UPPER = "Upper Bound";
 	private static final String CONSTRAINT_LOWER = "Lower Bound";
 	private static final String CONSTRAINT_FIXED = "Fixed Bound";
-	private static final String[] CONSTRAINT_OPTIONS = { SELECT_ONE, CONSTRAINT_UPPER, CONSTRAINT_LOWER,
+	private static final String[] CONSTRAINT_OPTIONS = { CONSTRAINT_LOWER, CONSTRAINT_UPPER, 
 			CONSTRAINT_FIXED };
-	private static final String[] TREATMENT_OPTIONS = { SELECT_ONE, "Each Selected Region", "Across Selected Regions" };
-	private static final String[] APPLIED_TO_OPTIONS = { SELECT_ONE, "All Stock", "Sales" };
+	private static final String[] TREATMENT_OPTIONS = { "Across Selected Regions","Each Selected Region" };
+	private static final String[] APPLIED_TO_OPTIONS = { "All Stock", "Sales" };
 	private static final String UNITS_DEFAULT = "";
 	// === UI Components ===
 	private final Label labelFilter = createLabel(LABEL_FILTER, LABEL_WIDTH);
@@ -241,8 +241,7 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	 * until a category or filter is provided by the user.
 	 */
 	private void setupTechComboBox() {
-		checkComboBoxTech.getItems().add(SELECT_ONE_OR_MORE);
-		checkComboBoxTech.getCheckModel().checkAll();
+		configureCheckComboBoxSelectionTitle(checkComboBoxTech, SELECT_ONE_OR_MORE, "Selected");
 		checkComboBoxTech.setDisable(true);
 	}
 
@@ -251,14 +250,13 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	 * defaults.
 	 */
 	private void setupComboBoxOptions() {
-		comboBoxTreatment.getItems().addAll(TREATMENT_OPTIONS);
-		comboBoxTreatment.getSelectionModel().selectFirst();
-		comboBoxConstraint.getItems().addAll(CONSTRAINT_OPTIONS);
+		resetComboBoxItems(comboBoxTreatment, java.util.Arrays.asList(TREATMENT_OPTIONS));
+		setComboBoxPrompt(comboBoxTreatment, SELECT_ONE);
+		resetComboBoxItems(comboBoxConstraint, java.util.Arrays.asList(CONSTRAINT_OPTIONS));
+		setComboBoxPrompt(comboBoxConstraint, SELECT_ONE);
 		setModificationTypeOptions(MODIFICATION_TYPE_OPTIONS);
-		comboBoxCategory.getSelectionModel().selectFirst();
-		comboBoxConstraint.getSelectionModel().selectFirst();
-		comboBoxAppliedTo.getItems().addAll(APPLIED_TO_OPTIONS);
-		comboBoxAppliedTo.getSelectionModel().selectFirst();
+		resetComboBoxItems(comboBoxAppliedTo, java.util.Arrays.asList(APPLIED_TO_OPTIONS));
+		setComboBoxPrompt(comboBoxAppliedTo, SELECT_ONE);
 	}
 
 	private void onCategorySelected() {
@@ -288,11 +286,9 @@ public class TabTechBound extends PolicyTab implements Runnable {
 
 		super.setupEventHandlers();
 
-		setEventHandler(textFieldFilter, e -> {
+		setOnAction(textFieldFilter, e -> {
 			updateCheckComboBoxTech();
 		});
-
-		setEventHandler(checkComboBoxTech, e -> setPolicyAndMarketNames());
 
 		labelCheckComboBoxTech.setOnMouseClicked(e -> {
 			// Allow double-click to select/deselect all when control is enabled
@@ -307,16 +303,11 @@ public class TabTechBound extends PolicyTab implements Runnable {
 				}
 			}
 		});
-		setEventHandler(comboBoxCategory, e -> {
+		setOnAction(comboBoxCategory, e -> {
 			String selectedItem = comboBoxCategory.getSelectionModel().getSelectedItem();
-			if (selectedItem == null)
-				return;
-			if (selectedItem.equals(SELECT_ONE)) {
+			if (isSelectionMissing(comboBoxCategory)) {
 				// Reset tech list and disable filtering controls
-				checkComboBoxTech.getCheckModel().clearChecks();
-				checkComboBoxTech.getItems().clear();
-				checkComboBoxTech.getItems().add(SELECT_ONE_OR_MORE);
-				checkComboBoxTech.getCheckModel().check(0);
+				resetCheckComboBoxItems(checkComboBoxTech, null);
 				checkComboBoxTech.setDisable(true);
 				labelUnits2.setText(UNITS_DEFAULT);
 				textFieldFilter.setText("");
@@ -332,12 +323,13 @@ public class TabTechBound extends PolicyTab implements Runnable {
 		});
 		checkComboBoxTech.getCheckModel().getCheckedItems().addListener((ListChangeListener<String>) c -> {
 			while (c.next()) {
+				setPolicyAndMarketNames();
 				setUnitsLabel();
 			}
 		});
-		setEventHandler(comboBoxConstraint, e -> onConstraintSelected());
-		setEventHandler(comboBoxTreatment, e -> onTreatmentSelected());
-		setEventHandler(comboBoxAppliedTo, e -> onAppliedToSelected());
+		setOnAction(comboBoxConstraint, e -> onConstraintSelected());
+		setOnAction(comboBoxTreatment, e -> onTreatmentSelected());
+		setOnAction(comboBoxAppliedTo, e -> onAppliedToSelected());
 	}
 
 	/**
@@ -346,8 +338,8 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	 */
 	private void setupComboBoxCategory() {
 		comboBoxCategory.getItems().clear();
-		comboBoxCategory.getItems().addAll("Select One", "All");
-		comboBoxCategory.getSelectionModel().selectFirst();
+		comboBoxCategory.getItems().addAll("All");
+		setComboBoxPrompt(comboBoxCategory, SELECT_ONE);
 		try {
 			String[][] techInfo = vars.getTechInfo();
 			if (techInfo == null)
@@ -399,10 +391,8 @@ public class TabTechBound extends PolicyTab implements Runnable {
 			return;
 		boolean isAllCat = cat.equals(ALL);
 		try {
-//			if (!checkComboBoxTech.getItems().isEmpty()) {
-//				checkComboBoxTech.getCheckModel().clearChecks();
-//				checkComboBoxTech.getItems().clear();
-//			}
+			// Clear previous items and checks to ensure clean state
+			resetCheckComboBoxItems(checkComboBoxTech, null);
 			if (cat != null) {
 				String lastLine = "";
 				String filterText = textFieldFilter.getText() != null ? textFieldFilter.getText().trim() : "";
@@ -457,9 +447,8 @@ public class TabTechBound extends PolicyTab implements Runnable {
 						policyType = "_Fx";
 				}
 				s = comboBoxCategory.getValue();
-				if (s != null && !s.equals(SELECT_ONE)) {
-					s = s.replace(" ", "_");
-					s = utils.capitalizeOnlyFirstLetterOfString(s);
+				if (!isSelectionMissing(comboBoxCategory)) {
+					s = utils.capitalizeOnlyFirstLetterOfString(normalizeNamePart(s));
 					sector = s;
 				}
 				s = comboBoxTreatment.getValue();
@@ -483,14 +472,13 @@ public class TabTechBound extends PolicyTab implements Runnable {
 					listOfSelectedLeaves = utils.removeUSADuplicate(listOfSelectedLeaves);
 					String stateStr = utils.returnAppendedString(listOfSelectedLeaves).replace(",", "");
 					if (stateStr.length() < 9) {
-						state = stateStr;
+						state = normalizeNamePart(stateStr);
 					} else {
 						state = "Reg";
 					}
 				}
 
-				String name = "tchBnd" + policyType + "_" + sector + treatment + appliedTo + " " + state;
-				name = name.replaceAll("[^a-zA-Z0-9_]", "_").replaceAll("___", "__").replaceAll("__", "_");
+				String name = normalizeNamePart("tchBnd" + policyType + "_" + sector + treatment + appliedTo + "_" + state);
 				textFieldMarketName.setText(name + "_Mkt");
 				textFieldPolicyName.setText(name);
 			} catch (Exception e) {
@@ -864,7 +852,6 @@ public class TabTechBound extends PolicyTab implements Runnable {
 
 				if (param.equals("category")) {
 					comboBoxCategory.setValue(value);
-					comboBoxCategory.fireEvent(new ActionEvent());
 				}
 				if (param.equals("technologies")) {
 					checkComboBoxTech.getCheckModel().clearChecks();
@@ -872,13 +859,11 @@ public class TabTechBound extends PolicyTab implements Runnable {
 					for (String item : set) {
 						if (item != null) {
 							checkComboBoxTech.getCheckModel().check(item.trim());
-							checkComboBoxTech.fireEvent(new ActionEvent());
 						}
 					}
 				}
 				if (param.equals("constraint")) {
 					comboBoxConstraint.setValue(value);
-					comboBoxConstraint.fireEvent(new ActionEvent());
 				}
 				if (param.equals("applied to")) {
 					if (value.toLowerCase().contains("sales")) {
@@ -887,11 +872,9 @@ public class TabTechBound extends PolicyTab implements Runnable {
 						value = "All Stock";
 					}
 					comboBoxAppliedTo.setValue(value);
-					comboBoxAppliedTo.fireEvent(new ActionEvent());
 				}
 				if (param.equals("treatment")) {
 					comboBoxTreatment.setValue(value);
-					comboBoxTreatment.fireEvent(new ActionEvent());
 				}
 				if (param.equals("regions")) {
 					String[] regions = utils.splitString(value, ",");
@@ -942,93 +925,26 @@ public class TabTechBound extends PolicyTab implements Runnable {
 		TreeView<String> tree = paneForCountryStateTree.getTree();
 
 		int error_count = 0;
-		String message = "";
+		StringBuilder message = new StringBuilder();
 
 		try {
-
-			if (utils.getAllSelectedRegions(tree).length < 1) {
-				message += "Must select at least one region from tree" + vars.getEol();
-				error_count++;
-			}
-			if (paneForComponentDetails.table.getItems().size() == 0) {
-				message += "Data table must have at least one entry" + vars.getEol();
-				error_count++;
-			} else {
-				boolean match = validateTableDataYears();
-				if (!match) {
-					message += "Years specified in table must match allowable policy years ("
-						+ vars.getAllowablePolicyYears() + ")" + vars.getEol();
-					error_count++;
-				}
-			}
-			if (comboBoxCategory.getSelectionModel().getSelectedItem().equals("Select One")) {
-				message += "Category comboBox must have a selection" + vars.getEol();
-				error_count++;
-			}
-			if (checkComboBoxTech.getCheckModel().getCheckedItems().size() == 0) {
-				message += "Tech checkComboBox must have a selection" + vars.getEol();
-				error_count++;
-			}
-			if (comboBoxConstraint.getSelectionModel().getSelectedItem().equals("Select One")) {
-				message += "Constraint comboBox must have a selection" + vars.getEol();
-				error_count++;
-			}
-			if (comboBoxTreatment.getSelectionModel().getSelectedItem().equals("Select One")) {
-				message += "Treatment comboBox must have a selection" + vars.getEol();
-				error_count++;
-			}
-			if (comboBoxAppliedTo.getSelectionModel().getSelectedItem().equals("Select One")) {
-				message += "Applied To comboBox must have a selection" + vars.getEol();
-				error_count++;
-			}
-			if (textFieldMarketName.getText().equals("")) {
-				message += "A market name must be provided" + vars.getEol();
-				error_count++;
-			}
-			if (textFieldPolicyName.getText().equals("")) {
-				message += "A policy name must be provided" + vars.getEol();
-				error_count++;
-			}
+			error_count += validateRegionSelection(tree, message);
+			boolean hasRows = paneForComponentDetails != null && !paneForComponentDetails.table.getItems().isEmpty();
+			boolean yearsMatch = !hasRows || validateTableDataYears();
+			error_count += validateTableEntries(message, hasRows, yearsMatch);
+			error_count += validateRequiredSelection(message, comboBoxCategory, "Category");
+			error_count += validateRequiredSelection(message, checkComboBoxTech, "Tech");
+			error_count += validateRequiredSelection(message, comboBoxConstraint, "Constraint");
+			error_count += validateRequiredSelection(message, comboBoxTreatment, "Treatment");
+			error_count += validateRequiredSelection(message, comboBoxAppliedTo, "Applied To");
+			error_count += validateRequiredText(message, textFieldMarketName, "market name");
+			error_count += validateRequiredText(message, textFieldPolicyName, "policy name");
 
 		} catch (Exception e1) {
 			error_count++;
-			message += "Error in QA of entries" + vars.getEol();
+			message.append("Error in QA of entries").append(vars.getEol());
 		}
-		if (error_count > 0) {
-			if (error_count == 1) {
-				utils.warningMessage(message);
-			} else if (error_count > 1) {
-				utils.displayString(message, "Parsing Errors");
-			}
-		}
-
-		boolean is_correct;
-		if (error_count == 0) {
-			is_correct = true;
-		} else {
-			is_correct = false;
-		}
-		return is_correct;
-	}
-
-	/**
-	 * Convenience method to assign an action handler to various control types.
-	 * Accepts Button, ComboBox, CheckBox, and TextField instances.
-	 *
-	 * @param control The control to wire the handler to
-	 * @param handler The action handler to assign
-	 * @param <T> Control type
-	 */
-	private <T extends javafx.scene.Node> void setEventHandler(T control, EventHandler<ActionEvent> handler) {
-		if (control instanceof Button) {
-			((Button) control).setOnAction(handler);
-		} else if (control instanceof ComboBox) {
-			((ComboBox<?>) control).setOnAction(handler);
-		} else if (control instanceof CheckBox) {
-			((CheckBox) control).setOnAction(handler);
-		} else if (control instanceof TextField) {
-			((TextField) control).setOnAction(handler);
-		}
+		return finalizeQaValidation(error_count, message);
 	}
 
 	/**

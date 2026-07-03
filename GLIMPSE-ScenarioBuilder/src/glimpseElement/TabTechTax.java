@@ -88,7 +88,7 @@ public class TabTechTax extends PolicyTab implements Runnable {
 	private static final String ALL = "All";
 	private static final String TAX = "Tax";
 	private static final String SUBSIDY = "Subsidy";
-	private static final String[] TAX_OR_SUBSIDY_OPTIONS = { SELECT_ONE, TAX, SUBSIDY };
+	private static final String[] TAX_OR_SUBSIDY_OPTIONS = { TAX, SUBSIDY };
 
 	// --- Left Column Components ---
 	private final Label labelComboBoxCategory = utils.createLabel("Category: ", LABEL_WIDTH);
@@ -130,14 +130,11 @@ public class TabTechTax extends PolicyTab implements Runnable {
 		setupUILayout();
 		setupSizing();
 		setupComboBoxCategory();
-		comboBoxCategory.getSelectionModel().selectFirst();
-		checkComboBoxTech.getItems().add(SELECT_ONE_OR_MORE);
-		checkComboBoxTech.getCheckModel().check(0);
+		configureCheckComboBoxSelectionTitle(checkComboBoxTech, SELECT_ONE_OR_MORE, "Selected");
 		checkComboBoxTech.setDisable(true);
-		for (String option : TAX_OR_SUBSIDY_OPTIONS) {
-			comboBoxMeasure.getItems().add(option);
-		}
-		comboBoxMeasure.getSelectionModel().selectFirst();
+		textFieldFilter.setDisable(true);
+		resetComboBoxItems(comboBoxMeasure, java.util.Arrays.asList(TAX_OR_SUBSIDY_OPTIONS));
+		setComboBoxPrompt(comboBoxMeasure, SELECT_ONE);
 		setModificationTypeOptions(MODIFICATION_TYPE_OPTIONS);
 		//comboBoxConvertFrom.getItems().clear();
 		//for (String option : CONVERT_FROM_OPTIONS) {
@@ -242,15 +239,9 @@ public class TabTechTax extends PolicyTab implements Runnable {
 		// Sector combo box: update tech list, enable/disable controls, and refresh names/units
 		comboBoxCategory.setOnAction(e -> Platform.runLater(() -> {
 			String selectedItem = comboBoxCategory.getSelectionModel().getSelectedItem();
-			if (selectedItem == null)
-				return;
-			if (selectedItem.equals(SELECT_ONE)) {
-				checkComboBoxTech.getCheckModel().clearChecks();
-				checkComboBoxTech.getItems().clear();
-				checkComboBoxTech.getItems().add(SELECT_ONE_OR_MORE);
-				checkComboBoxTech.getCheckModel().check(0);
+			if (isSelectionMissing(comboBoxCategory)) {
+				resetCheckComboBoxItems(checkComboBoxTech, null);
 				checkComboBoxTech.setDisable(true);
-
 				textFieldFilter.setText("");
 				textFieldFilter.setDisable(true);
 				labelUnits2.setText("");
@@ -297,13 +288,11 @@ public class TabTechTax extends PolicyTab implements Runnable {
      * 'Select One' and 'All' options first.
      */
     private void setupComboBoxCategory() {
-        comboBoxCategory.getItems().clear();
-        comboBoxCategory.getItems().addAll("Select One","All");
-        comboBoxCategory.getSelectionModel().selectFirst();
+        ArrayList<String> categoryList = new ArrayList<>();
+        categoryList.add(ALL);
         try {
             String[][] techInfo = vars.getTechInfo();
             if (techInfo == null) return;
-            ArrayList<String> categoryList = new ArrayList<>();
  
             for (String[] tech : techInfo) {
                 if (tech == null || tech.length == 0) continue;
@@ -320,9 +309,8 @@ public class TabTechTax extends PolicyTab implements Runnable {
                 }
             }
             categoryList = utils.getUniqueItemsFromStringArrayList(categoryList);
-            for (String cat : categoryList) {
-                if (cat != null) comboBoxCategory.getItems().add(cat.trim());
-            }
+			resetComboBoxItems(comboBoxCategory, categoryList, ALL, false);
+			setComboBoxPrompt(comboBoxCategory, SELECT_ONE);
 
         } catch (NullPointerException e) {
             utils.warningMessage("Problem reading tech list: Null value encountered.");
@@ -465,10 +453,7 @@ public class TabTechTax extends PolicyTab implements Runnable {
 				return;
 			boolean isAllCat = cat.equals(ALL);
 			try {
-//				if (!checkComboBoxTech.getItems().isEmpty()) {
-//					checkComboBoxTech.getCheckModel().clearChecks();
-//					checkComboBoxTech.getItems().clear();
-//				}
+				resetCheckComboBoxItems(checkComboBoxTech, null);
 				if (cat != null) {
 					String lastLine = "";
 					String filterText = textFieldFilter.getText() != null ? textFieldFilter.getText().trim() : "";
@@ -559,19 +544,17 @@ public class TabTechTax extends PolicyTab implements Runnable {
 					if (s != null && s.contains(SUBSIDY))
 						policyType = "tchSub";
 					s = comboBoxCategory.getValue();
-					if (s != null && !s.equals(SELECT_ONE)) {
-						s = s.replace(" ", "_");
-						s = utils.capitalizeOnlyFirstLetterOfString(s);
+					if (!isSelectionMissing(comboBoxCategory)) {
+						s = utils.capitalizeOnlyFirstLetterOfString(normalizeNamePart(s));
 						category = s;
 					}
 					String[] selectedLeaves = utils.getAllSelectedRegions(paneForCountryStateTree.getTree());
 					if (selectedLeaves.length > 0) {
 						selectedLeaves = utils.removeUSADuplicate(selectedLeaves);
 						String stateStr = utils.returnAppendedString(selectedLeaves).replace(",", "");
-						state = stateStr.length() < 9 ? stateStr : "Reg";
+						state = stateStr.length() < 9 ? normalizeNamePart(stateStr) : "Reg";
 					}
-					String name = policyType + "_" + category + "_" + technology + "_" + state;
-					name = name.replaceAll("[^a-zA-Z0-9_]", "_").replaceAll("___", "__").replaceAll("__", "_");
+					String name = normalizeNamePart(policyType + "_" + category + "_" + technology + "_" + state);
 
 					textFieldMarketName.setText(name + "_Mkt");
 					textFieldPolicyName.setText(name);
@@ -770,18 +753,30 @@ public class TabTechTax extends PolicyTab implements Runnable {
 					switch (param) {
 					case "measure":
 						comboBoxMeasure.setValue(value);
-						comboBoxMeasure.fireEvent(new ActionEvent());
+						setPolicyAndMarketNames();
 						break;
 					case "category":
 						comboBoxCategory.setValue(value);
-						comboBoxCategory.fireEvent(new ActionEvent());
+						if (isSelectionMissing(comboBoxCategory)) {
+							resetCheckComboBoxItems(checkComboBoxTech, null);
+							checkComboBoxTech.setDisable(true);
+							textFieldFilter.setText("");
+							textFieldFilter.setDisable(true);
+							labelUnits2.setText("");
+						} else {
+							updateCheckComboBoxTech();
+							checkComboBoxTech.setDisable(false);
+							textFieldFilter.setDisable(false);
+						}
+						setPolicyAndMarketNames();
+						setUnitsLabel();
 						break;
 					case "technologies":
 						String[] set = utils.splitString(value, ";");
 						for (String item : set) {
 							checkComboBoxTech.getCheckModel().check(item.trim());
 						}
-						checkComboBoxTech.fireEvent(new ActionEvent());
+						setUnitsLabel();
 						break;
 					case "regions":
 						String[] regions = utils.splitString(value, ",");
@@ -831,53 +826,20 @@ public class TabTechTax extends PolicyTab implements Runnable {
 		int errorCount = 0;
 		StringBuilder message = new StringBuilder();
 		try {
-			if (utils.getAllSelectedRegions(tree).length < 1) {
-				message.append("Must select at least one region from tree").append(vars.getEol());
-				errorCount++;
-			}
-			if (paneForComponentDetails == null || paneForComponentDetails.table.getItems().size() == 0) {
-				message.append("Data table must have at least one entry").append(vars.getEol());
-				errorCount++;
-			} else {
-				boolean match = validateTableDataYears();
-				if (!match) {
-					message.append("Years specified in table must match allowable policy years (")
-							.append(vars.getAllowablePolicyYears()).append(")").append(vars.getEol());
-					errorCount++;
-				}
-			}
-			if (comboBoxCategory.getSelectionModel().getSelectedItem().equals(SELECT_ONE)) {
-				message.append("Sector comboBox must have a selection").append(vars.getEol());
-				errorCount++;
-			}
-			if (checkComboBoxTech.getCheckModel().getCheckedItems().size() <= 0) {
-				message.append("Tech checkComboBox must have a selection").append(vars.getEol());
-				errorCount++;
-			}
-			if (comboBoxMeasure.getSelectionModel().getSelectedItem().equals(SELECT_ONE)) {
-				message.append("Type comboBox must have a selection").append(vars.getEol());
-				errorCount++;
-			}
-			if (textFieldPolicyName.getText().equals("")) {
-				message.append("A policy name must be provided").append(vars.getEol());
-				errorCount++;
-			}
-			if (textFieldMarketName.getText().equals("")) {
-				message.append("A market name must be provided").append(vars.getEol());
-				errorCount++;
-			}
+			errorCount += validateRegionSelection(tree, message);
+			boolean hasRows = paneForComponentDetails != null && !paneForComponentDetails.table.getItems().isEmpty();
+			boolean yearsMatch = !hasRows || validateTableDataYears();
+			errorCount += validateTableEntries(message, hasRows, yearsMatch);
+			errorCount += validateRequiredSelection(message, comboBoxCategory, "Sector");
+			errorCount += validateRequiredSelection(message, checkComboBoxTech, "Tech");
+			errorCount += validateRequiredSelection(message, comboBoxMeasure, "Type");
+			errorCount += validateRequiredText(message, textFieldPolicyName, "policy name");
+			errorCount += validateRequiredText(message, textFieldMarketName, "market name");
 		} catch (Exception e1) {
 			errorCount++;
 			message.append("Error in QA of entries").append(vars.getEol());
 		}
-		if (errorCount > 0) {
-			if (errorCount == 1) {
-				utils.warningMessage(message.toString());
-			} else if (errorCount > 1) {
-				utils.displayString(message.toString(), "Parsing Errors");
-			}
-		}
-		return errorCount == 0;
+		return finalizeQaValidation(errorCount, message);
 	}
 
 	/**
@@ -913,7 +875,7 @@ public class TabTechTax extends PolicyTab implements Runnable {
 			if (s.equals("billion cycles"))
 				s2 = "cycle";
 			if (s.equals("Mt"))
-				s2 = "kg";
+			 s2 = "kg";
 			if (s.equals("km^3"))
 				s2 = "m^3";
 			label = "1975$s per " + s2;
@@ -943,9 +905,8 @@ public class TabTechTax extends PolicyTab implements Runnable {
 				// ignore
 			}
 		}
-		if (unit.trim().equals(SELECT_ONE_OR_MORE))
+		if (unit.trim().isEmpty())
 			unit = "";
 		return unit;
 	}
 }
-

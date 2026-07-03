@@ -59,6 +59,7 @@ import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TreeView;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -898,6 +899,309 @@ public abstract class PolicyTab extends Tab {
         comboBox.getItems().add(seedTxt);
         comboBox.setMinWidth(width);
         return comboBox;
+    }
+
+    /**
+     * Configure a ComboBox to use prompt text for its unselected state.
+     * Optionally clears any current selection so the prompt is visible.
+     *
+     * @param comboBox the combo box to configure
+     * @param promptText the prompt text to display when nothing is selected
+     */
+    protected void setComboBoxPrompt(ComboBox<String> comboBox, String promptText) {
+        setComboBoxPrompt(comboBox, promptText, true);
+    }
+
+    /**
+     * Configure a ComboBox prompt text and optionally clear the current selection.
+     *
+     * @param comboBox the combo box to configure
+     * @param promptText the prompt text to display when nothing is selected
+     * @param clearSelection whether the current selection should be cleared
+     */
+    protected void setComboBoxPrompt(ComboBox<String> comboBox, String promptText, boolean clearSelection) {
+        if (comboBox == null) {
+            return;
+        }
+        comboBox.setPromptText(promptText);
+        if (clearSelection) {
+            comboBox.getSelectionModel().clearSelection();
+        }
+    }
+
+    /**
+     * Select the first ComboBox item when one exists.
+     *
+     * @param comboBox the combo box to update
+     */
+    protected void selectFirstIfPresent(ComboBox<String> comboBox) {
+        if (comboBox != null && !comboBox.getItems().isEmpty()) {
+            comboBox.getSelectionModel().selectFirst();
+        }
+    }
+
+    /**
+     * Clears and repopulates a ComboBox with trimmed, non-empty values.
+     *
+     * @param comboBox combo box to reset
+     * @param items items to load
+     */
+    protected void resetComboBoxItems(ComboBox<String> comboBox, List<String> items) {
+        resetComboBoxItems(comboBox, items, null, false);
+    }
+
+    /**
+     * Clears and repopulates a ComboBox, with optional default value and selection behavior.
+     *
+     * @param comboBox combo box to reset
+     * @param items items to load
+     * @param defaultValue optional default item to append if missing
+     * @param selectDefault when true and default exists, select it; otherwise clears selection
+     */
+    protected void resetComboBoxItems(ComboBox<String> comboBox, List<String> items, String defaultValue, boolean selectDefault) {
+        if (comboBox == null) {
+            return;
+        }
+
+        comboBox.getItems().clear();
+
+        if (items != null) {
+            for (String item : items) {
+                if (item == null) {
+                    continue;
+                }
+                String trimmed = item.trim();
+                if (trimmed.isEmpty() || comboBox.getItems().contains(trimmed)) {
+                    continue;
+                }
+                comboBox.getItems().add(trimmed);
+            }
+        }
+
+        String normalizedDefault = defaultValue == null ? null : defaultValue.trim();
+        if (normalizedDefault != null && !normalizedDefault.isEmpty() && !comboBox.getItems().contains(normalizedDefault)) {
+            comboBox.getItems().add(normalizedDefault);
+        }
+
+        if (selectDefault && normalizedDefault != null && !normalizedDefault.isEmpty()) {
+            comboBox.getSelectionModel().select(normalizedDefault);
+        } else {
+            comboBox.getSelectionModel().clearSelection();
+        }
+    }
+
+    /**
+     * Clears and repopulates a CheckComboBox with trimmed, non-empty values.
+     *
+     * @param checkComboBox check combo box to reset
+     * @param items items to load
+     */
+    protected void resetCheckComboBoxItems(CheckComboBox<String> checkComboBox, List<String> items) {
+        resetCheckComboBoxItems(checkComboBox, items, false);
+    }
+
+    /**
+     * Clears and repopulates a CheckComboBox, with optional check-all behavior.
+     *
+     * @param checkComboBox check combo box to reset
+     * @param items items to load
+     * @param checkAll when true, checks all loaded items
+     */
+    protected void resetCheckComboBoxItems(CheckComboBox<String> checkComboBox, List<String> items, boolean checkAll) {
+        if (checkComboBox == null) {
+            return;
+        }
+
+        checkComboBox.getCheckModel().clearChecks();
+        checkComboBox.getItems().clear();
+
+        if (items != null) {
+            for (String item : items) {
+                if (item == null) {
+                    continue;
+                }
+                String trimmed = item.trim();
+                if (trimmed.isEmpty() || checkComboBox.getItems().contains(trimmed)) {
+                    continue;
+                }
+                checkComboBox.getItems().add(trimmed);
+            }
+        }
+
+        if (checkAll && !checkComboBox.getItems().isEmpty()) {
+            checkComboBox.getCheckModel().checkAll();
+        }
+    }
+
+    /**
+     * Configures a CheckComboBox title so it shows checked counts and switches
+     * between an empty-state title and a selected-state title dynamically.
+     *
+     * @param checkComboBox check combo box to configure
+     * @param emptyTitle title to show when no items are selected
+     * @param selectedTitle title to show when one or more items are selected
+     */
+    protected void configureCheckComboBoxSelectionTitle(CheckComboBox<String> checkComboBox, String emptyTitle, String selectedTitle) {
+        if (checkComboBox == null) {
+            return;
+        }
+
+        checkComboBox.getCheckModel().getCheckedItems().addListener((ListChangeListener<String>) change -> {
+            int checkedCount = checkComboBox.getCheckModel().getCheckedItems().size();
+            checkComboBox.setShowCheckedCount(checkedCount > 0);
+            checkComboBox.setTitle(checkedCount > 0 ? selectedTitle : emptyTitle);
+        });
+
+        int checkedCount = checkComboBox.getCheckModel().getCheckedItems().size();
+        checkComboBox.setShowCheckedCount(checkedCount > 0);
+        checkComboBox.setTitle(checkedCount > 0 ? selectedTitle : emptyTitle);
+    }
+
+    /**
+     * Returns true when a ComboBox has no selected value.
+     *
+     * @param comboBox the combo box to inspect
+     * @return true when the selected item is null or blank
+     */
+    protected boolean isSelectionMissing(ComboBox<String> comboBox) {
+        if (comboBox == null) {
+            return true;
+        }
+        String selected = comboBox.getSelectionModel().getSelectedItem();
+        return selected == null || selected.trim().isEmpty();
+    }
+
+    /**
+     * Returns true when a CheckComboBox has no checked items.
+     *
+     * @param checkComboBox the check combo box to inspect
+     * @return true when there are no checked items
+     */
+    protected boolean isSelectionMissing(CheckComboBox<String> checkComboBox) {
+        return checkComboBox == null || checkComboBox.getCheckModel().getCheckedItems().isEmpty();
+    }
+
+    /**
+     * Normalizes a string for use in auto-generated names.
+     *
+     * @param value raw value
+     * @return sanitized name fragment
+     */
+    protected String normalizeNamePart(String value) {
+        if (value == null) {
+            return "--";
+        }
+        String normalized = value.trim()
+        	    .replaceAll("[^a-zA-Z0-9_ -]", "_")
+                .replaceAll(" ", "_")
+                .replaceAll("-", "_");
+        while (normalized.contains("__")) {
+            normalized = normalized.replace("__", "_");
+        }
+        return normalized.isEmpty() ? "--" : normalized;
+    }
+
+    /**
+     * Removes placeholder selections like "Select One" from a tab's validation logic.
+     *
+     * @param value selected value
+     * @param placeholder placeholder text to treat as missing
+     * @return true when the value is missing or equal to the placeholder
+     */
+    protected boolean isMissingSelection(String value, String placeholder) {
+        return value == null || value.trim().isEmpty() || (placeholder != null && placeholder.equals(value.trim()));
+    }
+
+    /**
+     * Appends a region-selection validation message and returns 1 when invalid.
+     */
+    protected int validateRegionSelection(TreeView<String> tree, StringBuilder message) {
+        if (tree == null || utils.getAllSelectedRegions(tree).length < 1) {
+            message.append("Must select at least one region from tree").append(vars.getEol());
+            return 1;
+        }
+        return 0;
+    }
+
+    /**
+     * Validates table rows and table-year compatibility in one place.
+     */
+    protected int validateTableEntries(StringBuilder message, boolean hasRows, boolean yearsMatch) {
+        if (!hasRows) {
+            message.append("Data table must have at least one entry").append(vars.getEol());
+            return 1;
+        }
+        if (!yearsMatch) {
+            message.append("Years specified in table must match allowable policy years (")
+                    .append(vars.getAllowablePolicyYears()).append(")")
+                    .append(vars.getEol());
+            return 1;
+        }
+        return 0;
+    }
+
+    /**
+     * Validates required ComboBox selection with a standardized message.
+     */
+    protected int validateRequiredSelection(StringBuilder message, ComboBox<String> comboBox, String fieldName) {
+        if (isSelectionMissing(comboBox)) {
+            message.append(fieldName).append(" comboBox must have a selection").append(vars.getEol());
+            return 1;
+        }
+        return 0;
+    }
+
+    /**
+     * Validates required ComboBox selection and treats a placeholder value as missing.
+     */
+    protected int validateRequiredSelection(StringBuilder message, ComboBox<String> comboBox, String fieldName, String placeholder) {
+        int errors = validateRequiredSelection(message, comboBox, fieldName);
+        if (errors > 0) {
+            return errors;
+        }
+
+        String selected = comboBox.getSelectionModel().getSelectedItem();
+        if (isMissingSelection(selected, placeholder)) {
+            message.append(fieldName).append(" comboBox must have a selection").append(vars.getEol());
+            return 1;
+        }
+        return 0;
+    }
+
+    /**
+     * Validates required CheckComboBox selection with a standardized message.
+     */
+    protected int validateRequiredSelection(StringBuilder message, CheckComboBox<String> checkComboBox, String fieldName) {
+        if (isSelectionMissing(checkComboBox)) {
+            message.append(fieldName).append(" checkComboBox must have at least one selection").append(vars.getEol());
+            return 1;
+        }
+        return 0;
+    }
+
+    /**
+     * Validates required TextField content with a standardized message.
+     */
+    protected int validateRequiredText(StringBuilder message, TextField textField, String fieldName) {
+        if (textField == null || textField.getText() == null || textField.getText().trim().isEmpty()) {
+            message.append("A ").append(fieldName).append(" must be provided").append(vars.getEol());
+            return 1;
+        }
+        return 0;
+    }
+
+    /**
+     * Emits QA warnings/errors and returns true when there are no validation errors.
+     */
+    protected boolean finalizeQaValidation(int errorCount, StringBuilder message) {
+        if (errorCount > 0) {
+            if (errorCount == 1) {
+                utils.warningMessage(message.toString());
+            } else {
+                utils.displayString(message.toString(), "Parsing Errors");
+            }
+        }
+        return errorCount == 0;
     }
     
     /**
