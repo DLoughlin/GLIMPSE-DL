@@ -175,9 +175,6 @@ final class ScenarioLibraryViewStateHelper {
         int anchorIndex = resolveAnchorIndex(safeViewState, restoredSelection);
         int focusedIndex = resolveFocusedIndex(safeViewState, restoredSelection, anchorIndex);
 
-        if (anchorIndex >= 0 && anchorIndex < ScenarioTable.tableScenariosLibrary.getItems().size()) {
-            ScenarioTable.tableScenariosLibrary.scrollTo(anchorIndex);
-        }
         if (focusedIndex >= 0 && focusedIndex < ScenarioTable.tableScenariosLibrary.getItems().size()
                 && ScenarioTable.tableScenariosLibrary.getFocusModel() != null) {
             ScenarioTable.tableScenariosLibrary.getFocusModel().focus(focusedIndex);

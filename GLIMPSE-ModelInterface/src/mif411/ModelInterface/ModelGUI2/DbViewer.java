@@ -553,6 +553,8 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		logStartupPhase(STARTUP_MESSAGE_OPENING_DB, dbFile);
 		updateStartupMessage(STARTUP_MESSAGE_OPENING_DB);
 		try {
+			// New database open: capture a fresh region ordering baseline.
+			initialRegionOrdering.clear();
 			File queryFile = prepareQueryDefinitionsForStartup();
 			XMLDB.openDatabase(dbFile.getAbsolutePath(), create);
 			logStartupPhase("Database opened", dbFile);
@@ -590,6 +592,8 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	public JList scnList;
 	protected JList regionList;
 	protected Vector regions;
+	// Preserve first-loaded ordering so later region refreshes remain stable.
+	private final java.util.List<String> initialRegionOrdering = new ArrayList<String>();
 	protected QueryTreeModel queries;
 	private JTabbedPane tablesTabs = new JTabbedPane();
 	private JSplitPane scenarioRegionSplit;
@@ -2021,9 +2025,45 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			}
 		}
 
+		ret = applyInitialRegionOrdering(ret);
+		ret.remove("Global");
 		ret.add("Global");
 		if (DEBUG) System.out.println("DbViewer.getRegions: returning region list size=" + ret.size());
 		return ret;
+	}
+
+	private Vector applyInitialRegionOrdering(Vector currentRegions) {
+		Vector ordered = new Vector();
+		if (currentRegions == null || currentRegions.isEmpty()) {
+			return ordered;
+		}
+
+		java.util.LinkedHashSet<String> dedupedCurrent = new java.util.LinkedHashSet<String>();
+		for (Object regionObj : currentRegions) {
+			if (regionObj == null) {
+				continue;
+			}
+			String regionName = regionObj.toString();
+			if (regionName != null && !regionName.trim().isEmpty()) {
+				dedupedCurrent.add(regionName);
+			}
+		}
+
+		if (initialRegionOrdering.isEmpty()) {
+			initialRegionOrdering.addAll(dedupedCurrent);
+			ordered.addAll(dedupedCurrent);
+			return ordered;
+		}
+
+		for (String baselineRegion : initialRegionOrdering) {
+			if (dedupedCurrent.remove(baselineRegion)) {
+				ordered.add(baselineRegion);
+			}
+		}
+		for (String newRegion : dedupedCurrent) {
+			ordered.add(newRegion);
+		}
+		return ordered;
 	}
 
 	/**
