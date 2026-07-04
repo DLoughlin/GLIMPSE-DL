@@ -210,10 +210,10 @@ public final class GLIMPSEStyles {
     }
 
     /**
-     * Very small padding (1px)
+     * Very small padding (0px) to maximize text space in compact buttons.
      */
     public Insets getMicroPadding() {
-        return new Insets(1, 1, 1, 1);
+        return new Insets(0, 0, 0, 0);
     }
 
     /**

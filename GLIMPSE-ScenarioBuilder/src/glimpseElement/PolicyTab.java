@@ -51,6 +51,7 @@ import javafx.beans.binding.DoubleBinding;
 import javafx.collections.ListChangeListener;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
@@ -623,7 +624,16 @@ public abstract class PolicyTab extends Tab {
     public void setupCenterColumn() {
        	hBoxHeaderCenter.getChildren().clear();
        	hBoxHeaderCenter.getChildren().addAll(buttonPopulate, buttonFill, buttonDelete, buttonClear);
-       	hBoxHeaderCenter.setSpacing(2.);
+    hBoxHeaderCenter.setSpacing(1.);
+    hBoxHeaderCenter.setPadding(new Insets(0, 0, 0, 0));
+    hBoxHeaderCenter.setMaxWidth(Double.MAX_VALUE);
+    // Counter the center VBox horizontal padding so Populate/Clear sit closer to pane edges.
+    Insets centerPadding = vBoxCenter.getPadding() == null ? Insets.EMPTY : vBoxCenter.getPadding();
+    VBox.setMargin(hBoxHeaderCenter, new Insets(0, -centerPadding.getRight(), 0, -centerPadding.getLeft()));
+    for (Button button : new Button[] { buttonPopulate, buttonFill, buttonDelete, buttonClear }) {
+      button.setMaxWidth(Double.MAX_VALUE);
+      HBox.setHgrow(button, Priority.ALWAYS);
+    }
        	hBoxHeaderCenter.setStyle(styles.getStyle2()); //DHL was 3
        	vBoxCenter.getChildren().clear();
        	vBoxCenter.getChildren().addAll(labelValue, hBoxHeaderCenter, paneForComponentDetails);
