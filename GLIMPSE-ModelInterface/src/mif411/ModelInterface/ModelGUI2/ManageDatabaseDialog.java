@@ -211,7 +211,7 @@ public class ManageDatabaseDialog extends JDialog {
 
         doneButton.addActionListener(e -> {
             if (dirtyBit.isDirty()) {
-                dbViewer.resetScenarioList();
+                refreshScenarioViews();
             }
             dispose();
         });
@@ -258,11 +258,9 @@ public class ManageDatabaseDialog extends JDialog {
                                     this);
                         }
                     }
-                    scns = DbViewer.getScenarios();
                     SwingUtilities.invokeLater(() -> {
-                        list.setListData(scns);
                         statusField.setText("Add complete");
-						main.refreshActiveDatabaseStatus();
+                        refreshScenarioViews();
                     });
                 }).start();
             }
@@ -290,10 +288,9 @@ public class ManageDatabaseDialog extends JDialog {
                     dirtyBit.setDirty();
                     XMLDB.getInstance().removeDoc(((ScenarioListItem) o).getDocName());
                 }
-                scns = DbViewer.getScenarios();
             } finally {
                 SwingUtilities.invokeLater(() -> {
-                    list.setListData(scns);
+                    refreshScenarioViews();
                     getGlassPane().setVisible(false);
                     statusField.setText("Remove complete");
                     removeButton.setEnabled(false);
@@ -356,8 +353,10 @@ public class ManageDatabaseDialog extends JDialog {
                         main.refreshUndoRedo();
                     }
                 }
+                refreshScenarioViews();
+            } else {
+                list.setListData(scns);
             }
-            list.setListData(scns); 
             renameScenarioDialog.dispose();
         };
         renameOK.addActionListener(renameButtonListener);
@@ -702,13 +701,20 @@ public class ManageDatabaseDialog extends JDialog {
                     getGlassPane().setCursor(Cursor.getDefaultCursor());
                     restoreAllButtons.run();
                     if (rebuildSuccess.get()) {
-						main.refreshActiveDatabaseStatus();
+                        refreshScenarioViews();
                         JOptionPane.showMessageDialog(this, "Database rebuild is complete.",
                                 "Rebuild Complete", JOptionPane.INFORMATION_MESSAGE);
                     }
                 });
             }
         }).start();
+    }
+
+    private void refreshScenarioViews() {
+        scns = DbViewer.getScenarios();
+        list.setListData(scns != null ? scns : new Vector<ScenarioListItem>());
+        dbViewer.resetScenarioList();
+        main.refreshActiveDatabaseStatus();
     }
 
     private static void deleteRecursive(File f) throws IOException {
