@@ -844,6 +844,8 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	 */
 	@Override
 	public void loadContent(ArrayList<String> content) {
+		String loadedCategory = null;
+		ArrayList<String> loadedTechSelections = new ArrayList<>();
 		for (String line : content) {
 			int pos = line.indexOf(":");
 			if (line.startsWith("#") && (pos > -1)) {
@@ -851,14 +853,16 @@ public class TabTechBound extends PolicyTab implements Runnable {
 				String value = line.substring(pos + 1).trim();
 
 				if (param.equals("category")) {
-					comboBoxCategory.setValue(value);
+					loadedCategory = value;
 				}
 				if (param.equals("technologies")) {
-					checkComboBoxTech.getCheckModel().clearChecks();
 					String[] set = utils.splitString(value, ";");
 					for (String item : set) {
 						if (item != null) {
-							checkComboBoxTech.getCheckModel().check(item.trim());
+							String trimmed = item.trim();
+							if (!trimmed.isEmpty()) {
+								loadedTechSelections.add(trimmed);
+							}
 						}
 					}
 				}
@@ -888,9 +892,59 @@ public class TabTechBound extends PolicyTab implements Runnable {
 				}
 			}
 		}
+
+		if (loadedCategory != null && !loadedCategory.trim().isEmpty()) {
+			comboBoxCategory.setValue(loadedCategory);
+			if (!isSelectionMissing(comboBoxCategory)) {
+				// During load we must explicitly repopulate/enable tech controls; user action listeners
+				// are not guaranteed to fire for programmatic value assignment.
+				updateCheckComboBoxTech();
+				checkComboBoxTech.setDisable(false);
+				textFieldFilter.setDisable(false);
+			}
+		}
+
+		checkComboBoxTech.getCheckModel().clearChecks();
+		for (String loadedTech : loadedTechSelections) {
+			String techToCheck = checkComboBoxTech.getItems().contains(loadedTech)
+					? loadedTech
+					: findMatchingTechItem(loadedTech);
+			if (techToCheck != null) {
+				checkComboBoxTech.getCheckModel().check(techToCheck);
+			}
+		}
+
 		this.setPolicyAndMarketNames();
 		this.setUnitsLabel();
 		this.paneForComponentDetails.updateTable();
+	}
+
+	private String findMatchingTechItem(String loadedTech) {
+		if (loadedTech == null || loadedTech.trim().isEmpty()) {
+			return null;
+		}
+		String normalizedLoadedTech = normalizeTechSelectionKey(loadedTech);
+		for (String existingItem : checkComboBoxTech.getItems()) {
+			if (normalizedLoadedTech.equals(normalizeTechSelectionKey(existingItem))) {
+				return existingItem;
+			}
+		}
+		return null;
+	}
+
+	private String normalizeTechSelectionKey(String techLabel) {
+		if (techLabel == null) {
+			return "";
+		}
+		String[] parts = techLabel.split(":");
+		StringBuilder normalized = new StringBuilder();
+		for (String part : parts) {
+			if (normalized.length() > 0) {
+				normalized.append(':');
+			}
+			normalized.append(part == null ? "" : part.trim().toLowerCase());
+		}
+		return normalized.toString();
 	}
 
 	/**

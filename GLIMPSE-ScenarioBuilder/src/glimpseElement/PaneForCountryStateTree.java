@@ -99,7 +99,7 @@ public class PaneForCountryStateTree extends VBox {
         treeView = createTreeViewWithRegions(); // Create tree with regions
         if (vars.isUseSubregions()) treeView = addSubregionsToTreeView(); // Add configured subregions when enabled
 
-        labelAppliedTo = utils.createLabel("Select region(s):");
+        labelAppliedTo = utils.createLabel("Regions:");
         labelPresetRegions = utils.createLabel("Presets:");
         labelPresetRegions.setMinWidth(50);
 
