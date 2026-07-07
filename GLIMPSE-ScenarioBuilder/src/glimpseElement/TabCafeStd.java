@@ -210,7 +210,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 		comboBoxWhichUnits.getSelectionModel().select("MPG");
 		comboBoxWhichUnits.setDisable(true); // Disabled until tech selected
 		resetComboBoxItems(comboBoxApplicationMode, java.util.Arrays.asList(APPLICATION_MODE_OPTIONS));
-		comboBoxApplicationMode.getSelectionModel().select(MODE_FLEET_AVERAGE);
+		setComboBoxPrompt(comboBoxApplicationMode, SELECT_ONE);
 		setModificationTypeOptions(MOD_TYPE_OPTIONS);
 	}
 

@@ -36,7 +36,9 @@
 package glimpseElement;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.controlsfx.control.CheckComboBox;
 import javafx.collections.ObservableList;
@@ -68,6 +70,8 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     private static final String LABEL_UNITS_VALUE = "1975$s per GJ";
 
     // === UI components ===
+    private final Label labelFilter = createLabel("Filter:", LABEL_WIDTH);
+    private final TextField textFieldFilter = new TextField();
     private final Label labelFuel = createLabel(LABEL_FUEL, LABEL_WIDTH);
     private final CheckComboBox<String> checkComboBoxFuel = createCheckComboBox();
     private final Label labelUnits = createLabel(LABEL_UNITS, LABEL_WIDTH);
@@ -80,6 +84,22 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
      * populate the fuel selection control.
      */
     private ArrayList<String> fuelList = new ArrayList<>();
+    
+    /**
+     * Cached unfiltered list of all fuels (used as source for filtering).
+     */
+    private ArrayList<String> allFuelsList = new ArrayList<>();
+    
+    /**
+     * Flag to track whether fuel list has been lazily initialized on first tab selection.
+     */
+    private boolean fuelListInitialized = false;
+
+    /**
+     * Fuel names requested by loadContent that may need to be applied after
+     * lazy fuel-list initialization.
+     */
+    private final Set<String> pendingFuelSelections = new LinkedHashSet<>();
 
     /**
      * Construct a TabFuelPriceAdj and initialize controls and layout.
@@ -92,6 +112,14 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         setupUIControls(title, stageX);
         setComponentWidths();
         setupUILayout();
+        setupEventHandlers();
+        
+        // Lazy-load fuel list on first tab selection
+        this.selectedProperty().addListener((obs, wasSelected, isNowSelected) -> {
+            if (isNowSelected && !fuelListInitialized) {
+                initializeFuelList();
+            }
+        });
     }
 
     /**
@@ -131,25 +159,48 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
             comboBoxConvertFrom.getSelectionModel().selectFirst();
         }
 
-        // Populate fuel options from technology info
-        String[][] tech_list = vars.getTechInfo();
-        extractInfoFromTechList(tech_list);
-        if (checkComboBoxFuel != null && fuelList != null) {
-            resetCheckComboBoxItems(checkComboBoxFuel, fuelList);
-            configureCheckComboBoxSelectionTitle(checkComboBoxFuel, "Select One or More", "Selected");
-        }
-
         // Populate modification type choices
         if (comboBoxModificationType != null) {
             setModificationTypeOptions(MODIFICATION_TYPE_OPTIONS);
         }
+        
+        // Filter field is disabled until fuel list is initialized
+        textFieldFilter.setDisable(true);
 
+        setPolicyAndMarketNames();
+    }
+
+    /**
+     * Lazy-initialize the fuel list from technology info on first tab selection.
+     * This defers expensive startup work until the tab is actually needed.
+     */
+    private void initializeFuelList() {
+        String[][] tech_list = vars.getTechInfo();
+        extractInfoFromTechList(tech_list);
+        textFieldFilter.setPromptText("Filter fuels");
+        textFieldFilter.setDisable(false);
+
+        // Apply any selections loaded before this tab was first opened.
+        applyPendingFuelSelections();
         setPolicyAndMarketNames();
 
         // Update generated names whenever the fuel selection changes
         checkComboBoxFuel.getCheckModel().getCheckedItems()
                 .addListener((javafx.collections.ListChangeListener<String>) change -> {
                     setPolicyAndMarketNames();
+                });
+        fuelListInitialized = true;
+    }
+    
+    /**
+     * Setup event handlers for user interactions.
+     */
+    protected void setupEventHandlers() {
+        super.setupEventHandlers();
+        
+        // Update filtered fuel list when filter text changes
+        textFieldFilter.textProperty().addListener((obs, oldVal, newVal) -> {
+            updateFilteredFuelsList();
         });
     }
 
@@ -161,11 +212,11 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         gridPaneLeft.getChildren().clear();
         hBoxAutoUnique.getChildren().clear();
         hBoxAutoUnique.getChildren().addAll(checkBoxUseAutoNames, checkBoxUseUniqueNames);
-        gridPaneLeft.addColumn(0, createLabel("Specification:"),labelFuel, new Label(), labelUnits, new Label(), new Separator(),
+        gridPaneLeft.addColumn(0, createLabel("Specification:"), labelFilter, labelFuel, new Label(), labelUnits, new Label(), new Separator(),
         createLabel("Names:"), labelPolicyName, labelMarketName, new Label(), new Separator(),
         createLabel("Populate:"), labelModificationType, labelStartYear, labelEndYear, labelInitialAmount,
         labelGrowth, labelConvertFrom);
-        gridPaneLeft.addColumn(1, createLabel(""),checkComboBoxFuel, new Label(), labelUnitsValue, new Label(),
+        gridPaneLeft.addColumn(1, createLabel(""), textFieldFilter, checkComboBoxFuel, new Label(), labelUnitsValue, new Label(),
         new Separator(), hBoxAutoUnique, textFieldPolicyName, textFieldMarketName, new Label(),
         new Separator(), new Label(), comboBoxModificationType, textFieldStartYear, textFieldEndYear,
         textFieldInitialAmount, textFieldGrowth, comboBoxConvertFrom);
@@ -184,6 +235,9 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         checkComboBoxFuel.setMaxWidth(max_wid);
         checkComboBoxFuel.setMinWidth(min_wid);
         checkComboBoxFuel.setPrefWidth(pref_wid);
+        textFieldFilter.setMaxWidth(max_wid);
+        textFieldFilter.setMinWidth(min_wid);
+        textFieldFilter.setPrefWidth(pref_wid);
         textFieldStartYear.setMaxWidth(max_wid);
         textFieldStartYear.setMinWidth(min_wid);
         textFieldStartYear.setPrefWidth(pref_wid);
@@ -218,16 +272,88 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
      * @param tech_list 2D array of technology metadata (as provided by vars)
      */
     private void extractInfoFromTechList(String[][] tech_list) {
+        allFuelsList.clear();
         for (int row = 0; row < tech_list.length; row++) {
             String str_cat = tech_list[row][7].trim();
             String str_tech = tech_list[row][2].trim();
-            // Keep only energy carrier technologies as candidate fuels
-            if (str_cat.equals("Energy-Carrier")) {
-                fuelList.add(str_tech);
-            }
+            //DAN: trying new setup that lists all fuels, not just energy carriers
+            //// Keep only energy carrier technologies as candidate fuels
+            ////if (str_cat.equals("Energy-Carrier")) {
+            ////    fuelList.add(str_tech);
+            ////}
+            String str_fuel = tech_list[row][3].trim();
+            allFuelsList.add(str_fuel);
         }
         // Remove duplicate names while preserving ordering
-        fuelList = utils.getUniqueItemsFromStringArrayList(fuelList);
+        allFuelsList = utils.getUniqueItemsFromStringArrayList(allFuelsList);
+        allFuelsList.sort(String::compareToIgnoreCase);
+        
+        // Initialize filtered list with all items
+        updateFilteredFuelsList();
+    }
+    
+    /**
+     * Update the filtered fuel list based on the current filter text.
+     * Applies case-insensitive partial matching against all fuels.
+     */
+    private void updateFilteredFuelsList() {
+        // Preserve current checks before items are rebuilt by filtering.
+        if (checkComboBoxFuel != null) {
+            for (String checked : checkComboBoxFuel.getCheckModel().getCheckedItems()) {
+                if (checked != null) {
+                    String normalized = checked.trim();
+                    if (!normalized.isEmpty()) {
+                        pendingFuelSelections.add(normalized);
+                    }
+                }
+            }
+        }
+
+        fuelList.clear();
+        String filterText = textFieldFilter.getText() != null ? textFieldFilter.getText().trim() : "";
+        for (String fuel : allFuelsList) {
+            if (filterText.isEmpty() || fuel.toLowerCase().contains(filterText.toLowerCase())) {
+                fuelList.add(fuel);
+            }
+        }
+        // Update the CheckComboBox with filtered items
+        if (checkComboBoxFuel != null && fuelList != null) {
+            resetCheckComboBoxItems(checkComboBoxFuel, fuelList);
+            configureCheckComboBoxSelectionTitle(checkComboBoxFuel, "Select One or More", "Selected");
+            // Re-apply deferred selections for visible items; keep hidden ones queued.
+            applyPendingFuelSelections();
+        }
+    }
+
+    /**
+     * Apply queued fuel selections for any values currently present in the
+     * CheckComboBox items. Unmatched values remain queued.
+     */
+    private void applyPendingFuelSelections() {
+        if (checkComboBoxFuel == null || pendingFuelSelections.isEmpty()) {
+            return;
+        }
+        Set<String> remaining = new LinkedHashSet<>();
+        for (String fuel : pendingFuelSelections) {
+            String normalizedTarget = fuel == null ? "" : fuel.trim();
+            if (normalizedTarget.isEmpty()) {
+                continue;
+            }
+            String matchedItem = null;
+            for (String item : checkComboBoxFuel.getItems()) {
+                if (item != null && item.trim().equalsIgnoreCase(normalizedTarget)) {
+                    matchedItem = item;
+                    break;
+                }
+            }
+            if (matchedItem != null) {
+                checkComboBoxFuel.getCheckModel().check(matchedItem);
+            } else {
+                remaining.add(normalizedTarget);
+            }
+        }
+        pendingFuelSelections.clear();
+        pendingFuelSelections.addAll(remaining);
     }
 
     /**
@@ -423,10 +549,17 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
                 String value = line.substring(pos + 1).trim();
                 // Map recognized metadata keys back into the UI
                 if (param.equals("fuel") && checkComboBoxFuel != null) {
+                    checkComboBoxFuel.getCheckModel().clearChecks();
+                    pendingFuelSelections.clear();
                     String[] set = utils.splitString(value, ";");
                     for (int j = 0; j < set.length; j++) {
                         String item = set[j].trim();
-                        checkComboBoxFuel.getCheckModel().check(item);
+                        if (!item.isEmpty()) {
+                            pendingFuelSelections.add(item);
+                        }
+                    }
+                    if (fuelListInitialized) {
+                        applyPendingFuelSelections();
                     }
                 }
                 if (param.equals("units") && labelUnitsValue != null) {
@@ -449,6 +582,9 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         }
         if (paneForComponentDetails != null)
             this.paneForComponentDetails.updateTable();
+        if (fuelListInitialized) {
+            setPolicyAndMarketNames();
+        }
     }
 
     /**
