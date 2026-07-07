@@ -29,12 +29,17 @@
 */
 package ModelInterface.ModelGUI2;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.ComponentOrientation;
 import java.awt.Font;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,6 +60,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
+import javax.swing.JTextArea;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 
@@ -143,7 +149,7 @@ public class QueryResultsPanel extends JPanel {
 						// We can ignore it.
 						errorMessage = "Query cancelled.";
 					} else {
-						errorMessage = e.getMessage();
+						errorMessage = buildDetailedErrorMessage(e, shouldIncludeErrorStackTrace());
 						e.printStackTrace();
 					}
 				} finally {
@@ -165,11 +171,8 @@ public class QueryResultsPanel extends JPanel {
 				icon.finishedLoading();
 				// error message displayed
 				if (ret == null) {
-					JPanel tempPanel = new JPanel();
-					tempPanel.setLayout(new BoxLayout(tempPanel, BoxLayout.X_AXIS));
-					tempPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-					tempPanel.add(new JLabel(errorMessage));
-					add(tempPanel);
+					setLayout(new BorderLayout());
+					add(createErrorDisplayComponent(errorMessage), BorderLayout.CENTER);
 				}
 				// the new JPanel is added where the text box was
 				else {
@@ -226,6 +229,84 @@ public class QueryResultsPanel extends JPanel {
 			}
 		};
 		runThread.start();
+	}
+
+	private JComponent createErrorDisplayComponent(String errorMessage) {
+		JPanel wrapper = new JPanel();
+		wrapper.setLayout(new BorderLayout());
+		wrapper.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+		JLabel headerLabel = new JLabel("Query failed");
+		Font headerFont = headerLabel.getFont();
+		if (headerFont != null) {
+			headerLabel.setFont(headerFont.deriveFont(Font.BOLD));
+		}
+		headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
+		wrapper.add(headerLabel, BorderLayout.NORTH);
+
+		String safeMessage = (errorMessage == null || errorMessage.trim().isEmpty())
+				? "Query failed with no additional error details."
+				: errorMessage;
+
+		JTextArea errorArea = new JTextArea(safeMessage);
+		errorArea.setEditable(false);
+		errorArea.setLineWrap(true);
+		errorArea.setWrapStyleWord(true);
+		errorArea.setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
+		errorArea.setCaretPosition(0);
+		errorArea.setBackground(new Color(242, 242, 242));
+		errorArea.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+
+		JScrollPane errorScrollPane = new JScrollPane(errorArea,
+				JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+				JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+		errorScrollPane.getViewport().setBackground(getBackground());
+		wrapper.add(errorScrollPane, BorderLayout.CENTER);
+		return wrapper;
+	}
+
+	private String buildDetailedErrorMessage(Exception exception, boolean includeStackTrace) {
+		if (exception == null) {
+			return "Query failed with no additional error details.";
+		}
+
+		StringBuilder sb = new StringBuilder();
+		sb.append(exception.getClass().getSimpleName());
+		if (exception.getMessage() != null && !exception.getMessage().trim().isEmpty()) {
+			sb.append(": ").append(exception.getMessage().trim());
+		}
+
+		Throwable cause = exception.getCause();
+		int depth = 0;
+		while (cause != null && depth < 5) {
+			sb.append("\nCaused by: ").append(cause.getClass().getSimpleName());
+			if (cause.getMessage() != null && !cause.getMessage().trim().isEmpty()) {
+				sb.append(": ").append(cause.getMessage().trim());
+			}
+			cause = cause.getCause();
+			depth++;
+		}
+
+		if (includeStackTrace) {
+			StringWriter sw = new StringWriter();
+			PrintWriter pw = new PrintWriter(sw);
+			exception.printStackTrace(pw);
+			pw.flush();
+			sb.append("\n\nStack trace:\n").append(sw.toString());
+		}
+		return sb.toString();
+	}
+
+	private boolean shouldIncludeErrorStackTrace() {
+		try {
+			InterfaceMain main = InterfaceMain.getInstance();
+			if (main != null && main.getProperties() != null) {
+				return Boolean.parseBoolean(main.getProperties()
+						.getProperty("showQueryErrorStackTrace", "false"));
+			}
+		} catch (Exception ignored) {
+		}
+		return false;
 	}
 
 	/**

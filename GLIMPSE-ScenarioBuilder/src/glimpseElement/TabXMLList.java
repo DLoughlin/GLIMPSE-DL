@@ -279,6 +279,15 @@ public class TabXMLList extends PolicyTab {
             // Show file chooser dialog for multiple file selection
             List<File> filesSelected = fileChooser.showOpenMultipleDialog(stageX);
             if (filesSelected != null && !filesSelected.isEmpty()) {
+                // If the table only contains a placeholder blank row, replace it on first add.
+                ArrayList<String> currentValues = paneForXMLList.getValues();
+                if (currentValues != null && currentValues.size() == 1) {
+                    String onlyValue = currentValues.get(0);
+                    if (onlyValue == null || onlyValue.trim().isEmpty()) {
+                        paneForXMLList.clearTable();
+                    }
+                }
+
                 for (File file : filesSelected) {
                     if (file == null) continue;
                     String path = file.toString().trim();

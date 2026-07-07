@@ -582,6 +582,9 @@ final class ScenarioStatusService {
         if (line == null || line.isEmpty()) {
             return "";
         }
+        if (isIterationSummaryPeriodLine(line)) {
+            return "";
+        }
         java.util.regex.Matcher yearMatcher = RUNNING_PERIOD_WITH_YEAR_PATTERN.matcher(line);
         if (yearMatcher.find()) {
             String period = yearMatcher.group(2);
@@ -614,6 +617,11 @@ final class ScenarioStatusService {
         }
         String trimmedPeriod = period.trim();
         return isValidPeriod(trimmedPeriod) ? trimmedPeriod : "";
+    }
+
+    private boolean isIterationSummaryPeriodLine(String line) {
+        String normalized = safeTrim(line).toLowerCase(Locale.ENGLISH);
+        return normalized.contains("iterations period") || normalized.contains("iteration period");
     }
 
     /**

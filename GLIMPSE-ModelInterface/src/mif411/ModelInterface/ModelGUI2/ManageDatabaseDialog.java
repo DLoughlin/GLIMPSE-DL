@@ -38,6 +38,8 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.undo.UndoableEdit;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 
 import ModelInterface.InterfaceMain;
 import ModelInterface.ConfigurationEditor.guihelpers.XMLFileFilter;
@@ -45,6 +47,10 @@ import ModelInterface.ModelGUI2.undo.RenameScenarioUndoableEdit;
 import ModelInterface.ModelGUI2.xmldb.XMLDB;
 import ModelInterface.common.FileChooser;
 import ModelInterface.common.FileChooserFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 public class ManageDatabaseDialog extends JDialog {
 
@@ -210,9 +216,6 @@ public class ManageDatabaseDialog extends JDialog {
         contentPane.add(buttonPane, BorderLayout.SOUTH);
 
         doneButton.addActionListener(e -> {
-            if (dirtyBit.isDirty()) {
-                refreshScenarioViews();
-            }
             dispose();
         });
 
@@ -251,6 +254,7 @@ public class ManageDatabaseDialog extends JDialog {
                 statusField.setText("Adding files...");
 
                 new Thread(() -> {
+					java.util.LinkedHashSet<String> addedScenarioRegions = extractRegionNamesFromScenarioFiles(xmlFiles);
                     for (int addFileIndex = 0; addFileIndex < xmlFiles.length; ++addFileIndex) {
                         if (xmlFiles[addFileIndex] != null) {
                             XMLDB.getInstance().addFile("run_" + System.currentTimeMillis() + ".xml",
@@ -260,7 +264,7 @@ public class ManageDatabaseDialog extends JDialog {
                     }
                     SwingUtilities.invokeLater(() -> {
                         statusField.setText("Add complete");
-                        refreshScenarioViews();
+						refreshScenarioViews(addedScenarioRegions);
                     });
                 }).start();
             }
@@ -711,11 +715,72 @@ public class ManageDatabaseDialog extends JDialog {
     }
 
     private void refreshScenarioViews() {
+    refreshScenarioViews(null);
+  }
+
+  private void refreshScenarioViews(java.util.Collection<String> additionalRegions) {
         scns = DbViewer.getScenarios();
         list.setListData(scns != null ? scns : new Vector<ScenarioListItem>());
-        dbViewer.resetScenarioList();
+    dbViewer.refreshScenarioAndRegionLists(additionalRegions);
         main.refreshActiveDatabaseStatus();
     }
+
+  private java.util.LinkedHashSet<String> extractRegionNamesFromScenarioFiles(File[] xmlFiles) {
+    java.util.LinkedHashSet<String> regionNames = new java.util.LinkedHashSet<String>();
+    if (xmlFiles == null || xmlFiles.length == 0) {
+      return regionNames;
+    }
+    try {
+      DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+      dbFactory.setNamespaceAware(false);
+      DocumentBuilder builder = dbFactory.newDocumentBuilder();
+      for (File xmlFile : xmlFiles) {
+        if (xmlFile == null || !xmlFile.exists() || !xmlFile.isFile()) {
+          continue;
+        }
+        try {
+          Document doc = builder.parse(xmlFile);
+          doc.getDocumentElement().normalize();
+          NodeList worldNodes = doc.getElementsByTagName("world");
+          for (int i = 0; i < worldNodes.getLength(); ++i) {
+            Node worldNode = worldNodes.item(i);
+            if (worldNode != null) {
+              collectRegionNames(worldNode, regionNames);
+            }
+          }
+        } catch (Exception parseEx) {
+          System.out.println("ManageDatabaseDialog: could not parse regions from "
+              + xmlFile.getAbsolutePath() + ": " + parseEx.getMessage());
+        }
+      }
+    } catch (Exception setupEx) {
+      System.out.println("ManageDatabaseDialog: could not initialize XML parser for region extraction: "
+          + setupEx.getMessage());
+    }
+    return regionNames;
+  }
+
+  private void collectRegionNames(Node node, java.util.Set<String> regionNames) {
+    if (node == null || regionNames == null) {
+      return;
+    }
+    if (node.getNodeType() == Node.ELEMENT_NODE) {
+      Element elem = (Element) node;
+      if ("region".equals(elem.getAttribute("type"))) {
+        String regionName = elem.getAttribute("name");
+        if (regionName != null) {
+          regionName = regionName.trim();
+        }
+        if (regionName != null && !regionName.isEmpty()) {
+          regionNames.add(regionName);
+        }
+      }
+    }
+    NodeList childNodes = node.getChildNodes();
+    for (int i = 0; i < childNodes.getLength(); ++i) {
+      collectRegionNames(childNodes.item(i), regionNames);
+    }
+  }
 
     private static void deleteRecursive(File f) throws IOException {
         if (f == null || !f.exists()) return;

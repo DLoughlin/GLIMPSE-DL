@@ -1931,7 +1931,98 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 */
 	public void resetScenarioList() {
 		scns = getScenarios();
-		scnList.setListData(scns);
+		if (scnList != null) {
+			scnList.setListData(scns);
+		}
+	}
+
+	/**
+	 * Refreshes both scenario and region panes after database changes.
+	 *
+	 * @param additionalRegions optional region names discovered outside the DB query path
+	 *                          (for example, parsed from newly imported scenario XML files)
+	 */
+	public void refreshScenarioAndRegionLists(java.util.Collection<String> additionalRegions) {
+		resetScenarioList();
+		refreshRegionList(additionalRegions);
+	}
+
+	/**
+	 * Refreshes only the region pane and merges optional extra region names.
+	 */
+	public void refreshRegionList(java.util.Collection<String> additionalRegions) {
+		Vector refreshedRegions = getRegions();
+		java.util.LinkedHashSet<String> mergedRegionSet = new java.util.LinkedHashSet<String>();
+		addRegionsToSet(mergedRegionSet, refreshedRegions);
+		if (additionalRegions != null) {
+			// Additive refresh mode: keep the currently displayed list and merge any newly
+			// discovered regions (used after scenario imports).
+			addRegionsToSet(mergedRegionSet, regions);
+		}
+		addRegionsToSet(mergedRegionSet, additionalRegions);
+
+		Vector mergedRegions = new Vector();
+		mergedRegions.addAll(mergedRegionSet);
+		mergedRegions = applyInitialRegionOrdering(mergedRegions);
+		mergedRegions.remove("Global");
+		mergedRegions.add("Global");
+		regions = mergedRegions;
+
+		if (regionList != null) {
+			Object[] previousSelection = regionList.getSelectedValues();
+			regionList.setListData(regions);
+			restoreRegionSelection(previousSelection);
+		}
+		updateQueryActionButtonsEnabledState();
+	}
+
+	private void addRegionsToSet(java.util.LinkedHashSet<String> target, java.util.Collection<?> source) {
+		if (target == null || source == null) {
+			return;
+		}
+		for (Object regionObj : source) {
+			if (regionObj == null) {
+				continue;
+			}
+			String regionName = regionObj.toString();
+			if (regionName != null) {
+				regionName = regionName.trim();
+			}
+			if (regionName != null && !regionName.isEmpty()) {
+				target.add(regionName);
+			}
+		}
+	}
+
+	private void restoreRegionSelection(Object[] previousSelection) {
+		if (regionList == null || previousSelection == null || previousSelection.length == 0) {
+			return;
+		}
+		java.util.LinkedHashSet<String> selectedNames = new java.util.LinkedHashSet<String>();
+		for (Object selectedObj : previousSelection) {
+			if (selectedObj == null) {
+				continue;
+			}
+			selectedNames.add(selectedObj.toString());
+		}
+		if (selectedNames.isEmpty()) {
+			return;
+		}
+		java.util.ArrayList<Integer> selectedIndices = new java.util.ArrayList<Integer>();
+		for (int i = 0; i < regionList.getModel().getSize(); ++i) {
+			Object modelValue = regionList.getModel().getElementAt(i);
+			if (modelValue != null && selectedNames.contains(modelValue.toString())) {
+				selectedIndices.add(Integer.valueOf(i));
+			}
+		}
+		if (selectedIndices.isEmpty()) {
+			return;
+		}
+		int[] selectedIndexArray = new int[selectedIndices.size()];
+		for (int i = 0; i < selectedIndices.size(); ++i) {
+			selectedIndexArray[i] = selectedIndices.get(i).intValue();
+		}
+		regionList.setSelectedIndices(selectedIndexArray);
 	}
 
 	/**
