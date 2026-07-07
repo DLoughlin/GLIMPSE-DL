@@ -36,8 +36,10 @@
 package glimpseElement;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.controlsfx.control.CheckComboBox;
@@ -68,8 +70,14 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     private static final String LABEL_FUEL = "Fuel: ";
     private static final String LABEL_UNITS = "Units: ";
     private static final String LABEL_UNITS_VALUE = "1975$s per GJ";
+    private static final String LABEL_CATEGORY = "Category:";
+    private static final String METADATA_CATEGORY = "#Category: ";
+    private static final String SELECT_ONE = "Select One";
+    private static final String ALL = "All";
 
     // === UI components ===
+    private final Label labelCategory = createLabel(LABEL_CATEGORY, LABEL_WIDTH);
+    private final ComboBox<String> comboBoxCategory = createComboBoxString(PREF_WIDTH);
     private final Label labelFilter = createLabel("Filter:", LABEL_WIDTH);
     private final TextField textFieldFilter = new TextField();
     private final Label labelFuel = createLabel(LABEL_FUEL, LABEL_WIDTH);
@@ -100,6 +108,16 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
      * lazy fuel-list initialization.
      */
     private final Set<String> pendingFuelSelections = new LinkedHashSet<>();
+
+    /**
+     * Category lookup for each fuel. A fuel can belong to multiple categories.
+     */
+    private final Map<String, Set<String>> fuelToCategories = new LinkedHashMap<>();
+    
+    /**
+     * Category requested by loadContent before lazy initialization completes.
+     */
+    private String pendingCategorySelection = null;
 
     /**
      * Construct a TabFuelPriceAdj and initialize controls and layout.
@@ -166,6 +184,7 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         
         // Filter field is disabled until fuel list is initialized
         textFieldFilter.setDisable(true);
+        comboBoxCategory.setDisable(true);
 
         setPolicyAndMarketNames();
     }
@@ -177,10 +196,23 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     private void initializeFuelList() {
         String[][] tech_list = vars.getTechInfo();
         extractInfoFromTechList(tech_list);
+        populateCategoryOptions();
         textFieldFilter.setPromptText("Filter fuels");
-        textFieldFilter.setDisable(false);
+        textFieldFilter.setDisable(true);
+        checkComboBoxFuel.setDisable(true);
+        comboBoxCategory.setDisable(false);
+        
+        // Restore category from loaded metadata when available; default to All.
+        if (pendingCategorySelection == null || pendingCategorySelection.trim().isEmpty()) {
+            pendingCategorySelection = ALL;
+        }
+        applyPendingCategorySelection();
 
         // Apply any selections loaded before this tab was first opened.
+        if (!pendingFuelSelections.isEmpty() && isSelectionMissing(comboBoxCategory)) {
+            comboBoxCategory.getSelectionModel().select(ALL);
+            updateFilteredFuelsList();
+        }
         applyPendingFuelSelections();
         setPolicyAndMarketNames();
 
@@ -193,11 +225,75 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
     }
     
     /**
+     * Populate the category ComboBox with "All" followed by the discovered
+     * category values from the loaded technology metadata.
+     */
+    private void populateCategoryOptions() {
+        ArrayList<String> categories = new ArrayList<>();
+        categories.add(ALL);
+        for (Set<String> categorySet : fuelToCategories.values()) {
+            if (categorySet != null) {
+                categories.addAll(categorySet);
+            }
+        }
+        categories = utils.getUniqueItemsFromStringArrayList(categories);
+        categories.removeIf(s -> s == null || s.trim().isEmpty());
+        categories.sort(String::compareToIgnoreCase);
+        if (!categories.isEmpty() && !ALL.equalsIgnoreCase(categories.get(0))) {
+            categories.removeIf(s -> ALL.equalsIgnoreCase(s));
+            categories.add(0, ALL);
+        }
+        resetComboBoxItems(comboBoxCategory, categories);
+        setComboBoxPrompt(comboBoxCategory, SELECT_ONE);
+    }
+
+    /**
+     * Applies the pending category selection to the category ComboBox and refreshes
+     * the filtered fuel list immediately.
+     */
+    private void applyPendingCategorySelection() {
+        if (comboBoxCategory == null) {
+            return;
+        }
+        String category = pendingCategorySelection == null ? ALL : pendingCategorySelection.trim();
+        if (category.isEmpty()) {
+            category = ALL;
+        }
+
+        boolean matched = false;
+        for (String item : comboBoxCategory.getItems()) {
+            if (item != null && item.trim().equalsIgnoreCase(category)) {
+                comboBoxCategory.getSelectionModel().select(item);
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) {
+            comboBoxCategory.getSelectionModel().select(ALL);
+        }
+
+        pendingCategorySelection = null;
+        textFieldFilter.setDisable(false);
+        checkComboBoxFuel.setDisable(false);
+        updateFilteredFuelsList();
+    }
+
+    /**
      * Setup event handlers for user interactions.
      */
     protected void setupEventHandlers() {
         super.setupEventHandlers();
-        
+
+        // Category selection controls fuel-list and filter availability.
+        setOnAction(comboBoxCategory, e -> {
+            if (isSelectionMissing(comboBoxCategory)) {
+                comboBoxCategory.getSelectionModel().select(ALL);
+            }
+            textFieldFilter.setDisable(false);
+            checkComboBoxFuel.setDisable(false);
+            updateFilteredFuelsList();
+        });
+
         // Update filtered fuel list when filter text changes
         textFieldFilter.textProperty().addListener((obs, oldVal, newVal) -> {
             updateFilteredFuelsList();
@@ -212,11 +308,11 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         gridPaneLeft.getChildren().clear();
         hBoxAutoUnique.getChildren().clear();
         hBoxAutoUnique.getChildren().addAll(checkBoxUseAutoNames, checkBoxUseUniqueNames);
-        gridPaneLeft.addColumn(0, createLabel("Specification:"), labelFilter, labelFuel, new Label(), labelUnits, new Label(), new Separator(),
+        gridPaneLeft.addColumn(0, createLabel("Specification:"), labelCategory, labelFilter, labelFuel, new Label(), labelUnits, new Label(), new Separator(),
         createLabel("Names:"), labelPolicyName, labelMarketName, new Label(), new Separator(),
         createLabel("Populate:"), labelModificationType, labelStartYear, labelEndYear, labelInitialAmount,
         labelGrowth, labelConvertFrom);
-        gridPaneLeft.addColumn(1, createLabel(""), textFieldFilter, checkComboBoxFuel, new Label(), labelUnitsValue, new Label(),
+        gridPaneLeft.addColumn(1, createLabel(""), comboBoxCategory, textFieldFilter, checkComboBoxFuel, new Label(), labelUnitsValue, new Label(),
         new Separator(), hBoxAutoUnique, textFieldPolicyName, textFieldMarketName, new Label(),
         new Separator(), new Label(), comboBoxModificationType, textFieldStartYear, textFieldEndYear,
         textFieldInitialAmount, textFieldGrowth, comboBoxConvertFrom);
@@ -262,6 +358,9 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         comboBoxConvertFrom.setMaxWidth(max_wid);
         comboBoxConvertFrom.setMinWidth(min_wid);
         comboBoxConvertFrom.setPrefWidth(pref_wid);
+        comboBoxCategory.setMaxWidth(max_wid);
+        comboBoxCategory.setMinWidth(min_wid);
+        comboBoxCategory.setPrefWidth(pref_wid);
     }
 
     /**
@@ -273,6 +372,7 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
      */
     private void extractInfoFromTechList(String[][] tech_list) {
         allFuelsList.clear();
+        fuelToCategories.clear();
         for (int row = 0; row < tech_list.length; row++) {
             String str_cat = tech_list[row][7].trim();
             String str_tech = tech_list[row][2].trim();
@@ -283,11 +383,14 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
             ////}
             String str_fuel = tech_list[row][3].trim();
             allFuelsList.add(str_fuel);
+            if (!str_fuel.isEmpty() && !str_cat.isEmpty()) {
+                fuelToCategories.computeIfAbsent(str_fuel, k -> new LinkedHashSet<>()).add(str_cat);
+            }
         }
         // Remove duplicate names while preserving ordering
         allFuelsList = utils.getUniqueItemsFromStringArrayList(allFuelsList);
         allFuelsList.sort(String::compareToIgnoreCase);
-        
+
         // Initialize filtered list with all items
         updateFilteredFuelsList();
     }
@@ -310,14 +413,35 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         }
 
         fuelList.clear();
-        String filterText = textFieldFilter.getText() != null ? textFieldFilter.getText().trim() : "";
-        for (String fuel : allFuelsList) {
-            if (filterText.isEmpty() || fuel.toLowerCase().contains(filterText.toLowerCase())) {
-                fuelList.add(fuel);
+        String selectedCategory = comboBoxCategory == null ? null : comboBoxCategory.getValue();
+        boolean categoryMissing = selectedCategory == null || selectedCategory.trim().isEmpty();
+        String filterText = textFieldFilter.getText() != null ? textFieldFilter.getText().trim().toLowerCase() : "";
+
+        if (!categoryMissing) {
+            for (String fuel : allFuelsList) {
+                boolean categoryMatch = ALL.equals(selectedCategory);
+                if (!categoryMatch) {
+                    Set<String> categories = fuelToCategories.get(fuel);
+                    if (categories != null) {
+                        for (String cat : categories) {
+                            if (selectedCategory.equals(cat)) {
+                                categoryMatch = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (!categoryMatch) {
+                    continue;
+                }
+                if (filterText.isEmpty() || fuel.toLowerCase().contains(filterText)) {
+                    fuelList.add(fuel);
+                }
             }
         }
+
         // Update the CheckComboBox with filtered items
-        if (checkComboBoxFuel != null && fuelList != null) {
+        if (checkComboBoxFuel != null) {
             resetCheckComboBoxItems(checkComboBoxFuel, fuelList);
             configureCheckComboBoxSelectionTitle(checkComboBoxFuel, "Select One or More", "Selected");
             // Re-apply deferred selections for visible items; keep hidden ones queued.
@@ -513,6 +637,8 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         StringBuilder rtnStr = new StringBuilder();
         rtnStr.append("########## Scenario Component Metadata ##########").append(vars.getEol());
         rtnStr.append("#Scenario component type: ").append(this.getText()).append(vars.getEol());
+        String selectedCategory = comboBoxCategory != null ? comboBoxCategory.getValue() : null;
+        rtnStr.append(METADATA_CATEGORY).append(selectedCategory == null ? "" : selectedCategory).append(vars.getEol());
         String fuel = fuelList != null ? utils.getStringFromList(checkComboBoxFuel.getCheckModel().getCheckedItems(), ";") : "";
         rtnStr.append("#Fuel: ").append(fuel).append(vars.getEol());
         rtnStr.append("#Units: ").append(labelUnitsValue.getText()).append(vars.getEol());
@@ -541,14 +667,22 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
      */
     @Override
     public void loadContent(ArrayList<String> content) {
+        boolean sawCategoryMetadata = false;
         for (int i = 0; i < content.size(); i++) {
-            String line = content.get(i);
-            int pos = line.indexOf(":");
-            if (line.startsWith("#") && (pos > -1)) {
-                String param = line.substring(1, pos).trim().toLowerCase();
-                String value = line.substring(pos + 1).trim();
-                // Map recognized metadata keys back into the UI
-                if (param.equals("fuel") && checkComboBoxFuel != null) {
+             String line = content.get(i);
+             int pos = line.indexOf(":");
+             if (line.startsWith("#") && (pos > -1)) {
+                 String param = line.substring(1, pos).trim().toLowerCase();
+                 String value = line.substring(pos + 1).trim();
+                 // Map recognized metadata keys back into the UI
+                 if (param.equals("category") && comboBoxCategory != null) {
+                    sawCategoryMetadata = true;
+                     pendingCategorySelection = value;
+                     if (fuelListInitialized) {
+                        applyPendingCategorySelection();
+                     }
+                 }
+                 if (param.equals("fuel") && checkComboBoxFuel != null) {
                     checkComboBoxFuel.getCheckModel().clearChecks();
                     pendingFuelSelections.clear();
                     String[] set = utils.splitString(value, ";");
@@ -561,30 +695,36 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
                     if (fuelListInitialized) {
                         applyPendingFuelSelections();
                     }
-                }
-                if (param.equals("units") && labelUnitsValue != null) {
+                 }
+                 if (param.equals("units") && labelUnitsValue != null) {
                     labelUnitsValue.setText(value);
-                }
-                if (param.equals("policy name") && textFieldPolicyName != null) {
+                 }
+                 if (param.equals("policy name") && textFieldPolicyName != null) {
                     textFieldPolicyName.setText(value);
-                }
-                if (param.equals("market name") && textFieldMarketName != null) {
+                 }
+                 if (param.equals("market name") && textFieldMarketName != null) {
                     textFieldMarketName.setText(value);
-                }
-                if (param.equals("regions") && paneForCountryStateTree != null) {
+                 }
+                 if (param.equals("regions") && paneForCountryStateTree != null) {
                     String[] regions = utils.splitString(value, ",");
                     this.paneForCountryStateTree.selectNodes(regions);
-                }
-                if (param.equals("table data") && paneForComponentDetails != null) {
+                 }
+                 if (param.equals("table data") && paneForComponentDetails != null) {
                     parseAndAddTableData(value);
-                }
+                 }
+             }
+         }
+         if (!sawCategoryMetadata && comboBoxCategory != null) {
+            pendingCategorySelection = ALL;
+            if (fuelListInitialized) {
+                applyPendingCategorySelection();
             }
-        }
-        if (paneForComponentDetails != null)
-            this.paneForComponentDetails.updateTable();
-        if (fuelListInitialized) {
-            setPolicyAndMarketNames();
-        }
+         }
+         if (paneForComponentDetails != null)
+             this.paneForComponentDetails.updateTable();
+         if (fuelListInitialized) {
+             setPolicyAndMarketNames();
+         }
     }
 
     /**

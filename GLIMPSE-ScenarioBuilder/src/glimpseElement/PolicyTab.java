@@ -1028,6 +1028,8 @@ public abstract class PolicyTab extends Tab {
             comboBox.getItems().add(normalizedDefault);
         }
 
+        comboBox.getItems().sort(String::compareToIgnoreCase);
+ 
         if (selectDefault && normalizedDefault != null && !normalizedDefault.isEmpty()) {
             comboBox.getSelectionModel().select(normalizedDefault);
         } else {
@@ -1073,6 +1075,8 @@ public abstract class PolicyTab extends Tab {
             }
         }
 
+        checkComboBox.getItems().sort(String::compareToIgnoreCase);
+ 
         if (checkAll && !checkComboBox.getItems().isEmpty()) {
             checkComboBox.getCheckModel().checkAll();
         }

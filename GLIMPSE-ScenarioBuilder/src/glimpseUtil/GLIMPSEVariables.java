@@ -2718,7 +2718,7 @@ public class GLIMPSEVariables {
               } catch(Throwable e1) {
                 report.add("Java version does not support assessing swap space size.");
                 report.add("");
-            }
+              }
             logSetupCheckpoint(timingEnabled, t0setup, "swap space check complete");
                     
             report.add("-- Processor analysis -- ");
@@ -2771,6 +2771,12 @@ public class GLIMPSEVariables {
         }
         
         result=utils.getUniqueItemsFromStringArrayList(result);
+        result.removeIf(s -> s == null || s.trim().isEmpty());
+        result.sort(String::compareToIgnoreCase);
+        if (!result.isEmpty() && !"All".equalsIgnoreCase(result.get(0))) {
+            result.removeIf(s -> "All".equalsIgnoreCase(s));
+            result.add(0, "All");
+        }
         return result;
     }
 
@@ -2941,6 +2947,7 @@ public class GLIMPSEVariables {
   
     public void setGhgListStr(String emisListStr) {
 		this.ghgList = utils.getStringListFromString(emisListStr, ",");
+
 	}
     
     public void setGhgList(List<String> emisList) {
@@ -2949,6 +2956,7 @@ public class GLIMPSEVariables {
 
     public void setFgasListStr(String emisListStr) {
 		this.fGasList = utils.getStringListFromString(emisListStr, ",");
+
 	}
     
     public void setFgasList(List<String> emisList) {
@@ -2968,6 +2976,7 @@ public class GLIMPSEVariables {
 				priceAdjVal=1.0;
 			}
 			if (i>0) priceAdjustStr+=",";
+
 			priceAdjustStr+=String.format("%.4f",priceAdjVal);
 		}
     	setGhgPriceAdjustStr(priceAdjustStr);
@@ -2981,6 +2990,7 @@ public class GLIMPSEVariables {
     	String priceUnitStr="";
 		for (int i=0;i<ghgPriceUnits.length;i++) {
 			if (i>0) priceUnitStr+=",";
+
 			priceUnitStr+="1990$s/"+ghgPriceUnits[i].trim();
 		}
 		this.setGhgPriceUnitStr(priceUnitStr);
@@ -2988,6 +2998,7 @@ public class GLIMPSEVariables {
     
     public void setGhgPriceAdjustStr(String ghgPriceAdjustStr) {
     	this.ghgPriceAdjust = utils.getStringListFromString(ghgPriceAdjustStr, ",");
+
     }
     
     public void setGhgPriceAdjust(List<String> ghgPriceAdjust) {
@@ -2996,6 +3007,7 @@ public class GLIMPSEVariables {
     
     public void setGhgDemandAdjustStr(String ghgDemandAdjustStr) {
 		this.ghgDemandAdjust = utils.getStringListFromString(ghgDemandAdjustStr, ",");
+
 	}
 
     public void setGhgDemandAdjust(List<String> ghgDemandAdjust) {
@@ -3004,6 +3016,7 @@ public class GLIMPSEVariables {
 	
     public void setGhgPriceUnitStr(String ghgPriceUnitStr) {
     	this.ghgPriceUnit = utils.getStringListFromString(ghgPriceUnitStr, ",");
+
     }
     
     public void setGhgPriceUnit(List<String> ghgPriceUnit) {
@@ -3012,6 +3025,7 @@ public class GLIMPSEVariables {
     
     public void setGhgOutputUnitStr(String ghgOutputUnitStr) {
 		this.ghgOutputUnit = utils.getStringListFromString(ghgOutputUnitStr, ",");
+
 	}
     
     public void setGhgOutputUnit(List<String> ghgOutputUnit) {

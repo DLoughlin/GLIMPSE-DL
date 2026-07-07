@@ -722,6 +722,11 @@ public class TabTechParam extends PolicyTab implements Runnable {
         String s2 = ""; 
         String label = "";
         String selectedParam = this.comboBoxParam.getSelectionModel().getSelectedItem();
+        // User can check techs before selecting a parameter; avoid null switch.
+        if (selectedParam == null) {
+            labelTextFieldUnits2.setText(label);
+            return;
+        }
         if (this.checkComboBoxTech.getCheckModel().getCheckedIndices().size() > 0) {
             switch (selectedParam) {
                 case "Levelized Non-Energy Cost":
