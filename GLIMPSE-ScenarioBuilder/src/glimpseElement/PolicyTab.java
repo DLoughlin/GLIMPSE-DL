@@ -351,25 +351,47 @@ public abstract class PolicyTab extends Tab {
         return comboBox;
     }
 
-    // Border style applied to the three main scroll panes to visually separate columns
+    // Rounded-corner gray border applied to column content containers (gridPaneLeft, vBoxCenter, vBoxRight).
+    // Applying to the content VBox/GridPane instead of the ScrollPane gives crisp rounded corners,
+    // matching the look of TabTechAvailable's leftPanel.
     protected static final String SCROLLPANE_BORDER_STYLE = "-fx-border-color: #A9A9A9; -fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4;";
 
     /**
-     * Apply the standard scroll pane style (base style from styles.getStyle2()) and the column border.
+     * Makes a scroll pane fully transparent so the content container's border and background
+     * are the only visible column chrome, avoiding the ScrollPane viewport clipping issue.
      */
     private void applyScrollPaneBorder(ScrollPane sp) {
         if (sp == null) return;
-        String base = styles != null ? styles.getStyle2() : "";
-        String existing = sp.getStyle();
-        String combined = "";
-        if (existing != null && !existing.isEmpty()) {
-            combined = existing + " " + SCROLLPANE_BORDER_STYLE;
-        } else if (base != null && !base.isEmpty()) {
-            combined = base + " " + SCROLLPANE_BORDER_STYLE;
-        } else {
-            combined = SCROLLPANE_BORDER_STYLE;
-        }
-        sp.setStyle(combined);
+        sp.setStyle("-fx-background: transparent; -fx-background-color: transparent; -fx-border-color: transparent; -fx-border-width: 0;");
+    }
+
+    /**
+     * Returns the full CSS style for a column content pane: standard white background +
+     * the rounded-corner gray border. Use this on gridPaneLeft, vBoxCenter, and vBoxRight
+     * so all three columns match TabTechAvailable's leftPanel appearance.
+     */
+    protected String getColumnPanelStyle() {
+        return styles.getStyle2() + " " + SCROLLPANE_BORDER_STYLE;
+    }
+
+    /**
+     * Harmonizes internal insets across the three pane columns so top headers line up.
+     * Left/center use shared container padding, while right relies on PaneForCountryStateTree padding.
+     */
+    private void harmonizeColumnInsets() {
+        Insets contentPadding = styles.getDefaultPadding();
+
+        // Keep scroll pane chrome consistent; content containers own the visible insets.
+        scrollPaneLeft.setPadding(Insets.EMPTY);
+        scrollPaneCenter.setPadding(Insets.EMPTY);
+        scrollPaneRight.setPadding(Insets.EMPTY);
+
+        gridPaneLeft.setPadding(contentPadding);
+        vBoxCenter.setPadding(contentPadding);
+
+        // Right column: vBoxRight owns the padding; PaneForCountryStateTree has its own
+        // padding cleared so all three columns share an identical top inset.
+        vBoxRight.setPadding(contentPadding);
     }
 
     /**
@@ -421,7 +443,7 @@ public abstract class PolicyTab extends Tab {
          vBoxCenter.maxHeightProperty().bind(scrollPaneCenter.prefViewportHeightProperty());
          vBoxRight.maxHeightProperty().bind(scrollPaneRight.prefViewportHeightProperty());
 
-         gridPaneLeft.setStyle(styles.getStyle2() + "; -fx-background-color: white;");
+         gridPaneLeft.setStyle(getColumnPanelStyle() + "; -fx-background-color: white;");
         // Ensure the second column (index 1) of gridPaneLeft expands to fill remaining horizontal space.
         // Set up three column constraints: label column (fixed/min), middle column (growable), and optional third column (min).
         ColumnConstraints gc0 = new ColumnConstraints();
@@ -473,6 +495,18 @@ public abstract class PolicyTab extends Tab {
 
         // Final pass after layout completes to override any late size-setting done by subclasses.
         Platform.runLater(() -> gridPaneLeft.getChildren().forEach(enforceGrow::accept));
+
+        // Apply the shared section-header style to any Label in row 0 of gridPaneLeft
+        // (the "Specification:" label added by each subclass) so all three column headers
+        // use getStyle3() consistently without requiring changes to every subclass.
+        Platform.runLater(() -> {
+            for (javafx.scene.Node node : gridPaneLeft.getChildren()) {
+                Integer row = GridPane.getRowIndex(node);
+                if ((row == null || row == 0) && node instanceof Label) {
+                    ((Label) node).setStyle(styles.getStyle3());
+                }
+            }
+        });
  		VBox tabLayout = new VBox();
 	// Centralized styling: apply default padding and background style so all tabs inherit consistent look
 	tabLayout.setPadding(styles.getDefaultPadding());
@@ -493,9 +527,7 @@ public abstract class PolicyTab extends Tab {
 	applyScrollPaneBorder(scrollPaneLeft);
 	applyScrollPaneBorder(scrollPaneCenter);
 	applyScrollPaneBorder(scrollPaneRight);
- 		scrollPaneLeft.setPadding(styles.getDefaultPadding());
- 		scrollPaneCenter.setPadding(styles.getDefaultPadding());
- 		scrollPaneRight.setPadding(styles.getDefaultPadding());
+        harmonizeColumnInsets();
  		scrollPaneLeft.prefHeightProperty().bind(gridPanePresetModification.heightProperty());
  		scrollPaneCenter.prefHeightProperty().bind(gridPanePresetModification.heightProperty());
  		scrollPaneRight.prefHeightProperty().bind(gridPanePresetModification.heightProperty());
@@ -635,6 +667,8 @@ public abstract class PolicyTab extends Tab {
       HBox.setHgrow(button, Priority.ALWAYS);
     }
        	hBoxHeaderCenter.setStyle(styles.getStyle2()); //DHL was 3
+       	// Match the section-header style used by "Regions:" and "Specification:" labels
+       	labelValue.setStyle(styles.getStyle3());
        	vBoxCenter.getChildren().clear();
        	vBoxCenter.getChildren().addAll(labelValue, hBoxHeaderCenter, paneForComponentDetails);
        	// Ensure the center VBox fills width and can size to the ScrollPane viewport
@@ -659,8 +693,8 @@ public abstract class PolicyTab extends Tab {
        			.subtract(hBoxHeaderCenter.heightProperty())
        			.subtract(8.0)
        	);
-          	// Apply centralized standard light background so center column matches dialog button area
-          	vBoxCenter.setStyle(styles.getStyle2());
+          	// Apply the column panel style (white bg + rounded-corner border) to match TabTechAvailable's leftPanel look
+          	vBoxCenter.setStyle(getColumnPanelStyle());
            	scrollPaneCenter.setContent(vBoxCenter);
       }
 
@@ -674,8 +708,8 @@ public abstract class PolicyTab extends Tab {
          vBoxRight.getChildren().clear();
          // Put the region tree pane directly into the right column VBox
          vBoxRight.getChildren().addAll(paneForCountryStateTree);
-         // Apply centralized standard light background so right column matches dialog button area
-         vBoxRight.setStyle(styles.getStyle2());
+         // Apply the column panel style (white bg + rounded-corner border) to match TabTechAvailable's leftPanel look
+         vBoxRight.setStyle(getColumnPanelStyle());
          // Make the VBox allow its children to grow and fill width
          vBoxRight.setFillWidth(true);
          vBoxRight.setMaxHeight(Double.MAX_VALUE);
@@ -758,6 +792,7 @@ public abstract class PolicyTab extends Tab {
          vBoxCenter.setPadding(styles.getDefaultPadding());
          vBoxRight.setPadding(styles.getDefaultPadding());
          hBoxHeaderCenter.setPadding(styles.getDefaultPadding());
+         harmonizeColumnInsets();
          // Set default text values for fields created via helper so initial values are preserved
         textFieldStartYear.setText(DEFAULT_START_YEAR);
         textFieldEndYear.setText(DEFAULT_END_YEAR);

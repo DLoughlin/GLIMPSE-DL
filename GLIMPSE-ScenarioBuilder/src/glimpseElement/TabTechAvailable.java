@@ -239,7 +239,9 @@ public class TabTechAvailable extends PolicyTab implements Runnable {
         // Apply centralized default padding, spacing and background style so the tab
         // visually matches other PolicyTab-based tabs
         tabLayout.setPadding(styles.getDefaultPadding());
-        tabLayout.setSpacing(6.0);
+         // Use zero spacing so the Regions pane sits flush against the left panel,
+         // matching the adjacent-column appearance of other PolicyTab-based tabs.
+         tabLayout.setSpacing(0);
         //tabLayout.setStyle(styles.getStyle2());
          VBox leftPanel = new VBox();
         // apply CSS-based border to match the requested format
@@ -301,9 +303,9 @@ public class TabTechAvailable extends PolicyTab implements Runnable {
          
          // Ensure table also resizes with the left panel
          tableTechBounds.prefWidthProperty().bind(leftPanel.widthProperty().subtract(20));
-         // Apply default style/padding to the right scroll pane so the tree matches other tabs
-         //scrollPaneRight.setStyle(styles.getStyle2());
-         scrollPaneRight.setPadding(styles.getDefaultPadding());
+         // Remove scroll pane padding so vBoxRight fills the column edge-to-edge,
+         // matching other tabs where harmonizeColumnInsets() zeroes the scroll pane padding.
+         scrollPaneRight.setPadding(Insets.EMPTY);
  
          tabLayout.getChildren().addAll(leftPanel, scrollPaneRight);
          this.setContent(tabLayout);

@@ -42,6 +42,7 @@ import glimpseUtil.GLIMPSEStyles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
 import javafx.collections.ObservableList;
+import javafx.geometry.Insets;
 import javafx.event.EventHandler;
 import javafx.scene.control.CheckBoxTreeItem;
 import javafx.scene.control.ComboBox;
@@ -120,6 +121,7 @@ public class PaneForCountryStateTree extends VBox {
         treeView.setMaxHeight(Double.MAX_VALUE);
         treeView.setMinHeight(0);
         treeView.setMaxWidth(Double.MAX_VALUE);
+        // Apply consistent section-header style matching the other two scroll pane columns.
         labelAppliedTo.setStyle(styles.getStyle3());
 
         comboBoxPresetRegions = utils.createComboBoxString();
@@ -141,9 +143,11 @@ public class PaneForCountryStateTree extends VBox {
         presetRegionHBox.setStyle(styles.getStyle2());
 
         this.getChildren().addAll(labelAppliedTo, treePane, presetRegionHBox);
-        this.setStyle(styles.getStyle2());
-        // Apply the centralized default padding to this pane as well
-        this.setPadding(styles.getDefaultPadding());
+        // Use transparent background so the parent vBoxRight's rounded-corner border shows through.
+        this.setStyle(styles.getFontStyle());
+        // Padding is intentionally left to the parent container (PolicyTab) so all
+        // three scroll pane columns share an identical top inset.
+        this.setPadding(Insets.EMPTY);
         this.setAlignment(javafx.geometry.Pos.TOP_LEFT);
     }
 
