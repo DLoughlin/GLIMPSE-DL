@@ -565,7 +565,7 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
             String[][] tech_list = vars.getTechInfo();
             String[] listOfSelectedLeaves = utils.getAllSelectedRegions(tree);
             listOfSelectedLeaves = utils.removeUSADuplicate(listOfSelectedLeaves);
-            utils.returnAppendedString(listOfSelectedLeaves);
+            utils.returnAppendedString(listOfSelectedLeaves); //result never used
 
             filenameSuggestion = "";
 
@@ -576,7 +576,8 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
             String marketName = textFieldMarketName.getText() + ID;
 
             StringBuilder fileContentBuilder = new StringBuilder();
-            fileContentBuilder.append(getMetaDataContent(tree, marketName, policyName));
+            String metadata=getMetaDataContent(tree, marketName, policyName);
+
             boolean firstitem = true;
 
             List<String> selectedFuels = checkComboBoxFuel.getCheckModel().getCheckedItems();
@@ -585,7 +586,7 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
             for (String fuel : selectedFuels) {
                 for (int t = 0; t < tech_list.length; t++) {
                     String cat = tech_list[t][7].trim();
-                    if (cat.equals("Energy-Carrier")) {
+                    //if (cat.equals("Energy-Carrier")) { //No longer needed; all techs are now included
                         String tech = tech_list[t][2].trim();
                         if (tech.contains(fuel)) {
                             String sector = tech_list[t][0].trim();
@@ -615,11 +616,15 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
                                 }
                             }
                         }
-                    }
+                    //}
                 }
             }
-
-            fileContent = fileContentBuilder.toString();
+            if (fileContentBuilder.length()==0) {
+            	// No rows were generated: this is an error condition
+				utils.warningMessage("Fuel does not exist in selected region(s). Please check your selections and try again.");
+				return;
+            }
+            fileContent = getMetaDataContent(tree, marketName, policyName)+fileContentBuilder.toString();
         }
     }
 
