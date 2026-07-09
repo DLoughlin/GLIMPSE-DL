@@ -521,7 +521,7 @@ public class ManageDatabaseDialog extends JDialog {
         }
 
         int ans = main.showConfirmDialog(
-                "Rebuild database? This will export all scemarops, create a fresh database and re-import the scenarios.\nRebuilding is expected to require several minutes or more.",
+                "Rebuild database? This will export all scenarios, create a fresh database, and re-import scenarios.\nIf no scenarios remain, an empty database with the same name will be created.\nRebuilding is expected to require several minutes or more.",
                 "Confirm Rebuild", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, JOptionPane.NO_OPTION);
         if (ans != JOptionPane.YES_OPTION) return;
 
@@ -548,7 +548,9 @@ public class ManageDatabaseDialog extends JDialog {
                     }
                 }
                 if (currentScns.isEmpty()) {
-                    throw new Exception("No documents found in Manage Database list to export.");
+                    System.out.println("Rebuild: no scenarios found to export; recreating an empty database.");
+                    SwingUtilities.invokeLater(() -> statusField.setText(
+                            "No scenarios to export; recreating an empty database..."));
                 }
                 
                 String tmpBase = System.getProperty("java.io.tmpdir");
