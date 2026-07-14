@@ -161,14 +161,10 @@ public class TabTechBound extends PolicyTab implements Runnable {
 	}
 
 	/**
-	 * Initialize basic UI control state: default checkbox selections (auto-naming and unique names enabled),
-	 * policy/market name fields disabled (enabled only when auto-naming is off).
+	 * Initialize basic UI control state.
 	 */
 	private void setupUIControls() {
-		checkBoxUseAutoNames.setSelected(true);
-		checkBoxUseUniqueNames.setSelected(true);
-		textFieldPolicyName.setDisable(true);
-		textFieldMarketName.setDisable(true);
+		// Checkbox defaults and policy/market field enablement are managed in PolicyTab.
 	}
 
 	/**

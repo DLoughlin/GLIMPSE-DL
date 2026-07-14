@@ -119,10 +119,7 @@ public class TabTechTax extends PolicyTab implements Runnable {
 		this.setText(title);
 		this.setStyle(styles.getFontStyle());
 		textFieldFilter.setPromptText("Filter techs");
-		checkBoxUseAutoNames.setSelected(true);
-		checkBoxUseUniqueNames.setSelected(true);
-		textFieldPolicyName.setDisable(true);
-		textFieldMarketName.setDisable(true);
+		// Checkbox defaults and policy/market field enablement are managed in PolicyTab.
 		setupUIControls();
 		setComponentWidths(comboBoxCategory, checkComboBoxTech, comboBoxMeasure, comboBoxConvertFrom,
 				textFieldStartYear, textFieldEndYear, textFieldInitialAmount, textFieldGrowth, textFieldPeriodLength,

@@ -164,11 +164,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 		this.setText(title);
 		this.setStyle(styles.getFontStyle());
 
-		// Set up initial state of check box and policy and market textfields
-		checkBoxUseAutoNames.setSelected(true);
-		checkBoxUseUniqueNames.setSelected(true);
-		textFieldPolicyName.setDisable(true);
-		textFieldMarketName.setDisable(true);
+		// Checkbox defaults and policy/market field enablement are managed in PolicyTab.
 
 		// Setup UI controls and layout
 		setupUIControls(); // Populate combo boxes and set initial selections
@@ -792,7 +788,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 					textFieldPolicyName.setText(value);
 					break;
 				case "market name":
-					textFieldMarketName.setText(value);
+					textFieldMarketName.setText(stripUniqueSuffixFromLoadedMarketName(value));
 					break;
 				case "regions":
 					String[] regions = utils.splitString(value, ",");

@@ -135,10 +135,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 	public TabPollutantTaxCap(String title, Stage stageX) {
 		this.setText(title);
 		this.setStyle(styles.getFontStyle());
-		checkBoxUseAutoNames.setSelected(true);
-		checkBoxUseUniqueNames.setSelected(true);
-		textFieldPolicyName.setDisable(true);
-		textFieldMarketName.setDisable(true);
+		// Checkbox defaults and policy/market field enablement are managed in PolicyTab.
 		super.setupEventHandlers();
 		setupUIControls();
 		setComponentWidths();
@@ -175,8 +172,8 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 		}
 
 		//initialize pulldown menus to default values
-		comboBoxPollutant.setPromptText(SELECT_ONE);
-		comboBoxMeasure.setPromptText(SELECT_ONE);
+		setComboBoxPrompt(comboBoxPollutant, SELECT_ONE);
+		setComboBoxPrompt(comboBoxMeasure, SELECT_ONE);
 		configureCheckComboBoxSelectionTitle(checkComboBoxCategory, SELECT_ONE_OR_MORE, "Selected");
 		
 		checkComboBoxCategory.getCheckModel().clearChecks();
@@ -926,7 +923,7 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 					textFieldPolicyName.setText(value);
 					break;
 				case "market name":
-					textFieldMarketName.setText(value);
+					textFieldMarketName.setText(stripUniqueSuffixFromLoadedMarketName(value));
 					break;
 				case "regions":
 					String[] regions = utils.splitString(value, ",");

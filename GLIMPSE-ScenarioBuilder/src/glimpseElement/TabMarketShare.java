@@ -147,11 +147,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
      * This only configures widgets and does not perform expensive I/O.
      */
     private void setupUIControls() {
-         // Set up initial state for auto-naming and text fields
-         checkBoxUseAutoNames.setSelected(true);
-         checkBoxUseUniqueNames.setSelected(true);
-         textFieldPolicyName.setDisable(true);
-         textFieldMarketName.setDisable(true);
+		 // Checkbox defaults and policy/market field enablement are managed in PolicyTab.
          // Populate ComboBox options
          resetComboBoxItems(comboBoxPolicyType, java.util.Arrays.asList(POLICY_TYPE_OPTIONS));
 		 setComboBoxPrompt(comboBoxPolicyType, SELECT_ONE);
@@ -1251,7 +1247,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
                 checkBoxUseAutoNames.setSelected(false);
                 textFieldPolicyName.setDisable(false);
             } else if (line.startsWith(METADATA_MARKET_NAME)) {
-                textFieldMarketName.setText(line.substring(METADATA_MARKET_NAME.length()).trim());
+				textFieldMarketName.setText(stripUniqueSuffixFromLoadedMarketName(line.substring(METADATA_MARKET_NAME.length()).trim()));
                 checkBoxUseAutoNames.setSelected(false);
                 textFieldMarketName.setDisable(false);
             } else if (line.startsWith(METADATA_REGIONS)) {

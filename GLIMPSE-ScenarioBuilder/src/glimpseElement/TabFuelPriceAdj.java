@@ -163,16 +163,7 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         if (styles != null)
             this.setStyle(styles.getFontStyle());
 
-        // Default control states: auto/unique naming enabled and name fields
-        // disabled when auto naming is active.
-        if (checkBoxUseAutoNames != null)
-            checkBoxUseAutoNames.setSelected(true);
-        if (checkBoxUseUniqueNames != null)
-            checkBoxUseUniqueNames.setSelected(true);
-        if (textFieldPolicyName != null)
-            textFieldPolicyName.setDisable(true);
-        if (textFieldMarketName != null)
-            textFieldMarketName.setDisable(true);
+        // Checkbox defaults and policy/market field enablement are managed in PolicyTab.
         if (comboBoxConvertFrom != null) {
             comboBoxConvertFrom.getSelectionModel().selectFirst();
         }
@@ -202,9 +193,10 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         checkComboBoxFuel.setDisable(true);
         comboBoxCategory.setDisable(false);
         
-        // Restore category from loaded metadata when available; default to All.
-        if (pendingCategorySelection == null || pendingCategorySelection.trim().isEmpty()) {
-            pendingCategorySelection = ALL;
+        // Restore category from loaded metadata when available; otherwise keep
+        // "Select One" with no active selection.
+        if (pendingCategorySelection != null && pendingCategorySelection.trim().isEmpty()) {
+            pendingCategorySelection = null;
         }
         applyPendingCategorySelection();
 
@@ -255,9 +247,14 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         if (comboBoxCategory == null) {
             return;
         }
-        String category = pendingCategorySelection == null ? ALL : pendingCategorySelection.trim();
-        if (category.isEmpty()) {
-            category = ALL;
+        String category = pendingCategorySelection == null ? null : pendingCategorySelection.trim();
+        if (category == null || category.isEmpty()) {
+            comboBoxCategory.getSelectionModel().clearSelection();
+            textFieldFilter.setDisable(true);
+            checkComboBoxFuel.setDisable(true);
+            updateFilteredFuelsList();
+            pendingCategorySelection = null;
+            return;
         }
 
         boolean matched = false;
@@ -269,7 +266,12 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
             }
         }
         if (!matched) {
-            comboBoxCategory.getSelectionModel().select(ALL);
+            comboBoxCategory.getSelectionModel().clearSelection();
+            textFieldFilter.setDisable(true);
+            checkComboBoxFuel.setDisable(true);
+            updateFilteredFuelsList();
+            pendingCategorySelection = null;
+            return;
         }
 
         pendingCategorySelection = null;
@@ -287,7 +289,10 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
         // Category selection controls fuel-list and filter availability.
         setOnAction(comboBoxCategory, e -> {
             if (isSelectionMissing(comboBoxCategory)) {
-                comboBoxCategory.getSelectionModel().select(ALL);
+                textFieldFilter.setDisable(true);
+                checkComboBoxFuel.setDisable(true);
+                updateFilteredFuelsList();
+                return;
             }
             textFieldFilter.setDisable(false);
             checkComboBoxFuel.setDisable(false);
@@ -708,7 +713,7 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
                     textFieldPolicyName.setText(value);
                  }
                  if (param.equals("market name") && textFieldMarketName != null) {
-                    textFieldMarketName.setText(value);
+                    textFieldMarketName.setText(stripUniqueSuffixFromLoadedMarketName(value));
                  }
                  if (param.equals("regions") && paneForCountryStateTree != null) {
                     String[] regions = utils.splitString(value, ",");
@@ -720,7 +725,7 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
              }
          }
          if (!sawCategoryMetadata && comboBoxCategory != null) {
-            pendingCategorySelection = ALL;
+            pendingCategorySelection = null;
             if (fuelListInitialized) {
                 applyPendingCategorySelection();
             }

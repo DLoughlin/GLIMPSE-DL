@@ -124,6 +124,8 @@ public abstract class PolicyTab extends Tab {
     protected static final double MAX_WIDTH = 140;   // was 175
     protected static final double MIN_WIDTH = 90;    // was 105
     protected static final double PREF_WIDTH = 140;  // was 175
+    protected static final double AUTO_CHECKBOX_WIDTH = 70;
+    protected static final double UNIQUE_CHECKBOX_WIDTH = 86;
     protected static final String NONE = "None";
     protected static final String DEFAULT_START_YEAR = "2025";
     protected static final String DEFAULT_END_YEAR = "2050";
@@ -145,6 +147,9 @@ public abstract class PolicyTab extends Tab {
     protected static final String LABEL_VALUES = "Values: ";
     protected static final String CHECKBOX_AUTO = "Auto";
     protected static final String CHECKBOX_UNIQUE = "Unique";
+    private static final String REQUIRED_SELECTION_LISTENER_KEY = "requiredSelectionListenerAttached";
+    private static final String REQUIRED_SELECTION_BASE_STYLE_KEY = "requiredSelectionBaseStyle";
+    private static final String REQUIRED_SELECTION_SUBTLE_OUTLINE = "-fx-border-color: #AECF88; -fx-border-width: 1.2; -fx-border-radius: 3;";
     
     // === Constants for default values and labels ===
     protected static final String[] MODIFICATION_TYPE_OPTIONS = {
@@ -197,18 +202,50 @@ public abstract class PolicyTab extends Tab {
     protected final VBox vBoxCenter = new VBox();
     protected final HBox hBoxHeaderCenter = new HBox();
     private boolean modificationTypeSelectionListenerAttached = false;
-    
+    private boolean syncingSharedNameOptions = false;
+    private static boolean sharedUseAutoNames = true;
+    private static boolean sharedUseUniqueNames = true;
+    private static final List<PolicyTab> policyTabInstances = new ArrayList<>();
+
     protected final Label labelPolicyName = createLabel(LABEL_POLICY_NAME, LABEL_WIDTH);
     protected final TextField textFieldPolicyName = createTextField(PREF_WIDTH);
     protected final Label labelMarketName = createLabel(LABEL_MARKET_NAME, LABEL_WIDTH);
     protected final TextField textFieldMarketName = createTextField(PREF_WIDTH);
     //protected final Label labelUseAutoNames = createLabel(LABEL_USE_AUTO_NAMES, LABEL_WIDTH);
     //protected final Label labelUseUniqueNames = createLabel(CHECKBOX_UNIQUE, LABEL_WIDTH);
-    protected final CheckBox checkBoxUseAutoNames = createCheckBox(CHECKBOX_AUTO);
-    protected final CheckBox checkBoxUseUniqueNames = createCheckBox(CHECKBOX_UNIQUE);
+    protected final CheckBox checkBoxUseAutoNames = createCheckBox(CHECKBOX_AUTO, AUTO_CHECKBOX_WIDTH);
+    protected final CheckBox checkBoxUseUniqueNames = createCheckBox(CHECKBOX_UNIQUE, UNIQUE_CHECKBOX_WIDTH);
     protected final Label labelValue = createLabel(LABEL_VALUES);
 
-    
+    private static void registerPolicyTabInstance(PolicyTab tab) {
+        if (tab != null && !policyTabInstances.contains(tab)) {
+            policyTabInstances.add(tab);
+        }
+    }
+
+    private void applySharedNameOptionsToThisTab() {
+        syncingSharedNameOptions = true;
+        try {
+            checkBoxUseAutoNames.setSelected(sharedUseAutoNames);
+            checkBoxUseUniqueNames.setSelected(sharedUseUniqueNames);
+            textFieldPolicyName.setDisable(sharedUseAutoNames);
+            textFieldMarketName.setDisable(sharedUseAutoNames);
+        } finally {
+            syncingSharedNameOptions = false;
+        }
+    }
+
+    private void applySharedNameOptionsToAllTabs(boolean useAutoNames, boolean useUniqueNames) {
+        sharedUseAutoNames = useAutoNames;
+        sharedUseUniqueNames = useUniqueNames;
+        for (PolicyTab tab : policyTabInstances) {
+            if (tab != null) {
+                tab.applySharedNameOptionsToThisTab();
+                tab.setPolicyAndMarketNames();
+            }
+        }
+    }
+
     /**
      * Save the scenario component. Implemented by subclasses to define how the component is saved.
      * <p>
@@ -238,8 +275,11 @@ public abstract class PolicyTab extends Tab {
          * @return A new CheckBox with the given label and width
          */
         CheckBox checkBox = utils.createCheckBox(checkboxName);
-        // Use minimum width so the checkbox does not expand beyond its minimum in the left grid
+        // Keep checkbox captions visible while still constraining layout width.
         checkBox.setMinWidth(width);
+        checkBox.setPrefWidth(width);
+        checkBox.setMaxWidth(width);
+        checkBox.setStyle("-fx-text-fill: black;");
         return checkBox;
     }
 
@@ -776,7 +816,10 @@ public abstract class PolicyTab extends Tab {
         // Ensure left grid pane has consistent padding across all policy tabs
         //gridPaneLeft.setPadding(styles.getDefaultPadding());
         //gridPaneLeft.setStyle(styles.getBackgroundStyle());
-    
+
+        registerPolicyTabInstance(this);
+        applySharedNameOptionsToThisTab();
+
         scrollPaneLeft.setPadding(styles.getDefaultPadding());
         scrollPaneLeft.setStyle(styles.getBackgroundStyle());
         scrollPaneCenter.setPadding(styles.getDefaultPadding());
@@ -972,6 +1015,8 @@ public abstract class PolicyTab extends Tab {
         if (clearSelection) {
             comboBox.getSelectionModel().clearSelection();
         }
+        ensureRequiredSelectionListener(comboBox);
+        applyRequiredSelectionOutline(comboBox);
     }
 
     /**
@@ -1035,6 +1080,7 @@ public abstract class PolicyTab extends Tab {
         } else {
             comboBox.getSelectionModel().clearSelection();
         }
+        applyRequiredSelectionOutline(comboBox);
     }
 
     /**
@@ -1080,6 +1126,7 @@ public abstract class PolicyTab extends Tab {
         if (checkAll && !checkComboBox.getItems().isEmpty()) {
             checkComboBox.getCheckModel().checkAll();
         }
+        applyRequiredSelectionOutline(checkComboBox);
     }
 
     /**
@@ -1095,15 +1142,58 @@ public abstract class PolicyTab extends Tab {
             return;
         }
 
-        checkComboBox.getCheckModel().getCheckedItems().addListener((ListChangeListener<String>) change -> {
-            int checkedCount = checkComboBox.getCheckModel().getCheckedItems().size();
-            checkComboBox.setShowCheckedCount(checkedCount > 0);
-            checkComboBox.setTitle(checkedCount > 0 ? selectedTitle : emptyTitle);
-        });
+        if (!checkComboBox.getProperties().containsKey(REQUIRED_SELECTION_LISTENER_KEY)) {
+            checkComboBox.getCheckModel().getCheckedItems().addListener((ListChangeListener<String>) change -> {
+                int checkedCount = checkComboBox.getCheckModel().getCheckedItems().size();
+                checkComboBox.setShowCheckedCount(checkedCount > 0);
+                checkComboBox.setTitle(checkedCount > 0 ? selectedTitle : emptyTitle);
+                applyRequiredSelectionOutline(checkComboBox);
+            });
+            checkComboBox.getProperties().put(REQUIRED_SELECTION_LISTENER_KEY, Boolean.TRUE);
+        }
 
         int checkedCount = checkComboBox.getCheckModel().getCheckedItems().size();
         checkComboBox.setShowCheckedCount(checkedCount > 0);
         checkComboBox.setTitle(checkedCount > 0 ? selectedTitle : emptyTitle);
+        applyRequiredSelectionOutline(checkComboBox);
+    }
+
+    private void ensureRequiredSelectionListener(ComboBox<String> comboBox) {
+        if (comboBox.getProperties().containsKey(REQUIRED_SELECTION_LISTENER_KEY)) {
+            return;
+        }
+        comboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) ->
+                applyRequiredSelectionOutline(comboBox));
+        comboBox.getProperties().put(REQUIRED_SELECTION_LISTENER_KEY, Boolean.TRUE);
+    }
+
+    private String getBaseStyle(javafx.scene.control.Control control) {
+        Object stored = control.getProperties().get(REQUIRED_SELECTION_BASE_STYLE_KEY);
+        if (stored instanceof String) {
+            return (String) stored;
+        }
+        String base = control.getStyle();
+        if (base == null) {
+            base = "";
+        }
+        control.getProperties().put(REQUIRED_SELECTION_BASE_STYLE_KEY, base);
+        return base;
+    }
+
+    private void applyRequiredSelectionOutline(ComboBox<String> comboBox) {
+        if (comboBox == null) {
+            return;
+        }
+        String base = getBaseStyle(comboBox);
+        comboBox.setStyle(isSelectionMissing(comboBox) ? (base + " " + REQUIRED_SELECTION_SUBTLE_OUTLINE).trim() : base);
+    }
+
+    private void applyRequiredSelectionOutline(CheckComboBox<String> checkComboBox) {
+        if (checkComboBox == null) {
+            return;
+        }
+        String base = getBaseStyle(checkComboBox);
+        checkComboBox.setStyle(isSelectionMissing(checkComboBox) ? (base + " " + REQUIRED_SELECTION_SUBTLE_OUTLINE).trim() : base);
     }
 
     /**
@@ -1344,11 +1434,19 @@ public abstract class PolicyTab extends Tab {
     	paneForCountryStateTree.getTree().addEventHandler(ActionEvent.ACTION, e -> {
     		setPolicyAndMarketNames();
     	});
-   
+
         checkBoxUseAutoNames.setOnAction(e -> Platform.runLater(() -> {
-            boolean selected = checkBoxUseAutoNames.isSelected();
-            textFieldPolicyName.setDisable(selected);
-            textFieldMarketName.setDisable(selected);
+            if (syncingSharedNameOptions) {
+                return;
+            }
+            applySharedNameOptionsToAllTabs(checkBoxUseAutoNames.isSelected(), checkBoxUseUniqueNames.isSelected());
+        }));
+
+        checkBoxUseUniqueNames.setOnAction(e -> Platform.runLater(() -> {
+            if (syncingSharedNameOptions) {
+                return;
+            }
+            applySharedNameOptionsToAllTabs(checkBoxUseAutoNames.isSelected(), checkBoxUseUniqueNames.isSelected());
         }));
         if (!modificationTypeSelectionListenerAttached) {
             comboBoxModificationType.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) ->
@@ -1434,6 +1532,26 @@ public abstract class PolicyTab extends Tab {
     }
     String suffix = marketName.substring(idx + 3).trim();
     return !suffix.isEmpty();
+  }
+
+  /**
+   * Removes a trailing numeric unique suffix that may be appended after the
+   * final "Mkt" token when loading existing scenario components for editing.
+   */
+  protected String stripUniqueSuffixFromLoadedMarketName(String marketName) {
+    if (marketName == null) {
+      return null;
+    }
+    String trimmed = marketName.trim();
+    int idx = trimmed.lastIndexOf("Mkt");
+    if (idx < 0) {
+      return trimmed;
+    }
+    String suffix = trimmed.substring(idx + 3).trim();
+    if (suffix.matches("\\d+")) {
+      return trimmed.substring(0, idx + 3);
+    }
+    return trimmed;
   }
 
   /**
