@@ -1057,9 +1057,9 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 								no_non_nested++;
 							}
 							
-							boolean unitPriceConversionApplied = utils.shouldApplyTrnUnitPriceConversion(sector_name);
+							//boolean useTrnUnitPriceConversion = utils.shouldApplyTrnUnitPriceConversion(sector_name);
 							String conversions = utils.getSubsectorConversions(state, sector_name, subsector_name,
-									t, unitPriceConversionApplied);
+									t);
 							
 							if (conversions != null) {
 								if (conversions.startsWith(","))

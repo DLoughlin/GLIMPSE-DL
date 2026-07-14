@@ -365,6 +365,10 @@ public class ThumbnailUtilNew {
 			if (unit.isEmpty()) {
 				return "";
 			}
+			// Preserve explicit percent-style units from diff queries (for example: "pct (MTC)").
+			if (unit.matches("(?i)^(pct|percent)\\s*\\(.*\\)$")) {
+				return unit;
+			}
 			int openParen = unit.lastIndexOf('(');
 			int closeParen = unit.endsWith(")") ? unit.length() - 1 : -1;
 			if (openParen >= 0 && closeParen > openParen) {

@@ -148,6 +148,11 @@ public class DiffResultsPanel extends QueryResultsPanel {
 			jTable = new JTable(convertToDiffTable(bt)); // Dan: Attempt to fix recent bug 20220607
 		}
 
+		// Keep behavior consistent with regular queries: surface the standard no-results message.
+		if (jTable == null || jTable.getRowCount() == 0) {
+			throw new Exception("The query returned no results.");
+		}
+
 		new CopyPaste(jTable);
 		jTable.setCellSelectionEnabled(true);
 

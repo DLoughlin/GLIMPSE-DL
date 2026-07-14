@@ -1334,24 +1334,26 @@ public class GLIMPSEUtils {
 			return false;
 		}
 		boolean useMMBTUConversions = true;
-		if (vars != null) {
-			useMMBTUConversions = vars.isGcamVersionPre8_5();
-		}
+		//commented out since all transportation subsectors have conversions; what those entail is handled in the getTrnUnitPriceConversion method
+//		if (vars != null) {
+//			useMMBTUConversions = vars.isGcamVersionPre8_5();
+//		}
 		return useMMBTUConversions;
 	}
 
-	public String getSubsectorConversions(String region, String sector, String subsector, int year) {
-		return getSubsectorConversions(region, sector, subsector, year,
-				shouldApplyTrnUnitPriceConversion(sector));
-	}
+//	public String getSubsectorConversions(String region, String sector, String subsector, int year) {
+//		return getSubsectorConversions(region, sector, subsector, year,
+//				shouldApplyTrnUnitPriceConversion(sector));
+//	}
 
 	/**
 	 * Builds transport subsector conversion metadata using an explicit flag that
 	 * indicates whether part-1 unit-price-conv scaling was applied.
 	 */
-	public String getSubsectorConversions(String region, String sector, String subsector, int year,
-			boolean unitPriceConversionApplied) {
+	public String getSubsectorConversions(String region, String sector, String subsector, int year) {
 
+		boolean useTrnUnitConversions = shouldApplyTrnUnitPriceConversion(sector);
+		
 		double output_ratio = 1.0; // default to a 1:1 ratio when no conversion is needed
 		double pMultiplier = 1.0; // default to a 1:1 ratio when no conversion is needed
 
@@ -1369,10 +1371,7 @@ public class GLIMPSEUtils {
 				return null;
 			}
 
-			// Keep this path explicitly coupled to whether part-1 unit-price-conv scaling was applied.
-			boolean useMMBTUConversions = unitPriceConversionApplied;
-
-			if (useMMBTUConversions) {
+			if (useTrnUnitConversions) {
 				// Pre-8.5 GCAM transport policy path.
 				// The older workflow includes service in million pass-km or million ton-km and energy in MMBTU,
 				// requiring these conversions.
