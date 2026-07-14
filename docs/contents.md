@@ -1,8 +1,8 @@
-# Index \[DRAFT\]
+# Index \[DRAFT: being updated\]
 
 [Getting Started](GLIMPSE-CE-UsersGuide/UsersGuideDocs/~%20Getting%20Started.md)
 
-## Users' Guide \[being updated\]
+## Users' Guide 
 
 [Chapter 1: Overview](GLIMPSE-CE-UsersGuide/UsersGuideDocs/Chapter%201%EA%9E%89%20Overview.md)
 
