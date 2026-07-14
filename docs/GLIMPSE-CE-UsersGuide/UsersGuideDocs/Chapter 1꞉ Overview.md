@@ -38,7 +38,7 @@ Using GLIMPSE, decision-makers and analysts at the national, regional, and state
 [1.14 Where to get assistance or provide feedback](#114-where-to-get-assistance-or-provide-feedback)
 </details>
 
-## 1.1 Background
+<h2 id="11-background">1.1 Background</h2>
 
 GLIMPSE can be used with GCAM or with variants of GCAM that have additional spatial resolution, such as GCAM-USA, which represents the U.S. energy system at the state level. 
 
@@ -59,7 +59,7 @@ We have adopted a publicly available version of GCAM-USA 9.1 for use in GLIMPSE 
 
 <img src='..\UsersGuideGraphics\C1-1.png' width='100%'/><br>**Figure 1.1 GCAM inputs, outputs, and major components.** GCAM includes representations of energy, water, land use, agricultural, and climate systems, simulating their co-evolution.
 
-## 1.2 Motivation
+<h2 id="12-motivation">1.2 Motivation</h2>
 
 ### 1.2.1 The energy system
 
@@ -113,7 +113,7 @@ In this complex landscape, it is important for policymakers to be able to:
 
 Addressing these needs is the objective of the GLIMPSE project. 
 
-## 1.3 GCAM-USA
+<h2 id="13-gcam-usa">1.3 GCAM-USA</h2>
 
 The computational engine for GLIMPSE is GCAM. Specifically, we are using GCAM-USA, a version of GCAM that includes state-level resolution of the U.S. energy system. GCAM-USA version 9.1 covers a time horizon of 2015 through 2100, calibrated to 2021 and simulated at the annual resolution in 5-year time steps. 
 
@@ -145,7 +145,7 @@ Attributes of GCAM-USA are summarized in the table below:
 | Source code and data   | [https://github.com/JGCRI/gcam-core](https://github.com/JGCRI/gcam-core) (Open source)                                                                                                                                                                                                                                                             |
 | Documentation          | GCAM 9.1 documentation: [http://jgcri.github.io/gcam-doc/toc.html](http://jgcri.github.io/gcam-doc/toc.html) <br> GCAM Developer's Guide: [http://jgcri.github.io/gcam-doc/dev-guide.html](http://jgcri.github.io/gcam-doc/dev-guide.html)                                                                                                         |
 
-## 1.4 Components of GLIMPSE
+<h2 id="14-components-of-glimpse">1.4 Components of GLIMPSE</h2>
 
 GLIMPSE serves as a graphical interface to GCAM and GCAM-USA. We refer to both versions of the model as "GCAM" from here on unless clarification is necessary. The graphical interface consists of two primary components, the *Scenario Builder* and the *ModelInterface*. 
 
@@ -153,7 +153,7 @@ The *Scenario Builder* allows users to alter input assumptions and construct pol
 
 These components are described and demonstrated in the [Tutorial](UsersGuideDocs/Tutorial%201꞉%20Running%20GCAM%20through%20GLIMPSE.md) section of the Users' Guide. Attendance of GLIMPSE hands-on training sessions is highly recommended for those who are considering using GLIMPSE for their applications. 
 
-## 1.5 Design philosophy
+<h2 id="15-design-philosophy">1.5 Design philosophy</h2>
 
 GLIMPSE has been developed to meet the needs of both experienced GCAM users and those who are new to GCAM. For experienced users, the *Scenario Builder* will enhance their typical GCAM workflow by organizing a library of scenarios and scenario components, managing single and batch execution, providing quick access to logs, and archiving the files that are specific to a scenario. GLIMPSE also automates some activities that would be tedious even for an experienced user, such as developing policy "add-on" files that implement an emissions cap or clean energy standard over a group of states.
 
@@ -190,7 +190,7 @@ GLIMPSE automates the process of generating the appropriate CSV file, selecting 
 
 <img src='..\UsersGuideGraphics\T5-2.png' /><br>**Figure 1.8 *New Scenario Component Creator*.** This dialog allows users to create their own Scenario Components, including implementations of policies and alternative assumptions about technologies.
 
-## 1.6 Computer and software requirements
+<h2 id="16-computer-and-software-requirements">1.6 Computer and software requirements</h2>
 
 The GLIMPSE software is written in the Java programming language and requires the 64-bit version of the Java Runtime Environment (JRE), version 8, which is also referred to as JRE 1.8. We include [Amazon's Corretto version of the JRE](https://docs.aws.amazon.com/corretto/latest/corretto-8-ug/downloads-list.html) as part of the GLIMPSE package, although users are able to configure GLIMPSE to use other versions of Java JRE 1.8 that incorporate the JavaFX libraries. Note that OpenJDK JRE 1.8 is not packaged with JavaFX. 
 
@@ -200,17 +200,17 @@ The GCAM model itself is computationally and memory intensive. At least 12 GB of
 
 Each simulation generates more than 3 GB of results. Hard disk space is also used as virtual memory. We recommend that your computer has at least 80 GB of free hard disk space when GLIMPSE is installed, but more is preferable. 
 
-## 1.7 Organization of this Users' Guide
+<h2 id="17-organization-of-this-users-guide">1.7 Organization of this Users' Guide</h2>
 
 This Users' Guide includes installation instructions, a multi-part tutorial, a description of the GLIMPSE Reference Scenario, and key results. The Users' Guide also includes a brief overview of how GCAM works, instructions on performing common tasks, additional information for advanced users, and descriptions of the components of the graphical user interface. A troubleshooting section helps with common problems, and a glossary defines key terms and acronyms. 
 
-## 1.8 GLIMPSE Version
+<h2 id="18-glimpse-version">1.8 GLIMPSE Version</h2>
 
 This Users' Guide has been developed specifically for GLIMPSE-CE-2.2, though figures have been constructed using version 2.03 with GCAM 8.2. If you are using a more recent version of GLIMPSE, some of the information provided here may no longer be accurate. Furthermore, this User's Guide will evolve as users report their experiences.
 
 GLIMPSE currently incorporates GCAM 9.1, which was released in the spring of 2026. GCAM releases typically occur at least once per year. See [https://github.com/JGCRI/gcam-core/releases](https://github.com/JGCRI/gcam-core/releases) for information on each GCAM release, including new features. 
 
-## 1.9 A note on units
+<h2 id="19-a-note-on-units">1.9 A note on units</h2>
 
 As a result of GCAM's origins in GHG emission projections and climate analyses, the units in GLIMPSE and GCAM may be different than those typical for applications in the air quality and energy fields. 
 
@@ -236,9 +236,9 @@ As a result of GCAM's origins in GHG emission projections and climate analyses, 
 
     * \$1 in 1990\$s is equivalent to \$2.53 in 2026\$s.
 
-* Travel demands are represented in million passenger-km or million tonne-km.
+* Travel demands are represented in billion passenger-km or billion tonne-km in GCAM 9.1, but million passenger-km or million ton-km in GCAM 8.2.
 
-## 1.10 Interpreting GCAM results
+<h2 id="110-interpreting-gcam-results">1.10 Interpreting GCAM results</h2>
 
 While GLIMPSE simplifies tasks such as developing policy scenarios, executing GCAM, and analyzing results, GLIMPSE users should keep in mind that neither it, nor the underlying GCAM model, are commercial products. Documentation is available, but support is limited.
 
@@ -256,13 +256,13 @@ To begin the process of learning how GCAM operates, we highly recommend that use
 
 When applying GCAM to particularly challenging policy scenarios (e.g., a Net Zero CO<sub>2</sub> target or to specific GHG emissions targets), users should think holistically about the scenario and how Reference Case assumptions may shift under such a target. For example, users may want to modify shareweights for electric vehicles to reflect conditions that are not simulated by GCAM, such as the investment and build-out of a charging infrastructure. The process of developing Deep Decarbonization scenarios, and others that diverge significantly from historic and Reference Case conditions, may involve many such considerations. 
 
-## 1.11 Known bugs, limitations, and other considerations
+<h2 id="111-known-bugs-limitations-and-other-considerations">1.11 Known bugs, limitations, and other considerations</h2>
 
 GLIMPSE users should take note of the following. 
 
 * Unexpected termination – GCAM will occasionally terminate unexpectedly, reporting "DNF" (for "Did not finish") to the *Scenario Builder*. There are several causes, including the computer's available resources being exhausted (e.g., RAM or disk space), conflicts in the names of markets or policies, or incompletely defined technologies or markets in the model. We have built tools into the *Scenario Builder* to avoid and help deduce the cause of these problems. Nonetheless, some level of "debugging" by users may be required. See Section 4.16 for more information.
 
-* Numerical issues – With GCAM's global coverage and representation of thousands of markets of diverse sizes, the model's solver must deal with numbers that vary greatly in magnitude. Under some circumstances (e.g., a market share constraint on a very small market) this can result in numerical issues that can lead to market failures. This Users' Guide includes information about how unsolved market messages can be interpreted and how to avoid numerical issues by adjusting the solver parameterization. See [Section 5.3]([.](UsersGuideDocs/Chapter%205%EA%9E%89%20Advanced%20topics.md#53-interpreting-and-debugging-unsolved-market-information-in-the-main_logtxt-file)) for more information. 
+* Numerical issues – With GCAM's global coverage and representation of thousands of markets of diverse sizes, the model's solver must deal with numbers that vary greatly in magnitude. Under some circumstances (e.g., a market share constraint on a very small market) this can result in numerical issues that can lead to market failures. This Users' Guide includes information about how unsolved market messages can be interpreted and how to avoid numerical issues by adjusting the solver parameterization. See [Section 5.3](Chapter%205꞉%20Advanced%20topics.md#53-interpreting-and-debugging-unsolved-market-information-in-the-main_logtxt-file) for more information. 
 
 * Output database size limitations – GCAM uses the BaseX database software for storing model results. We have found the BaseX software to be unable to open databases that exceed 40 GB in size. For GCAM, this is the equivalent of 15 to 20 results. Once the database exceeds this limit, it can no longer be opened and the data inside are lost. We recommend that users pay particular attention to database sizes and to the information in [Section 4.5](UsersGuideDocs/Chapter%204꞉%20How%20do%20I...ʔ.md#45-how-do-i-manage-database-size) of this Users' Guide about how to monitor database size; export, import, and delete results from a database; and create new databases.
 
@@ -274,7 +274,7 @@ GLIMPSE users should take note of the following.
 
 * Calibration – GCAM uses a logit function to assign market share to competing technologies. The parameters used in the logit function for many technologies and markets are determined based upon conditions in the final calibration year, which is 2021 in GCAM-USA 9.1. For new and emerging technologies, these parameters are based upon assumptions about the speed at which barriers and biases will be addressed. These assumptions may not reflect behavior in the future, particularly for deep decarbonization scenarios that differ significantly from historical decisions and Reference Case assumptions. Please see [Section 5.5](UsersGuideDocs/Chapter%205꞉%20Advanced%20topics.md#55-considerations-when-modeling-a-deep-decarbonization-scenario) for a discussion of adjustments that are recommended for consideration when modeling deep decarbonization scenarios. 
 
-## 1.12 Where to learn more about GCAM and GLIMPSE
+<h2 id="112-where-to-learn-more-about-gcam-and-glimpse">1.12 Where to learn more about GCAM and GLIMPSE</h2>
 
 If you would like to know more about GCAM, please see the model's on-line documentation. Important links include: 
 
@@ -325,25 +325,25 @@ Below are publications in which GLIMPSE was used:
 
 * Shi, Wenjing, Yang Ou, Steven J. Smith, Catherine M. Ledna, Christopher G. Nolte, and Daniel H. Loughlin. "Projecting state-level air pollutant emissions using an integrated assessment model: GCAM-USA." *Applied Energy* 208 (2017): 511-521, doi:10.1016/j.apenergy.2017.09.122.
 
-## 1.13 How to get started using GLIMPSE 
+<h2 id="113-how-to-get-started-using-glimpse">1.13 How to get started using GLIMPSE</h2>
 
-To install GLIMPSE, please follow the instructions described in the [GLIMPSE Installation Guide](.).
+To install GLIMPSE, please follow the instructions described in the [GLIMPSE Installation Guide](~%20Getting%20Started.md#installation-instructions).
 
-A good place to start in understanding GLIMPSE's underlying assumptions and capabilities is to read [Chapter 2](.) of this Guide, which describes the GLIMPSE Reference Case. While key results are provided at the national level, similar results can be generated at the state level or for other countries.  
+A good place to start in understanding GLIMPSE's underlying assumptions and capabilities is to read [Chapter 2](Chapter%202꞉%20Placeholder.md) of this Guide, which describes the GLIMPSE Reference Case. While key results are provided at the national level, similar results can be generated at the state level or for other countries.  
 
-For those who would like to use GLIMPSE themselves, the GLIMPSE tutorials are the next step. These will take you through important steps of setting up, running, and analyzing scenarios. The tutorials are in the [Appendix](.) of the Users' Guide.
+For those who would like to use GLIMPSE themselves, the GLIMPSE tutorials are the next step. These will take you through important steps of setting up, running, and analyzing scenarios. The tutorials are in the [Appendix](../../contents.md#tutorials) of the Users' Guide.
 
-Once you have completed the tutorials, we recommend that you read [Chapter 3](.), "How does GCAM work?", in the Users' Guide. This will provide an overview of how GLIMPSE simulates markets in determining the market shares of technologies and fuels, as well as how markets are impacted by policies such as taxes and caps. 
+Once you have completed the tutorials, we recommend that you read [Chapter 3](Chapter%203꞉%20How%20does%20GCAM%20work%CA%94.md), "How does GCAM work?", in the Users' Guide. This will provide an overview of how GLIMPSE simulates markets in determining the market shares of technologies and fuels, as well as how markets are impacted by policies such as taxes and caps. 
 
-Next, try to develop and evaluate your own policy scenarios, using the information in [Chapter 4](.), "How do I?", and in [Chapter 6.4](.), "Troubleshooting", as needed. 
+Next, try to develop and evaluate your own policy scenarios, using the information in [Chapter 4](Chapter%204꞉%20How%20do%20I...%CA%94.md), "How do I?", and in [Chapter 6.4](Chapter%206꞉%20Reference.md#64-troubleshooting), "Troubleshooting", as needed. 
 
 To develop a more detailed understanding of GCAM, please see the PNNL GCAM documentation: [http://jgcri.github.io/gcam-doc/user-guide.html](http://jgcri.github.io/gcam-doc/user-guide.html). 
 
 Demonstrations and trainings are periodically available. Please inquire with Dan Loughlin at [Dan@En2MG.com](Dan@En2MG.com) and check the discussion section of https://github.com/DLoughlin/GLIMPSE-CE. 
 
-## 1.14 Where to get assistance or provide feedback
+<h2 id="114-where-to-get-assistance-or-provide-feedback">1.14 Where to get assistance or provide feedback</h2>
 
-If you have difficulties installing or running GLIMPSE, please see the "[Troubleshooting](.)" section of this Users' Guide to see if your problem can be readily addressed. If the information there does not help solve your problem, please contact the GLIMPSE development team, either via the GitHub repository's "Issues" or "Discussion" areas or  by emailing Dan Loughlin at [Dan@En2MG.com](Dan@En2MG.com). Include detailed information about your problem, as well as what steps you have already taken to address it. Thank you\!
+If you have difficulties installing or running GLIMPSE, please see the "[Troubleshooting](Chapter%206꞉%20Reference.md#64-troubleshooting)" section of this Users' Guide to see if your problem can be readily addressed. If the information there does not help solve your problem, please contact the GLIMPSE development team, either via the GitHub repository's "Issues" or "Discussion" areas or  by emailing Dan Loughlin at [Dan@En2MG.com](Dan@En2MG.com). Include detailed information about your problem, as well as what steps you have already taken to address it. Thank you\!
 
 As this is only the second edition of GLIMPSE-CE and of its Users' Guide, there are undoubtedly many ways that both could be improved. Please send bug reports or feature suggestions through GitHub or by email for consideration in future updates. 
 

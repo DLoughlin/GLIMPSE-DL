@@ -25,17 +25,17 @@ From here on, the GLIMPSE-CE software will primarily be referred to as GLIMPSE.
 
 ### System requirements
 
-GLIMPSE is available on Windows PCs and Macs only, although a Linux version is expected to be supported in the future. We recommend installation on computers with 20 GB of RAM or more and with more than 100 GB of free hard disk space. 
+GLIMPSE is available on Windows PCs and Macs only (soon), although a Linux version is expected to be supported in the future. We recommend installation on computers with 16 GB or more of RAM (>20 GB is preferred) and with more than 100 GB of free hard disk space. 
 
-Typical model runtime is 30 minutes to 5 hours, depending on computational power, memory, and the complexity of the scenarios being simulated.
+Typical model runtime for GCAM-USA is 18 minutes to 2 hours, depending on computational power, memory, and the complexity of the scenarios being simulated.
 
 ### Installation steps
 
 Please read these instructions in full before installing.
 
-#### Step 1: Download GLIMPSE zip file from the [release page](https://github.com/DLoughlin/GLIMPSE-CE/releases/tag/v2.0-2026.03.05).
+#### Step 1: Download GLIMPSE zip file from the [release page](https://github.com/DLoughlin/GLIMPSE-CE/releases/tag/v2.x).
 
-The GLIMPSE package is approximately 1GB in its zipped form.
+The GLIMPSE package is approximately 600 MB in its zipped form.
 
 #### Step 2: Unzip file to install the GLIMPSE package.
 
@@ -43,11 +43,13 @@ The unzipped GLIMPSE file will be approximately 7GB in size.
 
 Recommendations when selecting a location for the GLIMPSE folder:
 
-* a hard disk with fast read/write speeds and at least several hundred free GB of storage
+* a hard disk with fast read/write speeds and at least 100 free GB of storage
 * a location that is **not** automatically backed up
-(GCAM generates 1-2 GB of output with every execution. Users have experienced difficulties with installing GLIMPSE on OneDrive.)
-* a location without spaces in folder names
+(GCAM generates 1-2 GB of output with every execution. Users have experienced difficulties with installing GLIMPSE-CE on OneDrive.)
+* a location without spaces in folder names 
 (these result in errors in filename parsing within GLIMPSE)
+* a location that does not have a deep file path 
+(Windows limits file paths to 256 characters, which can cause issues if GLIMPSE subfolders paths approach that length)
 
 One option is to create the following folders and install GLIMPSE there:
 'C:/Users/\[USERNAME]/Documents/\[LOCAL\_FOLDER]/GLIMPSE-CE-\[VERSION]'
@@ -60,15 +62,15 @@ This folder should include the contents shown in the image below.
 <img src='..\UsersGuideGraphics\T1-1.png' title='The GLIMPSE folder'/>
 
 When unzipping, please note that various unzip programs treat the root folder of the zipped file differently, and a common installation issue is the nesting of folders:
-'D:/mhlou/Projects/GLIMPSE-CE-2.03/GLIMPSE-CE-2.03'
+'D:/mhlou/Projects/GLIMPSE-CE-2.2/GLIMPSE-CE-2.2'
 
-If this is the case in your installation, please move the contents of the nested GLIMPSE folder (D:/mhlou/Projects/GLIMPSE-CE-2.03/GLIMPSE-CE-2.03) to the parent folder (D:/mhlou/Projects/GLIMPSE-CE-2.03). You can then delete the nested folder (D:/mhlou/Projects/GLIMPSE-CE-2.03/GLIMPSE-CE-2.03).
+If this is the case in your installation, please move the contents of the nested GLIMPSE folder (D:/mhlou/Projects/GLIMPSE-CE-2.2/GLIMPSE-CE-2.2) to the parent folder (D:/mhlou/Projects/GLIMPSE-CE-2.2). You can then delete the nested folder (D:/mhlou/Projects/GLIMPSE-CE-2.2/GLIMPSE-CE-2.2).
 
 #### Step 3: Test the GLIMPSE software.
 
-Start GLIMPSE by double-clicking on 'run\_GLIMPSE\_GCAM-USA-9.1.bat' or the equivalent (here 'run\_GLIMPSE\_GCAM-USA-8.2.bat'). The GLIMPSE *Scenario Builder* may take a few minutes to open.
+Start GLIMPSE by double-clicking on 'run\_GLIMPSE-\_GCAM-USA-9.1.bat' or the equivalent (here 'run\_GLIMPSE\_GCAM-USA-8.2.bat'). The GLIMPSE *Scenario Builder* may take a few minutes to open.
 
-If the GLIMPSE window does not appear, a common cause is that Windows is preventing execution of the "run\_GLIMPSE\_GCAM-USA-9.1.bat" file since execution of ".bat" files can be a security issue. To signal to Windows that it is OK to allow this file to be run, right-click on the file, choose "properties", and then check the box next to "unblock execution". Then try double-clicking on the file again.
+If the GLIMPSE window does not appear, a common cause is that Windows is preventing execution of the "run\_GLIMPSE\_GCAM-USA-9.1.bat" file since execution of ".bat" files can be a security issue. To signal to Windows that it is OK to allow this file to be run, right-click on the file, choose "properties", and then check the box next to "unblock execution". Then try double-clicking on the file again. Additionally, the java.exe and javaw.exe files in the included Java Runtime Environment may be getting actively scanned by Windows Defender while executing. Adding these two files to the Defender exclusion list can improve program speed.
 
 Once GLIMPSE appears, the Component Library in the top left pane should include a number of scenario components, and there should be at least one scenario listed in the Scenario Library table at the bottom. If there are no scenario components, this indicates that the installation was not successful, and that GLIMPSE cannot find the correct folder.
 
