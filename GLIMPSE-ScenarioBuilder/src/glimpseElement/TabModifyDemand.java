@@ -120,8 +120,7 @@ public class TabModifyDemand extends PolicyTab implements Runnable {
     /** Label text for populate button/section. */
     private static final String LABEL_POPULATE = "Populate:";
 
-    /** Standard label width for alignment. */
-    private static final double LABEL_WIDTH = 125;
+    // LABEL_WIDTH inherits from PolicyTab (100) to match Pollutant Tax/Cap column widths.
     
     // Modification type strings for demand specification
     /** Modification type: Set initial and final points. */
@@ -229,16 +228,15 @@ public class TabModifyDemand extends PolicyTab implements Runnable {
      * Adjusts preferred, minimum, and maximum widths for controls.
      */
     private void setComponentWidths() {
-        gridPaneLeft.setPrefWidth(325);
-        gridPaneLeft.setMinWidth(325);
-        vBoxCenter.setPrefWidth(300);
-        vBoxRight.setPrefWidth(300);
-        comboBoxSector.setMaxWidth(MAX_WIDTH);
-        comboBoxModificationType.setMaxWidth(MAX_WIDTH);
-        comboBoxSector.setMinWidth(MIN_WIDTH);
-        comboBoxModificationType.setMinWidth(MIN_WIDTH);
-        comboBoxSector.setPrefWidth(PREF_WIDTH);
-        comboBoxModificationType.setPrefWidth(PREF_WIDTH);
+        // Do NOT force fixed widths on gridPaneLeft/vBoxCenter/vBoxRight — the
+        // responsive bindings in PolicyTab.setupUILayout() size the columns correctly.
+        // Use the same combobox widths as TabPollutantTaxCap for consistency.
+        comboBoxSector.setMaxWidth(225);
+        comboBoxModificationType.setMaxWidth(225);
+        comboBoxSector.setMinWidth(175);
+        comboBoxModificationType.setMinWidth(175);
+        comboBoxSector.setPrefWidth(LABEL_WIDTH);
+        comboBoxModificationType.setPrefWidth(LABEL_WIDTH);
     }
 
     /**

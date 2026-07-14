@@ -150,6 +150,8 @@ public abstract class PolicyTab extends Tab {
     private static final String REQUIRED_SELECTION_LISTENER_KEY = "requiredSelectionListenerAttached";
     private static final String REQUIRED_SELECTION_BASE_STYLE_KEY = "requiredSelectionBaseStyle";
     private static final String REQUIRED_SELECTION_SUBTLE_OUTLINE = "-fx-border-color: #AECF88; -fx-border-width: 1.2; -fx-border-radius: 3;";
+    private static final String CHECK_COMBOBOX_INNER_TEXT_CLEAR_STYLE = "-fx-border-color: transparent; -fx-border-width: 0; -fx-background-insets: 0; -fx-background-color: transparent;";
+    private static final String CHECK_COMBOBOX_INNER_CHROME_CLEAR_STYLE = "-fx-border-color: transparent; -fx-border-width: 0; -fx-background-insets: 0;";
     
     // === Constants for default values and labels ===
     protected static final String[] MODIFICATION_TYPE_OPTIONS = {
@@ -1192,8 +1194,28 @@ public abstract class PolicyTab extends Tab {
         if (checkComboBox == null) {
             return;
         }
+        boolean missing = isSelectionMissing(checkComboBox);
         String base = getBaseStyle(checkComboBox);
-        checkComboBox.setStyle(isSelectionMissing(checkComboBox) ? (base + " " + REQUIRED_SELECTION_SUBTLE_OUTLINE).trim() : base);
+        checkComboBox.setStyle(missing ? (base + " " + REQUIRED_SELECTION_SUBTLE_OUTLINE).trim() : base);
+        Platform.runLater(() -> clearCheckComboBoxInnerBorder(checkComboBox));
+    }
+
+    private void clearCheckComboBoxInnerBorder(CheckComboBox<String> checkComboBox) {
+        if (checkComboBox == null) {
+            return;
+        }
+
+        // Clear borders only on the inner editor/arrow nodes, NOT .combo-box-base
+        // (that node hosts the outer widget border which must remain intact).
+        for (javafx.scene.Node node : checkComboBox.lookupAll(".text-input")) {
+            node.setStyle(CHECK_COMBOBOX_INNER_TEXT_CLEAR_STYLE);
+        }
+        for (javafx.scene.Node node : checkComboBox.lookupAll(".text-field")) {
+            node.setStyle(CHECK_COMBOBOX_INNER_TEXT_CLEAR_STYLE);
+        }
+        for (javafx.scene.Node node : checkComboBox.lookupAll(".arrow-button")) {
+            node.setStyle(CHECK_COMBOBOX_INNER_CHROME_CLEAR_STYLE);
+        }
     }
 
     /**
@@ -1348,7 +1370,23 @@ public abstract class PolicyTab extends Tab {
      * @return A new CheckComboBox<String>
      */
     protected CheckComboBox<String> createCheckComboBox() {
-        return utils.createCheckComboBox();
+        CheckComboBox<String> checkComboBox = utils.createCheckComboBox();
+        ensureCheckComboBoxInnerBorderCleanup(checkComboBox);
+        return checkComboBox;
+    }
+
+    private void ensureCheckComboBoxInnerBorderCleanup(CheckComboBox<String> checkComboBox) {
+        if (checkComboBox == null) {
+            return;
+        }
+        checkComboBox.skinProperty().addListener((obs, oldSkin, newSkin) ->
+                Platform.runLater(() -> clearCheckComboBoxInnerBorder(checkComboBox)));
+        checkComboBox.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                Platform.runLater(() -> clearCheckComboBoxInnerBorder(checkComboBox));
+            }
+        });
+        Platform.runLater(() -> clearCheckComboBoxInnerBorder(checkComboBox));
     }
     /**
      * Create a CheckBox with specified text.

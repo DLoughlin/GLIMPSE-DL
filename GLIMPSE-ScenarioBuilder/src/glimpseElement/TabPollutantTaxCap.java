@@ -978,50 +978,18 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 		int error_count = 0;
 		StringBuilder message = new StringBuilder();
 		try {
-
-			if (utils.getAllSelectedRegions(tree).length < 1) {
-				message.append("Must select at least one region from tree").append(vars.getEol());
-				error_count++;
-			}
-			if (paneForComponentDetails == null || paneForComponentDetails.table.getItems().size() == 0) {
-				message.append("Data table must have at least one entry").append(vars.getEol());
-				error_count++;
-			} else {
-				boolean match = validateTableDataYears();
-				if (!match) {
-					message.append("Years specified in table must match allowable policy years (")
-							.append(vars.getAllowablePolicyYears()).append(")").append(vars.getEol());
-					error_count++;
-				}
-			}
-			if (comboBoxMeasure.getSelectionModel().getSelectedItem().equals(SELECT_ONE)) {
-				message.append("Action comboBox must have a selection").append(vars.getEol());
-				error_count++;
-			}
-			if (checkComboBoxCategory.getCheckModel().getCheckedItems().size() == 0) {
-				message.append("Sector comboBox must have a selection").append(vars.getEol());
-				error_count++;
-			}
-			if (comboBoxPollutant.getSelectionModel().getSelectedItem().equals(SELECT_ONE)) {
-				message.append("Parameter comboBox must have a selection").append(vars.getEol());
-				error_count++;
-			}
-			if (textFieldPolicyName.getText().isEmpty()) {
-				message.append("A market name must be provided").append(vars.getEol());
-				error_count++;
-			}
+			error_count += validateRegionSelection(tree, message);
+			boolean hasRows = paneForComponentDetails != null && paneForComponentDetails.table.getItems().size() > 0;
+			error_count += validateTableEntries(message, hasRows, hasRows && validateTableDataYears());
+			error_count += validateRequiredSelection(message, comboBoxMeasure, "Action", SELECT_ONE);
+			error_count += validateRequiredSelection(message, checkComboBoxCategory, "Sector");
+			error_count += validateRequiredSelection(message, comboBoxPollutant, "Parameter", SELECT_ONE);
+			error_count += validateRequiredText(message, textFieldPolicyName, "market name");
 		} catch (Exception e1) {
 			error_count++;
 			message.append("Error in QA of entries").append(vars.getEol());
 		}
-		if (error_count > 0) {
-			if (error_count == 1) {
-				utils.warningMessage(message.toString());
-			} else if (error_count > 1) {
-				utils.displayString(message.toString(), "Errors while developing component");
-			}
-		}
-		return error_count == 0;
+		return finalizeQaValidation(error_count, message);
 	}
 
 	/**
