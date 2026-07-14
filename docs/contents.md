@@ -1,4 +1,4 @@
-# Index
+# Index \[DRAFT\]
 
 [Getting Started](GLIMPSE-CE-UsersGuide/UsersGuideDocs/~%20Getting%20Started.md)
 
@@ -27,3 +27,5 @@
 [Tutorial 4: Additional tools for comparing scenarios](GLIMPSE-CE-UsersGuide/UsersGuideDocs/Tutorial%204%EA%9E%89%20Additional%20tools%20for%20comparing%20scenarios.md)
 
 [Tutorial 5: Modeling an EV market share target](GLIMPSE-CE-UsersGuide/UsersGuideDocs/Tutorial%205%EA%9E%89%20Modeling%20an%20EV%20market%20share%20target.md)
+
+Note: This Users' Guide is derived the U.S. EPA's GLIMPSE Users Guide for GLIMPSE 1.1 (Loughlin, D.H., Nolte, C.G., Kim, G.J., and K.L. Crowley. “Users’ Guide for GLIMPSE: a Tool for Integrated Air-Climate-Energy Planning, Version 1.1” EPA/600/B-24/009, U.S. Environmental Protection Agency, Washington, D.C., USA. January 2024.), but includes a wide range of updates and modifications. We would like to acknowledge authors of that report, including Dan Loughlin, Chris Nolte, Joyce Kim, and Kate Crowley, as well as the many contributors mentioned in the EPA document.    
