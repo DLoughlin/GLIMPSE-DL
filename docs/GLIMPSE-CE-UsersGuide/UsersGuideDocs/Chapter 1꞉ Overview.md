@@ -329,7 +329,7 @@ Below are publications in which GLIMPSE was used:
 
 To install GLIMPSE, please follow the instructions described in the [GLIMPSE Installation Guide](~%20Getting%20Started.md#installation-instructions).
 
-A good place to start in understanding GLIMPSE's underlying assumptions and capabilities is to read [Chapter 2](Chapter%202꞉%20Placeholder.md) of this Guide, which describes the GLIMPSE Reference Case. While key results are provided at the national level, similar results can be generated at the state level or for other countries.  
+A good place to start in understanding GLIMPSE's underlying assumptions and capabilities is to read [Chapter 2](Chapter%202꞉%20GLIMPSE%20Scenarios.md) of this Guide, which describes the GLIMPSE Reference Case. While key results are provided at the national level, similar results can be generated at the state level or for other countries.  
 
 For those who would like to use GLIMPSE themselves, the GLIMPSE tutorials are the next step. These will take you through important steps of setting up, running, and analyzing scenarios. The tutorials are in the [Appendix](../../contents.md#tutorials) of the Users' Guide.
 

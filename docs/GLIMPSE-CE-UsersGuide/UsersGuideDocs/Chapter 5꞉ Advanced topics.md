@@ -160,7 +160,7 @@ A deep decarbonization scenario is one that achieves significant reductions in C
 
 GLIMPSE can be used to explore pathways for achieving deep decarbonization scenarios. One approach is to introduce a declining CO<sub>2</sub> or GHG cap, allowing GCAM to select a technology pathway through time for achieving the target. Alternatively, GLIMPSE can be used to simulate sectoral mitigation strategies, including introducing market share targets for vehicle electrification and renewable portfolio standards for electricity production. 
 
-For either approach, GLIMPSE users should be aware of how GCAM's myopic solution process, logit-based market share allocation, and shareweight assumptions affect the results (described in "Chapter 2. How does GCAM work?"). Depending on the scenarios being modeled, some adjustments may be desired or necessary, as discussed in this section. 
+For either approach, GLIMPSE users should be aware of how GCAM's myopic solution process, logit-based market share allocation, and shareweight assumptions affect the results (described in [Chapter 3](Chapter%203꞉%20How%20does%20GCAM%20workʔ.md)). Depending on the scenarios being modeled, some adjustments may be desired or necessary, as discussed in this section. 
 
 ### 5.5.1 Potential adjustments for deep decarbonization scenarios
 
