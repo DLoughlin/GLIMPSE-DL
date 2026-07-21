@@ -44,10 +44,12 @@ import java.net.URL;
 import java.util.ArrayList;
 
 import javax.swing.ImageIcon;
-import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileSystemView;
 
+import ModelInterface.common.FileChooser;
+import ModelInterface.common.FileChooserFactory;
 import conversionUtil.ArrayConversion;
 
 /**
@@ -59,6 +61,17 @@ import conversionUtil.ArrayConversion;
  */
 public class FileUtil {
 
+    private static File getDefaultChooserFile() {
+        File homeDir = FileSystemView.getFileSystemView().getHomeDirectory();
+        return homeDir != null ? homeDir : new File(System.getProperty("user.home", "."));
+    }
+
+    private static File[] promptForFiles(String title, int mode, File setFile, FileFilter filter) {
+        FileChooser chooser = FileChooserFactory.getFileChooser();
+        File start = setFile != null ? setFile : getDefaultChooserFile();
+        return chooser.doFilePrompt(null, title, mode, start, filter);
+    }
+
     /**
      * Opens a save file dialog and returns the selected file path.
      * @param desc Description for the file filter
@@ -67,16 +80,10 @@ public class FileUtil {
      */
     public static String getSaveFilePathFromChooser(String desc, String extension) {
         FileNameExtensionFilter filter = new FileNameExtensionFilter(desc, extension);
-        FileSystemView fsv = FileSystemView.getFileSystemView();
-        JFileChooser chooser = new JFileChooser(fsv);
-        chooser.setDialogTitle("Select a file location");
-        chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-        chooser.setFileFilter(filter);
-        int returnVal = chooser.showSaveDialog(chooser);
-        if (returnVal == JFileChooser.APPROVE_OPTION)
-            return chooser.getSelectedFile().getAbsolutePath();
-        else
-            return null;
+        File[] selected = promptForFiles("Select a file location", FileChooser.SAVE_DIALOG,
+                getDefaultChooserFile(), filter);
+        return (selected != null && selected.length > 0 && selected[0] != null)
+                ? selected[0].getAbsolutePath() : null;
     }
 
     /**
@@ -84,14 +91,10 @@ public class FileUtil {
      * @return Absolute path of the selected file or null if cancelled
      */
     public static String getSaveFilePathFromChooser() {
-        FileSystemView fsv = FileSystemView.getFileSystemView();
-        JFileChooser chooser = new JFileChooser(fsv);
-        chooser.setDialogTitle("Select a file location");
-        int returnVal = chooser.showSaveDialog(chooser);
-        if (returnVal == JFileChooser.APPROVE_OPTION)
-            return chooser.getSelectedFile().getAbsolutePath();
-        else
-            return null;
+        File[] selected = promptForFiles("Select a file location", FileChooser.SAVE_DIALOG,
+                getDefaultChooserFile(), null);
+        return (selected != null && selected.length > 0 && selected[0] != null)
+                ? selected[0].getAbsolutePath() : null;
     }
 
     /**
@@ -99,14 +102,10 @@ public class FileUtil {
      * @return Absolute path of the selected file or null if cancelled
      */
     public static String getOpenFilePathFromChooser() {
-        FileSystemView fsv = FileSystemView.getFileSystemView();
-        JFileChooser chooser = new JFileChooser(fsv);
-        chooser.setDialogTitle("Select a file location");
-        int returnVal = chooser.showOpenDialog(chooser);
-        if (returnVal == JFileChooser.APPROVE_OPTION)
-            return chooser.getSelectedFile().getAbsolutePath();
-        else
-            return null;
+        File[] selected = promptForFiles("Select a file location", FileChooser.LOAD_DIALOG,
+                getDefaultChooserFile(), null);
+        return (selected != null && selected.length > 0 && selected[0] != null)
+                ? selected[0].getAbsolutePath() : null;
     }
 
     /**
@@ -114,14 +113,8 @@ public class FileUtil {
      * @return Array of selected files or null if cancelled
      */
     public static File[] getOpenFileFromChooser() {
-        FileSystemView fsv = FileSystemView.getFileSystemView();
-        JFileChooser chooser = new JFileChooser(fsv);
-        chooser.setDialogTitle("Select files location");
-        int returnVal = chooser.showOpenDialog(chooser);
-        if (returnVal == JFileChooser.APPROVE_OPTION)
-            return chooser.getSelectedFiles();
-        else
-            return null;
+        return promptForFiles("Select files location", FileChooser.LOAD_DIALOG,
+                getDefaultChooserFile(), null);
     }
 
     /**
@@ -129,15 +122,22 @@ public class FileUtil {
      * @return Absolute path of the selected directory or null if cancelled
      */
     public static String getOpenDirectoryPathFromChooser() {
-        FileSystemView fsv = FileSystemView.getFileSystemView();
-        JFileChooser chooser = new JFileChooser(fsv);
-        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        chooser.setDialogTitle("Select a directory location");
-        int returnVal = chooser.showOpenDialog(chooser);
-        if (returnVal == JFileChooser.APPROVE_OPTION)
-            return chooser.getSelectedFile().getAbsolutePath();
-        else
-            return null;
+        FileFilter directoryFilter = new FileFilter() {
+            @Override
+            public boolean accept(File f) {
+                return true;
+            }
+
+            @Override
+            public String getDescription() {
+                // AWTFileChooserWrapper checks description prefix for directory mode.
+                return "Directory selection";
+            }
+        };
+        File[] selected = promptForFiles("Select a directory location", FileChooser.LOAD_DIALOG,
+                getDefaultChooserFile(), directoryFilter);
+        return (selected != null && selected.length > 0 && selected[0] != null)
+                ? selected[0].getAbsolutePath() : null;
     }
 
     /**
@@ -157,16 +157,10 @@ public class FileUtil {
      */
     public static String getOpenFilePathFromChooser(String nameFilter, String extension) {
         FileNameExtensionFilter filter = new FileNameExtensionFilter(nameFilter, extension);
-        FileSystemView fsv = FileSystemView.getFileSystemView();
-        JFileChooser chooser = new JFileChooser(fsv);
-        chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-        chooser.setDialogTitle("Select a file location");
-        chooser.setFileFilter(filter);
-        int returnVal = chooser.showOpenDialog(chooser);
-        if (returnVal == JFileChooser.APPROVE_OPTION)
-            return chooser.getSelectedFile().getAbsolutePath();
-        else
-            return null;
+        File[] selected = promptForFiles("Select a file location", FileChooser.LOAD_DIALOG,
+                getDefaultChooserFile(), filter);
+        return (selected != null && selected.length > 0 && selected[0] != null)
+                ? selected[0].getAbsolutePath() : null;
     }
 
     /**
@@ -177,16 +171,8 @@ public class FileUtil {
      */
     public static File[] getOpenFileFromChooser(String nameFilter, String extension) {
         FileNameExtensionFilter filter = new FileNameExtensionFilter(nameFilter, extension);
-        FileSystemView fsv = FileSystemView.getFileSystemView();
-        JFileChooser chooser = new JFileChooser(fsv);
-        chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-        chooser.setDialogTitle("Select a file location");
-        chooser.setFileFilter(filter);
-        int returnVal = chooser.showOpenDialog(chooser);
-        if (returnVal == JFileChooser.APPROVE_OPTION)
-            return chooser.getSelectedFiles();
-        else
-            return null;
+        return promptForFiles("Select a file location", FileChooser.LOAD_DIALOG,
+                getDefaultChooserFile(), filter);
     }
 
     /**
@@ -197,15 +183,10 @@ public class FileUtil {
      */
     public static String getOpenFilePathFromChooser(String desc, String[] extension) {
         FileNameExtensionFilter filter = new FileNameExtensionFilter(desc, extension);
-        FileSystemView fsv = FileSystemView.getFileSystemView();
-        JFileChooser chooser = new JFileChooser(fsv);
-        chooser.setDialogTitle("Select a file location");
-        chooser.addChoosableFileFilter(filter);
-        int returnVal = chooser.showOpenDialog(chooser);
-        if (returnVal == JFileChooser.APPROVE_OPTION)
-            return chooser.getSelectedFile().getAbsolutePath();
-        else
-            return null;
+        File[] selected = promptForFiles("Select a file location", FileChooser.LOAD_DIALOG,
+                getDefaultChooserFile(), filter);
+        return (selected != null && selected.length > 0 && selected[0] != null)
+                ? selected[0].getAbsolutePath() : null;
     }
 
     /**

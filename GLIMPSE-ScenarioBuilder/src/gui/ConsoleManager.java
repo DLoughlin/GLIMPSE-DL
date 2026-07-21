@@ -29,6 +29,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import glimpseUtil.GLIMPSEVariables;
+import glimpseUtil.FileChooserPlus;
 import glimpseUtil.UtilsDialogs;
 import javafx.application.Platform;
 import javafx.scene.Scene;
@@ -42,7 +43,6 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.ToolBar;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 
@@ -407,22 +407,19 @@ final class ConsoleManager {
         }
 
         String tabName = selected.getText();
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Save " + tabName);
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Text files (*.txt)", "*.txt"));
-
         File initialDir = getDefaultLogsDirectory();
-        if (initialDir != null && initialDir.isDirectory()) {
-            chooser.setInitialDirectory(initialDir);
-        }
 
         String suggested = sanitizeFilename(tabName);
         if (!suggested.toLowerCase().endsWith(".txt")) {
             suggested = suggested + ".txt";
         }
-        chooser.setInitialFileName(suggested);
 
-        File outFile = chooser.showSaveDialog(stage);
+        File outFile = FileChooserPlus.showSaveDialog(
+                stage,
+                "Save " + tabName,
+                initialDir,
+                suggested,
+                FileChooserPlus.createExtensionFilter("Text files (*.txt)", "txt"));
         if (outFile == null) {
             return;
         }
@@ -445,18 +442,13 @@ final class ConsoleManager {
             return;
         }
 
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Zip all console logs");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Zip archives (*.zip)", "*.zip"));
-
         File initialDir = getDefaultLogsDirectory();
-        if (initialDir != null && initialDir.isDirectory()) {
-            chooser.setInitialDirectory(initialDir);
-        }
-
-        chooser.setInitialFileName("all-logs-" + LocalDate.now().toString() + ".zip");
-
-        File outFile = chooser.showSaveDialog(stage);
+        File outFile = FileChooserPlus.showSaveDialog(
+                stage,
+                "Zip all console logs",
+                initialDir,
+                "all-logs-" + LocalDate.now().toString() + ".zip",
+                FileChooserPlus.createExtensionFilter("Zip archives (*.zip)", "zip"));
         if (outFile == null) {
             return;
         }

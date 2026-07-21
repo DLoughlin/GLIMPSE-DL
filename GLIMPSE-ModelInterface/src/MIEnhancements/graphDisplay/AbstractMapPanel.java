@@ -53,7 +53,6 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
-import javax.swing.JFileChooser;
 import javax.swing.JFormattedTextField;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -102,6 +101,8 @@ import org.geotools.swing.tool.ZoomOutTool;
 
 import ModelInterface.InterfaceMain;
 import ModelInterface.ModelGUI2.DbViewer;
+import ModelInterface.common.FileChooser;
+import ModelInterface.common.FileChooserFactory;
 import filter.FilteredTable;
 import mapOptions.LegendPanel;
 import mapOptions.MapColor;
@@ -844,12 +845,16 @@ public abstract class AbstractMapPanel extends JFrame implements ComponentListen
             JOptionPane.showMessageDialog(frame, "Unable to capture the map image.", "Export Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Specify a file name to save the map");
-        fileChooser.setFileFilter(new FileNameExtensionFilter("*.png", "png"));
-        int userSelection = fileChooser.showSaveDialog(frame);
-        if (userSelection == JFileChooser.APPROVE_OPTION) {
-            File selectedFile = fileChooser.getSelectedFile();
+        FileChooser fileChooser = FileChooserFactory.getFileChooser();
+        javax.swing.filechooser.FileFilter pngFilter = new FileNameExtensionFilter("*.png", "png");
+        File defaultFile = new File(System.getProperty("user.home"), "map.png");
+        File[] selectedFiles = fileChooser.doFilePrompt(frame,
+                "Specify a file name to save the map",
+                FileChooser.SAVE_DIALOG,
+                defaultFile,
+                pngFilter);
+        if (selectedFiles != null && selectedFiles.length > 0) {
+            File selectedFile = selectedFiles[0];
             if (selectedFile == null) {
                 return;
             }

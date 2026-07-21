@@ -8,7 +8,9 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,8 +40,11 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.undo.UndoableEdit;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+import org.xml.sax.Attributes;
+import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
 
 import ModelInterface.InterfaceMain;
 import ModelInterface.ConfigurationEditor.guihelpers.XMLFileFilter;
@@ -47,10 +52,6 @@ import ModelInterface.ModelGUI2.undo.RenameScenarioUndoableEdit;
 import ModelInterface.ModelGUI2.xmldb.XMLDB;
 import ModelInterface.common.FileChooser;
 import ModelInterface.common.FileChooserFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 
 public class ManageDatabaseDialog extends JDialog {
 
@@ -234,14 +235,32 @@ public class ManageDatabaseDialog extends JDialog {
         final FileFilter xmlFilter = new XMLFileFilter();
 
         SwingUtilities.invokeLater(() -> {
-            final File[] xmlFiles = fc.doFilePrompt(this, "Open XML File",
-                    FileChooser.LOAD_DIALOG, new File(main.getProperties().getProperty("lastDirectory", ".")),
-                    xmlFilter);
+            final File seedDir = new File(main.getProperties().getProperty("lastDirectory", "."));
+            File[] xmlFiles = null;
+            boolean attemptedWindowsChooser = false;
+            boolean windowsChooserFailed = false;
+            if (useWindowsSystemChooser()) {
+                attemptedWindowsChooser = true;
+                try {
+                    xmlFiles = showWindowsNativeOpenFiles("Open XML File", seedDir, "XML files (*.xml)", "*.xml");
+                } catch (Exception ex) {
+                    windowsChooserFailed = true;
+                    System.out.println("ManageDatabaseDialog: Windows native Add chooser failed, using Java fallback: " + ex.getMessage());
+                }
+            }
+            if (attemptedWindowsChooser && !windowsChooserFailed && (xmlFiles == null || xmlFiles.length == 0)) {
+                return;
+            }
+            if (xmlFiles == null) {
+                xmlFiles = fc.doFilePrompt(this, "Open XML File",
+                        FileChooser.LOAD_DIALOG, seedDir, xmlFilter);
+            }
 
-            if (xmlFiles != null) {
+            final File[] selectedXmlFiles = xmlFiles;
+            if (selectedXmlFiles != null) {
                 dirtyBit.setDirty();
                 File firstSelectedFile = null;
-                for (File xmlFile : xmlFiles) {
+                for (File xmlFile : selectedXmlFiles) {
                     if (xmlFile != null) {
                         firstSelectedFile = xmlFile;
                         break;
@@ -254,11 +273,11 @@ public class ManageDatabaseDialog extends JDialog {
                 statusField.setText("Adding files...");
 
                 new Thread(() -> {
-					java.util.LinkedHashSet<String> addedScenarioRegions = extractRegionNamesFromScenarioFiles(xmlFiles);
-                    for (int addFileIndex = 0; addFileIndex < xmlFiles.length; ++addFileIndex) {
-                        if (xmlFiles[addFileIndex] != null) {
+          java.util.LinkedHashSet<String> addedScenarioRegions = extractRegionNamesFromScenarioFiles(selectedXmlFiles);
+          for (int addFileIndex = 0; addFileIndex < selectedXmlFiles.length; ++addFileIndex) {
+            if (selectedXmlFiles[addFileIndex] != null) {
                             XMLDB.getInstance().addFile("run_" + System.currentTimeMillis() + ".xml",
-                                    xmlFiles[addFileIndex].getAbsolutePath(), addFileIndex, xmlFiles.length,
+                  selectedXmlFiles[addFileIndex].getAbsolutePath(), addFileIndex, selectedXmlFiles.length,
                                     this);
                         }
                     }
@@ -398,8 +417,25 @@ public class ManageDatabaseDialog extends JDialog {
 
         File defaultSaveFile = new File(main.getProperties().getProperty("lastDirectory", "."));
 
-        final File[] exportLocation = fc.doFilePrompt(null, saveDialogTitle, FileChooser.SAVE_DIALOG,
-                defaultSaveFile, fileFilter);
+        File[] exportLocation = null;
+        boolean attemptedWindowsChooser = false;
+        boolean windowsChooserFailed = false;
+        if (useWindowsSystemChooser()) {
+            attemptedWindowsChooser = true;
+            try {
+                exportLocation = showWindowsNativeSelectDirectory(saveDialogTitle, defaultSaveFile);
+            } catch (Exception ex) {
+                windowsChooserFailed = true;
+                System.out.println("ManageDatabaseDialog: Windows native Export chooser failed, using Java fallback: " + ex.getMessage());
+            }
+        }
+        if (attemptedWindowsChooser && !windowsChooserFailed && (exportLocation == null || exportLocation.length == 0)) {
+            return;
+        }
+        if (exportLocation == null) {
+            exportLocation = fc.doFilePrompt(null, saveDialogTitle, FileChooser.SAVE_DIALOG,
+                    defaultSaveFile, fileFilter);
+        }
         
         if (exportLocation == null) return;
         
@@ -733,23 +769,54 @@ public class ManageDatabaseDialog extends JDialog {
       return regionNames;
     }
     try {
-      DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-      dbFactory.setNamespaceAware(false);
-      DocumentBuilder builder = dbFactory.newDocumentBuilder();
+      SAXParserFactory spFactory = SAXParserFactory.newInstance();
+      spFactory.setNamespaceAware(false);
+      // Disable external DTD/schema loading to avoid network access and reduce memory
+      try { spFactory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false); } catch (Exception ignored) {}
+      try { spFactory.setFeature("http://xml.org/sax/features/external-general-entities", false); } catch (Exception ignored) {}
+      try { spFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false); } catch (Exception ignored) {}
+      SAXParser saxParser = spFactory.newSAXParser();
       for (File xmlFile : xmlFiles) {
         if (xmlFile == null || !xmlFile.exists() || !xmlFile.isFile()) {
           continue;
         }
         try {
-          Document doc = builder.parse(xmlFile);
-          doc.getDocumentElement().normalize();
-          NodeList worldNodes = doc.getElementsByTagName("world");
-          for (int i = 0; i < worldNodes.getLength(); ++i) {
-            Node worldNode = worldNodes.item(i);
-            if (worldNode != null) {
-              collectRegionNames(worldNode, regionNames);
+          // Use a SAX handler to stream through the file without loading it fully into memory.
+          // We only collect child elements of <world> that carry type="region" and a name attribute.
+          final java.util.LinkedHashSet<String> fileRegions = regionNames;
+          DefaultHandler handler = new DefaultHandler() {
+            private int depth = 0;
+            private boolean insideWorld = false;
+            private int worldDepth = -1;
+
+            @Override
+            public void startElement(String uri, String localName, String qName, Attributes attrs) throws SAXException {
+              depth++;
+              if (!insideWorld && "world".equalsIgnoreCase(qName)) {
+                insideWorld = true;
+                worldDepth = depth;
+              } else if (insideWorld && depth == worldDepth + 1) {
+                // Direct child of <world> — check for type="region"
+                String type = attrs.getValue("type");
+                String name = attrs.getValue("name");
+                if ("region".equals(type) && name != null && !name.trim().isEmpty()) {
+                  fileRegions.add(name.trim());
+                }
+              }
             }
-          }
+
+            @Override
+            public void endElement(String uri, String localName, String qName) throws SAXException {
+              if (insideWorld && depth == worldDepth && "world".equalsIgnoreCase(qName)) {
+                insideWorld = false;
+                worldDepth = -1;
+              }
+              depth--;
+            }
+          };
+          saxParser.parse(xmlFile, handler);
+          // SAX parsers must be reset between files
+          saxParser.reset();
         } catch (Exception parseEx) {
           System.out.println("ManageDatabaseDialog: could not parse regions from "
               + xmlFile.getAbsolutePath() + ": " + parseEx.getMessage());
@@ -760,28 +827,6 @@ public class ManageDatabaseDialog extends JDialog {
           + setupEx.getMessage());
     }
     return regionNames;
-  }
-
-  private void collectRegionNames(Node node, java.util.Set<String> regionNames) {
-    if (node == null || regionNames == null) {
-      return;
-    }
-    if (node.getNodeType() == Node.ELEMENT_NODE) {
-      Element elem = (Element) node;
-      if ("region".equals(elem.getAttribute("type"))) {
-        String regionName = elem.getAttribute("name");
-        if (regionName != null) {
-          regionName = regionName.trim();
-        }
-        if (regionName != null && !regionName.isEmpty()) {
-          regionNames.add(regionName);
-        }
-      }
-    }
-    NodeList childNodes = node.getChildNodes();
-    for (int i = 0; i < childNodes.getLength(); ++i) {
-      collectRegionNames(childNodes.item(i), regionNames);
-    }
   }
 
     private static void deleteRecursive(File f) throws IOException {
@@ -814,6 +859,120 @@ public class ManageDatabaseDialog extends JDialog {
         } else {
             java.nio.file.Files.copy(source.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         }
+    }
+
+    private boolean useWindowsSystemChooser() {
+        String osName = System.getProperty("os.name", "").toLowerCase();
+        if (!osName.contains("win")) {
+            return false;
+        }
+        return !"false".equalsIgnoreCase(System.getProperty("modelinterface.nativeFileDialog", "true"));
+    }
+
+    private File[] showWindowsNativeOpenFiles(String title, File initialDir, String filterDescription, String filterPattern) throws Exception {
+        String safeTitle = escapePsSingleQuoted(title == null ? "Open" : title);
+        String safeInitialDir = escapePsSingleQuoted(resolveInitialDirectory(initialDir));
+        String safeFilter = escapePsSingleQuoted((filterDescription == null ? "Files" : filterDescription)
+                + "|" + (filterPattern == null ? "*.*" : filterPattern));
+
+        String script =
+                "Add-Type -AssemblyName System.Windows.Forms; " +
+                "$dlg = New-Object System.Windows.Forms.OpenFileDialog; " +
+                "$dlg.Title = '" + safeTitle + "'; " +
+                "$dlg.InitialDirectory = '" + safeInitialDir + "'; " +
+                "$dlg.Filter = '" + safeFilter + "|All files (*.*)|*.*'; " +
+                "$dlg.Multiselect = $true; " +
+                "$res = $dlg.ShowDialog(); " +
+                "if ($res -eq [System.Windows.Forms.DialogResult]::OK) { $dlg.FileNames | ForEach-Object { Write-Output $_ } }";
+
+        List<String> selected = runPowerShellChooserScript(script);
+        if (selected.isEmpty()) {
+            return null;
+        }
+        File[] files = new File[selected.size()];
+        for (int i = 0; i < selected.size(); i++) {
+            files[i] = new File(selected.get(i));
+        }
+        return files;
+    }
+
+    private File[] showWindowsNativeSelectDirectory(String title, File initialDir) throws Exception {
+        String safeTitle = escapePsSingleQuoted(title == null ? "Select Folder" : title);
+        String safeInitialDir = escapePsSingleQuoted(resolveInitialDirectory(initialDir));
+
+        // Use a hidden topmost Form as the dialog parent so the folder picker appears
+        // in front of the Java application window instead of behind it.
+        // EnableVisualStyles() must be called before any Windows Forms windows are created.
+        String script =
+                "Add-Type -AssemblyName System.Windows.Forms; " +
+                "[System.Windows.Forms.Application]::EnableVisualStyles(); " +
+                "$owner = New-Object System.Windows.Forms.Form; " +
+                "$owner.TopMost = $true; " +
+                "$owner.ShowInTaskbar = $false; " +
+                "$owner.WindowState = [System.Windows.Forms.FormWindowState]::Minimized; " +
+                "$owner.Show(); " +
+                "$owner.Hide(); " +
+                "$dlg = New-Object System.Windows.Forms.FolderBrowserDialog; " +
+                "$dlg.Description = '" + safeTitle + "'; " +
+                "$dlg.ShowNewFolderButton = $true; " +
+                "$dlg.SelectedPath = '" + safeInitialDir + "'; " +
+                "$res = $dlg.ShowDialog($owner); " +
+                "$owner.Dispose(); " +
+                "if ($res -eq [System.Windows.Forms.DialogResult]::OK) { Write-Output $dlg.SelectedPath }";
+
+        List<String> selected = runPowerShellChooserScript(script);
+        if (selected.isEmpty()) {
+            return null;
+        }
+        return new File[] { new File(selected.get(selected.size() - 1)) };
+    }
+
+    private List<String> runPowerShellChooserScript(String script) throws Exception {
+        ProcessBuilder pb = new ProcessBuilder("powershell.exe", "-NoProfile", "-NonInteractive", "-STA", "-Command", script);
+        pb.redirectErrorStream(false);
+        Process p = pb.start();
+
+        List<String> output = new ArrayList<String>();
+        List<String> errors = new ArrayList<String>();
+        try (BufferedReader out = new BufferedReader(new InputStreamReader(p.getInputStream()));
+             BufferedReader err = new BufferedReader(new InputStreamReader(p.getErrorStream()))) {
+            String line;
+            while ((line = out.readLine()) != null) {
+                String trimmed = line.trim();
+                if (!trimmed.isEmpty()) {
+                    output.add(trimmed);
+                }
+            }
+            while ((line = err.readLine()) != null) {
+                String trimmed = line.trim();
+                if (!trimmed.isEmpty()) {
+                    errors.add(trimmed);
+                }
+            }
+        }
+
+        int exitCode = p.waitFor();
+        if (exitCode != 0) {
+            throw new IOException("PowerShell chooser failed with exit code " + exitCode + ": " + errors);
+        }
+        return output;
+    }
+
+    private String resolveInitialDirectory(File initialDir) {
+        if (initialDir != null) {
+            if (initialDir.isDirectory()) {
+                return initialDir.getAbsolutePath();
+            }
+            File parent = initialDir.getParentFile();
+            if (parent != null && parent.isDirectory()) {
+                return parent.getAbsolutePath();
+            }
+        }
+        return new File(System.getProperty("user.home", ".")).getAbsolutePath();
+    }
+
+    private String escapePsSingleQuoted(String value) {
+        return value == null ? "" : value.replace("'", "''");
     }
 
     private class DirtyBit {

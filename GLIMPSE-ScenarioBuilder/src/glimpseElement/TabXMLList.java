@@ -38,6 +38,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import glimpseUtil.FileChooserPlus;
 import javafx.application.Platform;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -45,7 +46,6 @@ import javafx.scene.control.TableView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 /**
@@ -257,27 +257,23 @@ public class TabXMLList extends PolicyTab {
         buttonClear.setOnAction(e -> Platform.runLater(() -> paneForXMLList.clearTable()));
         // Add XML files to the list when Add button is pressed
         buttonAdd.setOnAction(e -> Platform.runLater(() -> {
-            FileChooser fileChooser = new FileChooser();
             // Prefer xmlLibrary; fall back to GCAM executable dir if not available
             File initialDir = new File(vars.getXmlLibrary());
             if (initialDir.exists() && initialDir.isDirectory()) {
-                fileChooser.setInitialDirectory(initialDir);
             } else {
                 utils.warningMessage("Could not find xmlLibrary.");
                 System.out.println("Could not find xmlLibrary " + vars.getXmlLibrary() + ". Defaulting to " + vars.getgCamExecutableDir());
                 File fallbackDir = new File(vars.getgCamExecutableDir());
                 if (fallbackDir.exists() && fallbackDir.isDirectory()) {
-                    fileChooser.setInitialDirectory(fallbackDir);
+                    initialDir = fallbackDir;
                 }
             }
 
             // Set file extension filter for XML files
-            FileChooser.ExtensionFilter filter = new FileChooser.ExtensionFilter(XML_FILE_DESCRIPTION, XML_FILE_EXTENSION);
-            fileChooser.getExtensionFilters().add(filter);
-            fileChooser.setTitle(FILECHOOSER_TITLE);
+            javafx.stage.FileChooser.ExtensionFilter filter = new javafx.stage.FileChooser.ExtensionFilter(XML_FILE_DESCRIPTION, XML_FILE_EXTENSION);
 
             // Show file chooser dialog for multiple file selection
-            List<File> filesSelected = fileChooser.showOpenMultipleDialog(stageX);
+            List<File> filesSelected = FileChooserPlus.showOpenMultipleDialog(stageX, FILECHOOSER_TITLE, initialDir, filter);
             if (filesSelected != null && !filesSelected.isEmpty()) {
                 // If the table only contains a placeholder blank row, replace it on first add.
                 ArrayList<String> currentValues = paneForXMLList.getValues();

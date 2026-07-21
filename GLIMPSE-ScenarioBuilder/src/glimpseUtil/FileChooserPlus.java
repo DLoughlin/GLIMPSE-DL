@@ -35,7 +35,14 @@
  */
 package glimpseUtil;
 
+import java.awt.EventQueue;
+import java.awt.FileDialog;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicReference;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
@@ -48,6 +55,12 @@ import javafx.stage.Window;
  * Java 8+ best practices.
  */
 public final class FileChooserPlus {
+
+    // Set -Dglimpse.nativeFileDialog=false to force JavaFX dialogs only.
+    private static final boolean PREFER_NATIVE_FILE_DIALOG =
+            !"false".equalsIgnoreCase(System.getProperty("glimpse.nativeFileDialog", "true"));
+    private static final boolean DEBUG_NATIVE_FALLBACK =
+            "true".equalsIgnoreCase(System.getProperty("glimpse.nativeFileDialog.debug", "false"));
 
     /**
      * Private constructor to prevent instantiation of this utility class.
@@ -67,9 +80,19 @@ public final class FileChooserPlus {
      * @return An Optional containing the selected file, or an empty Optional if canceled.
      */
     public static File showSaveDialog(Window ownerWindow, String title, File initialDirectory, String initialFileName, FileChooser.ExtensionFilter filter) {
+        if (PREFER_NATIVE_FILE_DIALOG) {
+            try {
+                File nativeSelection = showNativeDialog(title, initialDirectory, initialFileName, filter, FileDialog.SAVE);
+                if (nativeSelection != null) {
+                    return nativeSelection;
+                }
+            } catch (Throwable t) {
+                logNativeFallback("save", title, t);
+                // Fall through to JavaFX chooser.
+            }
+        }
         FileChooser chooser = createAndConfigureChooser(title, initialDirectory, initialFileName, filter);
-        File result = chooser.showSaveDialog(ownerWindow);
-        return result;
+        return chooser.showSaveDialog(ownerWindow);
     }
 
     /**
@@ -82,9 +105,222 @@ public final class FileChooserPlus {
      * @return An Optional containing the selected file, or an empty Optional if canceled.
      */
     public static File showOpenDialog(Window ownerWindow, String title, File initialDirectory, FileChooser.ExtensionFilter filter) {
+        if (PREFER_NATIVE_FILE_DIALOG) {
+            try {
+                File nativeSelection = showNativeDialog(title, initialDirectory, null, filter, FileDialog.LOAD);
+                if (nativeSelection != null) {
+                    return nativeSelection;
+                }
+            } catch (Throwable t) {
+                logNativeFallback("open", title, t);
+                // Fall through to JavaFX chooser.
+            }
+        }
         FileChooser chooser = createAndConfigureChooser(title, initialDirectory, null, filter);
-        File result = chooser.showOpenDialog(ownerWindow);
-        return result;
+        return chooser.showOpenDialog(ownerWindow);
+    }
+
+    /**
+     * Shows an "Open File" dialog that allows selecting multiple files.
+     *
+     * @param ownerWindow      The parent window for the dialog.
+     * @param title            The title for the dialog window.
+     * @param initialDirectory The directory to open initially.
+     * @param filter           The extension filter to apply.
+     * @return A list of selected files, or null if canceled.
+     */
+    public static List<File> showOpenMultipleDialog(Window ownerWindow, String title, File initialDirectory,
+            FileChooser.ExtensionFilter filter) {
+        if (PREFER_NATIVE_FILE_DIALOG) {
+            try {
+                List<File> nativeSelection = showNativeMultipleDialog(title, initialDirectory, filter);
+                if (nativeSelection != null) {
+                    return nativeSelection;
+                }
+            } catch (Throwable t) {
+                logNativeFallback("open-multi", title, t);
+                // Fall through to JavaFX chooser.
+            }
+        }
+        FileChooser chooser = createAndConfigureChooser(title, initialDirectory, null, filter);
+        return chooser.showOpenMultipleDialog(ownerWindow);
+    }
+
+    private static File showNativeDialog(String title, File initialDirectory, String initialFileName,
+            FileChooser.ExtensionFilter filter, int mode) throws Exception {
+        if (java.awt.GraphicsEnvironment.isHeadless()) {
+            return null;
+        }
+
+        AtomicReference<File> selected = new AtomicReference<>();
+        AtomicReference<Exception> thrown = new AtomicReference<>();
+
+        Runnable showDialog = () -> {
+            FileDialog dialog = null;
+            try {
+                dialog = new FileDialog((java.awt.Frame) null, title == null ? "" : title, mode);
+                if (initialDirectory != null && initialDirectory.isDirectory()) {
+                    dialog.setDirectory(initialDirectory.getAbsolutePath());
+                }
+                if (initialFileName != null && !initialFileName.trim().isEmpty()) {
+                    dialog.setFile(initialFileName.trim());
+                }
+                if (filter != null) {
+                    dialog.setFilenameFilter((dir, name) -> matchesExtensionFilter(name, filter));
+                }
+                dialog.setVisible(true);
+
+                String fileName = dialog.getFile();
+                String directory = dialog.getDirectory();
+                if (fileName != null && directory != null) {
+                    selected.set(new File(directory, fileName));
+                }
+            } catch (Exception ex) {
+                thrown.set(ex);
+            } finally {
+                if (dialog != null) {
+                    dialog.dispose();
+                }
+            }
+        };
+
+        if (EventQueue.isDispatchThread()) {
+            showDialog.run();
+        } else {
+            EventQueue.invokeAndWait(showDialog);
+        }
+
+        if (thrown.get() != null) {
+            throw thrown.get();
+        }
+        return selected.get();
+    }
+
+    private static List<File> showNativeMultipleDialog(String title, File initialDirectory,
+            FileChooser.ExtensionFilter filter) throws Exception {
+        if (java.awt.GraphicsEnvironment.isHeadless()) {
+            return null;
+        }
+
+        AtomicReference<List<File>> selected = new AtomicReference<>();
+        AtomicReference<Exception> thrown = new AtomicReference<>();
+
+        Runnable showDialog = () -> {
+            FileDialog dialog = null;
+            try {
+                dialog = new FileDialog((java.awt.Frame) null, title == null ? "" : title, FileDialog.LOAD);
+                dialog.setMultipleMode(true);
+                if (initialDirectory != null && initialDirectory.isDirectory()) {
+                    dialog.setDirectory(initialDirectory.getAbsolutePath());
+                }
+                if (filter != null) {
+                    dialog.setFilenameFilter((dir, name) -> matchesExtensionFilter(name, filter));
+                }
+                dialog.setVisible(true);
+
+                File[] files = dialog.getFiles();
+                if (files != null && files.length > 0) {
+                    selected.set(new ArrayList<>(Arrays.asList(files)));
+                    return;
+                }
+
+                String fileName = dialog.getFile();
+                String directory = dialog.getDirectory();
+                if (fileName != null && directory != null) {
+                    selected.set(new ArrayList<>(Arrays.asList(new File(directory, fileName))));
+                }
+            } catch (Exception ex) {
+                thrown.set(ex);
+            } finally {
+                if (dialog != null) {
+                    dialog.dispose();
+                }
+            }
+        };
+
+        if (EventQueue.isDispatchThread()) {
+            showDialog.run();
+        } else {
+            EventQueue.invokeAndWait(showDialog);
+        }
+
+        if (thrown.get() != null) {
+            throw thrown.get();
+        }
+        return selected.get();
+    }
+
+    private static boolean matchesExtensionFilter(String fileName, FileChooser.ExtensionFilter filter) {
+        if (fileName == null || filter == null) {
+            return true;
+        }
+        List<String> patterns = filter.getExtensions();
+        if (patterns == null || patterns.isEmpty()) {
+            return true;
+        }
+        String lowerFileName = fileName.toLowerCase(Locale.ROOT);
+        for (String pattern : patterns) {
+            if (pattern == null) {
+                continue;
+            }
+            String p = pattern.trim().toLowerCase(Locale.ROOT);
+            if (p.isEmpty() || "*".equals(p) || "*.*".equals(p)) {
+                return true;
+            }
+            if (p.startsWith("*.")) {
+                if (lowerFileName.endsWith(p.substring(1))) {
+                    return true;
+                }
+                continue;
+            }
+            if (p.startsWith(".")) {
+                if (lowerFileName.endsWith(p)) {
+                    return true;
+                }
+                continue;
+            }
+            if (p.indexOf('*') >= 0 || p.indexOf('?') >= 0) {
+                if (wildcardMatches(lowerFileName, p)) {
+                    return true;
+                }
+                continue;
+            }
+            if (lowerFileName.equals(p) || lowerFileName.endsWith("." + p) || lowerFileName.endsWith(p)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean wildcardMatches(String text, String wildcardPattern) {
+        if (text == null || wildcardPattern == null) {
+            return false;
+        }
+        StringBuilder regex = new StringBuilder();
+        for (int i = 0; i < wildcardPattern.length(); i++) {
+            char ch = wildcardPattern.charAt(i);
+            if (ch == '*') {
+                regex.append(".*");
+            } else if (ch == '?') {
+                regex.append('.');
+            } else {
+                if ("\\.^$|()[]{}+".indexOf(ch) >= 0) {
+                    regex.append('\\');
+                }
+                regex.append(ch);
+            }
+        }
+        return text.matches(regex.toString());
+    }
+
+    private static void logNativeFallback(String op, String title, Throwable t) {
+        String safeTitle = title == null ? "" : title;
+        String reason = (t == null) ? "unknown" : (t.getClass().getSimpleName() + ": " + t.getMessage());
+        System.out.println("[FileChooserPlus] Native file dialog failed for " + op
+                + " (title='" + safeTitle + "'); falling back to JavaFX chooser. Reason: " + reason);
+        if (DEBUG_NATIVE_FALLBACK && t != null) {
+            t.printStackTrace(System.out);
+        }
     }
 
     /**

@@ -38,6 +38,7 @@ package glimpseBuilder;
 import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
+import glimpseUtil.FileChooserPlus;
 import gui.Client;
 import java.util.ArrayList;
 import javafx.scene.control.Menu;
@@ -65,11 +66,6 @@ public final class SetupMenuFile {
         menuFile.getItems().addAll(
                 // Menu item to open an options file and reload configuration
                 createMenuItem("Open Options File", () -> {
-                    javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
-                    fileChooser.setTitle("Open Options File");
-                    fileChooser.getExtensionFilters().add(
-                        new javafx.stage.FileChooser.ExtensionFilter("Options Files", "options*.txt")
-                    );
                     // Set initial directory for file chooser
                     String glimpseDir = vars.getGlimpseDir();
                     java.io.File initialDir = null;
@@ -81,8 +77,12 @@ public final class SetupMenuFile {
                     } else {
                         initialDir = new java.io.File(System.getProperty("user.dir"));
                     }
-                    fileChooser.setInitialDirectory(initialDir);
-                    java.io.File selectedFile = fileChooser.showOpenDialog(null);
+                    java.io.File selectedFile = FileChooserPlus.showOpenDialog(
+                        null,
+                        "Open Options File",
+                        initialDir,
+                        new javafx.stage.FileChooser.ExtensionFilter("Options Files", "options*.txt")
+                    );
                     if (selectedFile != null) {
                         vars.setOptionsFilename(selectedFile.getAbsolutePath());
                         reloadOptionsAndRefreshUi(true);

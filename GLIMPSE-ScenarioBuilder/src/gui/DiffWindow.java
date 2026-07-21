@@ -12,6 +12,7 @@ import java.util.List;
 
 import com.github.difflib.text.DiffRow;
 
+import glimpseUtil.FileChooserPlus;
 import glimpseUtil.UtilsDialogs;
 
 import javafx.application.Platform;
@@ -35,9 +36,6 @@ import javafx.scene.text.Font;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.Window;
-
-// For Save As...
-import javafx.stage.FileChooser;
 
 // Export scope UI
 import javafx.scene.control.ChoiceBox;
@@ -659,10 +657,6 @@ public class DiffWindow {
 
     private static void saveTableAsCsv(Stage owner, TableView<DiffLineRow> table, String file1, String file2, boolean changedRowsOnly) {
         try {
-            FileChooser chooser = new FileChooser();
-            chooser.setTitle("Save Diff as CSV");
-            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV files (*.csv)", "*.csv"));
-
             String base = "diff";
             try {
                 String a = shortName(file1);
@@ -677,9 +671,13 @@ public class DiffWindow {
             if (changedRowsOnly) {
                 base = base + "_changed";
             }
-            chooser.setInitialFileName(sanitizeFileName(base) + ".csv");
 
-            File outFile = chooser.showSaveDialog(owner);
+            File outFile = FileChooserPlus.showSaveDialog(
+                    owner,
+                    "Save Diff as CSV",
+                    null,
+                    sanitizeFileName(base) + ".csv",
+                    FileChooserPlus.createExtensionFilter("CSV files (*.csv)", "csv"));
             if (outFile == null) {
                 return;
             }

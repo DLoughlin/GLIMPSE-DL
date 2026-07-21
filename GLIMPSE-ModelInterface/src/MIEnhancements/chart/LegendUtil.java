@@ -50,8 +50,9 @@ import java.util.Stack;
 
 import javax.imageio.ImageIO;
 import javax.swing.JComboBox;
-import javax.swing.JFileChooser;
-import javax.swing.filechooser.FileSystemView;
+
+import ModelInterface.common.FileChooser;
+import ModelInterface.common.FileChooserFactory;
 
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.LegendItem;
@@ -466,17 +467,16 @@ public class LegendUtil {
 	 */
 	public static TexturePaint getTexturePaint(Color color, int pattern) {
 		TexturePaint tp = null;
-		String name = "";
-		FileSystemView fsv = FileSystemView.getFileSystemView();
-		JFileChooser chooser = new JFileChooser(fsv);
-		chooser.setDialogTitle("Select files location");
-		int returnVal = chooser.showOpenDialog(chooser);
-		if (returnVal == JFileChooser.APPROVE_OPTION)
-			name = chooser.getSelectedFile().getAbsolutePath();
-		if (name != null) {
+		FileChooser chooser = FileChooserFactory.getFileChooser();
+		File[] selected = chooser.doFilePrompt(null,
+				"Select files location",
+				FileChooser.LOAD_DIALOG,
+				new File(System.getProperty("user.home", ".")),
+				null);
+		if (selected != null && selected.length > 0 && selected[0] != null) {
 			BufferedImage image = null;
 			try {
-				File input = new File(name);
+				File input = selected[0];
 				image = ImageIO.read(input);
 			} catch (IOException ex) {
 				System.out.println("error: " + ex.getMessage());

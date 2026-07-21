@@ -64,7 +64,6 @@ import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
 import javax.swing.JButton;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
@@ -81,6 +80,8 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import ModelInterface.BatchRunner;
+import ModelInterface.common.FileChooser;
+import ModelInterface.common.FileChooserFactory;
 import ModelInterface.InterfaceMain;
 import ModelInterface.InterfaceMain.MenuManager;
 import ModelInterface.MenuAdder;
@@ -231,36 +232,25 @@ public class PPViewer implements ActionListener, MenuAdder, BatchRunner
      */
   private boolean openPPFile()
   {
-    JFileChooser fc = new JFileChooser();
-    fc.setDialogTitle("Open XML File");
+    FileChooser chooser = FileChooserFactory.getFileChooser();
+    File startDir = new File(InterfaceMain.getInstance().getProperties().getProperty("lastDirectory", "."));
+    File[] selected = chooser.doFilePrompt(parentFrame, "Open XML File",
+            FileChooser.LOAD_DIALOG, startDir, xmlFilter);
 
-    // Choose only files, not directories
-    fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
-
-    // Start in current directory
-    fc.setCurrentDirectory(new File(InterfaceMain.getInstance().getProperties().getProperty("lastDirectory", ".")));
-
-    // Set filter for Java source files.
-    fc.setFileFilter(xmlFilter);
-
-    // Now open chooser
-    int result = fc.showOpenDialog(parentFrame);
-    
-    if(result==JFileChooser.CANCEL_OPTION)
-    { //user canceled file open, return with no changes
+    if(selected == null || selected.length == 0 || selected[0] == null)
+    {
       return false;
-    } else if(result==JFileChooser.APPROVE_OPTION)
-    { 
-      //user selected an XML file, open it and fire a control change
-      InterfaceMain.getInstance().fireControlChange(controlStr);
-      
-      //set last directory for subsequent file opens
+    }
+
+    currFile = selected[0];
+    // user selected an XML file, open it and fire a control change
+    InterfaceMain.getInstance().fireControlChange(controlStr);
+
+    // set last directory for subsequent file opens
+    File parentDir = currFile.getParentFile();
+    if(parentDir != null) {
       InterfaceMain.getInstance().getProperties().setProperty("lastDirectory",
-          fc.getCurrentDirectory().toString());
-      
-    } else
-    { //not sure what would get us here but, to be safe, return false
-      return false;
+          parentDir.getAbsolutePath());
     }
     
     //if we reach the end a file was successfully opened

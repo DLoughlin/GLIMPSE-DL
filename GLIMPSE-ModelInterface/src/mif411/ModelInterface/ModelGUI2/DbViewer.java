@@ -1409,7 +1409,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		} else {
 			final FileFilter dbFilter = new javax.swing.filechooser.FileFilter() {
 				public boolean accept(File f) {
-					return f.isDirectory();
+					return f != null && f.isDirectory();
 				}
 
 				public String getDescription() {

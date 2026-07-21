@@ -37,7 +37,6 @@ import java.io.File;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -47,6 +46,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 import ModelInterface.InterfaceMain;
+import ModelInterface.common.FileChooser;
+import ModelInterface.common.FileChooserFactory;
 import ModelInterface.ModelGUI2.csvconv.CSVToXMLMain;
 import org.w3c.dom.Document;
 
@@ -134,23 +135,29 @@ public class CsvToXmlDialog extends JDialog {
 
     /** Opens a file chooser and populates the given text field. */
     private void browseForFile(JTextField target, String title, String filterDesc, String... extensions) {
-        JFileChooser fc = new JFileChooser();
-        fc.setDialogTitle(title);
+        FileChooser chooser = FileChooserFactory.getFileChooser();
         String current = target.getText().trim();
+        File setFile = null;
         if (!current.isEmpty()) {
             File f = new File(current);
-            fc.setCurrentDirectory(f.isDirectory() ? f : f.getParentFile());
+            setFile = f.isDirectory() ? f : f.getParentFile();
         } else if (InterfaceMain.getInstance() != null) {
             String lastDir = InterfaceMain.getInstance().getProperties()
                     .getProperty("lastDirectory", ".");
-            fc.setCurrentDirectory(new File(lastDir));
+            setFile = new File(lastDir);
         }
+        if (setFile == null) {
+            setFile = new File(System.getProperty("user.home", "."));
+        }
+
+        javax.swing.filechooser.FileFilter filter = null;
         if (extensions != null && extensions.length > 0) {
-            fc.setFileFilter(new FileNameExtensionFilter(filterDesc, extensions));
+            filter = new FileNameExtensionFilter(filterDesc, extensions);
         }
-        int result = fc.showOpenDialog(this);
-        if (result == JFileChooser.APPROVE_OPTION) {
-            File chosen = fc.getSelectedFile();
+
+        File[] selected = chooser.doFilePrompt(this, title, FileChooser.LOAD_DIALOG, setFile, filter);
+        if (selected != null && selected.length > 0 && selected[0] != null) {
+            File chosen = selected[0];
             target.setText(chosen.getAbsolutePath());
             if (InterfaceMain.getInstance() != null) {
                 InterfaceMain.getInstance().getProperties()
@@ -192,17 +199,19 @@ public class CsvToXmlDialog extends JDialog {
         }
 
         // Ask user where to save the output XML
-        JFileChooser saveChooser = new JFileChooser();
-        saveChooser.setDialogTitle("Save Output XML File");
-        saveChooser.setCurrentDirectory(csvFile.getParentFile());
         String defaultName = csvFile.getName().replaceAll("(?i)\\.csv$", ".xml");
-        saveChooser.setSelectedFile(new File(csvFile.getParentFile(), defaultName));
-        saveChooser.setFileFilter(new FileNameExtensionFilter("XML Files (*.xml)", "xml"));
-        int res = saveChooser.showSaveDialog(this);
-        if (res != JFileChooser.APPROVE_OPTION) {
+        File saveSeed = new File(csvFile.getParentFile(), defaultName);
+        FileChooser saveChooser = FileChooserFactory.getFileChooser();
+        javax.swing.filechooser.FileFilter xmlFilter = new FileNameExtensionFilter("XML Files (*.xml)", "xml");
+        File[] selected = saveChooser.doFilePrompt(this,
+                "Save Output XML File",
+                FileChooser.SAVE_DIALOG,
+                saveSeed,
+                xmlFilter);
+        if (selected == null || selected.length == 0 || selected[0] == null) {
             return;
         }
-        File outputFile = saveChooser.getSelectedFile();
+        File outputFile = selected[0];
         if (!outputFile.getName().toLowerCase().endsWith(".xml")) {
             outputFile = new File(outputFile.getAbsolutePath() + ".xml");
         }

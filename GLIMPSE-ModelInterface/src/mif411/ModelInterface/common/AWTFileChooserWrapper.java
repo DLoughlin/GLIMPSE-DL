@@ -48,6 +48,15 @@ import ModelInterface.InterfaceMain;
  * @author Pralit Patel 
  */
 public class AWTFileChooserWrapper implements FileChooser {
+	private static final boolean DEBUG_NATIVE_FALLBACK =
+			"true".equalsIgnoreCase(System.getProperty("modelinterface.nativeFileDialog.debug", "false"));
+
+	private static void debugLog(String msg) {
+		if (DEBUG_NATIVE_FALLBACK) {
+			System.out.println("[ModelInterface FileChooser DEBUG][AWT] " + msg);
+		}
+	}
+
 	/**
 	 * Default Constuctor.
 	 */
@@ -64,6 +73,8 @@ public class AWTFileChooserWrapper implements FileChooser {
 			final int loadOrSave, final File setFile, final FileFilter fileFilter,
 			final ActionListener l, final String actionCommand) {
 		// should I try to keep this FileDialog cached some how..
+		debugLog("Preparing native AWT dialog: op=" + (loadOrSave == FileChooser.SAVE_DIALOG ? "save" : "open")
+				+ ", title='" + (title == null ? "" : title) + "'");
 		
 		FileDialog toWrap = null;
 		if(parent instanceof Frame) {
@@ -98,7 +109,19 @@ public class AWTFileChooserWrapper implements FileChooser {
 		toWrap.setFilenameFilter(new FilenameFilter() {
 			public boolean accept(File dir, String name) {
 				// a null fileFilter means accept all files
-				return fileFilter != null ? fileFilter.accept(new File(dir, name)) : true;
+				if(fileFilter == null) {
+					return true;
+				}
+				try {
+					if(name == null || name.length() == 0) {
+						return true;
+					}
+					File candidate = dir != null ? new File(dir, name) : new File(name);
+					return fileFilter.accept(candidate);
+				} catch(Throwable t) {
+					// Keep native dialog usable even if a custom filter callback is brittle.
+					return true;
+				}
 			}
 		});
 
@@ -113,16 +136,20 @@ public class AWTFileChooserWrapper implements FileChooser {
         // TODO: this is a marginal hack to work for Macs only
         final String propName = "apple.awt.fileDialogForDirectories";
         System.setProperty(propName, canSelectDirectories);
+		debugLog("Showing native AWT dialog now (blocking until close)");
 		toWrap.setVisible(true);
         System.setProperty(propName, "false");
+		debugLog("Native AWT dialog closed by user");
 		String result = toWrap.getFile();
 		if(result == null) {
+			debugLog("Native AWT result: null (cancel/no selection)");
 			return null;
 		} else {
 			// FileDialog does not seem to support multiple file
 			// selection
 			File[] ret = new File[1];
 			ret[0] = new File(toWrap.getDirectory(), result);
+			debugLog("Native AWT result: " + ret[0].getAbsolutePath());
 			if(l != null && actionCommand != null) {
 				RecentFilesList.getInstance().addFile(ret, l, actionCommand);
 			}

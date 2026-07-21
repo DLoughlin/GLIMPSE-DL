@@ -43,6 +43,15 @@ import javax.swing.filechooser.FileFilter;
  * @author Pralit Patel 
  */
 public class JFileChooserWrapper implements FileChooser {
+	private static final boolean DEBUG_NATIVE_FALLBACK =
+			"true".equalsIgnoreCase(System.getProperty("modelinterface.nativeFileDialog.debug", "false"));
+
+	private static void debugLog(String msg) {
+		if (DEBUG_NATIVE_FALLBACK) {
+			System.out.println("[ModelInterface FileChooser DEBUG][Swing] " + msg);
+		}
+	}
+
 	/**
 	 * The instance to the JFileChooser this class
 	 * is wrapping.
@@ -72,6 +81,8 @@ public class JFileChooserWrapper implements FileChooser {
 		// a more descriptive comment 
 		// should I have a finally that cleans out the set files, file filters, etcetera ? 
 					    
+		debugLog("Preparing Swing chooser: op=" + (loadOrSave == FileChooser.SAVE_DIALOG ? "save" : "open")
+				+ ", title='" + (title == null ? "" : title) + "'");
 		toWrap.setDialogTitle(title);
 		if(setFile.isDirectory()) {
 			toWrap.setCurrentDirectory(setFile);
@@ -111,8 +122,10 @@ public class JFileChooserWrapper implements FileChooser {
 		int result = JFileChooser.CANCEL_OPTION;
 		
 		if(loadOrSave == FileChooser.LOAD_DIALOG) {
+			debugLog("Showing Swing Open dialog now");
 			result = toWrap.showOpenDialog(parent);
 		} else if(loadOrSave == FileChooser.SAVE_DIALOG) {
+			debugLog("Showing Swing Save dialog now");
 			result = toWrap.showSaveDialog(parent);
 		} else {
 			System.out.println("Invalid flag for load/save dialog");
@@ -132,8 +145,10 @@ public class JFileChooserWrapper implements FileChooser {
 					RecentFilesList.getInstance().addFile(ret, actionListener, actionCommand);
 				}
 			}
+			debugLog("Swing chooser result: " + (ret == null ? "null" : (ret.length + " file(s)")));
 			return ret;
 		} else {
+			debugLog("Swing chooser result: cancel/no selection");
 			return null;
 		}
 	}

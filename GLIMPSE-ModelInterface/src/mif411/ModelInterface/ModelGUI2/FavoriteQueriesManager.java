@@ -12,7 +12,6 @@ import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.stream.Collectors;
 
-import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTree;
@@ -21,6 +20,8 @@ import javax.swing.tree.TreePath;
 import java.awt.Component;
 
 import ModelInterface.InterfaceMain;
+import ModelInterface.common.FileChooser;
+import ModelInterface.common.FileChooserFactory;
 import ModelInterface.ModelGUI2.QueryTreeModel.QueryGroup;
 import ModelInterface.ModelGUI2.queries.QueryGenerator;
 
@@ -162,17 +163,19 @@ public class FavoriteQueriesManager {
 			}
 		}
 
-		JFileChooser fileChooser = new JFileChooser();
-		fileChooser.setDialogTitle("Specify a favorite queries file to save");
-		if (PathToUse != null) {
-			fileChooser.setCurrentDirectory(new File(PathToUse));
-		}
-		int userSelection = fileChooser.showSaveDialog(getDialogParent());
+		FileChooser fileChooser = FileChooserFactory.getFileChooser();
+		File seedFile = PathToUse != null ? new File(PathToUse) : new File(System.getProperty("user.home", "."));
+		File[] selected = fileChooser.doFilePrompt(getDialogParent(),
+				"Specify a favorite queries file to save",
+				FileChooser.SAVE_DIALOG,
+				seedFile,
+				null);
 
-		if (userSelection == JFileChooser.APPROVE_OPTION) {
+		if (selected != null && selected.length > 0 && selected[0] != null) {
+			File selectedFile = selected[0];
 			try {
 				BufferedWriter writer = new BufferedWriter(
-						new OutputStreamWriter(new FileOutputStream(fileChooser.getSelectedFile(), false)));
+						new OutputStreamWriter(new FileOutputStream(selectedFile, false)));
 				String convertedLine = "";
 				for (int i = 0; i < selectedTreePath.length; i++) {
 
@@ -193,12 +196,12 @@ public class FavoriteQueriesManager {
 					writer.newLine();
 				}
 				writer.close();
-				String messageFileSaved = fileChooser.getSelectedFile().toString()
+				String messageFileSaved = selectedFile.toString()
 						+ " has been saved.\n\n Would you like to make this the active favorites file?";
 				int answer = JOptionPane.showConfirmDialog(getDialogParent(), messageFileSaved, "Switch?",
 						JOptionPane.YES_NO_OPTION);
 				if (answer == JOptionPane.YES_OPTION) {
-					InterfaceMain.favoriteQueriesFileLocation = fileChooser.getSelectedFile().getAbsolutePath();
+					InterfaceMain.favoriteQueriesFileLocation = selectedFile.getAbsolutePath();
 				}
 			} catch (IOException e) {
 				System.out.println("Could not save file: " + e.toString());
@@ -270,16 +273,18 @@ public class FavoriteQueriesManager {
 			}
 		}
 
-		JFileChooser fileChooser = new JFileChooser();
-		fileChooser.setDialogTitle("Select a query file to load.");
-		if (PathToUse != null) {
-			fileChooser.setCurrentDirectory(new File(PathToUse));
-		}
-		int returnVal = fileChooser.showOpenDialog(getDialogParent());
+		FileChooser fileChooser = FileChooserFactory.getFileChooser();
+		File seedFile = PathToUse != null ? new File(PathToUse) : new File(System.getProperty("user.home", "."));
+		File[] selected = fileChooser.doFilePrompt(getDialogParent(),
+				"Select a query file to load.",
+				FileChooser.LOAD_DIALOG,
+				seedFile,
+				null);
 
-		if (returnVal == JFileChooser.APPROVE_OPTION) {
-			InterfaceMain.favoriteQueriesFileLocation = fileChooser.getSelectedFile().getAbsolutePath();
-			String messageFileSaved = fileChooser.getSelectedFile().toString()
+		if (selected != null && selected.length > 0 && selected[0] != null) {
+			File selectedFile = selected[0];
+			InterfaceMain.favoriteQueriesFileLocation = selectedFile.getAbsolutePath();
+			String messageFileSaved = selectedFile.toString()
 					+ " has been loaded.\n\n Would you like to apply it now?";
 			int answer = JOptionPane.showConfirmDialog(getDialogParent(), messageFileSaved, "Switch?", JOptionPane.YES_NO_OPTION);
 			if (answer == JOptionPane.YES_OPTION) {

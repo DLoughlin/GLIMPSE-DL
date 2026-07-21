@@ -42,7 +42,6 @@ import java.util.logging.Logger;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -56,8 +55,9 @@ import org.w3c.dom.Document;
 import ModelInterface.ConfigurationEditor.guihelpers.ButtonSetEnabler;
 import ModelInterface.ConfigurationEditor.guihelpers.ButtonSetEnabler.ButtonType;
 import ModelInterface.ConfigurationEditor.guihelpers.XMLFileFilter;
-import ModelInterface.ConfigurationEditor.utils.FileUtils;
 import ModelInterface.ConfigurationEditor.utils.Messages;
+import ModelInterface.common.FileChooser;
+import ModelInterface.common.FileChooserFactory;
 
 /**
  * A panel which contains a list based on an underlying DOM tree, and buttons to
@@ -471,19 +471,11 @@ public class DOMListPanel extends JPanel {
 		 *            The event causing this action.
 		 */
 		public void actionPerformed(final ActionEvent aEvent) {
-			// Create a file chooser and add an XML filter.
-			// This uses a chooser explicitly instead of the helper function
-			// so that it can allow the user to select multiple files.
-			final JFileChooser chooser = new JFileChooser();
-			chooser.setFileFilter(new XMLFileFilter());
-			chooser.setMultiSelectionEnabled(true);
-			
-			// Show the file chooser.
-			final int returnValue = chooser
-					.showOpenDialog(getTopLevelAncestor());
-			if (returnValue == JFileChooser.APPROVE_OPTION) {
-				// Get the list of selected files.
-				final File[] newFiles = FileUtils.getSelectedFiles(chooser);
+			FileChooser chooser = FileChooserFactory.getFileChooser();
+			final File[] newFiles = chooser.doFilePrompt(getTopLevelAncestor(),
+					"Select XML files", FileChooser.LOAD_DIALOG,
+					new File(System.getProperty("user.home", ".")), new XMLFileFilter());
+			if (newFiles != null && newFiles.length > 0) {
 				final DOMListModel model = (DOMListModel) mList.getModel();
 				for (int i = 0; i < newFiles.length; i++) {
 					try {
