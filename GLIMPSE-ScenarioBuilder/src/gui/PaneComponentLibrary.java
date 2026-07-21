@@ -219,14 +219,18 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 				.getSelectedItems();
 		if (selectedComponentRows == null)
 			return;
-		if (checkIfComponentsAreUsed(selectedComponentRows)) {
+		List<ComponentRow> selectedComponentRowsSnapshot = new ArrayList<>(selectedComponentRows);
+		if (selectedComponentRowsSnapshot.isEmpty()) {
+			return;
+		}
+		if (checkIfComponentsAreUsed(selectedComponentRowsSnapshot)) {
 			utils.warningMessage(WARNING_COMPONENT_USED);
 			return;
 		}
 		if (!utils.confirmDelete())
 			return;
 		List<ComponentRow> componentsToRemove = new ArrayList<>();
-		for (ComponentRow componentRow : selectedComponentRows) {
+		for (ComponentRow componentRow : selectedComponentRowsSnapshot) {
 			String componentFilePath = componentRow.getAddress();
 			String trashFileName = componentRow.getFileName();
 			if (trashFileName.contains(File.separator))
@@ -245,7 +249,7 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 				javafx.collections.FXCollections.observableArrayList(componentsToRemove));
 	}
 
-	private boolean checkIfComponentsAreUsed(ObservableList<ComponentRow> selectedFiles) {
+	private boolean checkIfComponentsAreUsed(List<ComponentRow> selectedFiles) {
 		if (selectedFiles == null)
 			return false;
 		ObservableList<ScenarioRow> scenarioLibrary = ScenarioTable.listOfScenarioRuns;

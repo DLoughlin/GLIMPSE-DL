@@ -418,12 +418,9 @@ public class PaneForComponentDetails extends VBox {
         if (!utils.confirmDelete())
             return;
 
-        ObservableList<DataPoint> selectedDataPoints = table.getSelectionModel().getSelectedItems();
-
-        // Remove each selected DataPoint from the data list
-        for (DataPoint i : selectedDataPoints) {
-            data.remove(i);
-        }
+        // Snapshot selection first; getSelectedItems() is a live view that changes as rows are removed.
+        ArrayList<DataPoint> selectedDataPoints = new ArrayList<>(table.getSelectionModel().getSelectedItems());
+        data.removeAll(selectedDataPoints);
     }
 
     /**
