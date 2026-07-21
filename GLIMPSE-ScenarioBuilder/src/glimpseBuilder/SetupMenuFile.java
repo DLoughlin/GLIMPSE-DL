@@ -39,6 +39,7 @@ import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
 import glimpseUtil.FileChooserPlus;
+import glimpseUtil.UtilsDialogs;
 import gui.Client;
 import java.util.ArrayList;
 import javafx.scene.control.Menu;
@@ -78,7 +79,7 @@ public final class SetupMenuFile {
                         initialDir = new java.io.File(System.getProperty("user.dir"));
                     }
                     java.io.File selectedFile = FileChooserPlus.showOpenDialog(
-                        null,
+                        UtilsDialogs.getPrimaryOwnerWindow(),
                         "Open Options File",
                         initialDir,
                         new javafx.stage.FileChooser.ExtensionFilter("Options Files", "options*.txt")
