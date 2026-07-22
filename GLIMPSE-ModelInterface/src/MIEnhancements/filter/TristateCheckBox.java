@@ -33,6 +33,7 @@
 package filter;
 
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Graphics;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
@@ -49,13 +50,26 @@ import chart.LegendUtil;
  */
 public class TristateCheckBox extends JCheckBox {
 
-    private static final long serialVersionUID = 1L;
-    /** Indicates if the checkbox is in the half-selected state. */
-    private boolean halfState;
-    /** Icon for half-selected state. */
-    private static final Icon halfselected = new ImageIcon(LegendUtil.getBufferedImage(Color.white, Color.black, 10));
-    /** Icon for unselected state. */
-    private static final Icon unselected = new ImageIcon(LegendUtil.getBufferedImage(Color.white, Color.black));
+     private static final long serialVersionUID = 1L;
+      /** Indicates if the checkbox is in the half-selected state. */
+      private boolean halfState;
+      /** Icon for half-selected state. */
+      private static final Icon halfselected = new ImageIcon(LegendUtil.getBufferedImage(Color.white, Color.black, 14));
+      /** Icon for unselected state. */
+      private static final Icon unselected = new ImageIcon(LegendUtil.getBufferedImage(Color.white, Color.black, 14));
+
+     /**
+      * Constructs a TristateCheckBox with fixed size constraints.
+      */
+     public TristateCheckBox() {
+         super();
+         // Set consistent sizes to prevent resizing when state changes
+         Dimension size = new Dimension(20, 20);
+         setPreferredSize(size);
+         setMinimumSize(size);
+         setMaximumSize(size);
+         setSize(size);
+     }
 
     /**
      * Custom paint method to set the icon based on the current state.

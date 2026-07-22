@@ -202,7 +202,8 @@ public class FilterTreePane {
             tree.setLargeModel(true);
             tree.setExpandsSelectedPaths(true);
             // Set font and row height for better scaling
-            tree.setRowHeight(tree.getFont().getSize() + 13);
+            // Increased from +13 to +19 to match larger checkbox (26x26 instead of 20x20)
+            tree.setRowHeight(tree.getFont().getSize() + 19);
             TreeNode root = (TreeNode) tree.getModel().getRoot();
             TreePath tPath = new TreePath(root);
             tree.expandPath(tPath);
@@ -526,7 +527,7 @@ public class FilterTreePane {
     public void showFilter() {
             dialog = new JDialog(InterfaceMain.getInstance().getFrame(), chartName + " Filter", false);
         dialog.setTitle(chartName + " Filter");
-        dialog.setSize(500, 500); // increased height by 50 pixels (was 450)
+        dialog.setSize(625, 750); // 25% wider (625) and 50% taller (750)
             dialog.setLocationRelativeTo(InterfaceMain.getInstance().getFrame());
         dialog.getContentPane().setLayout(new BorderLayout());
         dialog.getContentPane().add(buildTree(buildTreeName(jtable)), BorderLayout.CENTER);

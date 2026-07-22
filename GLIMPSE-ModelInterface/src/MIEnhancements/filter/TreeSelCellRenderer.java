@@ -32,8 +32,10 @@
 */
 package filter;
 
+import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
+import javax.swing.Box;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
@@ -68,17 +70,33 @@ class TreeSelCellRenderer extends DefaultTreeCellRenderer {
         checkBox = new TristateCheckBox();
         checkBox.setBackground(UIManager.getColor("Tree.background"));
         checkBox.setBorder(null);
+        // Set fixed size for checkbox to prevent resizing on click
+        // Increased from 20x20 to 26x26 to ensure 14px icon fits with padding
+        checkBox.setPreferredSize(new Dimension(26, 26));
+        checkBox.setMinimumSize(new Dimension(26, 26));
+        checkBox.setMaximumSize(new Dimension(26, 26));
 
         textField = new JTextField();
         textField.setEditable(false);
         textField.setBackground(UIManager.getColor("Tree.background"));
         textField.setBorder(null);
+        // Set minimum height, allow width to expand significantly
+        // Increased height from 20 to 26 to match checkbox
+        textField.setPreferredSize(new Dimension(700, 26));
+        textField.setMinimumSize(new Dimension(200, 26));
+        textField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
 
-        panel = new JPanel();
+        // Use BorderLayout for better component management in tree rendering
+        // Add right padding (10px) to prevent cutoff
+        panel = new JPanel(new BorderLayout(5, 0));
         panel.setOpaque(false);
-        panel.add(checkBox, 0);
-        panel.add(textField, 1);
-        panel.setMaximumSize(new Dimension(300, 18));
+        panel.add(checkBox, BorderLayout.WEST);
+        panel.add(textField, BorderLayout.CENTER);
+        // Add 10px right padding box
+        panel.add(Box.createHorizontalStrut(10), BorderLayout.EAST);
+        // Increased height from 20 to 26 to match checkbox
+        panel.setPreferredSize(new Dimension(750, 26));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
     }
 
     /**
