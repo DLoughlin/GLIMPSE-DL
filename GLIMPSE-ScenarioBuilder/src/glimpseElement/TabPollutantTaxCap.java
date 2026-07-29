@@ -689,9 +689,9 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 											&& (!tech_r.contains("CSP"))) {
 										String cat_r_lwc = cat_r.toLowerCase();
 										if ((cat_lwc.equals(cat_r_lwc))) {
-											String line = region + "," + sector_r + "," + subsector_r + ","
+											String line = region + "," + sector_r + "," + subsector_r.replace("=>", ",") + ","
 													+ tech_r.replace("=>", ",") + "," + y + "," + pol + vars.getEol();
-											if (tech_r.contains("=>")) {
+											if ((subsector_r.contains("=>"))||(tech_r.contains("=>"))) {
 												files.writeToBufferedFile(bw1, line);
 												nest_count++;
 											} else {

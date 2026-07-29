@@ -335,6 +335,8 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 			return;
 		}
 
+		resetCheckComboBoxItems(checkComboBoxSubset, null);
+		resetCheckComboBoxItems(checkComboBoxSuperset, null);
 		setupCheckComboBoxes(selectedItem);
 		checkComboBoxSubset.setDisable(false);
 		checkComboBoxSuperset.setDisable(false);
@@ -422,267 +424,16 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 //			checkComboBoxSuperset.getCheckModel().clearChecks();
 //			checkComboBoxSuperset.getItems().clear();
 
-			// Flags that control which techs to show based on policy type
-			boolean showEgu = false;
-			boolean showLdvCar = false;
-			boolean showLdvTruck = false;
-			boolean showLdv4w = false;
-			boolean showLdvAll = false;
-			boolean showHdvAll = false;
-			boolean showHdvLight = false;
-			boolean showHdvMedium = false;
-			boolean showHdvHeavy = false;
-			boolean showLighting = false;
-			boolean showHeating = false;
-			boolean showRefining = false;
-			boolean showSectorEgu = false;
-			boolean showSectorBuildings = false;
-			boolean showSectorIndustry = false;
-			boolean showSectorIndustryFuels = false;
-			boolean showSectorTrnOnroad = false;
-			boolean showSectorTrnAlm = false;
-			boolean showSectorOther = false;
 			String policyType = comboBoxPolicyType.getValue();
-			if (policyType.contains("CES")) {
-				showEgu = true;
-			}
-			if (policyType.contains("RPS")) {
-				showEgu = true;
-			}
-			if (policyType.contains("EV passenger cars and trucks"))
-				showLdv4w = true;
-			if (policyType.contains("EV passenger cars trucks and MCs"))
-				showLdvAll = true;
-			if (policyType.contains("EV freight light truck"))
-				showHdvLight = true;
-			if (policyType.contains("EV freight medium truck"))
-				showHdvMedium = true;
-			if (policyType.contains("EV freight heavy truck"))
-				showHdvHeavy = true;
-			if (policyType.contains("EV freight all trucks"))
-				showHdvAll = true;
-			if (policyType.contains("LED lights"))
-				showLighting = true;
-			if (policyType.contains("Heat pumps"))
-				showHeating = true;
-			if (policyType.contains("Biofuels"))
-				showRefining = true;
-			if (policyType.contains("Sector:EGU"))
-				showSectorEgu = true;
-			if (policyType.contains("Sector:Buildings"))
-				showSectorBuildings = true;
-			if (policyType.contains("Sector:Industry"))
-				showSectorIndustry = true;
-			if (policyType.contains("Sector:Industry-fuels"))
-				showSectorIndustryFuels = true;
-			if (policyType.contains("Sector:Trn-Onroad"))
-				showSectorTrnOnroad = true;
-			if (policyType.contains("Sector:Trn-ALM"))
-				showSectorTrnAlm = true;
-			if (policyType.contains("Sector:Other"))
-				showSectorOther = true;
-
-			// Evaluate each candidate tech line for inclusion
+			// Apply the same policy-specific predicate to both lists. Keeping this
+			// logic shared prevents subset and superset technology counts diverging.
 			for (String techLine : techListSub) {
-				boolean showTech = false;
-				String techLineLc = techLine.toLowerCase();
-				if (showEgu) {
-					// EGU-targeted policies select electricity generation technologies
-					if (techLineLc.startsWith("electricity")) {
-						showTech = true;
-					} else if (techLineLc.startsWith("base load")) {
-						showTech = true;
-					} else if (techLineLc.startsWith("intermediate")) {
-						showTech = true;
-					} else if (techLineLc.startsWith("peak")) {
-						showTech = true;
-					} else if (techLineLc.startsWith("subpeak")) {
-						showTech = true;
-					} else if (techLineLc.startsWith("elec_")) {
-						showTech = true;
-					} else if (techLineLc.indexOf("cogen") > -1) {
-						showTech = true;
-					}
-				} else if (showLdvTruck) {
-					if (techLineLc.contains("large car and truck")) {
-						showTech = true;
-					}
-				} else if (showLdvCar) {
-					if (techLineLc.contains(": car :")) {
-						showTech = true;
-					}
-				} else if (showLdv4w) {
-					if (techLineLc.indexOf("ldv_4w") > -1) {
-						showTech = true;
-					}
-				} else if (showLdvAll) {
-					if (techLineLc.indexOf("ldv") > -1) {
-						showTech = true;
-					}
-				} else if (showHdvLight) {
-					if (techLineLc.startsWith("trn_freight_road")) {
-						if (techLineLc.contains("light"))
-							showTech = true;
-					}
-				} else if (showHdvMedium) {
-					if (techLineLc.startsWith("trn_freight_road")) {
-						if (techLineLc.contains("medium"))
-							showTech = true;
-					}
-				} else if (showHdvHeavy) {
-					if (techLineLc.startsWith("trn_freight_road")) {
-						if (techLineLc.contains("heavy"))
-							showTech = true;
-					}
-				} else if (showHdvAll) {
-					if (techLineLc.startsWith("trn_freight_road")) {
-						showTech = true;
-					}
-				} else if (showLighting) {
-					if ((techLineLc.startsWith("resid lighting")) || (techLineLc.startsWith("comm lighting"))) {
-						showTech = true;
-					}
-				} else if (showHeating) {
-					if ((techLineLc.startsWith("resid heating")) || (techLineLc.startsWith("comm heating"))) {
-						showTech = true;
-					}
-				} else if (showRefining) {
-					if ((techLineLc.startsWith("oil refining")) || (techLineLc.startsWith("biomass liquids"))) {
-						showTech = true;
-					}
-				} else if (showSectorEgu) {
-					if (techLineLc.endsWith("egu"))
-						showTech = true;
-
-				} else if (showSectorIndustry) {
-					if (techLineLc.endsWith("industry"))
-						showTech = true;
-
-				} else if (showSectorIndustryFuels) {
-					if (techLineLc.endsWith("industry-fuels"))
-						showTech = true;
-
-				} else if (showSectorBuildings) {
-					if (techLineLc.endsWith("buildings"))
-						showTech = true;
-
-				} else if (showSectorTrnOnroad) {
-					if (techLineLc.endsWith("trn-onroad"))
-						showTech = true;
-
-				} else if (showSectorTrnAlm) {
-					if ((techLineLc.endsWith("trn-alm")) || (techLineLc.endsWith("trn-nonroad")))
-						showTech = true;
-
-				} else if (showSectorOther) {
-					showTech = true;
-
-				} else {
-					// default: show everything when no specific policy filter applies
-					showTech = true;
-				}
-				if (showTech) {
+				if (shouldShowTechLine(techLine, policyType)) {
 					checkComboBoxSubset.getItems().add(techLine);
 				}
 			}
-			// Repeat evaluation for superset candidate list
 			for (String techLine : techListSup) {
-				boolean showTech = false;
-				String techLineLc = techLine.toLowerCase();
-				if (showEgu) {
-					if (techLineLc.startsWith("electricity ")) {
-						showTech = true;
-					} else if (techLineLc.startsWith("base load")) {
-						showTech = true;
-					} else if (techLineLc.startsWith("intermediate")) {
-						showTech = true;
-					} else if (techLineLc.startsWith("peak")) {
-						showTech = true;
-					} else if (techLineLc.startsWith("subpeak")) {
-						showTech = true;
-					} else if (techLineLc.startsWith("elec_")) {
-						showTech = true;
-					} else if (techLineLc.indexOf("cogen") > -1) {
-						showTech = true;
-					}
-				} else if (showLdvTruck) {
-					if (techLineLc.contains("large car and truck")) {
-						showTech = true;
-					}
-				} else if (showLdvCar) {
-					if (techLineLc.contains(": car :")) {
-						showTech = true;
-					}
-				} else if (showLdv4w) {
-					if (techLineLc.indexOf("ldv_4w") > -1) {
-						showTech = true;
-					}
-				} else if (showLdvAll) {
-					if (techLineLc.indexOf("ldv") > -1) {
-						showTech = true;
-					}
-				} else if (showHdvLight) {
-					if (techLineLc.startsWith("trn_freight_road")) {
-						if (techLineLc.contains("light"))
-							showTech = true;
-					}
-				} else if (showHdvMedium) {
-					if (techLineLc.startsWith("trn_freight_road")) {
-						if (techLineLc.contains("medium"))
-							showTech = true;
-					}
-				} else if (showHdvHeavy) {
-					if (techLineLc.startsWith("trn_freight_road")) {
-						if (techLineLc.contains("heavy"))
-							showTech = true;
-					}
-				} else if (showHdvAll) {
-					if (techLineLc.startsWith("trn_freight_road")) {
-						showTech = true;
-					}
-				} else if (showLighting) {
-					if ((techLineLc.startsWith("resid lighting")) || (techLineLc.startsWith("comm lighting"))) {
-						showTech = true;
-					}
-				} else if (showHeating) {
-					if ((techLineLc.startsWith("resid heating")) || (techLineLc.startsWith("comm heating"))) {
-						showTech = true;
-					}
-				} else if (showRefining) {
-					if ((techLineLc.startsWith("oil refining")) || (techLineLc.startsWith("biomass liquids"))) {
-						showTech = true;
-					}
-				} else if (showSectorEgu) {
-					if (techLineLc.endsWith("egu"))
-						showTech = true;
-
-				} else if (showSectorIndustry) {
-					if (techLineLc.endsWith("industry"))
-						showTech = true;
-
-				} else if (showSectorIndustryFuels) {
-					if (techLineLc.endsWith("industry-fuels"))
-						showTech = true;
-
-				} else if (showSectorBuildings) {
-					if (techLineLc.endsWith("buildings"))
-						showTech = true;
-
-				} else if (showSectorTrnOnroad) {
-					if (techLineLc.endsWith("trn-onroad"))
-						showTech = true;
-
-				} else if (showSectorTrnAlm) {
-					if ((techLineLc.endsWith("trn-alm")) || (techLineLc.endsWith("trn-nonroad")))
-						showTech = true;
-
-				} else if (showSectorOther) {
-					showTech = true;
-
-				} else {
-					showTech = true;
-				}
-				if (showTech) {
+				if (shouldShowTechLine(techLine, policyType)) {
 					checkComboBoxSuperset.getItems().add(techLine);
 				}
 			}
@@ -759,6 +510,86 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 			System.out.println("Error reading tech list from " + vars.getTchBndListFilename() + ":");
 			System.out.println("  ---> " + e);
 		}
+	}
+
+	/**
+	 * Returns whether a technology line belongs to the selected policy type.
+	 * This predicate is intentionally shared by the subset and superset lists so
+	 * both controls expose the same technology universe for a given policy.
+	 */
+	private boolean shouldShowTechLine(String techLine, String policyType) {
+		if (techLine == null || policyType == null) {
+			return false;
+		}
+
+		String techLineLc = techLine.toLowerCase();
+		boolean showEgu = policyType.contains("CES") || policyType.contains("RPS");
+		boolean showLdvTruck = false;
+		boolean showLdvCar = false;
+		boolean showLdv4w = policyType.contains("EV passenger cars and trucks");
+		boolean showLdvAll = policyType.contains("EV passenger cars trucks and MCs");
+		boolean showHdvAll = policyType.contains("EV freight all trucks");
+		boolean showHdvLight = policyType.contains("EV freight light truck");
+		boolean showHdvMedium = policyType.contains("EV freight medium truck");
+		boolean showHdvHeavy = policyType.contains("EV freight heavy truck");
+		boolean showLighting = policyType.contains("LED lights");
+		boolean showHeating = policyType.contains("Heat pumps");
+		boolean showRefining = policyType.contains("Biofuels");
+		boolean showSectorEgu = policyType.contains("Sector:EGU");
+		boolean showSectorBuildings = policyType.contains("Sector:Buildings");
+		boolean showSectorIndustry = policyType.contains("Sector:Industry");
+		boolean showSectorIndustryFuels = policyType.contains("Sector:Industry-fuels");
+		boolean showSectorTrnOnroad = policyType.contains("Sector:Trn-Onroad");
+		boolean showSectorTrnAlm = policyType.contains("Sector:Trn-ALM");
+		boolean showSectorOther = policyType.contains("Sector:Other");
+
+		if (showEgu) {
+			// Do not require a space: the technology metadata uses more than one
+			// delimiter after the electricity prefix.
+			return techLineLc.startsWith("electricity") || techLineLc.startsWith("base load")
+					|| techLineLc.startsWith("intermediate") || techLineLc.startsWith("peak")
+					|| techLineLc.startsWith("subpeak") || techLineLc.startsWith("elec_")
+					|| techLineLc.contains("cogen");
+		} else if (showLdvTruck) {
+			return techLineLc.contains("large car and truck");
+		} else if (showLdvCar) {
+			return techLineLc.contains(": car :");
+		} else if (showLdv4w) {
+			return techLineLc.contains("ldv_4w");
+		} else if (showLdvAll) {
+			return techLineLc.contains("ldv");
+		} else if (showHdvLight) {
+			return techLineLc.startsWith("trn_freight_road") && techLineLc.contains("light");
+		} else if (showHdvMedium) {
+			return techLineLc.startsWith("trn_freight_road") && techLineLc.contains("medium");
+		} else if (showHdvHeavy) {
+			return techLineLc.startsWith("trn_freight_road") && techLineLc.contains("heavy");
+		} else if (showHdvAll) {
+			return techLineLc.startsWith("trn_freight_road");
+		} else if (showLighting) {
+			return techLineLc.startsWith("resid lighting") || techLineLc.startsWith("comm lighting");
+		} else if (showHeating) {
+			return techLineLc.startsWith("resid heating") || techLineLc.startsWith("comm heating");
+		} else if (showRefining) {
+			return techLineLc.startsWith("oil refining") || techLineLc.startsWith("biomass liquids");
+		} else if (showSectorEgu) {
+			return techLineLc.endsWith("egu");
+		} else if (showSectorIndustry) {
+			return techLineLc.endsWith("industry");
+		} else if (showSectorIndustryFuels) {
+			return techLineLc.endsWith("industry-fuels");
+		} else if (showSectorBuildings) {
+			return techLineLc.endsWith("buildings");
+		} else if (showSectorTrnOnroad) {
+			return techLineLc.endsWith("trn-onroad");
+		} else if (showSectorTrnAlm) {
+			return techLineLc.endsWith("trn-alm") || techLineLc.endsWith("trn-nonroad");
+		} else if (showSectorOther) {
+			return true;
+		}
+
+		// Default policy type: show every technology.
+		return true;
 	}
 
     /**

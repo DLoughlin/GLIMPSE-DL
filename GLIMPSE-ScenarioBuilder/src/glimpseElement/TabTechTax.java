@@ -633,11 +633,12 @@ public class TabTechTax extends PolicyTab implements Runnable {
 						// part 1: Write technology mapping table
 						sb.append("INPUT_TABLE").append(vars.getEol());
 						sb.append("Variable ID").append(vars.getEol());
-						if (subsector.indexOf("=>") > -1) {
+						if ((subsector.indexOf("=>") > -1)||(tech.indexOf("=>") > -1)) {
 							sb.append(headerPart1).append("-Nest").append(vars.getEol()).append(vars.getEol());
 							sb.append("region,sector,nesting-subsector,subsector,tech,year,policy-name")
 									.append(vars.getEol());
 							subsector = subsector.replace("=>", ",");
+							tech = tech.replace("=>", ",");
 						} else {
 							sb.append(headerPart1).append(vars.getEol()).append(vars.getEol());
 							sb.append("region,sector,subsector,tech,year,policy-name").append(vars.getEol());
