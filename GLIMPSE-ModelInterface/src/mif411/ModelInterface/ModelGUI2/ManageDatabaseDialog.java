@@ -396,46 +396,14 @@ public class ManageDatabaseDialog extends JDialog {
         final Object[] selectedList = list.getSelectedValues();
         final boolean zipExport = Boolean.parseBoolean(main.getProperties().getProperty("zipExportedScenarios", "false"));
 
-        FileFilter fileFilter;
-        String saveDialogTitle;
-
-        // Both zip and non-zip exports always choose a destination folder.
-        fileFilter = new FileFilter() {
-            @Override
-            public boolean accept(File f) {
-                return f.isDirectory();
-            }
-
-            @Override
-            public String getDescription() {
-                return "Directory to export into";
-            }
-        };
-        saveDialogTitle = zipExport ? "Select Export Directory (zipped)" : "Select Export Directory";
-
+        // Match File -> Export Tabs as CSVs: the DirectoryFilter activates the
+        // shared breadcrumb-capable native directory chooser, with the normal
+        // Java chooser fallback when native selection is unavailable.
+        String saveDialogTitle = zipExport ? "Select Export Directory (zipped)" : "Select Export Directory";
         FileChooser fc = FileChooserFactory.getFileChooser();
-
         File defaultSaveFile = new File(main.getProperties().getProperty("lastDirectory", "."));
-
-        File[] exportLocation = null;
-        boolean attemptedWindowsChooser = false;
-        boolean windowsChooserFailed = false;
-        if (useWindowsSystemChooser()) {
-            attemptedWindowsChooser = true;
-            try {
-                exportLocation = showWindowsNativeSelectDirectory(saveDialogTitle, defaultSaveFile);
-            } catch (Exception ex) {
-                windowsChooserFailed = true;
-                System.out.println("ManageDatabaseDialog: Windows native Export chooser failed, using Java fallback: " + ex.getMessage());
-            }
-        }
-        if (attemptedWindowsChooser && !windowsChooserFailed && (exportLocation == null || exportLocation.length == 0)) {
-            return;
-        }
-        if (exportLocation == null) {
-            exportLocation = fc.doFilePrompt(null, saveDialogTitle, FileChooser.SAVE_DIALOG,
-                    defaultSaveFile, fileFilter);
-        }
+        File[] exportLocation = fc.doFilePrompt(this, saveDialogTitle, FileChooser.LOAD_DIALOG,
+                defaultSaveFile, new DirectoryFilter());
         
         if (exportLocation == null) return;
         
@@ -894,37 +862,6 @@ public class ManageDatabaseDialog extends JDialog {
             files[i] = new File(selected.get(i));
         }
         return files;
-    }
-
-    private File[] showWindowsNativeSelectDirectory(String title, File initialDir) throws Exception {
-        String safeTitle = escapePsSingleQuoted(title == null ? "Select Folder" : title);
-        String safeInitialDir = escapePsSingleQuoted(resolveInitialDirectory(initialDir));
-
-        // Use a hidden topmost Form as the dialog parent so the folder picker appears
-        // in front of the Java application window instead of behind it.
-        // EnableVisualStyles() must be called before any Windows Forms windows are created.
-        String script =
-                "Add-Type -AssemblyName System.Windows.Forms; " +
-                "[System.Windows.Forms.Application]::EnableVisualStyles(); " +
-                "$owner = New-Object System.Windows.Forms.Form; " +
-                "$owner.TopMost = $true; " +
-                "$owner.ShowInTaskbar = $false; " +
-                "$owner.WindowState = [System.Windows.Forms.FormWindowState]::Minimized; " +
-                "$owner.Show(); " +
-                "$owner.Hide(); " +
-                "$dlg = New-Object System.Windows.Forms.FolderBrowserDialog; " +
-                "$dlg.Description = '" + safeTitle + "'; " +
-                "$dlg.ShowNewFolderButton = $true; " +
-                "$dlg.SelectedPath = '" + safeInitialDir + "'; " +
-                "$res = $dlg.ShowDialog($owner); " +
-                "$owner.Dispose(); " +
-                "if ($res -eq [System.Windows.Forms.DialogResult]::OK) { Write-Output $dlg.SelectedPath }";
-
-        List<String> selected = runPowerShellChooserScript(script);
-        if (selected.isEmpty()) {
-            return null;
-        }
-        return new File[] { new File(selected.get(selected.size() - 1)) };
     }
 
     private List<String> runPowerShellChooserScript(String script) throws Exception {
