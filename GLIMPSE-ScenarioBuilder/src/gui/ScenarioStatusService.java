@@ -44,7 +44,7 @@ final class ScenarioStatusService {
     private static final String UNSOLVED_PREFIX = "The following model periods did not solve:";
     private static final String ERROR_PREFIX = "ERROR";
     private static final java.util.regex.Pattern RUNNING_PERIOD_WITH_YEAR_PATTERN = java.util.regex.Pattern.compile(
-            "^period\\s+(\\d{1,3})\\s*:\\s*(\\d{4})(?:\\D|$)",
+            "^period\\s+(\\d{1,3})\\s*:\\s*(\\d{4})\\s*$",
             java.util.regex.Pattern.CASE_INSENSITIVE);
     private static final java.util.regex.Pattern UNSOLVED_PERIOD_ERROR_PATTERN = java.util.regex.Pattern.compile(
             "did\\s+not\\s+solve\\s+periods?\\s*[:=]?\\s*([0-9]{1,3}(?:\\s*(?:,|and|&)\\s*[0-9]{1,3})*)",
@@ -382,14 +382,48 @@ final class ScenarioStatusService {
         }
 
         String currentMainLogStatus = currentMainLogAnalysis == null ? "" : safeTrim(currentMainLogAnalysis.statusText);
-        if (!currentMainLogStatus.isEmpty()) {
-            return currentMainLogStatus;
-        }
         String scenarioStdoutStatus = scenarioStdoutAnalysis == null ? "" : safeTrim(scenarioStdoutAnalysis.statusText);
-        if (!scenarioStdoutStatus.isEmpty()) {
-            return scenarioStdoutStatus;
+        String latestPeriodStatus = selectLatestPeriodStatus(currentMainLogStatus, scenarioStdoutStatus);
+        if (!latestPeriodStatus.isEmpty()) {
+            return latestPeriodStatus;
         }
-        return "";
+        return !currentMainLogStatus.isEmpty() ? currentMainLogStatus : scenarioStdoutStatus;
+    }
+
+    /**
+     * Selects the greatest valid GCAM period from the active log sources. Both
+     * sources can briefly be out of sync while the executable log is copied to
+     * the scenario folder, so preferring one source unconditionally can display
+     * an older value such as Period 0 while the other source already reports the
+     * current period.
+     */
+    private String selectLatestPeriodStatus(String firstStatus, String secondStatus) {
+        String first = safeTrim(firstStatus);
+        String second = safeTrim(secondStatus);
+        int firstPeriod = periodNumber(first);
+        int secondPeriod = periodNumber(second);
+        if (firstPeriod < 0) {
+            return secondPeriod >= 0 ? second : "";
+        }
+        if (secondPeriod < 0 || firstPeriod >= secondPeriod) {
+            return first;
+        }
+        return second;
+    }
+
+    private int periodNumber(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            return -1;
+        }
+        int comma = status.indexOf(',');
+        if (comma <= 0) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(status.substring(0, comma).trim());
+        } catch (NumberFormatException ignored) {
+            return -1;
+        }
     }
 
     private LogAnalysis analyzeLogFile(File file) {

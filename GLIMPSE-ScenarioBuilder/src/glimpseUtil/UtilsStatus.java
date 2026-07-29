@@ -49,11 +49,8 @@ public class UtilsStatus {
 	private static final double BYTES_PER_GB = 1073741824d;
 	private static final long DATABASE_SIZE_CACHE_MILLIS = 30000L;
 
-	private static final Pattern RUNNING_PERIOD_PATTERN = Pattern.compile(
-			"(?:^|[^A-Za-z])(period|final-calibration period|model period|solving period|time period)\\s*[:=]?\\s*(\\d{1,3})(?:[^0-9]|$)",
-			Pattern.CASE_INSENSITIVE);
 	private static final Pattern RUNNING_PERIOD_WITH_YEAR_PATTERN = Pattern.compile(
-			"(?:^|[^A-Za-z])(period|final-calibration period|model period|solving period|time period)\\s+(\\d{1,3})\\s*[:=]\\s*(\\d{4})(?:[^0-9]|$)",
+			"^period\\s+(\\d{1,3})\\s*:\\s*(\\d{4})\\s*$",
 			Pattern.CASE_INSENSITIVE);
 
 	private GLIMPSEVariables vars;
@@ -164,25 +161,12 @@ public class UtilsStatus {
 				}
 				Matcher yearMatcher = RUNNING_PERIOD_WITH_YEAR_PATTERN.matcher(trimmed);
 				if (yearMatcher.find()) {
-					String period = yearMatcher.group(2);
-					String year = yearMatcher.group(3);
+					String period = yearMatcher.group(1);
+					String year = yearMatcher.group(2);
 					String trimmedPeriod = period == null ? "" : period.trim();
 					String trimmedYear = year == null ? "" : year.trim();
 					if (!trimmedPeriod.isEmpty() && !trimmedYear.isEmpty()) {
 						return trimmedPeriod + "," + trimmedYear;
-					}
-					if (!trimmedPeriod.isEmpty()) {
-						return trimmedPeriod;
-					}
-					if (!trimmedYear.isEmpty()) {
-						return trimmedYear;
-					}
-				}
-				Matcher matcher = RUNNING_PERIOD_PATTERN.matcher(trimmed);
-				if (matcher.find()) {
-					String period = matcher.group(2);
-					if (period != null && !period.trim().isEmpty()) {
-						return period.trim();
 					}
 				}
 			}
