@@ -524,8 +524,10 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 					float techEff = 0.0f;
 					float techLoad = 1.0f;
 					// Fetch technology-specific efficiency and load factor
+					String units = "MJ/km";
+					if (!vars.isGcamVersionPre8_5()) units = "EJ/billion-service-km"; // GCAM 8.5+ uses billion-vkt units
 					String techEffS = utils.getTrnVehInfo("intensity", region, sector, subsector, tech, targetYearStr,
-							"GJ/million-veh-km");
+							units);
 					String techLoadS = utils.getTrnVehInfo("load", region, sector, subsector, tech, targetYearStr);
 
 					if ((techEffS == null) || (techLoadS == null)) {

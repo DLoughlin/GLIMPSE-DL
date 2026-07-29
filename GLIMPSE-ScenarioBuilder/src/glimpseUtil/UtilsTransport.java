@@ -49,7 +49,8 @@ public final class UtilsTransport {
 			return false;
 
 		int matchRow = -1;
-		boolean oldFormat = isOldFormatTrnVehInfo(data);
+		//assuming that the data is in the new format, since the old format has not been in effect for some time
+		boolean oldFormat = false; //isOldFormatTrnVehInfo(data);
 
 		int paramCol = 0;
 		if (oldFormat)
@@ -121,7 +122,8 @@ public final class UtilsTransport {
 		if (data == null || data.length == 0)
 			return null;
 
-		boolean oldFormat = isOldFormatTrnVehInfo(data);
+		//assuming that the data is in the new format, since the old format has not been in effect for some time
+		boolean oldFormat = false; //isOldFormatTrnVehInfo(data);
 		if (oldFormat) {
 			System.out.println("TrnVehInfoData file is not in correct format to support CAFE.");
 			return null;
@@ -164,7 +166,7 @@ public final class UtilsTransport {
 	 * @return table value, or {@code null} when no matching record is found
 	 */
 	public String getTrnVehInfo(String param, String region, String sector, String subsector, String tech, String yearStr) {
-		String val = null;
+		String val = "";
 		String[][] data = getTrnDataForProcessing(sector);
 		if (data == null || data.length == 0 || data[0] == null)
 			return null;
@@ -172,17 +174,15 @@ public final class UtilsTransport {
 		param = param == null ? "" : param.toLowerCase();
 
 		try {
-			boolean oldFormat = isOldFormatTrnVehInfo(data);
 
 			int paramCol = 0;
-			if (oldFormat)
-				paramCol = -1;
+
 			int regionCol = paramCol + 1;
 			int subsectorCol = regionCol + 2;
 			int techCol = subsectorCol + 1;
 
 			int yearCol = -1;
-			for (int i = 0; i < data[0].length; i++) {
+			for (int i = 0; i < data[0].length -1; i++) {
 				String cmpStr = data[0][i].trim();
 				if (yearStr.equals(cmpStr)) {
 					yearCol = i;
@@ -196,7 +196,7 @@ public final class UtilsTransport {
 					if (data[j] == null || data[j].length <= Math.max(techCol, yearCol))
 						continue;
 					String temp = data[j][0];
-					if (((oldFormat) && ("load".equals(param))) || (temp.toLowerCase().trim().startsWith(param))) {
+					if ((temp.toLowerCase().trim().startsWith(param))) {
 						String dataRegion = data[j][regionCol].trim();
 						String dataSubsector = data[j][subsectorCol].trim();
 						String dataTech = data[j][techCol].trim();
@@ -236,7 +236,7 @@ public final class UtilsTransport {
 	 * @return table value, or {@code null} when no matching record is found
 	 */
 	public String getTrnVehInfo(String param, String region, String sector, String subsector, String tech, String yearStr, String reqdUnits) {
-		String val = null;
+		String val = "";
 		String[][] data = getTrnDataForProcessing(sector);
 		if (data == null || data.length == 0 || data[0] == null)
 			return null;
@@ -244,17 +244,16 @@ public final class UtilsTransport {
 		param = param == null ? "" : param.toLowerCase();
 
 		try {
-			boolean oldFormat = isOldFormatTrnVehInfo(data);
+
 
 			int paramCol = 0;
-			if (oldFormat)
-				paramCol = -1;
+
 			int regionCol = paramCol + 1;
 			int subsectorCol = regionCol + 2;
 			int techCol = subsectorCol + 1;
 
 			int yearCol = -1;
-			for (int i = 0; i < data[0].length; i++) {
+			for (int i = 0; i < data[0].length-1; i++) {
 				String cmpStr = data[0][i].trim();
 				if (yearStr.equals(cmpStr)) {
 					yearCol = i;
@@ -265,18 +264,26 @@ public final class UtilsTransport {
 			int matchRow = -1;
 			if (yearCol > -1) {
 				for (int j = 1; j < data.length; j++) {
-					if (data[j] == null || data[j].length <= Math.max(techCol, yearCol))
+					if (data[j] == null
+							|| data[j].length <= Math.max(techCol, yearCol)
+							|| data[j][0] == null
+							|| data[j][regionCol] == null
+							|| data[j][subsectorCol] == null
+							|| data[j][techCol] == null) {
 						continue;
-					String temp = data[j][0];
-					if (((oldFormat) && ("load".equals(param))) || (temp.toLowerCase().trim().startsWith(param))) {
-						String dataRegion = data[j][regionCol].trim();
-						String dataSubsector = data[j][subsectorCol].trim();
-						String dataTech = data[j][techCol].trim();
-						if ((region.equals(dataRegion)) && (subsector.equals(dataSubsector))) {
-							if (("load".equals(param)) || ((!"load".equals(param)) && (tech.equals(dataTech)))) {
+					}
+					String temp = data[j][0].trim();
+					
+					if (temp.toLowerCase().startsWith(param)) {
+						String dataRegion = data[j][regionCol];
+						String dataSubsector = data[j][subsectorCol];
+						String dataTech = data[j][techCol];
+//						if ((region.equals(dataRegion)) && (subsector.equals(dataSubsector))) {
+//							if (("load".equals(param)) || ((!"load".equals(param)) && (tech.equals(dataTech)))) {
+						if ((region.equals(dataRegion.trim())) && (subsector.equals(dataSubsector.trim())) && (tech.equals(dataTech.trim()))){
 								matchRow = j;
 								break;
-							}
+							
 						}
 					}
 				}
@@ -292,7 +299,8 @@ public final class UtilsTransport {
 				}
 			}
 		} catch (Exception e) {
-			System.out.println("Error reading transportation input file. Please check format. Exception: " + e);
+			System.out.println("Error processing transportation input file. Please check format. Exception: " + e);
+			e.printStackTrace();
 			val = null;
 		}
 		if (val == null)
@@ -523,13 +531,13 @@ public final class UtilsTransport {
 		return otherTable;
 	}
 
-	private boolean isOldFormatTrnVehInfo(String[][] data) {
-		if (data == null || data.length == 0 || data[0] == null || data[0].length == 0)
-			return true;
-		String firstHeader = data[0][0];
-		if (firstHeader == null)
-			return true;
-		String header = firstHeader.trim().toLowerCase();
-		return !(header.contains("param") || header.contains("variable"));
-	}
+//	private boolean isOldFormatTrnVehInfo(String[][] data) {
+//		if (data == null || data.length == 0 || data[0] == null || data[0].length == 0)
+//			return true;
+//		String firstHeader = data[0][0];
+//		if (firstHeader == null)
+//			return true;
+//		String header = firstHeader.trim().toLowerCase();
+//		return !(header.contains("param") || header.contains("variable"));
+//	}
 }
