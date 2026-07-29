@@ -43,11 +43,8 @@ final class ScenarioStatusService {
     private static final String RUNTIME_PREFIX = "Data Readin, Model Run & Write Time:";
     private static final String UNSOLVED_PREFIX = "The following model periods did not solve:";
     private static final String ERROR_PREFIX = "ERROR";
-    private static final java.util.regex.Pattern RUNNING_PERIOD_PATTERN = java.util.regex.Pattern.compile(
-            "(?:^|[^A-Za-z])(period|final-calibration period|model period|solving period|time period)\\s*[:=]?\\s*(\\d{1,3})(?:[^0-9]|$)",
-            java.util.regex.Pattern.CASE_INSENSITIVE);
     private static final java.util.regex.Pattern RUNNING_PERIOD_WITH_YEAR_PATTERN = java.util.regex.Pattern.compile(
-            "(?:^|[^A-Za-z])(period|final-calibration period|model period|solving period|time period)\\s+(\\d{1,3})\\s*[:=]\\s*(\\d{4})(?:[^0-9]|$)",
+            "^period\\s+(\\d{1,3})\\s*:\\s*(\\d{4})(?:\\D|$)",
             java.util.regex.Pattern.CASE_INSENSITIVE);
     private static final java.util.regex.Pattern UNSOLVED_PERIOD_ERROR_PATTERN = java.util.regex.Pattern.compile(
             "did\\s+not\\s+solve\\s+periods?\\s*[:=]?\\s*([0-9]{1,3}(?:\\s*(?:,|and|&)\\s*[0-9]{1,3})*)",
@@ -384,20 +381,13 @@ final class ScenarioStatusService {
             return currentMainLogAnalysis == null ? "" : safeTrim(currentMainLogAnalysis.statusText);
         }
 
-        Set<String> candidates = new HashSet<>();
         String currentMainLogStatus = currentMainLogAnalysis == null ? "" : safeTrim(currentMainLogAnalysis.statusText);
         if (!currentMainLogStatus.isEmpty()) {
-            candidates.add(currentMainLogStatus);
+            return currentMainLogStatus;
         }
         String scenarioStdoutStatus = scenarioStdoutAnalysis == null ? "" : safeTrim(scenarioStdoutAnalysis.statusText);
         if (!scenarioStdoutStatus.isEmpty()) {
-            candidates.add(scenarioStdoutStatus);
-        }
-
-        for (String candidate : candidates) {
-            if (!candidate.isEmpty()) {
-                return candidate;
-            }
+            return scenarioStdoutStatus;
         }
         return "";
     }
@@ -582,46 +572,19 @@ final class ScenarioStatusService {
         if (line == null || line.isEmpty()) {
             return "";
         }
-        if (isIterationSummaryPeriodLine(line)) {
-            return "";
-        }
         java.util.regex.Matcher yearMatcher = RUNNING_PERIOD_WITH_YEAR_PATTERN.matcher(line);
         if (yearMatcher.find()) {
-            String period = yearMatcher.group(2);
-            String year = yearMatcher.group(3);
+            String period = yearMatcher.group(1);
+            String year = yearMatcher.group(2);
             String trimmedPeriod = period == null ? "" : period.trim();
             String trimmedYear = year == null ? "" : year.trim();
             if (!trimmedPeriod.isEmpty() && !trimmedYear.isEmpty()) {
-                // Validate period and year are reasonable before returning
                 if (isValidPeriodAndYear(trimmedPeriod, trimmedYear)) {
                     return trimmedPeriod + "," + trimmedYear;
                 }
             }
-            if (!trimmedPeriod.isEmpty()) {
-                // Validate period is reasonable before returning alone
-                if (isValidPeriod(trimmedPeriod)) {
-                    return trimmedPeriod;
-                }
-            }
-            if (!trimmedYear.isEmpty()) {
-                // Never return year alone; it's too ambiguous (could match error years like 1701)
-            }
         }
-        java.util.regex.Matcher matcher = RUNNING_PERIOD_PATTERN.matcher(line);
-        if (!matcher.find()) {
-            return "";
-        }
-        String period = matcher.group(2);
-        if (period == null) {
-            return "";
-        }
-        String trimmedPeriod = period.trim();
-        return isValidPeriod(trimmedPeriod) ? trimmedPeriod : "";
-    }
-
-    private boolean isIterationSummaryPeriodLine(String line) {
-        String normalized = safeTrim(line).toLowerCase(Locale.ENGLISH);
-        return normalized.contains("iterations period") || normalized.contains("iteration period");
+        return "";
     }
 
     /**
