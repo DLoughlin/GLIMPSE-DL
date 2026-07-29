@@ -624,10 +624,14 @@ public class TabTechBound extends PolicyTab implements Runnable {
 				isTransportation = true;
 			}
 
-			boolean is_nested = tech.contains("=>");
+			boolean is_nested = false;
+			if (tech.contains("=>")||(subsector.contains("=>"))) {
+				is_nested = true;
+			}
 			if (is_nested) {
 				no_nested++;
 				tech = tech.replaceAll("=>", ",");
+				subsector = subsector.replaceAll("=>", ",");
 			} else {
 				no_non_nested++;
 			}
