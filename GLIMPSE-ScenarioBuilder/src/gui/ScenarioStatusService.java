@@ -234,7 +234,8 @@ final class ScenarioStatusService {
                         && lastDate < request.startupTime) {
                     status = STATUS_LOST_HANDLE;
                 } else {
-                    String runningStatus = resolveRunningStatusText(scenarioName, currentMainLogAnalysis, scenarioStdoutAnalysis, request);
+                    String runningStatus = resolveRunningStatusText(scenarioName, currentMainLogAnalysis,
+                            scenarioLogAnalysis, scenarioStdoutAnalysis, request);
                     String explicitRunState = getExplicitRunStateLabel(scenarioName, currentMainLogFile, runningStatus, request);
                     if (!explicitRunState.isEmpty()) {
                         status = explicitRunState;
@@ -375,15 +376,17 @@ final class ScenarioStatusService {
     }
 
     private String resolveRunningStatusText(String scenarioName, LogAnalysis currentMainLogAnalysis,
-            LogAnalysis scenarioStdoutAnalysis, RefreshRequest request) {
+            LogAnalysis scenarioLogAnalysis, LogAnalysis scenarioStdoutAnalysis, RefreshRequest request) {
         String currentScenario = request == null ? "" : safeTrim(request.currentGcamScenarioName);
         if (!safeTrim(scenarioName).equals(currentScenario)) {
             return currentMainLogAnalysis == null ? "" : safeTrim(currentMainLogAnalysis.statusText);
         }
 
         String currentMainLogStatus = currentMainLogAnalysis == null ? "" : safeTrim(currentMainLogAnalysis.statusText);
+        String scenarioLogStatus = scenarioLogAnalysis == null ? "" : safeTrim(scenarioLogAnalysis.statusText);
         String scenarioStdoutStatus = scenarioStdoutAnalysis == null ? "" : safeTrim(scenarioStdoutAnalysis.statusText);
-        String latestPeriodStatus = selectLatestPeriodStatus(currentMainLogStatus, scenarioStdoutStatus);
+        String latestPeriodStatus = selectLatestPeriodStatus(currentMainLogStatus, scenarioLogStatus,
+                scenarioStdoutStatus);
         if (!latestPeriodStatus.isEmpty()) {
             return latestPeriodStatus;
         }
@@ -397,18 +400,21 @@ final class ScenarioStatusService {
      * an older value such as Period 0 while the other source already reports the
      * current period.
      */
-    private String selectLatestPeriodStatus(String firstStatus, String secondStatus) {
-        String first = safeTrim(firstStatus);
-        String second = safeTrim(secondStatus);
-        int firstPeriod = periodNumber(first);
-        int secondPeriod = periodNumber(second);
-        if (firstPeriod < 0) {
-            return secondPeriod >= 0 ? second : "";
+    private String selectLatestPeriodStatus(String... statuses) {
+        String latest = "";
+        int latestPeriod = -1;
+        if (statuses == null) {
+            return latest;
         }
-        if (secondPeriod < 0 || firstPeriod >= secondPeriod) {
-            return first;
+        for (String status : statuses) {
+            String candidate = safeTrim(status);
+            int candidatePeriod = periodNumber(candidate);
+            if (candidatePeriod >= 0 && candidatePeriod >= latestPeriod) {
+                latest = candidate;
+                latestPeriod = candidatePeriod;
+            }
         }
-        return second;
+        return latest;
     }
 
     private int periodNumber(String status) {
