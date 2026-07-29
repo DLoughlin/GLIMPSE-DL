@@ -594,6 +594,11 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	protected Vector regions;
 	// Preserve first-loaded ordering so later region refreshes remain stable.
 	private final java.util.List<String> initialRegionOrdering = new ArrayList<String>();
+	private static final List<String> US_STATE_CODES = Arrays.asList(
+			"AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA",
+			"ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS",
+			"MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA",
+			"RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY");
 	protected QueryTreeModel queries;
 	private JTabbedPane tablesTabs = new JTabbedPane();
 	private JSplitPane scenarioRegionSplit;
@@ -2143,7 +2148,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		if (initialRegionOrdering.isEmpty()) {
 			initialRegionOrdering.addAll(dedupedCurrent);
 			ordered.addAll(dedupedCurrent);
-			return ordered;
+			return sortRegionEntries(ordered);
 		}
 
 		for (String baselineRegion : initialRegionOrdering) {
@@ -2154,7 +2159,77 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		for (String newRegion : dedupedCurrent) {
 			ordered.add(newRegion);
 		}
-		return ordered;
+		return sortRegionEntries(ordered);
+	}
+
+	/**
+	 * Sorts aggregate-region names and state abbreviations without moving entries
+	 * between their database-defined groups.
+	 */
+	private Vector sortRegionEntries(Vector currentRegions) {
+		if (currentRegions == null || currentRegions.isEmpty()) {
+			return currentRegions;
+		}
+		sortAggregateEntries(currentRegions);
+		ArrayList<String> states = new ArrayList<String>();
+		for (Object regionObj : currentRegions) {
+			if (regionObj != null && US_STATE_CODES.contains(regionObj.toString().trim())) {
+				states.add(regionObj.toString());
+			}
+		}
+		states.sort(String.CASE_INSENSITIVE_ORDER);
+		int stateIndex = 0;
+		for (int i = 0; i < currentRegions.size(); ++i) {
+			Object regionObj = currentRegions.get(i);
+			if (regionObj != null && US_STATE_CODES.contains(regionObj.toString().trim())) {
+				currentRegions.set(i, states.get(stateIndex++));
+			}
+		}
+		return currentRegions;
+	}
+
+	/**
+	 * Sorts the aggregate block before the first state, with USA always first.
+	 * Entries after the state block (for example PADD/grid groupings) are not
+	 * affected.
+	 */
+	private void sortAggregateEntries(Vector currentRegions) {
+		int firstStateIndex = -1;
+		for (int i = 0; i < currentRegions.size(); ++i) {
+			Object regionObj = currentRegions.get(i);
+			if (regionObj != null && US_STATE_CODES.contains(regionObj.toString().trim())) {
+				firstStateIndex = i;
+				break;
+			}
+		}
+		if (firstStateIndex <= 0) {
+			return;
+		}
+
+		ArrayList<String> aggregates = new ArrayList<String>();
+		for (int i = 0; i < firstStateIndex; ++i) {
+			Object regionObj = currentRegions.get(i);
+			if (regionObj != null && !"Global".equalsIgnoreCase(regionObj.toString().trim())) {
+				aggregates.add(regionObj.toString());
+			}
+		}
+		aggregates.sort((left, right) -> {
+			if ("USA".equalsIgnoreCase(left)) {
+				return "USA".equalsIgnoreCase(right) ? 0 : -1;
+			}
+			if ("USA".equalsIgnoreCase(right)) {
+				return 1;
+			}
+			return left.compareToIgnoreCase(right);
+		});
+
+		int aggregateIndex = 0;
+		for (int i = 0; i < firstStateIndex; ++i) {
+			Object regionObj = currentRegions.get(i);
+			if (regionObj != null && !"Global".equalsIgnoreCase(regionObj.toString().trim())) {
+				currentRegions.set(i, aggregates.get(aggregateIndex++));
+			}
+		}
 	}
 
 	/**
