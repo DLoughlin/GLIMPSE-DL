@@ -243,6 +243,7 @@ public final class UtilsTransport {
 
 		param = param == null ? "" : param.toLowerCase();
 
+		
 		try {
 
 
@@ -288,7 +289,10 @@ public final class UtilsTransport {
 					}
 				}
 
-				if (matchRow > -1) {
+
+				
+				if ((matchRow > -1)&&(yearCol > -1)) {
+
 					val = data[matchRow][yearCol];
 					double valf = Double.parseDouble(val);
 					String units = data[matchRow][data[matchRow].length - 1].trim();
@@ -300,11 +304,10 @@ public final class UtilsTransport {
 			}
 		} catch (Exception e) {
 			System.out.println("Error processing transportation input file. Please check format. Exception: " + e);
-			e.printStackTrace();
 			val = null;
 		}
 		if (val == null)
-			System.out.println("Problem finding " + param + " for " + sector + " / " + subsector + " / " + tech + " in " + region + " for year " + yearStr);
+			System.out.println("Could not find " + param + " for " + sector + " / " + subsector + " / " + tech + " in " + region + " for year " + yearStr + ". Skipping.");
 		return val;
 	}
 

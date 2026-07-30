@@ -457,13 +457,18 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 			valuef_list[i] = (val != null) ? val : 0.0;
 		}
 
-		// convert MPG target values to GJ/million-vkt
+		// convert MPG target values to GJ/million-vkt or EJ/billion-vkt  
 		if ("MPG".equals(comboBoxWhichUnits.getValue())) {
 			double gjPerGallon = 0.1203;
 			for (int i = 0; i < valuef_list.length; i++) {
-				//converted values on order of 1e3
-				double targetGJPerMillionKm = (gjPerGallon / (1.61 * valuef_list[i])) * 1e6;
-				valuef_list[i] = targetGJPerMillionKm;
+				//converted values on order of 1e3  (GJ/million-vkt)
+				double target=0.0;
+				if (vars.isGcamVersionPre8_5()) {
+					target = (gjPerGallon / (1.61 * valuef_list[i])) * 1e6; // GJ/million-vkt
+				} else {
+				    target = (1.0 / valuef_list[i]) * 0.0746; // EJ/billion-vkt
+				}
+				valuef_list[i] = target;
 			}
 		}
 
