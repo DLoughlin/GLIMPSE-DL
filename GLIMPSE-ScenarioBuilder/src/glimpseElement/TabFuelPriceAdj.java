@@ -593,7 +593,8 @@ public class TabFuelPriceAdj extends PolicyTab implements Runnable {
                     String cat = tech_list[t][7].trim();
                     //if (cat.equals("Energy-Carrier")) { //No longer needed; all techs are now included
                         String tech = tech_list[t][2].trim();
-                        if (tech.contains(fuel)) {
+                        String tech_concat = utils.createStringFromStringArray(tech_list[t]);
+                        if (tech_concat.contains(fuel)) {
                             String sector = tech_list[t][0].trim();
                             String subsector = tech_list[t][1].trim();
 
