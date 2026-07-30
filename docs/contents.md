@@ -6,7 +6,7 @@
 
 [Chapter 1: Overview](GLIMPSE-CE-UsersGuide/UsersGuideDocs/Chapter%201%EA%9E%89%20Overview.md)
 
-[Chapter 2: GLIMPSE Scenarios](GLIMPSE-CE-UsersGuide/UsersGuideDocs/Chapter%202꞉%20GLIMPSE%20Scenarios.md) (coming soon)
+[Chapter 2: GLIMPSE Scenarios](GLIMPSE-CE-UsersGuide/UsersGuideDocs/Chapter%202꞉%20GLIMPSE%20Scenarios.md) (DRAFT)
 
 [Chapter 3: How does GCAM work?](GLIMPSE-CE-UsersGuide/UsersGuideDocs/Chapter%203%EA%9E%89%20How%20does%20GCAM%20work%CA%94.md)
 
