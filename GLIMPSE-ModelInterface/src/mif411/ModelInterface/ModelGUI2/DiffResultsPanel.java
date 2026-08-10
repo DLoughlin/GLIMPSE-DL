@@ -99,12 +99,16 @@ import filter.FilteredTable;
 public class DiffResultsPanel extends QueryResultsPanel {
 
 	// Not used currently
-	protected double min_val = 0.001;
-	protected double min_pct = 0.1;
+	protected double min_val = 0.00001;
+	protected double min_pct = 1.0;
 	protected boolean use_val_filter = true;
 	protected boolean use_pct_filter = true;
 	protected String base_scenario = "";
 	protected boolean show_pct_diff = false;
+	// Session-scoped defaults for the Difference Options dialog.
+	private static String minValChoiceSelection = "0.00001";
+	private static String minPctChoiceSelection = "1";
+	private static String showDiffAsChoiceSelection = "Value";
 	protected static final int MAX_AUTO_CHARTS = 125; // Max number of charts to auto-generate before skipping auto-graphics
 
 	/** The Constant serialVersionUID. */
@@ -905,13 +909,17 @@ public class DiffResultsPanel extends QueryResultsPanel {
 		final String[] minValChoiceOptions = { "None",  "100.0", "10.0","0.1", "0.01", "0.001", "0.0001", "0.00001", "0.000001" };
 		final JLabel minValChoiceLabel = new JLabel("Minimum value: ");
 		final JComboBox minValChoice = new JComboBox(minValChoiceOptions);
-		final String[] minPctChoiceOptions = { "None", "1", "2.5", "5", "10", "15", "20", "30", "50" };
+		final String[] minPctChoiceOptions = { "None", "0.1", "1", "2.5", "5", "10", "15", "20", "30", "50" };
 		final JLabel minPctChoiceLabel = new JLabel("Minimum percent: ");
 		final JComboBox minPctChoice = new JComboBox(minPctChoiceOptions);
 
+		minValChoice.setSelectedItem(minValChoiceSelection);
+		minPctChoice.setSelectedItem(minPctChoiceSelection);
+		
 		final String[] showDiffAsOptions = { "Value", "Percent" };
 		final JLabel showDiffAsLabel = new JLabel("Show differences as: ");
 		final JComboBox showDiffAsChoice = new JComboBox(showDiffAsOptions);
+		showDiffAsChoice.setSelectedItem(showDiffAsChoiceSelection);
 
 		filterDialog.getGlassPane().addMouseListener(new MouseAdapter() {
 		});
@@ -974,6 +982,9 @@ public class DiffResultsPanel extends QueryResultsPanel {
 				String min_val_str = minValChoice.getSelectedItem().toString();
 				String min_pct_str = minPctChoice.getSelectedItem().toString();
 				String show_diff_str = showDiffAsChoice.getSelectedItem().toString();
+				minValChoiceSelection = min_val_str;
+				minPctChoiceSelection = min_pct_str;
+				showDiffAsChoiceSelection = show_diff_str;
 				if (min_val_str.equals("None")) {
 					use_val_filter = false;
 				} else {
