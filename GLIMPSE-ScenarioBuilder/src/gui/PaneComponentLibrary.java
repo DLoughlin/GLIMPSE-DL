@@ -235,8 +235,10 @@ public class PaneComponentLibrary extends gui.ScenarioBuilder {
 			String trashFileName = componentRow.getFileName();
 			if (trashFileName.contains(File.separator))
 				trashFileName = trashFileName.substring(trashFileName.lastIndexOf(File.separator) + 1);
-			String trashFilePath = vars.getTrashDir() + File.separator + trashFileName;
 			try {
+				Path trashDirPath = Paths.get(vars.getTrashDir());
+				Files.createDirectories(trashDirPath);
+				String trashFilePath = trashDirPath.resolve(trashFileName).toString();
 				Files.move(Paths.get(componentFilePath), Paths.get(trashFilePath), StandardCopyOption.REPLACE_EXISTING);
 				componentsToRemove.add(componentRow);
 			} catch (Exception exception) {

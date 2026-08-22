@@ -47,6 +47,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.stream.Stream;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonType;
@@ -121,12 +122,16 @@ public final class SetupMenuTools {
             System.out.println("Attempting to delete files from trash: " + vars.getTrashDir());
             Path trashPath = new File(vars.getTrashDir()).toPath();
             try {
-                 Files.walk(trashPath)
-                    .sorted(Comparator.reverseOrder())
-                    .map(Path::toFile)
-                    .forEach(File::delete);
+                Files.createDirectories(trashPath);
+                try (Stream<Path> paths = Files.walk(trashPath)) {
+                    paths
+                        .filter(path -> !path.equals(trashPath))
+                        .sorted(Comparator.reverseOrder())
+                        .map(Path::toFile)
+                        .forEach(File::delete);
+                }
             } catch (IOException e) {
-                 System.err.println("Error while deleting trash directory: " + e.getMessage());
+                 System.err.println("Error while deleting trash contents: " + e.getMessage());
             }
         }
     }

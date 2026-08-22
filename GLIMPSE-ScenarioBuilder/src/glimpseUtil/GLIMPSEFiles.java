@@ -901,6 +901,7 @@ public class GLIMPSEFiles {
             }
         } else {
             try {
+                Files.createDirectories(trashPath);
                 Files.move(Paths.get(toTrash.getPath()), trashPath, StandardCopyOption.REPLACE_EXISTING);
                 return true;
             } catch (IOException e) {
@@ -918,6 +919,7 @@ public class GLIMPSEFiles {
         try {
             File origFile = new File(origFilename);
             String name = origFile.getName();
+            Files.createDirectories(Paths.get(vars.getTrashDir()));
             String trashFilename = vars.getTrashDir() + File.separator + name;
             File newFile = new File(trashFilename);
             if (!newFile.exists()) newFile.createNewFile();
