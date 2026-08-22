@@ -159,6 +159,10 @@ final class ConsoleManager {
         if (line == null) {
             return;
         }
+        if (Platform.isFxApplicationThread()) {
+            appendLineToUi(effectiveSource(source), kind, line);
+            return;
+        }
         Platform.runLater(() -> appendLineToUi(effectiveSource(source), kind, line));
     }
 
@@ -190,7 +194,7 @@ final class ConsoleManager {
         } catch (Exception ignored) {}
         clearDeferredPaintIfNeeded(source);
 
-        Platform.runLater(() -> {
+        Runnable clearUi = () -> {
             ensureModelCreated();
             TextArea area = areaFor(source);
             if (area != null) {
@@ -198,7 +202,13 @@ final class ConsoleManager {
                 LAST_APPLIED_AREA_STYLE.remove(area);
                 applyAreaStyle(area, MessageKind.MODEL_STDOUT);
             }
-        });
+        };
+
+        if (Platform.isFxApplicationThread()) {
+            clearUi.run();
+        } else {
+            Platform.runLater(clearUi);
+        }
     }
 
     private static void appendLineToUi(StreamSource source, MessageKind kind, String line) {

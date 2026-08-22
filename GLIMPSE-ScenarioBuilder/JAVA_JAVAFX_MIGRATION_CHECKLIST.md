@@ -179,7 +179,7 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
   - Java 21 compile check of touched files succeeded.
   - Full ScenarioBuilder Java 21 compile succeeded with JavaFX 21 module path and ControlsFX 11.2.1 (warnings only).
 
-### Commit 8 - Runtime behavior fixes
+### Commit 8 - Runtime behavior fixes (completed 2026-08-22)
 
 - **Commit message**: `fix: address JavaFX runtime behavior regressions`
 - **Tasks**:
@@ -189,6 +189,19 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
   - UI/controller files touched by runtime regressions
 - **Exit criteria**:
   - Core workflows execute without runtime errors.
+
+#### Commit 8 runtime-fix snapshot
+
+- Hardened scenario-table interactions in `src/glimpseBuilder/SetupTableScenariosLibrary.java`:
+  - Added null guard for double-click open action when no row is selected.
+  - Prevented stale tooltip assignment by requiring the row to still be hovered before applying async tooltip results.
+- Stabilized menu action behavior in `src/glimpseBuilder/SetupMenuTools.java`:
+  - `Empty Trash` now uses `Files.deleteIfExists(...)` and logs partial failures instead of silently ignoring undeleted paths.
+- Reduced UI timing jitter from unnecessary FX queue hops:
+  - `src/gui/ConsoleManager.java` now updates immediately when already on the FX thread for append/clear operations.
+  - `src/glimpseElement/PolicyTab.java` progress bar updates now run immediately on the FX thread and remain thread-safe off-thread.
+- Validation scope for this commit:
+  - Touched files compile under Java 21 with JavaFX 21/ControlsFX 11.2.1 classpath.
 
 ### Commit 9 - Smoke test and regression checklist sign-off
 

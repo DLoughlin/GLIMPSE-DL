@@ -202,7 +202,7 @@ public class SetupTableScenariosLibrary {
 						final String tooltipText = tt;
 						item.setCachedTooltipText(tooltipText);
 						Platform.runLater(() -> {
-							if (row.getItem() == item) {
+							if (row.isHover() && row.getItem() == item) {
 								row.setTooltip(tooltipText.isEmpty() ? null : new Tooltip(tooltipText));
 							}
 						});
@@ -231,6 +231,9 @@ public class SetupTableScenariosLibrary {
 				if (event.isPrimaryButtonDown() && event.getClickCount() == 2) {
 
 					ScenarioRow mfr = ScenarioTable.tableScenariosLibrary.getSelectionModel().getSelectedItem();
+					if (mfr == null) {
+						return;
+					}
 					String filename = vars.getScenarioDir() + File.separator+ mfr.getScenarioName()
 							+ File.separator+"configuration_" + mfr.getScenarioName() + ".xml";
 

@@ -678,7 +678,11 @@ public abstract class PolicyTab extends Tab {
      * @param progress Progress value between 0.0 and 1.0
      */
     public void setProgress(double progress) {
-        Platform.runLater(() -> getProgressBar().setProgress(progress));
+        if (Platform.isFxApplicationThread()) {
+            getProgressBar().setProgress(progress);
+        } else {
+            Platform.runLater(() -> getProgressBar().setProgress(progress));
+        }
     }
 
     /**
@@ -804,7 +808,11 @@ public abstract class PolicyTab extends Tab {
      * </p>
      */
     public void resetProgressBar() {
-        Platform.runLater(() -> getProgressBar().setProgress(0.0));
+        if (Platform.isFxApplicationThread()) {
+            getProgressBar().setProgress(0.0);
+        } else {
+            Platform.runLater(() -> getProgressBar().setProgress(0.0));
+        }
     }
 
     /**
