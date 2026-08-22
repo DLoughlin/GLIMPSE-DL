@@ -24,6 +24,8 @@ fi
 "$JAVA_BIN" -Dprism.order=sw \
   --module-path "$JAVAFX_DIR" \
   --add-modules javafx.controls,javafx.fxml \
+  --add-exports=javafx.base/com.sun.javafx.runtime=ALL-UNNAMED \
+  --add-exports=javafx.graphics/com.sun.javafx.tk=ALL-UNNAMED \
   -jar ./GLIMPSE-ScenarioBuilder/GLIMPSE-ScenarioBuilder.jar \
   -options options_GCAM-global-8.2-linux.txt
 

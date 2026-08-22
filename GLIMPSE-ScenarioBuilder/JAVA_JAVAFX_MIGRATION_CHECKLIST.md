@@ -235,6 +235,19 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
   - Add and validate Java runtime flags for required JavaFX exports (or upgrade/downgrade ControlsFX to a fully compatible build).
   - Re-run startup smoke, then complete manual workflow checks.
 
+#### Post-Commit 9 launcher re-validation (2026-08-22)
+
+- Launcher flag validation:
+  - Retained `--add-exports=javafx.base/com.sun.javafx.runtime=ALL-UNNAMED` in both Windows and Linux ScenarioBuilder launchers.
+  - Attempted `--add-exports=javafx.base/com.sun.javafx.runtime=org.controlsfx.controls`, but Java reported `Unknown module: org.controlsfx.controls` in current `-jar` launch mode, so this flag was removed.
+- Smoke re-run results (Windows):
+  - `../run_GLIMPSE_GCAM-USA-8.2-windows.bat`: startup passes previous ControlsFX `IllegalAccessError` stage.
+  - New blocker: `NoSuchMethodError` for `com.sun.javafx.tk.FontLoader.computeStringWidth` from `glimpseUtil.UtilsUI` in packaged runtime classes.
+  - `../run_GLIMPSE_GCAM-global-8.2-windows.bat`: same `NoSuchMethodError` blocker.
+- Interpretation:
+  - Module export handling is now adequate for current classpath/module-path layout.
+  - Remaining startup failure is due to stale packaged bytecode still calling removed JavaFX internals; rebuild/repackage is required before manual UI workflow checks can complete.
+
 ### Commit 10 - Finalize docs and rollback guidance
 
 - **Commit message**: `docs: finalize migration notes and rollback procedure`

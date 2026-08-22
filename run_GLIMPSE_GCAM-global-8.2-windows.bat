@@ -29,6 +29,6 @@ if not exist "%JAVAFX_LIB%\javafx-controls-21.0.4-win.jar" (
 
 set "PATH=.;%JAVA_HOME%\bin\server;%JAVA_HOME%\bin;..\..\ModelInterface;%PATH%"
 
-"%JAVA_EXE%" -Dprism.order=sw --module-path "%JAVAFX_LIB%" --add-modules=javafx.controls,javafx.fxml -jar .\GLIMPSE-ScenarioBuilder\GLIMPSE-ScenarioBuilder.jar -options options_GCAM-global-8.2-windows.txt
+"%JAVA_EXE%" -Dprism.order=sw --module-path "%JAVAFX_LIB%" --add-modules=javafx.controls,javafx.fxml --add-exports=javafx.base/com.sun.javafx.runtime=ALL-UNNAMED --add-exports=javafx.graphics/com.sun.javafx.tk=ALL-UNNAMED -jar .\GLIMPSE-ScenarioBuilder\GLIMPSE-ScenarioBuilder.jar -options options_GCAM-global-8.2-windows.txt
 
 :END
