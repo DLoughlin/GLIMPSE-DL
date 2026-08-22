@@ -203,7 +203,7 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
 - Validation scope for this commit:
   - Touched files compile under Java 21 with JavaFX 21/ControlsFX 11.2.1 classpath.
 
-### Commit 9 - Smoke test and regression checklist sign-off
+### Commit 9 - Smoke test and regression checklist sign-off (completed 2026-08-22)
 
 - **Commit message**: `test: record Java 21/JavaFX 21 smoke and regression results`
 - **Tasks**:
@@ -214,6 +214,26 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
   - Optional test notes under `build_tmp/`
 - **Exit criteria**:
   - Migration status is transparent and reproducible.
+
+#### Commit 9 smoke-test snapshot
+
+- Environment used:
+  - Windows host (`powershell.exe`) with `openjdk 21.0.10` on `PATH`
+- ScenarioBuilder startup smoke (`../run_GLIMPSE_GCAM-USA-8.2-windows.bat`):
+  - **Fail** at application construction.
+  - Observed runtime error:
+    - `java.lang.IllegalAccessError: class impl.org.controlsfx.version.VersionChecker ... cannot access class com.sun.javafx.runtime.VersionInfo`
+  - Interpretation:
+    - ControlsFX 11.2.1 still touches internal JavaFX package `com.sun.javafx.runtime` and requires module export compatibility handling.
+- ModelInterface startup smoke (`../GLIMPSE-ModelInterface/run_GLIMPSE-ModelInterface-Windows.bat`):
+  - **Partial/indeterminate** for UI validation in this run (batch script launches detached with `start`, so CLI process exits immediately).
+  - Additional script hygiene issue observed:
+    - `#set JAVA_HOME=...` line is parsed as a command in `.bat` and emits `'#set' is not recognized...`.
+- Manual UI workflows status (open/save, trash actions, key tools):
+  - **Not yet verified** in this commit because ScenarioBuilder startup currently blocks at ControlsFX module-access error.
+- Follow-ups before final sign-off:
+  - Add and validate Java runtime flags for required JavaFX exports (or upgrade/downgrade ControlsFX to a fully compatible build).
+  - Re-run startup smoke, then complete manual workflow checks.
 
 ### Commit 10 - Finalize docs and rollback guidance
 
@@ -237,4 +257,4 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
 
 ## Suggested Immediate Next Commit
 
-- Continue with **Commit 8** (runtime behavior fixes and smoke-path stabilization).
+- Continue with **Commit 10** for final docs/rollback guidance after resolving the remaining ControlsFX/JavaFX module-access startup blocker.
