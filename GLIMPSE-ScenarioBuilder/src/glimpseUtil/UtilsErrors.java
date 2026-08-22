@@ -39,8 +39,6 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 
-import com.sun.javafx.tk.Toolkit;
-
 /**
  * Error-report dialog helpers extracted from {@link GLIMPSEUtils}.
  */
@@ -520,7 +518,9 @@ public final class UtilsErrors {
 				if (font == null) {
 					return false;
 				}
-				double textWidth = Toolkit.getToolkit().getFontLoader().computeStringWidth(text, font);
+				Text measure = new Text(text);
+				measure.setFont(font);
+				double textWidth = measure.getLayoutBounds().getWidth();
 				return textWidth > (available + 1.0);
 			}
 		});

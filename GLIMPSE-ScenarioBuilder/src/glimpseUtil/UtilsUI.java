@@ -45,9 +45,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.controlsfx.control.CheckComboBox;
 
-import com.sun.javafx.tk.FontLoader;
-import com.sun.javafx.tk.Toolkit;
-
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
@@ -67,6 +64,7 @@ import javafx.scene.control.TreeView;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.text.Font;
+import javafx.scene.text.Text;
 
 /**
  * Utility class for JavaFX/ControlsFX UI node creation and sizing.
@@ -476,7 +474,6 @@ public class UtilsUI {
         if (text == null)
             text = "";
 
-        FontLoader fontLoader = Toolkit.getToolkit().getFontLoader();
         double targetSize = size;
         double prefWidth = button.getPrefWidth();
         if (prefWidth <= 0 && button.getMinWidth() > 0) {
@@ -489,7 +486,7 @@ public class UtilsUI {
 
         while (targetSize > 0) {
             Font candidate = Font.font(targetSize);
-            double estimatedWidth = fontLoader.computeStringWidth(text, candidate);
+            double estimatedWidth = estimateTextWidth(text, candidate);
             boolean widthTooLarge = prefWidth > 0 && estimatedWidth > prefWidth - 5;
             boolean heightTooLarge = prefHeight > 0 && targetSize > prefHeight - 5;
             if (!widthTooLarge && !heightTooLarge) {
@@ -542,7 +539,6 @@ public class UtilsUI {
         if (text == null)
             text = "";
 
-        FontLoader fontLoader = Toolkit.getToolkit().getFontLoader();
         Font existingFont = label.getFont();
         String family = existingFont != null ? existingFont.getFamily() : null;
         double targetSize = size;
@@ -550,7 +546,7 @@ public class UtilsUI {
         if (prefWidth > 0) {
             while (targetSize > 0) {
                 Font candidate = Font.font(family, targetSize);
-                double predictedWidth = fontLoader.computeStringWidth(text, candidate);
+                double predictedWidth = estimateTextWidth(text, candidate);
                 if (predictedWidth <= prefWidth - 10) {
                     break;
                 }
@@ -593,6 +589,15 @@ public class UtilsUI {
         list = UtilsStrings.removeUSADuplicate(list);
         list = UtilsStrings.removeWorldRegion(list);
         return list;
+    }
+
+    private double estimateTextWidth(String text, Font font) {
+        if (font == null) {
+            return 0;
+        }
+        Text measure = new Text(text == null ? "" : text);
+        measure.setFont(font);
+        return measure.getLayoutBounds().getWidth();
     }
 
     /**

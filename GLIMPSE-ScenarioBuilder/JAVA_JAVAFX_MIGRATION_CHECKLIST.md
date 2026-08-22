@@ -152,7 +152,7 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
   - Script-level review completed; Linux shell syntax/runtime verification requires a host with `bash`.
   - Full Linux UI runtime smoke remains part of Commit 9 test sign-off.
 
-### Commit 7 - Fix first-pass JavaFX/ControlsFX compile breaks
+### Commit 7 - Fix first-pass JavaFX/ControlsFX compile breaks (completed 2026-08-22)
 
 - **Commit message**: `fix: resolve JavaFX 21 and ControlsFX API compile issues`
 - **Tasks**:
@@ -167,6 +167,17 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
   - `src/glimpseElement/PolicyTab.java`
 - **Exit criteria**:
   - Clean compile under Java 21 in ScenarioBuilder.
+
+#### Commit 7 compatibility-fix snapshot
+
+- Replaced unsupported internal JavaFX text measurement APIs (`com.sun.javafx.tk.Toolkit` / `FontLoader.computeStringWidth`) with supported `javafx.scene.text.Text` layout-bounds measurement in:
+  - `src/glimpseUtil/UtilsErrors.java`
+  - `src/glimpseUtil/UtilsUI.java`
+- Replaced removed `Thread.currentThread().destroy()` calls with safe early returns in:
+  - `src/glimpseElement/TabCafeStd.java`
+- Validation scope for this commit:
+  - Java 21 compile check of touched files succeeded.
+  - Full ScenarioBuilder Java 21 compile succeeded with JavaFX 21 module path and ControlsFX 11.2.1 (warnings only).
 
 ### Commit 8 - Runtime behavior fixes
 
@@ -213,4 +224,4 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
 
 ## Suggested Immediate Next Commit
 
-- Start with **Commit 5** (Windows launcher module-path wiring).
+- Continue with **Commit 8** (runtime behavior fixes and smoke-path stabilization).

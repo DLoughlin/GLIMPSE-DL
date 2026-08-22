@@ -410,7 +410,6 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 	private void saveScenarioComponent(TreeView<String> tree) {
 
 		if (!qaInputs()) {
-			Thread.currentThread().destroy();
 			return;
 		}
 
@@ -590,7 +589,7 @@ public class TabCafeStd extends PolicyTab implements Runnable {
 	private void saveScenarioComponentAlt1(TreeView<String> tree) {
 
 		if (!qaInputs()) {
-			Thread.currentThread().destroy();
+			return;
 		} else {
 
 			//// setting up policy name and suggested file name
