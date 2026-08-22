@@ -195,6 +195,10 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 	public static final String GRAPHICS_SUBTITLE_FONT_SIZE_PROPERTY = "graphicsSubtitleFontSize";
 	public static final String GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY = "graphicsAxisLabelFontSize";
 	public static final String GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY = "graphicsAxisTickFontSize";
+	public static final String GRAPHICS_DOMAIN_AXIS_LABEL_FONT_SIZE_PROPERTY = "graphicsDomainAxisLabelFontSize";
+	public static final String GRAPHICS_DOMAIN_AXIS_TICK_FONT_SIZE_PROPERTY = "graphicsDomainAxisTickFontSize";
+	public static final String GRAPHICS_RANGE_AXIS_LABEL_FONT_SIZE_PROPERTY = "graphicsRangeAxisLabelFontSize";
+	public static final String GRAPHICS_RANGE_AXIS_TICK_FONT_SIZE_PROPERTY = "graphicsRangeAxisTickFontSize";
 	public static final String GRAPHICS_LEGEND_FONT_SIZE_PROPERTY = "graphicsLegendFontSize";
 	public static final String GRAPHICS_LINE_WIDTH_SCALE_PROPERTY = "graphicsLineWidthScale";
 	public static final String GRAPHICS_THUMBNAIL_FONT_SIZE_PROPERTY = "graphicsThumbnailFontSize";
@@ -292,6 +296,18 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 		} catch (NumberFormatException nfe) {
 			return boundedFallback;
 		}
+	}
+
+	public static int resolveGraphicsFontSize(final Properties props, final String propertyKey,
+			final String legacyPropertyKey, final int defaultValue) {
+		String rawValue = null;
+		if (props != null) {
+			rawValue = props.getProperty(propertyKey);
+			if ((rawValue == null || rawValue.trim().isEmpty()) && legacyPropertyKey != null) {
+				rawValue = props.getProperty(legacyPropertyKey);
+			}
+		}
+		return parseBoundedIntValue(rawValue, defaultValue, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE);
 	}
 
 	public static int resolveConfiguredFontSize(final Properties props) {
@@ -1915,6 +1931,26 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			savedProperties.setProperty(GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY,
 					Integer.toString(DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE));
 		}
+		if (!savedProperties.containsKey(GRAPHICS_DOMAIN_AXIS_LABEL_FONT_SIZE_PROPERTY)) {
+			savedProperties.setProperty(GRAPHICS_DOMAIN_AXIS_LABEL_FONT_SIZE_PROPERTY,
+					savedProperties.getProperty(GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY,
+							Integer.toString(DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE)));
+		}
+		if (!savedProperties.containsKey(GRAPHICS_RANGE_AXIS_LABEL_FONT_SIZE_PROPERTY)) {
+			savedProperties.setProperty(GRAPHICS_RANGE_AXIS_LABEL_FONT_SIZE_PROPERTY,
+					savedProperties.getProperty(GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY,
+							Integer.toString(DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE)));
+		}
+		if (!savedProperties.containsKey(GRAPHICS_DOMAIN_AXIS_TICK_FONT_SIZE_PROPERTY)) {
+			savedProperties.setProperty(GRAPHICS_DOMAIN_AXIS_TICK_FONT_SIZE_PROPERTY,
+					savedProperties.getProperty(GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY,
+							Integer.toString(DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE)));
+		}
+		if (!savedProperties.containsKey(GRAPHICS_RANGE_AXIS_TICK_FONT_SIZE_PROPERTY)) {
+			savedProperties.setProperty(GRAPHICS_RANGE_AXIS_TICK_FONT_SIZE_PROPERTY,
+					savedProperties.getProperty(GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY,
+							Integer.toString(DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE)));
+		}
 		if (!savedProperties.containsKey(GRAPHICS_LEGEND_FONT_SIZE_PROPERTY)) {
 			savedProperties.setProperty(GRAPHICS_LEGEND_FONT_SIZE_PROPERTY,
 					Integer.toString(DEFAULT_GRAPHICS_LEGEND_FONT_SIZE));
@@ -1945,6 +1981,26 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 		savedProperties.setProperty(GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY,
 				Integer.toString(parseBoundedIntValue(savedProperties.getProperty(GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY),
 						DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE)));
+		savedProperties.setProperty(GRAPHICS_DOMAIN_AXIS_LABEL_FONT_SIZE_PROPERTY,
+				Integer.toString(resolveGraphicsFontSize(savedProperties,
+						GRAPHICS_DOMAIN_AXIS_LABEL_FONT_SIZE_PROPERTY,
+						GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY,
+						DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE)));
+		savedProperties.setProperty(GRAPHICS_RANGE_AXIS_LABEL_FONT_SIZE_PROPERTY,
+				Integer.toString(resolveGraphicsFontSize(savedProperties,
+						GRAPHICS_RANGE_AXIS_LABEL_FONT_SIZE_PROPERTY,
+						GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY,
+						DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE)));
+		savedProperties.setProperty(GRAPHICS_DOMAIN_AXIS_TICK_FONT_SIZE_PROPERTY,
+				Integer.toString(resolveGraphicsFontSize(savedProperties,
+						GRAPHICS_DOMAIN_AXIS_TICK_FONT_SIZE_PROPERTY,
+						GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY,
+						DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE)));
+		savedProperties.setProperty(GRAPHICS_RANGE_AXIS_TICK_FONT_SIZE_PROPERTY,
+				Integer.toString(resolveGraphicsFontSize(savedProperties,
+						GRAPHICS_RANGE_AXIS_TICK_FONT_SIZE_PROPERTY,
+						GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY,
+						DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE)));
 		savedProperties.setProperty(GRAPHICS_LEGEND_FONT_SIZE_PROPERTY,
 				Integer.toString(parseBoundedIntValue(savedProperties.getProperty(GRAPHICS_LEGEND_FONT_SIZE_PROPERTY),
 						DEFAULT_GRAPHICS_LEGEND_FONT_SIZE, MIN_GRAPHICS_FONT_SIZE, MAX_GRAPHICS_FONT_SIZE)));
@@ -2929,4 +2985,4 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			}
 		}
 	}
-}
+}

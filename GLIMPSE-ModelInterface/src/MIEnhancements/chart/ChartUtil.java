@@ -77,17 +77,22 @@ public class ChartUtil {
     public static final class GraphicsPreferences {
         public final int titleFontSize;
         public final int subtitleFontSize;
-        public final int axisLabelFontSize;
-        public final int axisTickFontSize;
+        public final int domainAxisLabelFontSize;
+        public final int domainAxisTickFontSize;
+        public final int rangeAxisLabelFontSize;
+        public final int rangeAxisTickFontSize;
         public final int legendFontSize;
         public final float lineWidthScale;
 
-        private GraphicsPreferences(int titleFontSize, int subtitleFontSize, int axisLabelFontSize,
-                int axisTickFontSize, int legendFontSize, float lineWidthScale) {
+        private GraphicsPreferences(int titleFontSize, int subtitleFontSize, int domainAxisLabelFontSize,
+                int domainAxisTickFontSize, int rangeAxisLabelFontSize, int rangeAxisTickFontSize,
+                int legendFontSize, float lineWidthScale) {
             this.titleFontSize = titleFontSize;
             this.subtitleFontSize = subtitleFontSize;
-            this.axisLabelFontSize = axisLabelFontSize;
-            this.axisTickFontSize = axisTickFontSize;
+            this.domainAxisLabelFontSize = domainAxisLabelFontSize;
+            this.domainAxisTickFontSize = domainAxisTickFontSize;
+            this.rangeAxisLabelFontSize = rangeAxisLabelFontSize;
+            this.rangeAxisTickFontSize = rangeAxisTickFontSize;
             this.legendFontSize = legendFontSize;
             this.lineWidthScale = lineWidthScale;
         }
@@ -148,14 +153,22 @@ public class ChartUtil {
                         InterfaceMain.DEFAULT_GRAPHICS_SUBTITLE_FONT_SIZE,
                         InterfaceMain.MIN_GRAPHICS_FONT_SIZE,
                         InterfaceMain.MAX_GRAPHICS_FONT_SIZE),
-                parseBoundedInt(props == null ? null : props.getProperty(InterfaceMain.GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY),
-                        InterfaceMain.DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE,
-                        InterfaceMain.MIN_GRAPHICS_FONT_SIZE,
-                        InterfaceMain.MAX_GRAPHICS_FONT_SIZE),
-                parseBoundedInt(props == null ? null : props.getProperty(InterfaceMain.GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY),
-                        InterfaceMain.DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE,
-                        InterfaceMain.MIN_GRAPHICS_FONT_SIZE,
-                        InterfaceMain.MAX_GRAPHICS_FONT_SIZE),
+                InterfaceMain.resolveGraphicsFontSize(props,
+                        InterfaceMain.GRAPHICS_DOMAIN_AXIS_LABEL_FONT_SIZE_PROPERTY,
+                        InterfaceMain.GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY,
+                        InterfaceMain.DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE),
+                InterfaceMain.resolveGraphicsFontSize(props,
+                        InterfaceMain.GRAPHICS_DOMAIN_AXIS_TICK_FONT_SIZE_PROPERTY,
+                        InterfaceMain.GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY,
+                        InterfaceMain.DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE),
+                InterfaceMain.resolveGraphicsFontSize(props,
+                        InterfaceMain.GRAPHICS_RANGE_AXIS_LABEL_FONT_SIZE_PROPERTY,
+                        InterfaceMain.GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY,
+                        InterfaceMain.DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE),
+                InterfaceMain.resolveGraphicsFontSize(props,
+                        InterfaceMain.GRAPHICS_RANGE_AXIS_TICK_FONT_SIZE_PROPERTY,
+                        InterfaceMain.GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY,
+                        InterfaceMain.DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE),
                 parseBoundedInt(props == null ? null : props.getProperty(InterfaceMain.GRAPHICS_LEGEND_FONT_SIZE_PROPERTY),
                         InterfaceMain.DEFAULT_GRAPHICS_LEGEND_FONT_SIZE,
                         InterfaceMain.MIN_GRAPHICS_FONT_SIZE,
@@ -168,6 +181,76 @@ public class ChartUtil {
 
     public static float getLineWidthScale() {
         return getGraphicsPreferences().lineWidthScale;
+    }
+
+    private static int boundedFontSize(Font font, int fallback) {
+        if (font == null) {
+            return fallback;
+        }
+        return InterfaceMain.parseBoundedIntValue(Integer.toString(font.getSize()), fallback,
+                InterfaceMain.MIN_GRAPHICS_FONT_SIZE, InterfaceMain.MAX_GRAPHICS_FONT_SIZE);
+    }
+
+    private static int resolveAxisLabelFontSize(Axis axis, int fallback) {
+        if (axis != null && axis.getLabelFont() != null) {
+            return boundedFontSize(axis.getLabelFont(), fallback);
+        }
+        return fallback;
+    }
+
+    private static int resolveAxisTickFontSize(Axis axis, int fallback) {
+        if (axis != null && axis.getTickLabelFont() != null) {
+            return boundedFontSize(axis.getTickLabelFont(), fallback);
+        }
+        return fallback;
+    }
+
+    public static GraphicsPreferences captureGraphicsPreferences(JFreeChart chart) {
+        GraphicsPreferences prefs = getGraphicsPreferences();
+        if (chart == null) {
+            return prefs;
+        }
+        int titleFontSize = prefs.titleFontSize;
+        int subtitleFontSize = prefs.subtitleFontSize;
+        int domainAxisLabelFontSize = prefs.domainAxisLabelFontSize;
+        int domainAxisTickFontSize = prefs.domainAxisTickFontSize;
+        int rangeAxisLabelFontSize = prefs.rangeAxisLabelFontSize;
+        int rangeAxisTickFontSize = prefs.rangeAxisTickFontSize;
+        int legendFontSize = prefs.legendFontSize;
+        if (chart.getTitle() != null) {
+            titleFontSize = boundedFontSize(chart.getTitle().getFont(), titleFontSize);
+        }
+        for (Object subtitleObj : chart.getSubtitles()) {
+            if (subtitleObj instanceof TextTitle) {
+                subtitleFontSize = boundedFontSize(((TextTitle) subtitleObj).getFont(), subtitleFontSize);
+                break;
+            }
+        }
+        if (chart.getLegend() != null) {
+            legendFontSize = boundedFontSize(chart.getLegend().getItemFont(), legendFontSize);
+        }
+        Plot plot = chart.getPlot();
+        if (plot instanceof CategoryPlot) {
+            CategoryPlot categoryPlot = (CategoryPlot) plot;
+            domainAxisLabelFontSize = resolveAxisLabelFontSize(categoryPlot.getDomainAxis(), domainAxisLabelFontSize);
+            domainAxisTickFontSize = resolveAxisTickFontSize(categoryPlot.getDomainAxis(), domainAxisTickFontSize);
+            rangeAxisLabelFontSize = resolveAxisLabelFontSize(categoryPlot.getRangeAxis(), rangeAxisLabelFontSize);
+            rangeAxisTickFontSize = resolveAxisTickFontSize(categoryPlot.getRangeAxis(), rangeAxisTickFontSize);
+        } else if (plot instanceof XYPlot) {
+            XYPlot xyPlot = (XYPlot) plot;
+            domainAxisLabelFontSize = resolveAxisLabelFontSize(xyPlot.getDomainAxis(), domainAxisLabelFontSize);
+            domainAxisTickFontSize = resolveAxisTickFontSize(xyPlot.getDomainAxis(), domainAxisTickFontSize);
+            rangeAxisLabelFontSize = resolveAxisLabelFontSize(xyPlot.getRangeAxis(), rangeAxisLabelFontSize);
+            rangeAxisTickFontSize = resolveAxisTickFontSize(xyPlot.getRangeAxis(), rangeAxisTickFontSize);
+        } else if (plot instanceof PiePlot) {
+            PiePlot piePlot = (PiePlot) plot;
+            int pieLabelFontSize = boundedFontSize(piePlot.getLabelFont(), domainAxisLabelFontSize);
+            domainAxisLabelFontSize = pieLabelFontSize;
+            rangeAxisLabelFontSize = pieLabelFontSize;
+        }
+        return new GraphicsPreferences(titleFontSize, subtitleFontSize, domainAxisLabelFontSize,
+                domainAxisTickFontSize, rangeAxisLabelFontSize, rangeAxisTickFontSize,
+                legendFontSize, prefs.lineWidthScale);
     }
 
     public static ThumbnailGraphicsPreferences getThumbnailGraphicsPreferences() {
@@ -220,19 +303,18 @@ public class ChartUtil {
         return template.deriveFont(style, (float) size);
     }
 
-    private static void applyAxisDefaults(Axis axis, GraphicsPreferences prefs) {
-        if (axis == null || prefs == null) {
+    private static void applyAxisDefaults(Axis axis, int labelFontSize, int tickFontSize) {
+        if (axis == null) {
             return;
         }
-        axis.setLabelFont(deriveFont(axis.getLabelFont(), Font.PLAIN, prefs.axisLabelFontSize));
-        axis.setTickLabelFont(deriveFont(axis.getTickLabelFont(), Font.PLAIN, prefs.axisTickFontSize));
+        axis.setLabelFont(deriveFont(axis.getLabelFont(), Font.PLAIN, labelFontSize));
+        axis.setTickLabelFont(deriveFont(axis.getTickLabelFont(), Font.PLAIN, tickFontSize));
     }
 
-    public static void applyGraphicsDefaults(JFreeChart chart) {
-        if (chart == null) {
+    public static void applyGraphicsPreferences(JFreeChart chart, GraphicsPreferences prefs) {
+        if (chart == null || prefs == null) {
             return;
         }
-        GraphicsPreferences prefs = getGraphicsPreferences();
         if (chart.getTitle() != null) {
             chart.getTitle().setFont(deriveFont(chart.getTitle().getFont(), Font.BOLD, prefs.titleFontSize));
             chart.getTitle().setVisible(true);
@@ -250,16 +332,59 @@ public class ChartUtil {
         Plot plot = chart.getPlot();
         if (plot instanceof CategoryPlot) {
             CategoryPlot categoryPlot = (CategoryPlot) plot;
-            applyAxisDefaults(categoryPlot.getDomainAxis(), prefs);
-            applyAxisDefaults(categoryPlot.getRangeAxis(), prefs);
+            applyAxisDefaults(categoryPlot.getDomainAxis(), prefs.domainAxisLabelFontSize, prefs.domainAxisTickFontSize);
+            applyAxisDefaults(categoryPlot.getRangeAxis(), prefs.rangeAxisLabelFontSize, prefs.rangeAxisTickFontSize);
         } else if (plot instanceof XYPlot) {
             XYPlot xyPlot = (XYPlot) plot;
-            applyAxisDefaults(xyPlot.getDomainAxis(), prefs);
-            applyAxisDefaults(xyPlot.getRangeAxis(), prefs);
+            applyAxisDefaults(xyPlot.getDomainAxis(), prefs.domainAxisLabelFontSize, prefs.domainAxisTickFontSize);
+            applyAxisDefaults(xyPlot.getRangeAxis(), prefs.rangeAxisLabelFontSize, prefs.rangeAxisTickFontSize);
         } else if (plot instanceof PiePlot) {
             PiePlot piePlot = (PiePlot) plot;
-            piePlot.setLabelFont(deriveFont(piePlot.getLabelFont(), Font.PLAIN, prefs.axisLabelFontSize));
+            piePlot.setLabelFont(deriveFont(piePlot.getLabelFont(), Font.PLAIN, prefs.domainAxisLabelFontSize));
         }
+    }
+
+    public static void applyGraphicsDefaults(JFreeChart chart) {
+        applyGraphicsPreferences(chart, getGraphicsPreferences());
+    }
+
+    public static void persistGraphicsPreferences(JFreeChart chart) {
+        InterfaceMain instance = null;
+        try {
+            instance = InterfaceMain.getInstance();
+        } catch (Throwable ignored) {
+            // Preserve chart customization in headless or early-start contexts.
+        }
+        if (instance == null) {
+            return;
+        }
+        GraphicsPreferences prefs = captureGraphicsPreferences(chart);
+        instance.updateProperties(properties -> {
+            properties.setProperty(InterfaceMain.GRAPHICS_TITLE_FONT_SIZE_PROPERTY,
+                    Integer.toString(prefs.titleFontSize));
+            properties.setProperty(InterfaceMain.GRAPHICS_SUBTITLE_FONT_SIZE_PROPERTY,
+                    Integer.toString(prefs.subtitleFontSize));
+            properties.setProperty(InterfaceMain.GRAPHICS_DOMAIN_AXIS_LABEL_FONT_SIZE_PROPERTY,
+                    Integer.toString(prefs.domainAxisLabelFontSize));
+            properties.setProperty(InterfaceMain.GRAPHICS_DOMAIN_AXIS_TICK_FONT_SIZE_PROPERTY,
+                    Integer.toString(prefs.domainAxisTickFontSize));
+            properties.setProperty(InterfaceMain.GRAPHICS_RANGE_AXIS_LABEL_FONT_SIZE_PROPERTY,
+                    Integer.toString(prefs.rangeAxisLabelFontSize));
+            properties.setProperty(InterfaceMain.GRAPHICS_RANGE_AXIS_TICK_FONT_SIZE_PROPERTY,
+                    Integer.toString(prefs.rangeAxisTickFontSize));
+            if (prefs.domainAxisLabelFontSize == prefs.rangeAxisLabelFontSize) {
+                properties.setProperty(InterfaceMain.GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY,
+                        Integer.toString(prefs.domainAxisLabelFontSize));
+            }
+            if (prefs.domainAxisTickFontSize == prefs.rangeAxisTickFontSize) {
+                properties.setProperty(InterfaceMain.GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY,
+                        Integer.toString(prefs.domainAxisTickFontSize));
+            }
+            properties.setProperty(InterfaceMain.GRAPHICS_LEGEND_FONT_SIZE_PROPERTY,
+                    Integer.toString(prefs.legendFontSize));
+            properties.setProperty(InterfaceMain.GRAPHICS_LINE_WIDTH_SCALE_PROPERTY,
+                    Float.toString(prefs.lineWidthScale));
+        });
     }
 
     /**

@@ -48,7 +48,10 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import java.awt.Frame;
 
@@ -56,12 +59,16 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
+import javax.swing.JComponent;
+import javax.swing.border.Border;
+import javax.swing.border.TitledBorder;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
@@ -148,10 +155,17 @@ public class AChartDisplay {
 		/** Opens the Customize dialog (also called by the toolbar button). */
 		@Override
 		public void doEditChartProperties() {
-			ChartEditor editor = ChartEditorManager.getChartEditor(getChart());
+			JFreeChart editableChart = getChart();
+			if (editableChart == null) {
+				return;
+			}
+			final ChartUtil.GraphicsPreferences originalGraphicsPreferences = ChartUtil.captureGraphicsPreferences(editableChart);
+			ChartUtil.applyGraphicsDefaults(editableChart);
+			ChartEditor editor = ChartEditorManager.getChartEditor(editableChart);
 			JTabbedPane editorTabs = null;
 			if (editor instanceof Component) {
-				insertSeriesTab((Component) editor, getChart());
+				insertSeriesTab((Component) editor, editableChart);
+				applyFriendlyAxisTerminology((Component) editor);
 				editorTabs = findTabbedPane((Container) editor);
 			}
 
@@ -159,16 +173,38 @@ public class AChartDisplay {
 			JDialog customizeDialog = new JDialog((Frame) null, "Customize Chart", true);
 			customizeDialog.setLayout(new BorderLayout());
 			customizeDialog.add((Component) editor, BorderLayout.CENTER);
+			final AtomicBoolean chartChangesCommitted = new AtomicBoolean(false);
+			final Runnable restoreOriginalChart = new Runnable() {
+				@Override
+				public void run() {
+					if (chartChangesCommitted.get()) {
+						return;
+					}
+					ChartUtil.applyGraphicsPreferences(editableChart, originalGraphicsPreferences);
+					repaintDisplayedChart();
+				}
+			};
+			customizeDialog.addWindowListener(new WindowAdapter() {
+				@Override
+				public void windowClosing(WindowEvent e) {
+					restoreOriginalChart.run();
+				}
+			});
 
 			JPanel buttonPanel = new JPanel();
 			JButton okBtn = new JButton("OK");
 			JButton cancelBtn = new JButton("Cancel");
 			okBtn.addActionListener(ae -> {
-				editor.updateChart(getChart());
-				refreshDisplayedChart(getChart());
+				editor.updateChart(editableChart);
+				ChartUtil.persistGraphicsPreferences(editableChart);
+				chartChangesCommitted.set(true);
+				refreshDisplayedChart(editableChart);
 				customizeDialog.dispose();
 			});
-			cancelBtn.addActionListener(ae -> customizeDialog.dispose());
+			cancelBtn.addActionListener(ae -> {
+				restoreOriginalChart.run();
+				customizeDialog.dispose();
+			});
 			buttonPanel.add(okBtn);
 			buttonPanel.add(cancelBtn);
 			customizeDialog.add(buttonPanel, BorderLayout.SOUTH);
@@ -680,7 +716,11 @@ public class AChartDisplay {
 			return;
 		}
 		JTabbedPane tabs = findTabbedPane((Container) editorComponent);
-		if (tabs == null || hasSeriesTab(tabs)) {
+		if (tabs == null) {
+			return;
+		}
+		removeTab(tabs, "Other");
+		if (hasSeriesTab(tabs)) {
 			return;
 		}
 		int insertIndex = resolveSeriesInsertIndex(tabs);
@@ -712,9 +752,60 @@ public class AChartDisplay {
 		return false;
 	}
 
+	private void removeTab(JTabbedPane tabs, String tabTitle) {
+		for (int i = 0; i < tabs.getTabCount(); i++) {
+			if (tabTitle.equalsIgnoreCase(tabs.getTitleAt(i))) {
+				tabs.removeTabAt(i);
+				return;
+			}
+		}
+	}
+
 	private int resolveSeriesInsertIndex(JTabbedPane tabs) {
 		// Place Series first — it is the most commonly used tab.
 		return 0;
+	}
+
+	private void applyFriendlyAxisTerminology(Component root) {
+		if (root == null) {
+			return;
+		}
+		if (root instanceof JTabbedPane) {
+			JTabbedPane tabs = (JTabbedPane) root;
+			for (int i = 0; i < tabs.getTabCount(); i++) {
+				tabs.setTitleAt(i, toFriendlyAxisText(tabs.getTitleAt(i)));
+			}
+		}
+		if (root instanceof JLabel) {
+			JLabel label = (JLabel) root;
+			label.setText(toFriendlyAxisText(label.getText()));
+		}
+		if (root instanceof JComponent) {
+			JComponent component = (JComponent) root;
+			Border border = component.getBorder();
+			if (border instanceof TitledBorder) {
+				TitledBorder titledBorder = (TitledBorder) border;
+				titledBorder.setTitle(toFriendlyAxisText(titledBorder.getTitle()));
+			}
+		}
+		if (root instanceof Container) {
+			for (Component child : ((Container) root).getComponents()) {
+				applyFriendlyAxisTerminology(child);
+			}
+		}
+	}
+
+	private String toFriendlyAxisText(String text) {
+		if (text == null || text.isEmpty()) {
+			return text;
+		}
+		return text
+				.replace("Domain Axis", "X-axis")
+				.replace("Domain axis", "X-axis")
+				.replace("domain axis", "x-axis")
+				.replace("Range Axis", "Y-axis")
+				.replace("Range axis", "Y-axis")
+				.replace("range axis", "y-axis");
 	}
 
 	private void refreshDisplayedChart(JFreeChart updatedChart) {
@@ -723,6 +814,15 @@ public class AChartDisplay {
 		}
 		ChartUtils.applyCurrentTheme(updatedChart);
 		ChartUtil.applyGraphicsDefaults(updatedChart);
+		repaintDisplayedChart(updatedChart);
+		syncLegendButton(updatedChart);
+	}
+
+	private void repaintDisplayedChart() {
+		repaintDisplayedChart(chartPanel == null ? null : chartPanel.getChart());
+	}
+
+	private void repaintDisplayedChart(JFreeChart updatedChart) {
 		if (chartPanel != null) {
 			chartPanel.setChart(updatedChart);
 			chartPanel.repaint();
@@ -730,7 +830,6 @@ public class AChartDisplay {
 		if (dialog != null) {
 			dialog.repaint();
 		}
-		syncLegendButton(updatedChart);
 	}
 
 	private void syncLegendButton(JFreeChart activeChart) {

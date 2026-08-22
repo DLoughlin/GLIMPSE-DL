@@ -173,6 +173,7 @@ public class ModifyLegend extends JDialog {
         jp.setLayout(gridbag);
         GridBagConstraints c = new GridBagConstraints();
         c.fill = GridBagConstraints.BOTH;
+        c.anchor = GridBagConstraints.NORTHWEST;
         c.insets = new Insets(1, 10, 5, 50);
         c.gridheight = 2;
         c.gridwidth = GridBagConstraints.REMAINDER;
@@ -201,6 +202,7 @@ public class ModifyLegend extends JDialog {
         for (int j = 0; j < legend.length; j++) {
             c = new GridBagConstraints();
             c.fill = 1;
+            c.anchor = GridBagConstraints.NORTHWEST;
             String name = String.valueOf(j);
             jtf = CreateComponent.crtJTextField(name, legend[j], j);
             jtf.setScrollOffset(10);
@@ -267,11 +269,21 @@ public class ModifyLegend extends JDialog {
             box.add(jb1);
         }
         c = new GridBagConstraints();
+        c.anchor = GridBagConstraints.NORTHWEST;
         c.gridwidth = GridBagConstraints.REMAINDER;
         c.weightx = 0.0;
         c.ipadx = 60;
         gridbag.setConstraints(box, c);
         jp.add(box);
+
+        c = new GridBagConstraints();
+        c.gridwidth = GridBagConstraints.REMAINDER;
+        c.weighty = 1.0;
+        c.fill = GridBagConstraints.VERTICAL;
+        JPanel spacer = new JPanel();
+        spacer.setOpaque(false);
+        gridbag.setConstraints(spacer, c);
+        jp.add(spacer);
 
         JScrollPane jsp = new JScrollPane(jp);
         jsp.setBorder(BorderFactory.createEmptyBorder());

@@ -60,8 +60,10 @@ final class PreferenceDialog {
 	private JComboBox<String> fontSizeCombo;
 	private javax.swing.JSpinner graphicsTitleFontSizeSpinner;
 	private javax.swing.JSpinner graphicsSubtitleFontSizeSpinner;
-	private javax.swing.JSpinner graphicsAxisLabelFontSizeSpinner;
-	private javax.swing.JSpinner graphicsAxisTickFontSizeSpinner;
+	private javax.swing.JSpinner graphicsDomainAxisLabelFontSizeSpinner;
+	private javax.swing.JSpinner graphicsDomainAxisTickFontSizeSpinner;
+	private javax.swing.JSpinner graphicsRangeAxisLabelFontSizeSpinner;
+	private javax.swing.JSpinner graphicsRangeAxisTickFontSizeSpinner;
 	private javax.swing.JSpinner graphicsLegendFontSizeSpinner;
 	private javax.swing.JSpinner graphicsLineWidthScaleSpinner;
 	private javax.swing.JSpinner graphicsThumbnailFontSizeSpinner;
@@ -404,16 +406,40 @@ final class PreferenceDialog {
 		panel.add(graphicsSubtitleFontSizeSpinner, gc);
 
 		gc.gridy++; gc.gridx = 0; gc.fill = java.awt.GridBagConstraints.HORIZONTAL;
-		panel.add(new javax.swing.JLabel("Axis label font size:"), gc);
+		panel.add(new javax.swing.JLabel("X-axis label font size:"), gc);
 		gc.gridx = 1; gc.fill = java.awt.GridBagConstraints.NONE;
-		graphicsAxisLabelFontSizeSpinner = graphicsFontSpinner(props, InterfaceMain.GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY, InterfaceMain.DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE);
-		panel.add(graphicsAxisLabelFontSizeSpinner, gc);
+		graphicsDomainAxisLabelFontSizeSpinner = graphicsFontSpinner(props,
+				InterfaceMain.GRAPHICS_DOMAIN_AXIS_LABEL_FONT_SIZE_PROPERTY,
+				InterfaceMain.GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY,
+				InterfaceMain.DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE);
+		panel.add(graphicsDomainAxisLabelFontSizeSpinner, gc);
 
 		gc.gridy++; gc.gridx = 0; gc.fill = java.awt.GridBagConstraints.HORIZONTAL;
-		panel.add(new javax.swing.JLabel("Axis tick/value font size:"), gc);
+		panel.add(new javax.swing.JLabel("X-axis tick/value font size:"), gc);
 		gc.gridx = 1; gc.fill = java.awt.GridBagConstraints.NONE;
-		graphicsAxisTickFontSizeSpinner = graphicsFontSpinner(props, InterfaceMain.GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY, InterfaceMain.DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE);
-		panel.add(graphicsAxisTickFontSizeSpinner, gc);
+		graphicsDomainAxisTickFontSizeSpinner = graphicsFontSpinner(props,
+				InterfaceMain.GRAPHICS_DOMAIN_AXIS_TICK_FONT_SIZE_PROPERTY,
+				InterfaceMain.GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY,
+				InterfaceMain.DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE);
+		panel.add(graphicsDomainAxisTickFontSizeSpinner, gc);
+
+		gc.gridy++; gc.gridx = 0; gc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+		panel.add(new javax.swing.JLabel("Y-axis label font size:"), gc);
+		gc.gridx = 1; gc.fill = java.awt.GridBagConstraints.NONE;
+		graphicsRangeAxisLabelFontSizeSpinner = graphicsFontSpinner(props,
+				InterfaceMain.GRAPHICS_RANGE_AXIS_LABEL_FONT_SIZE_PROPERTY,
+				InterfaceMain.GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY,
+				InterfaceMain.DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE);
+		panel.add(graphicsRangeAxisLabelFontSizeSpinner, gc);
+
+		gc.gridy++; gc.gridx = 0; gc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+		panel.add(new javax.swing.JLabel("Y-axis tick/value font size:"), gc);
+		gc.gridx = 1; gc.fill = java.awt.GridBagConstraints.NONE;
+		graphicsRangeAxisTickFontSizeSpinner = graphicsFontSpinner(props,
+				InterfaceMain.GRAPHICS_RANGE_AXIS_TICK_FONT_SIZE_PROPERTY,
+				InterfaceMain.GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY,
+				InterfaceMain.DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE);
+		panel.add(graphicsRangeAxisTickFontSizeSpinner, gc);
 
 		gc.gridy++; gc.gridx = 0; gc.fill = java.awt.GridBagConstraints.HORIZONTAL;
 		panel.add(new javax.swing.JLabel("Legend label font size:"), gc);
@@ -433,7 +459,8 @@ final class PreferenceDialog {
 			javax.swing.JSpinner[] spinners = {
 				graphicsThumbnailFontSizeSpinner, graphicsThumbnailLineWidthSpinner,
 				graphicsTitleFontSizeSpinner, graphicsSubtitleFontSizeSpinner,
-				graphicsAxisLabelFontSizeSpinner, graphicsAxisTickFontSizeSpinner,
+				graphicsDomainAxisLabelFontSizeSpinner, graphicsDomainAxisTickFontSizeSpinner,
+				graphicsRangeAxisLabelFontSizeSpinner, graphicsRangeAxisTickFontSizeSpinner,
 				graphicsLegendFontSizeSpinner, graphicsLineWidthScaleSpinner
 			};
 			int maxW = 0;
@@ -456,8 +483,10 @@ final class PreferenceDialog {
 			graphicsThumbnailLineWidthSpinner.setValue(InterfaceMain.DEFAULT_GRAPHICS_THUMBNAIL_LINE_WIDTH);
 			graphicsTitleFontSizeSpinner.setValue(InterfaceMain.DEFAULT_GRAPHICS_TITLE_FONT_SIZE);
 			graphicsSubtitleFontSizeSpinner.setValue(InterfaceMain.DEFAULT_GRAPHICS_SUBTITLE_FONT_SIZE);
-			graphicsAxisLabelFontSizeSpinner.setValue(InterfaceMain.DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE);
-			graphicsAxisTickFontSizeSpinner.setValue(InterfaceMain.DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE);
+			graphicsDomainAxisLabelFontSizeSpinner.setValue(InterfaceMain.DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE);
+			graphicsDomainAxisTickFontSizeSpinner.setValue(InterfaceMain.DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE);
+			graphicsRangeAxisLabelFontSizeSpinner.setValue(InterfaceMain.DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE);
+			graphicsRangeAxisTickFontSizeSpinner.setValue(InterfaceMain.DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE);
 			graphicsLegendFontSizeSpinner.setValue(InterfaceMain.DEFAULT_GRAPHICS_LEGEND_FONT_SIZE);
 			graphicsLineWidthScaleSpinner.setValue(InterfaceMain.DEFAULT_GRAPHICS_LINE_WIDTH_SCALE);
 		});
@@ -540,12 +569,28 @@ final class PreferenceDialog {
 		if (graphicsSubtitleFontSizeSpinner != null)
 			p.setProperty(InterfaceMain.GRAPHICS_SUBTITLE_FONT_SIZE_PROPERTY,
 					boundedIntStr(graphicsSubtitleFontSizeSpinner, InterfaceMain.DEFAULT_GRAPHICS_SUBTITLE_FONT_SIZE));
-		if (graphicsAxisLabelFontSizeSpinner != null)
-			p.setProperty(InterfaceMain.GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY,
-					boundedIntStr(graphicsAxisLabelFontSizeSpinner, InterfaceMain.DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE));
-		if (graphicsAxisTickFontSizeSpinner != null)
-			p.setProperty(InterfaceMain.GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY,
-					boundedIntStr(graphicsAxisTickFontSizeSpinner, InterfaceMain.DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE));
+		String domainAxisLabelFontSize = graphicsDomainAxisLabelFontSizeSpinner == null
+				? null
+				: boundedIntStr(graphicsDomainAxisLabelFontSizeSpinner, InterfaceMain.DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE);
+		String rangeAxisLabelFontSize = graphicsRangeAxisLabelFontSizeSpinner == null
+				? null
+				: boundedIntStr(graphicsRangeAxisLabelFontSizeSpinner, InterfaceMain.DEFAULT_GRAPHICS_AXIS_LABEL_FONT_SIZE);
+		String domainAxisTickFontSize = graphicsDomainAxisTickFontSizeSpinner == null
+				? null
+				: boundedIntStr(graphicsDomainAxisTickFontSizeSpinner, InterfaceMain.DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE);
+		String rangeAxisTickFontSize = graphicsRangeAxisTickFontSizeSpinner == null
+				? null
+				: boundedIntStr(graphicsRangeAxisTickFontSizeSpinner, InterfaceMain.DEFAULT_GRAPHICS_AXIS_TICK_FONT_SIZE);
+		if (domainAxisLabelFontSize != null)
+			p.setProperty(InterfaceMain.GRAPHICS_DOMAIN_AXIS_LABEL_FONT_SIZE_PROPERTY, domainAxisLabelFontSize);
+		if (rangeAxisLabelFontSize != null)
+			p.setProperty(InterfaceMain.GRAPHICS_RANGE_AXIS_LABEL_FONT_SIZE_PROPERTY, rangeAxisLabelFontSize);
+		if (domainAxisTickFontSize != null)
+			p.setProperty(InterfaceMain.GRAPHICS_DOMAIN_AXIS_TICK_FONT_SIZE_PROPERTY, domainAxisTickFontSize);
+		if (rangeAxisTickFontSize != null)
+			p.setProperty(InterfaceMain.GRAPHICS_RANGE_AXIS_TICK_FONT_SIZE_PROPERTY, rangeAxisTickFontSize);
+		updateLegacyAxisFontProperties(p, domainAxisLabelFontSize, rangeAxisLabelFontSize,
+				domainAxisTickFontSize, rangeAxisTickFontSize);
 		if (graphicsLegendFontSizeSpinner != null)
 			p.setProperty(InterfaceMain.GRAPHICS_LEGEND_FONT_SIZE_PROPERTY,
 					boundedIntStr(graphicsLegendFontSizeSpinner, InterfaceMain.DEFAULT_GRAPHICS_LEGEND_FONT_SIZE));
@@ -574,6 +619,16 @@ final class PreferenceDialog {
 				defaultValue, InterfaceMain.MIN_GRAPHICS_FONT_SIZE, InterfaceMain.MAX_GRAPHICS_FONT_SIZE));
 	}
 
+	private void updateLegacyAxisFontProperties(Properties p, String domainAxisLabelFontSize,
+			String rangeAxisLabelFontSize, String domainAxisTickFontSize, String rangeAxisTickFontSize) {
+		if (domainAxisLabelFontSize != null && domainAxisLabelFontSize.equals(rangeAxisLabelFontSize)) {
+			p.setProperty(InterfaceMain.GRAPHICS_AXIS_LABEL_FONT_SIZE_PROPERTY, domainAxisLabelFontSize);
+		}
+		if (domainAxisTickFontSize != null && domainAxisTickFontSize.equals(rangeAxisTickFontSize)) {
+			p.setProperty(InterfaceMain.GRAPHICS_AXIS_TICK_FONT_SIZE_PROPERTY, domainAxisTickFontSize);
+		}
+	}
+
 	// ---------------------------------------------------------------------------
 	// Widget factories
 	// ---------------------------------------------------------------------------
@@ -581,6 +636,12 @@ final class PreferenceDialog {
 	private javax.swing.JSpinner graphicsFontSpinner(Properties props, String key, int defaultValue) {
 		int value = InterfaceMain.parseBoundedIntValue(props.getProperty(key), defaultValue,
 				InterfaceMain.MIN_GRAPHICS_FONT_SIZE, InterfaceMain.MAX_GRAPHICS_FONT_SIZE);
+		return new javax.swing.JSpinner(new javax.swing.SpinnerNumberModel(
+				value, InterfaceMain.MIN_GRAPHICS_FONT_SIZE, InterfaceMain.MAX_GRAPHICS_FONT_SIZE, 1));
+	}
+
+	private javax.swing.JSpinner graphicsFontSpinner(Properties props, String key, String legacyKey, int defaultValue) {
+		int value = InterfaceMain.resolveGraphicsFontSize(props, key, legacyKey, defaultValue);
 		return new javax.swing.JSpinner(new javax.swing.SpinnerNumberModel(
 				value, InterfaceMain.MIN_GRAPHICS_FONT_SIZE, InterfaceMain.MAX_GRAPHICS_FONT_SIZE, 1));
 	}
