@@ -103,7 +103,7 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
 - Updated `.classpath` metadata to include JavaFX 21 Windows jars for local IDE compilation.
 - Quick compile check (`javac --release 21` with upgraded jars) no longer reports missing JavaFX/ControlsFX artifacts; remaining failures are API-level (`FontLoader.computeStringWidth`, `Thread.destroy`).
 
-### Commit 5 - Update launcher module flags (Windows)
+### Commit 5 - Update launcher module flags (Windows) (completed 2026-08-22)
 
 - **Commit message**: `build: update Windows launcher for JavaFX module path`
 - **Tasks**:
@@ -114,6 +114,18 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
   - ScenarioBuilder launch scripts in this repo
 - **Exit criteria**:
   - Windows launcher starts app to initial UI stage.
+
+#### Commit 5 launcher snapshot
+
+- Updated `../run_GLIMPSE_GCAM-USA-8.2-windows.bat` and `../run_GLIMPSE_GCAM-global-8.2-windows.bat` to:
+  - Prefer configured `%JAVA_HOME%` when valid.
+  - Fallback to legacy bundled Corretto path if present.
+  - Fallback to `java.exe` from `%PATH%` as last resort.
+  - Add JavaFX flags for Java 21+: `--module-path .\GLIMPSE-ScenarioBuilder\libs\javafx-21\win --add-modules=javafx.controls,javafx.fxml`.
+- Added explicit existence check for `javafx-controls-21.0.4-win.jar` before launch.
+- Validation scope for this commit:
+  - Script-path/runtime checks verified.
+  - Full GUI startup smoke remains part of Commit 9 test sign-off.
 
 ### Commit 6 - Update launcher module flags (Linux)
 
