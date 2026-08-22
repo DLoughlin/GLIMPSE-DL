@@ -60,7 +60,7 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
 - **ModelInterface dependency assumption**:
   - `../GLIMPSE-ModelInterface/.classpath` uses `JRE_CONTAINER` and third-party Swing/charting/geotools jars; no explicit JavaFX jar dependencies are declared.
 
-### Commit 3 - Add Java 21 compiler settings
+### Commit 3 - Add Java 21 compiler settings (completed 2026-08-22)
 
 - **Commit message**: `build: set source/target release to Java 21`
 - **Tasks**:
@@ -71,6 +71,15 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
   - Any local build scripts used for compile
 - **Exit criteria**:
   - Project attempts compile under Java 21, with failures captured for next commits.
+
+#### Commit 3 compile attempt snapshot
+
+- Command run from repo root used `javac 21.0.10` with `--release 21` over ScenarioBuilder and ModelInterface source trees.
+- First failure observed:
+  - `GLIMPSE-ModelInterface/src/mif411/ModelInterface/UnitConversionInstance.java:29`
+  - `error: unmappable character (0x92) for encoding UTF-8`
+- Immediate interpretation:
+  - Compiler level change is in place; next commits need encoding normalization or explicit `javac -encoding` alignment before broader API migration fixes.
 
 ### Commit 4 - Upgrade JavaFX and ControlsFX artifacts
 
