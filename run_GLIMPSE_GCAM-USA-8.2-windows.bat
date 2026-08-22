@@ -1,4 +1,6 @@
 rem If the following command does not start the ScenarioBuilder, correct the JAVA_HOME path
+rem Migration inventory note: this launcher currently assumes a Java 8 Corretto JRE layout
+rem and starts ScenarioBuilder by classpath/jar launch (not Java module-path launch).
 
 set JAVA_HOME=%~dp0\amazon-corretto-8.442.06.1-windows-x64-jre
 

@@ -1,5 +1,7 @@
 #!/bin/bash
 # If the following command does not start the ModelInterface, correct the JAVA_HOME path
+# Migration inventory note: this launcher expects JAVA_HOME/bin/java and JAVA_HOME/bin/server
+# and uses java -jar (not module-path JavaFX launch flags).
 
 # Set these variables
 #JAVA_HOME="../amazon-corretto-8.462.08.1-linux-x64"

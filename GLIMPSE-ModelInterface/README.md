@@ -1,5 +1,17 @@
 # GLIMPSE ModelInterface
 
+## Runtime baseline (pre Java 21 migration)
+
+- Windows launcher: `run_GLIMPSE-ModelInterface-Windows.bat`
+  - Requires `%JAVA_HOME%\\bin\\java.exe`.
+  - Prepends `%JAVA_HOME%\\bin\\server` and `%JAVA_HOME%\\bin` to `PATH`.
+  - Launches with `java -jar ./GLIMPSE-ModelInterface.jar ...`.
+- Linux launcher: `run-GLIMPSE-ModelInterface_Linux.sh`
+  - Requires `$JAVA_HOME/bin/java`.
+  - Prepends `$JAVA_HOME/bin/server` and `$JAVA_HOME/bin` to `PATH`.
+  - Launches with `java -jar ./GLIMPSE-ModelInterface.jar ...`.
+- Current `.classpath` in this module relies on `JRE_CONTAINER` and third-party libraries; it does not declare JavaFX module jars explicitly.
+
 ## Command-line font size override (`-s`)
 
 You can override the General UI font size at startup with:

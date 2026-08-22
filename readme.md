@@ -17,6 +17,14 @@ Please note: GLIMPSE-CE is a separate project from PNNL's GLIMPSE, which is a to
 
 We recommend installation on computers with 20 GB of RAM or more and with more than 100 GB of free hard disk space. GLIMPSE consists of two major components: the GLIMPSE-CE ScenarioBuilder and the GLIMPSE-CE ModelInterface. The ScenarioBuilder has been developed and tested on Windows 10, Windows 11. It has also recently been ported to Ubuntu linux. The GLIMPSE-CE ModelInterface can be used independently and has been succesfully tested on Mac and Linux operating systems.
 
+## Java and JavaFX launcher baseline (pre-migration)
+
+- `run_GLIMPSE_GCAM-USA-8.2-windows.bat` currently points `JAVA_HOME` to a bundled Java 8 Corretto JRE path: `amazon-corretto-8.442.06.1-windows-x64-jre`.
+- The same launcher sets `PATH` to include `%JAVA_HOME%\bin\server` and starts ScenarioBuilder with `java -Dprism.order=sw -jar ...`.
+- `GLIMPSE-ScenarioBuilder/.classpath` currently references `libs/controlsfx-8.40.18.jar` and `JRE_CONTAINER`; JavaFX modules are not explicitly pinned there.
+- `GLIMPSE-ModelInterface/run_GLIMPSE-ModelInterface-Windows.bat` and `GLIMPSE-ModelInterface/run-GLIMPSE-ModelInterface_Linux.sh` both require a valid `JAVA_HOME` and launch with `java -jar`.
+- This baseline is intentionally documented to support migration to Java 21 + JavaFX 21 in commit-sized steps.
+
 ## Important information
 
 The User's Guide is carried over from EPA's GLIMPSE for now. Please note that the results shown in the guide are for a different version of GCAM and will be different. Also, many aspects of the GLIMPSE-CE graphical user interface have been updated, so features may be slightly different than they appear in the User's Guide. Nonetheless, the User's Guide is a good place to start with GLIMPSE-CE. PThe User's Guide, which can be found in the Docs folder, for installation instructions. We also recommend the tutorials as a good starting place for learning to operate many of GLIMPSE's features. 

@@ -1,4 +1,6 @@
 rem If the following command does not start the ScenarioBuilder, correct the JAVA_HOME path
+rem Migration inventory note: this launcher expects JAVA_HOME to point to a JRE/JDK
+rem that provides bin\java.exe and bin\server.
 echo ON 
 
 rem Set these variables; comment out line to use default
