@@ -150,7 +150,9 @@ public class QueryResultsPanel extends JPanel {
 						errorMessage = "Query cancelled.";
 					} else {
 						errorMessage = buildDetailedErrorMessage(e, shouldIncludeErrorStackTrace());
-						e.printStackTrace();
+						if (!"The query returned no results.".equals(e.getMessage())) {
+							e.printStackTrace();
+						}
 					}
 				} finally {
 					// Ensure we always mark this query as completed so the progress UI stays in sync.

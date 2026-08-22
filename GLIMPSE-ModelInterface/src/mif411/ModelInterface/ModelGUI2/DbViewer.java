@@ -768,6 +768,9 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	}
 
 	private static final class ResultsTabsBackgroundUI extends BasicTabbedPaneUI {
+		/** 1-px border drawn at the top (and sides) of every tab so row edges are always visible. */
+		private static final Color TAB_BORDER_COLOR = new Color(110, 110, 110);
+
 		@Override
 		protected void paintTabBackground(Graphics g, int tabPlacement, int tabIndex,
 				int x, int y, int w, int h, boolean isSelected) {
@@ -780,6 +783,26 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			}
 			g.setColor(tabColor);
 			g.fillRect(x, y, w, h);
+		}
+
+		@Override
+		protected void paintTabBorder(Graphics g, int tabPlacement, int tabIndex,
+				int x, int y, int w, int h, boolean isSelected) {
+			// Let BasicTabbedPaneUI draw its normal 3-D chrome first, then paint a
+			// guaranteed-visible 1-px dark line on the three non-content edges so that
+			// every row of tabs has a clear top border regardless of L&F colors.
+			super.paintTabBorder(g, tabPlacement, tabIndex, x, y, w, h, isSelected);
+			g.setColor(TAB_BORDER_COLOR);
+			// Top edge — always drawn; this is the line that separates tab rows.
+			g.drawLine(x, y, x + w - 1, y);
+			// Left edge
+			g.drawLine(x, y, x, y + h - 1);
+			// Right edge
+			g.drawLine(x + w - 1, y, x + w - 1, y + h - 1);
+			// Bottom edge only for unselected tabs (selected tab is visually open to the content pane).
+			if (!isSelected) {
+				g.drawLine(x, y + h - 1, x + w - 1, y + h - 1);
+			}
 		}
 	}
 
@@ -1513,6 +1536,49 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 				"Export Tabs as CSVs",
 				messageType);
 		}
+	}
+
+	/**
+	 * Prompts the user to choose a save location and exports a single tab to a CSV file.
+	 *
+	 * @param tabIndex the index of the tab to export
+	 */
+	public void exportSingleTabCSV(final int tabIndex) {
+		if (tabIndex < 0 || tabIndex >= tablesTabs.getTabCount()) return;
+		final InterfaceMain main = InterfaceMain.getInstance();
+		final JFrame parentFrame = main.getFrame();
+		final String tabTitle = tablesTabs.getTitleAt(tabIndex);
+		final String fileName = tabTitle.replaceAll("[^a-zA-Z0-9.-]", "_") + ".csv";
+		FileChooser fc = FileChooserFactory.getFileChooser();
+		final FileFilter dirFilter = new DirectoryFilter();
+		File[] exportDirs = fc.doFilePrompt(parentFrame, "Save Tab as CSV", FileChooser.LOAD_DIALOG,
+				new File(main.getProperties().getProperty("lastDirectory", ".")), dirFilter);
+		if (exportDirs == null || exportDirs.length == 0) return;
+		File exportDir = exportDirs[0].isDirectory() ? exportDirs[0] : exportDirs[0].getParentFile();
+		if (exportDir == null) return;
+		final JTable table = getJTableFromComponent(tablesTabs.getComponentAt(tabIndex));
+		if (table == null) {
+			main.showMessageDialog("This tab does not contain a table that can be exported.",
+					"Save As CSV", JOptionPane.WARNING_MESSAGE);
+			return;
+		}
+		main.getProperties().setProperty("lastDirectory", exportDir.getAbsolutePath());
+		File outFile = new File(exportDir, fileName);
+		PrintWriter pw = null;
+		try {
+			pw = new PrintWriter(outFile);
+			exportTableToCSV(table, pw);
+			pw.close();
+		} catch (final FileNotFoundException e) {
+			main.showMessageDialog("Could not write to file:\n" + outFile.getAbsolutePath(),
+					"Save As CSV", JOptionPane.ERROR_MESSAGE);
+			e.printStackTrace();
+			return;
+		} finally {
+			if (pw != null) pw.close();
+		}
+		main.showMessageDialog("Saved: " + outFile.getAbsolutePath(), "Save As CSV",
+				JOptionPane.INFORMATION_MESSAGE);
 	}
 
 	private static String formatSkippedTabList(List<String> tabNames) {
@@ -3015,10 +3081,12 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 							// Register that a new query is starting so the progress UI can track it
 							registerNewQuery(ret);
 
-							// adds new tab for query results panel
-							tablesTabs.addTab(qg.toString(), loadingIcon, ret, createCommentTooltip(selPaths[i]));
+							// adds new tab for query results panel — custom header puts close button on the right.
+							tablesTabs.addTab(qg.toString(), null, ret, createCommentTooltip(selPaths[i]));
+							final int newTabIdx0 = tablesTabs.getTabCount() - 1;
+							tablesTabs.setTabComponentAt(newTabIdx0, loadingIcon.createTabHeader(qg.toString(), DbViewer.this));
 							if (!movedTabAlready) {
-								tablesTabs.setSelectedIndex(tablesTabs.getTabCount() - 1);
+								tablesTabs.setSelectedIndex(newTabIdx0);
 								movedTabAlready = true;
 							}
 
@@ -3079,11 +3147,13 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 									regionList.getSelectedValues(), loadingIcon, doTotalCheckBox.isSelected());
 							// Register that a new diff query is starting so the progress UI can track it
 							registerNewQuery(ret);
-							// adds new tab for query results panel
-							tablesTabs.addTab("Diff: " + qg.toString(), loadingIcon, ret,
+							// adds new tab for diff query — custom header puts close button on the right.
+							tablesTabs.addTab("Diff: " + qg.toString(), null, ret,
 									createCommentTooltip(selPaths[i]));
+							final int newTabIdx1 = tablesTabs.getTabCount() - 1;
+							tablesTabs.setTabComponentAt(newTabIdx1, loadingIcon.createTabHeader("Diff: " + qg.toString(), DbViewer.this));
 							if (!movedTabAlready) {
-								tablesTabs.setSelectedIndex(tablesTabs.getTabCount() - 1);
+								tablesTabs.setSelectedIndex(newTabIdx1);
 								movedTabAlready = true;
 							}
 
