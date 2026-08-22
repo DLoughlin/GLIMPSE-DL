@@ -2,7 +2,11 @@
 <classpath>
 	<classpathentry excluding="glimpseUI/ButtonRefreshComponents.java|glimpseUI/ButtonShowRunQueue.java|glimpseUI/ButtonUtil.java|glimpseUI/ButtonViewLog.java|glimpseUI/ButtonViewConfig.java|glimpseUI/ButtonBrowse.java|glimpseUI/ButtonLeftArrow.java|glimpseUI/ButtonRightArrow.java|glimpseUI/test.java|glimpseBuilder/ScenarioBuilder.java|glimpseUI1/|glimpseBuilder/ScenarioBuilder1.java|glimpseBuilder/ScenarioBuilderUI.java|glimpseUI/|glimpseold/|gui/GameContext.java|gui/GlimpseButtoms.java|file/|gui/ButVar.java|gui/XMLModifier.java" kind="src" path="src"/>
 	<classpathentry kind="lib" path="libs/java-diff-utils-4.0.jar"/>
-	<classpathentry kind="lib" path="libs/controlsfx-8.40.18.jar"/>
+	<classpathentry kind="lib" path="libs/controlsfx-11.2.1.jar"/>
+	<classpathentry kind="lib" path="libs/javafx-21/win/javafx-base-21.0.4-win.jar"/>
+	<classpathentry kind="lib" path="libs/javafx-21/win/javafx-graphics-21.0.4-win.jar"/>
+	<classpathentry kind="lib" path="libs/javafx-21/win/javafx-controls-21.0.4-win.jar"/>
+	<classpathentry kind="lib" path="libs/javafx-21/win/javafx-fxml-21.0.4-win.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-21">
 		<attributes>
 			<attribute name="module" value="true"/>

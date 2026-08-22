@@ -81,7 +81,7 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
 - Immediate interpretation:
   - Compiler level change is in place; next commits need encoding normalization or explicit `javac -encoding` alignment before broader API migration fixes.
 
-### Commit 4 - Upgrade JavaFX and ControlsFX artifacts
+### Commit 4 - Upgrade JavaFX and ControlsFX artifacts (completed 2026-08-22)
 
 - **Commit message**: `deps: upgrade to JavaFX 21 and ControlsFX 11.2`
 - **Tasks**:
@@ -93,6 +93,15 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
   - Any dependency manifest or classpath metadata in use
 - **Exit criteria**:
   - Dependencies resolve locally; compile failures are API-related (not missing jars).
+
+#### Commit 4 dependency snapshot
+
+- Added JavaFX 21.0.4 module jars under:
+  - `libs/javafx-21/win/` (`base`, `graphics`, `controls`, `fxml`)
+  - `libs/javafx-21/linux/` (`base`, `graphics`, `controls`, `fxml`)
+- Added `libs/controlsfx-11.2.1.jar` and replaced classpath entries previously pointing to `libs/controlsfx-8.40.18.jar`.
+- Updated `.classpath` metadata to include JavaFX 21 Windows jars for local IDE compilation.
+- Quick compile check (`javac --release 21` with upgraded jars) no longer reports missing JavaFX/ControlsFX artifacts; remaining failures are API-level (`FontLoader.computeStringWidth`, `Thread.destroy`).
 
 ### Commit 5 - Update launcher module flags (Windows)
 
@@ -179,4 +188,4 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
 
 ## Suggested Immediate Next Commit
 
-- Start with **Commit 2** (inventory runtime assumptions) if baseline docs are acceptable.
+- Start with **Commit 5** (Windows launcher module-path wiring).
