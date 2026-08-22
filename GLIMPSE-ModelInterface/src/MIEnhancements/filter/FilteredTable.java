@@ -41,6 +41,9 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import javax.swing.table.JTableHeader;
 import java.math.BigDecimal;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -207,6 +210,10 @@ public class FilteredTable {
         } catch (Exception e) {
             System.out.println("FilteredTable Caught: ");
             e.printStackTrace();
+        }
+        // Attach right-click "Collapse" context menu to the column header
+        if (jtable != null) {
+            addColumnHeaderContextMenu();
         }
         Box box = Box.createHorizontalBox();
         // Filter button
@@ -824,4 +831,150 @@ public class FilteredTable {
 		System.out.println("Estimated chart count based on " + scenarioCount + " scenarios and " + regionCount + " regions: " + chartCount);
 		return chartCount;
 	}
+
+    // -------------------------------------------------------------------------
+    // Column-collapse feature
+    // -------------------------------------------------------------------------
+
+    /**
+     * Attaches a right-click popup menu to the table column header.  When the
+     * user right-clicks a categorical (label) column – i.e. any column to the
+     * left of the first year/numeric column – a "Collapse" item is shown.
+     * Selecting it removes that column and sums numeric values for rows that
+     * now share the same remaining key, mirroring the (:collapse:) behaviour
+     * available in GCAM XPath queries.
+     */
+    private void addColumnHeaderContextMenu() {
+        JTableHeader header = jtable.getTableHeader();
+        header.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (!SwingUtilities.isRightMouseButton(e)) return;
+                int viewCol = header.columnAtPoint(e.getPoint());
+                if (viewCol < 0 || viewCol >= doubleIndex) return; // only label cols
+                JPopupMenu popup = new JPopupMenu();
+                String colName = jtable.getColumnName(viewCol);
+                JMenuItem item = new JMenuItem("Collapse \u201c" + colName + "\u201d");
+                item.addActionListener(ae -> collapseColumn(viewCol));
+                popup.add(item);
+                popup.show(header, e.getX(), e.getY());
+            }
+        });
+    }
+
+    /**
+     * Removes the categorical column at {@code viewColIdx} from the displayed
+     * table and rebuilds it so that rows sharing the same remaining label values
+     * are merged, with their numeric (year) cells summed.
+     *
+     * @param viewColIdx The view-space index of the column to collapse.
+     */
+    private void collapseColumn(int viewColIdx) {
+        int modelColIdx = jtable.convertColumnIndexToModel(viewColIdx);
+
+        if (modelColIdx >= doubleIndex) {
+            JOptionPane.showMessageDialog(jtable,
+                "Only label columns (to the left of the year columns) can be collapsed.");
+            return;
+        }
+
+        int colCount     = tableModel.getColumnCount();
+        int rowCount     = tableModel.getRowCount();
+        int unitsColIdx  = colCount - 1;         // last column is always units
+        int numYearCols  = colCount - doubleIndex - 1; // numeric year columns
+        int newDoubleIdx = doubleIndex - 1;
+        int newColCount  = colCount - 1;
+
+        String collapsedColName = tableModel.getColumnName(modelColIdx);
+
+        // Build new column names (omit the collapsed column)
+        String[] newColNames = new String[newColCount];
+        for (int origCol = 0, newCol = 0; origCol < colCount; origCol++) {
+            if (origCol != modelColIdx) newColNames[newCol++] = tableModel.getColumnName(origCol);
+        }
+
+        // Group rows by the surviving categorical columns; accumulate numeric sums
+        LinkedHashMap<String, double[]> sumsMap = new LinkedHashMap<>();
+        LinkedHashMap<String, String[]> catMap  = new LinkedHashMap<>();
+        LinkedHashMap<String, String>   unitMap = new LinkedHashMap<>();
+
+        for (int row = 0; row < rowCount; row++) {
+            StringBuilder sb = new StringBuilder();
+            String[] catVals = new String[newDoubleIdx];
+            for (int origCol = 0, newCol = 0; origCol < doubleIndex; origCol++) {
+                if (origCol == modelColIdx) continue;
+                String val = collapseValueToString(tableModel.getValueAt(row, origCol));
+                catVals[newCol] = val;
+                sb.append(val).append('\u0000');
+                newCol++;
+            }
+            String key = sb.toString();
+
+            if (!sumsMap.containsKey(key)) {
+                sumsMap.put(key, new double[numYearCols]);
+                catMap.put(key, catVals);
+                unitMap.put(key, collapseValueToString(tableModel.getValueAt(row, unitsColIdx)));
+            }
+
+            double[] rowSums = sumsMap.get(key);
+            for (int yi = 0; yi < numYearCols; yi++) {
+                Object val = tableModel.getValueAt(row, doubleIndex + yi);
+                if (val != null) {
+                    try { rowSums[yi] += Double.parseDouble(val.toString()); }
+                    catch (NumberFormatException ignore) {}
+                }
+            }
+        }
+
+        // Assemble collapsed data
+        String[][] collapsed = new String[sumsMap.size()][newColCount];
+        int ri = 0;
+        for (String key : sumsMap.keySet()) {
+            String[] catVals = catMap.get(key);
+            double[] rowSums = sumsMap.get(key);
+            for (int i = 0; i < newDoubleIdx; i++)          collapsed[ri][i]                  = catVals[i];
+            for (int i = 0; i < numYearCols; i++)            collapsed[ri][newDoubleIdx + i]   = toSigFigs(rowSums[i], sigfigs);
+            collapsed[ri][newColCount - 1] = unitMap.get(key);
+            ri++;
+        }
+
+        // Commit
+        doubleIndex = newDoubleIdx;
+        DefaultTableModel newModel = new DefaultTableModel(collapsed, newColNames) {
+            @Override public boolean isCellEditable(int row, int column) { return false; }
+        };
+        jtable.setModel(newModel);
+        tableModel = newModel;
+
+        sorter = new TableRowSorter<>(tableModel);
+        jtable.setRowSorter(sorter);
+        for (int colC = 0; colC < jtable.getColumnCount(); colC++) {
+            try {
+                Double.parseDouble(jtable.getColumnName(colC));
+                sorter.setComparator(colC, buildDoubleStringComparator());
+            } catch (NumberFormatException ignore) {}
+        }
+
+        jtable.revalidate();
+        jtable.repaint();
+        System.out.println("Collapsed column \"" + collapsedColName + "\": " + collapsed.length + " rows remain.");
+    }
+
+    /** Converts a table cell value to a non-null String. */
+    private static String collapseValueToString(Object val) {
+        return (val == null) ? "" : val.toString();
+    }
+
+    /** Comparator that sorts strings numerically when parseable as doubles. */
+    private static Comparator<String> buildDoubleStringComparator() {
+        return (v1, v2) -> {
+            Double d1 = null, d2 = null;
+            try { d1 = Double.parseDouble(v1); } catch (NumberFormatException ignore) {}
+            try { d2 = Double.parseDouble(v2); } catch (NumberFormatException ignore) {}
+            if (d1 == null && d2 == null) return 0;
+            if (d1 == null) return 1;
+            if (d2 == null) return -1;
+            return Double.compare(d1, d2);
+        };
+    }
 }
