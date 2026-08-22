@@ -14,17 +14,22 @@ MAPS="./map_resources"
 # Optional UI font size override (must match Preferences > General allowed values)
 # Example: FONT_SIZE="14"
 
-# Checking JAVA_HOME setup
-if [ ! -f "$JAVA_HOME/bin/java" ]; then
-  echo "JAVA_HOME setting needs to be fixed"
-  read -p "Press enter to continue..."
+# Resolve java using the same migration order used by ScenarioBuilder launchers.
+JAVA_BIN=""
+LEGACY_BUNDLED_JAVA="../amazon-corretto-8.462.08.1-linux-x64/bin/java"
+
+if [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+  JAVA_BIN="$JAVA_HOME/bin/java"
+elif [ -x "$LEGACY_BUNDLED_JAVA" ]; then
+  JAVA_BIN="$LEGACY_BUNDLED_JAVA"
+elif command -v java >/dev/null 2>&1; then
+  JAVA_BIN="$(command -v java)"
+else
+  echo "Could not find java. Set JAVA_HOME or add java to PATH."
   exit 1
 fi
 
-JAVA_JVM_PATH="$JAVA_HOME/bin/server"
-export PATH=".:$JAVA_JVM_PATH:$JAVA_HOME:$JAVA_HOME/bin:$PATH"
-
 # To pass font size at launch, append: -s "$FONT_SIZE"
-java -jar ./GLIMPSE-ModelInterface.jar -q $QUERY_FILE -o $DATABASE -u $UNITS -f $FAVORITES -p $REGIONS -m $MAPS
+"$JAVA_BIN" -jar ./GLIMPSE-ModelInterface.jar -q "$QUERY_FILE" -o "$DATABASE" -u "$UNITS" -f "$FAVORITES" -p "$REGIONS" -m "$MAPS"
 
 exit 0

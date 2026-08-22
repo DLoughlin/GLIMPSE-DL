@@ -127,7 +127,7 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
   - Script-path/runtime checks verified.
   - Full GUI startup smoke remains part of Commit 9 test sign-off.
 
-### Commit 6 - Update launcher module flags (Linux)
+### Commit 6 - Update launcher module flags (Linux) (completed 2026-08-22)
 
 - **Commit message**: `build: update Linux launcher for JavaFX module path`
 - **Tasks**:
@@ -138,6 +138,19 @@ This plan converts the high-level checklist into commit-sized tasks that can be 
   - Any Linux launchers used by ScenarioBuilder
 - **Exit criteria**:
   - Linux launcher command line is migration-ready and documented.
+
+#### Commit 6 launcher snapshot
+
+- Updated `../run_GLIMPSE_GCAM-USA-8.2-linux.sh` and `../run_GLIMPSE_GCAM-global-8.2-linux.sh` to:
+  - Prefer `JAVA_HOME` when valid.
+  - Fallback to legacy bundled Corretto path if present.
+  - Fallback to `java` from `PATH` as last resort.
+  - Add JavaFX flags for Java 21+: `--module-path ./GLIMPSE-ScenarioBuilder/libs/javafx-21/linux --add-modules javafx.controls,javafx.fxml`.
+- Added explicit existence check for `javafx-controls-21.0.4-linux.jar` before launch.
+- Updated `../GLIMPSE-ModelInterface/run-GLIMPSE-ModelInterface_Linux.sh` Java resolution order for consistency with ScenarioBuilder launchers.
+- Validation scope for this commit:
+  - Script-level review completed; Linux shell syntax/runtime verification requires a host with `bash`.
+  - Full Linux UI runtime smoke remains part of Commit 9 test sign-off.
 
 ### Commit 7 - Fix first-pass JavaFX/ControlsFX compile breaks
 
