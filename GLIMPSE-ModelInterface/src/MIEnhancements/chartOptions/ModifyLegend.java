@@ -351,25 +351,21 @@ public class ModifyLegend extends JDialog {
         JButton jb = new JButton(name);
         jb.setName(name);
         jb.setToolTipText(String.valueOf(i));
-        MouseListener ml = new MouseAdapter() {
-            public void mousePressed(MouseEvent e) {
-                JButton jb1 = (JButton) e.getSource();
-                if (e.getClickCount() > 0)
-                    jbColor = jb1;
-                if (jb1.getName().equals("Apply")) {
-                    doApply();
-                } else if (jb1.getName().equals("Save")) {
-                    chart.storelegendInfo(chart.getLegend().split(","), getLegendInfoStr());
-                } else if (jb1.getName().equals("Save Default")) {
-                    chart.storelegendInfoGlobal(chart.getLegend().split(","), getLegendInfoStr());
-                } else if (jb1.getName().equals("Save For Query")) {
-                    chart.storelegendInfoLocal(chart.getLegend().split(","), getLegendInfoStr());
-                } else if (jb1.getName().equals("Done")) {
-                    cancelDialog.dispose();
-                }
-            }
-        };
-        jb.addMouseListener(ml);
+        jb.addActionListener(e -> {
+          JButton jb1 = (JButton) e.getSource();
+          jbColor = jb1;
+          if (jb1.getName().equals("Apply")) {
+            doApply();
+          } else if (jb1.getName().equals("Save")) {
+            chart.storelegendInfo(chart.getLegend().split(","), getLegendInfoStr());
+          } else if (jb1.getName().equals("Save Default")) {
+            chart.storelegendInfoGlobal(chart.getLegend().split(","), getLegendInfoStr());
+          } else if (jb1.getName().equals("Save For Query")) {
+            chart.storelegendInfoLocal(chart.getLegend().split(","), getLegendInfoStr());
+          } else if (jb1.getName().equals("Done")) {
+            cancelDialog.dispose();
+          }
+        });
         return jb;
     }
 

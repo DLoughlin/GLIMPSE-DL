@@ -91,17 +91,16 @@ public class CreateComponent {
             }
         });
 
-        // Add window state listener for activation/deactivation
+        // Do not toggle visibility on activation/deactivation. Hiding a dialog when it
+        // loses activation can reorder focus/mouse events and cause click-through onto
+        // the underlying DbViewer UI.
         dialog.addWindowStateListener(new WindowStateListener() {
             @Override
             public void windowStateChanged(WindowEvent e) {
                 JDialog dialog = (JDialog) e.getSource();
-                if (e.getNewState() == WindowEvent.WINDOW_ACTIVATED)
-                    dialog.setVisible(true);
-                else if (e.getNewState() == WindowEvent.WINDOW_DEACTIVATED)
-                    dialog.setVisible(false);
                 if (debug)
-                    System.out.println("CreateComponent::crtJDialog:windowStateChanged:name " + dialog.getTitle());
+                    System.out.println("CreateComponent::crtJDialog:windowStateChanged:name " + dialog.getTitle()
+                            + " state=" + e.getNewState());
             }
         });
 

@@ -178,22 +178,17 @@ public class ChartMarker {
         JButton jb = new JButton(name);
         jb.setName(name);
         jb.setToolTipText(String.valueOf(i));
-        jb.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                JButton jb1 = (JButton) e.getSource();
-                if (e.getClickCount() > 0) {
-                    if (jb1.getName().equals("Apply")) {
-                        doApply();
-                        chart.setMarkerMap(markerMap);
-                    } else if (jb1.getName().equals("Save")) {
-                        JOptionPane.showMessageDialog(getDialogParent(), "Not implemented yet", "Information",
-                                JOptionPane.INFORMATION_MESSAGE);
-                    } else if (jb1.getName().equals("Done")) {
-                        dialog1.dispose();
-                    }
-                }
-            }
+        jb.addActionListener(e -> {
+          JButton jb1 = (JButton) e.getSource();
+          if (jb1.getName().equals("Apply")) {
+            doApply();
+            chart.setMarkerMap(markerMap);
+          } else if (jb1.getName().equals("Save")) {
+            JOptionPane.showMessageDialog(getDialogParent(), "Not implemented yet", "Information",
+                JOptionPane.INFORMATION_MESSAGE);
+          } else if (jb1.getName().equals("Done")) {
+            dialog1.dispose();
+          }
         });
         return jb;
     }

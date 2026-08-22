@@ -202,23 +202,18 @@ public class AnnotationChartPane {
         JButton jb = new JButton(name);
         jb.setName(name);
         jb.setToolTipText(String.valueOf(i));
-        MouseListener ml = new MouseAdapter() {
-            public void mousePressed(MouseEvent e) {
-                JButton jb1 = (JButton) e.getSource();
-                if (e.getClickCount() > 0) {
-                    if (jb1.getName().equals("Apply")) {
-                        doApply();
-                        buildAnnotationText();
-                    } else if (jb1.getName().equals("Save")) {
-                        JOptionPane.showMessageDialog(getDialogParent(), "Not implement yet", "Information",
-                                JOptionPane.INFORMATION_MESSAGE);
-                    } else if (jb1.getName().equals("Done")) {
-                        dialog.dispose();
-                    }
-                }
-            }
-        };
-        jb.addMouseListener(ml);
+        jb.addActionListener(e -> {
+          JButton jb1 = (JButton) e.getSource();
+          if (jb1.getName().equals("Apply")) {
+            doApply();
+            buildAnnotationText();
+          } else if (jb1.getName().equals("Save")) {
+            JOptionPane.showMessageDialog(getDialogParent(), "Not implement yet", "Information",
+                JOptionPane.INFORMATION_MESSAGE);
+          } else if (jb1.getName().equals("Done")) {
+            dialog.dispose();
+          }
+        });
         return jb;
     }
 

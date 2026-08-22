@@ -287,30 +287,29 @@ public class FilterTreePane {
         box.add(Box.createHorizontalGlue()); // add glue before buttons for centering
         JButton jb = new JButton("Ok");
         jb.setName("Ok");
-        MouseListener ml = new MouseAdapter() {
-            public void mousePressed(MouseEvent e) {
-                JButton but = (JButton) e.getSource();
-                if (but.getName().trim().equals("Ok")) {
-                    // If filter all unchecked give warning message
-                              if (selOptions.isEmpty()) {
-                                JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Select filter", "Warning", JOptionPane.WARNING_MESSAGE);
-                    } else {
-                        // Apply filter and close dialog
-                        FilteredTable ft = new FilteredTable(selOptions, chartName, unit, path, jtable, sp);
-                        dialog.dispose();
-						ft.autoGraph();
-                    }
-                } else {
-                    dialog.dispose();
-                }
+        java.awt.event.ActionListener buttonListener = e -> {
+          JButton but = (JButton) e.getSource();
+          if (but.getName().trim().equals("Ok")) {
+            // If filter all unchecked give warning message
+            if (selOptions.isEmpty()) {
+              JOptionPane.showMessageDialog(InterfaceMain.getInstance().getFrame(), "Select filter", "Warning",
+                  JOptionPane.WARNING_MESSAGE);
+            } else {
+              // Apply filter and close dialog after the button click has completed.
+              FilteredTable ft = new FilteredTable(selOptions, chartName, unit, path, jtable, sp);
+              dialog.dispose();
+              ft.autoGraph();
             }
+          } else {
+            dialog.dispose();
+          }
         };
-        jb.addMouseListener(ml);
+        jb.addActionListener(buttonListener);
         box.add(jb);
         box.add(Box.createHorizontalStrut(10)); // space between buttons
         jb = new JButton("Cancel");
         jb.setName("Cancel");
-        jb.addMouseListener(ml);
+        jb.addActionListener(buttonListener);
         box.add(jb);
         box.add(Box.createHorizontalGlue()); // add glue after buttons for centering
         return box;

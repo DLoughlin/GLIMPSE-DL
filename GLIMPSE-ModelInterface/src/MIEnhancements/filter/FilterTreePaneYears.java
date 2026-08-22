@@ -147,21 +147,19 @@ public class FilterTreePaneYears {
         Box box = Box.createHorizontalBox();
         JButton jb = new JButton("Ok");
         jb.setName("Ok");
-        MouseListener ml = new MouseAdapter() {
-            public void mousePressed(MouseEvent e) {
-                JButton but = (JButton) e.getSource();
-                if (but.getName().trim().equals("Ok")) {
-                    filterSelectedYears.sort(null); // Sort numerically
-                    main.setProperty("selectedYearList", String.join(";", filterSelectedYears));
-                }
-                dialog.dispose();
-            }
+        java.awt.event.ActionListener buttonListener = e -> {
+          JButton but = (JButton) e.getSource();
+          if (but.getName().trim().equals("Ok")) {
+            filterSelectedYears.sort(null); // Sort numerically
+            main.setProperty("selectedYearList", String.join(";", filterSelectedYears));
+          }
+          dialog.dispose();
         };
-        jb.addMouseListener(ml);
+        jb.addActionListener(buttonListener);
         box.add(jb);
         jb = new JButton("Cancel");
         jb.setName("Cancel");
-        jb.addMouseListener(ml);
+        jb.addActionListener(buttonListener);
         box.add(jb);
         return box;
     }
