@@ -119,9 +119,9 @@ public class AChartDisplay {
 	/** Container that keeps the chart buttons visible below the chart area. */
 	private JPanel chartPaneContainer = null;
 	/** Default dialog size X */
-	private int smallSizeX = 540;
+	private int smallSizeX = 270;
 	/** Default dialog size Y */
-	private int smallSizeY = 480;
+	private int smallSizeY = 240;
 	/** Small extra height for split-pane/dialog chrome around the table area. */
 	private static final int TABLE_CHROME_ALLOWANCE = 12;
 	/** Preserved chart viewport size used to keep chart geometry stable across toggles. */
@@ -303,6 +303,8 @@ public class AChartDisplay {
 					// User-driven window resizing should be allowed to resize the chart.
 					clearPreservedChartViewportSize();
 					updateChartScrollBarPolicies();
+					// Recalculate and apply chart scaling for new viewport size
+					SwingUtilities.invokeLater(() -> fitChartViewToViewport());
 				}
 			});
 			dialog.setSize(new Dimension(smallSizeX, smallSizeY));
@@ -423,6 +425,11 @@ public class AChartDisplay {
 		if (chartPaneContainer != null) {
 			chartPaneContainer.setPreferredSize(null);
 		}
+		// Allow the chart to expand when user manually resizes the dialog
+		if (chartPanel != null) {
+			chartPanel.setMaximumDrawWidth(Integer.MAX_VALUE);
+			chartPanel.setMaximumDrawHeight(Integer.MAX_VALUE);
+		}
 	}
 
 	private void updateChartScrollBarPolicies() {
@@ -454,6 +461,12 @@ public class AChartDisplay {
 			}
 		}
 		jp.setPreferredSize(target);
+		// Scale the chart to fit the viewport to prevent scrollbars and ensure
+		// the X axis and legend labels are fully visible
+		if (chartPanel != null) {
+			chartPanel.setMaximumDrawWidth(target.width);
+			chartPanel.setMaximumDrawHeight(target.height);
+		}
 		jp.revalidate();
 		if (chartPaneContainer != null) {
 			chartPaneContainer.revalidate();

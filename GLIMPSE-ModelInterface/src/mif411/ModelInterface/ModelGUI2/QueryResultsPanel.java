@@ -141,12 +141,13 @@ public class QueryResultsPanel extends JPanel {
 					}
 				} catch (org.basex.core.jobs.JobException e) {
 					// This is expected when a query is interrupted by the user.
-					// We can ignore it.
+					// We can ignore it and suppress the stack trace.
 					errorMessage = "Query cancelled.";
 				} catch (Exception e) {
-					if (e.getCause() instanceof org.basex.core.jobs.JobException) {
+					if (e instanceof org.basex.core.jobs.JobException ||
+					    e.getCause() instanceof org.basex.core.jobs.JobException) {
 						// This is expected when a query is interrupted by the user.
-						// We can ignore it.
+						// We can ignore it and suppress the stack trace.
 						errorMessage = "Query cancelled.";
 					} else {
 						errorMessage = buildDetailedErrorMessage(e, shouldIncludeErrorStackTrace());

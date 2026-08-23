@@ -995,7 +995,8 @@ public class ComboTableModel extends BaseTableModel {
 		} catch (Exception e) {
 			// if this is a job exception it means the user has cancelled the query
 			// so we should just re-throw it and not print the stack trace
-			if (e.getCause() instanceof org.basex.core.jobs.JobException) {
+			if (e instanceof org.basex.core.jobs.JobException || 
+			    e.getCause() instanceof org.basex.core.jobs.JobException) {
 				throw e;
 			}
 			e.printStackTrace();

@@ -37,6 +37,8 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.BasicStroke;
 import java.awt.Insets;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
@@ -792,16 +794,23 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			// guaranteed-visible 1-px dark line on the three non-content edges so that
 			// every row of tabs has a clear top border regardless of L&F colors.
 			super.paintTabBorder(g, tabPlacement, tabIndex, x, y, w, h, isSelected);
-			g.setColor(TAB_BORDER_COLOR);
-			// Top edge — always drawn; this is the line that separates tab rows.
-			g.drawLine(x, y, x + w - 1, y);
-			// Left edge
-			g.drawLine(x, y, x, y + h - 1);
-			// Right edge
-			g.drawLine(x + w - 1, y, x + w - 1, y + h - 1);
+			Graphics2D g2d = (Graphics2D) g;
+			g2d.setColor(TAB_BORDER_COLOR);
+			
+			// Top edge — always drawn at full width; this is the line that separates tab rows.
+			g2d.setStroke(new java.awt.BasicStroke(1.0f));
+			g2d.drawLine(x, y, x + w - 1, y);
+			
+			// Right edge only — drawn at 0.5 width to create vertical dividers that are
+			// half as thick as the top border. Only the right border is drawn so adjacent
+			// tabs don't double up on thickness.
+			g2d.setStroke(new java.awt.BasicStroke(0.5f));
+			g2d.drawLine(x + w - 1, y, x + w - 1, y + h - 1);
+			
 			// Bottom edge only for unselected tabs (selected tab is visually open to the content pane).
 			if (!isSelected) {
-				g.drawLine(x, y + h - 1, x + w - 1, y + h - 1);
+				g2d.setStroke(new java.awt.BasicStroke(1.0f));
+				g2d.drawLine(x, y + h - 1, x + w - 1, y + h - 1);
 			}
 		}
 	}

@@ -801,7 +801,7 @@ public class PaneScenarioLibrary extends ScenarioBuilder {
                     "No ModelInterface map resources folder was found; launching without mapping support.");
         }
 
-        showModelInterfaceLaunchingToast(5000);
+        // showModelInterfaceLaunchingToast(5000);  // Startup dialog disabled - no longer needed
 
         try {
             Future<?> modelInterfaceFuture = Client.modelInterfaceExecutionThread.submitCommandWithDirectory(

@@ -62,8 +62,8 @@ import ModelInterface.ModelGUI2.tables.BaseTableModel;
 
 public class TabCloseIcon implements Icon {
 
-	private static final int CLOSE_ICON_WIDTH_DELTA = 8;
-	private static final int CLOSE_ICON_HEIGHT_DELTA = 10;
+	private static final int CLOSE_ICON_WIDTH_DELTA = 2;
+	private static final int CLOSE_ICON_HEIGHT_DELTA = 4;
 	private static final int CLOSE_ICON_TEXT_GAP = 6;
 	private static final int TAB_ICON_LEFT_INSET = 4;
 	private static final int CLOSE_ICON_HIT_PADDING = 3;
@@ -368,11 +368,11 @@ public class TabCloseIcon implements Icon {
 		private final JButton closeButton;
 		private final DbViewer dbViewer;
 
-		private TabHeaderPanel(final String title, final DbViewer dbViewer) {
-			super(new FlowLayout(FlowLayout.LEFT, 9, 0));
-			this.dbViewer = dbViewer;
-			setOpaque(false);
-			setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+	private TabHeaderPanel(final String title, final DbViewer dbViewer) {
+		super(new FlowLayout(FlowLayout.LEFT, 3, 0));
+		this.dbViewer = dbViewer;
+		setOpaque(false);
+		setBorder(BorderFactory.createEmptyBorder(0, 1, 0, 1));
 
 			titleLabel = new JLabel(title);
 			titleLabel.setForeground(RUNNING_LABEL_COLOR);
