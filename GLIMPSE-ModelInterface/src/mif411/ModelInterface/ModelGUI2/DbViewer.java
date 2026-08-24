@@ -40,8 +40,8 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.BasicStroke;
 import java.awt.Insets;
-import java.awt.Toolkit;
-import java.awt.datatransfer.Clipboard;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ContainerAdapter;
@@ -3650,19 +3650,27 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 
 	private class TabDragListener implements MouseListener, MouseMotionListener {
 		MouseEvent firstMouseEvent = null;
-		Clipboard clip = Toolkit.getDefaultToolkit().getSystemClipboard();
+
+		private Point getTabPanePoint(final MouseEvent e) {
+			return SwingUtilities.convertPoint((Component) e.getSource(), e.getPoint(), tablesTabs);
+		}
+
+		private boolean isPointInSelectedTab(final Point pointInTabPane) {
+			if (tablesTabs.getTabCount() == 0 || tablesTabs.getSelectedIndex() < 0) {
+				return false;
+			}
+			final Rectangle selectedBounds = tablesTabs.getBoundsAt(tablesTabs.getSelectedIndex());
+			return selectedBounds != null && selectedBounds.contains(pointInTabPane);
+		}
 
 		public void mousePressed(MouseEvent e) {
-			JComponent c = (JComponent) e.getSource();
-			if (tablesTabs.getTabCount() > 0
-					&& tablesTabs.getBoundsAt(tablesTabs.getSelectedIndex()).contains(e.getPoint())) {
-				if (e.getButton() == 3) {
-					// Tell the transfer handler to initiate the copy.
-					c.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-					tablesTabs.getTransferHandler().exportToClipboard(tablesTabs, clip, TransferHandler.COPY);
-					c.setCursor(Cursor.getDefaultCursor());
-				}
-				firstMouseEvent = e;
+			if (!SwingUtilities.isLeftMouseButton(e)) {
+				return;
+			}
+			final Point tabPanePoint = getTabPanePoint(e);
+			if (isPointInSelectedTab(tabPanePoint)) {
+				firstMouseEvent = new MouseEvent(tablesTabs, e.getID(), e.getWhen(), e.getModifiersEx(),
+						tabPanePoint.x, tabPanePoint.y, e.getClickCount(), e.isPopupTrigger(), e.getButton());
 				e.consume();
 			}
 
@@ -3671,14 +3679,14 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 		public void mouseDragged(MouseEvent e) {
 			// make sure that there was a press first and that that tab has not
 			// since been closed
-			if (firstMouseEvent != null && tablesTabs.getTabCount() > 0
-					&& tablesTabs.getBoundsAt(tablesTabs.getSelectedIndex()).contains(e.getPoint())) {
+			final Point tabPanePoint = getTabPanePoint(e);
+			if (firstMouseEvent != null && isPointInSelectedTab(tabPanePoint)) {
 				e.consume();
 
 				int action = TransferHandler.COPY;
 
-				int dx = Math.abs(e.getX() - firstMouseEvent.getX());
-				int dy = Math.abs(e.getY() - firstMouseEvent.getY());
+				int dx = Math.abs(tabPanePoint.x - firstMouseEvent.getX());
+				int dy = Math.abs(tabPanePoint.y - firstMouseEvent.getY());
 				// Arbitrarily define a 5-pixel shift as the
 				// official beginning of a drag.
 				if (dx > 5 || dy > 5) {

@@ -37,6 +37,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.Insets;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -62,8 +63,8 @@ import ModelInterface.ModelGUI2.tables.BaseTableModel;
 
 public class TabCloseIcon implements Icon {
 
-	private static final int CLOSE_ICON_WIDTH_DELTA = 2;
-	private static final int CLOSE_ICON_HEIGHT_DELTA = 4;
+	private static final int CLOSE_ICON_WIDTH_DELTA = 0;
+	private static final int CLOSE_ICON_HEIGHT_DELTA = 2;
 	private static final int CLOSE_ICON_TEXT_GAP = 6;
 	private static final int TAB_ICON_LEFT_INSET = 4;
 	private static final int CLOSE_ICON_HIT_PADDING = 3;
@@ -432,10 +433,22 @@ public class TabCloseIcon implements Icon {
 			//                    mouseReleased event that triggered the popup from
 			//                    immediately activating the menu item under the cursor.
 			final MouseAdapter tabInteractionListener = new MouseAdapter() {
+				private void forwardLeftMouseEventToTabPane(final MouseEvent e) {
+					if (!SwingUtilities.isLeftMouseButton(e)) {
+						return;
+					}
+					final Point tabPoint = SwingUtilities.convertPoint(e.getComponent(), e.getPoint(), tabPane);
+					final MouseEvent forwarded = new MouseEvent(tabPane, e.getID(), e.getWhen(), e.getModifiersEx(),
+							tabPoint.x, tabPoint.y, e.getClickCount(), e.isPopupTrigger(), e.getButton());
+					tabPane.dispatchEvent(forwarded);
+				}
+
 				@Override public void mousePressed(final MouseEvent e) {
 					if (SwingUtilities.isLeftMouseButton(e)) {
 						final int idx = tabPane.indexOfTabComponent(TabHeaderPanel.this);
 						if (idx >= 0) tabPane.setSelectedIndex(idx);
+						// Preserve tab drag-to-export behavior when events originate on header child components.
+						forwardLeftMouseEventToTabPane(e);
 					}
 					if (e.isPopupTrigger()) {
 						final MouseEvent ev = e;
@@ -444,7 +457,13 @@ public class TabCloseIcon implements Icon {
 						});
 					}
 				}
+				@Override public void mouseDragged(final MouseEvent e) {
+					forwardLeftMouseEventToTabPane(e);
+				}
 				@Override public void mouseReleased(final MouseEvent e) {
+					if (SwingUtilities.isLeftMouseButton(e)) {
+						forwardLeftMouseEventToTabPane(e);
+					}
 					if (e.isPopupTrigger()) {
 						final MouseEvent ev = e;
 						SwingUtilities.invokeLater(new Runnable() {
@@ -455,6 +474,8 @@ public class TabCloseIcon implements Icon {
 			};
 			addMouseListener(tabInteractionListener);
 			titleLabel.addMouseListener(tabInteractionListener);
+			addMouseMotionListener(tabInteractionListener);
+			titleLabel.addMouseMotionListener(tabInteractionListener);
 		}
 
 		/** Closes this tab — shared by the close button action and the right-click "Close" menu item. */

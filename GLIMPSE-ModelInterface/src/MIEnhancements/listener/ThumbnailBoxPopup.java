@@ -57,6 +57,8 @@ import java.awt.Component;
 public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
 
     private static final long serialVersionUID = 1L;
+    private static final String MENU_REFRESH = "Refresh";
+    private static final String MENU_CLOSE = "Close";
     /** Menu options for chart operations */
     private final String[] menuOptions = { "Difference", "Transpose", "Breakout" };
     private Chart[] charts;
@@ -129,9 +131,15 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
         this.add(sameScaleMenuItem);
         
         if (refreshAction != null) {
-            JMenuItem refreshItem = new JMenuItem("Refresh");
+            JMenuItem refreshItem = new JMenuItem(MENU_REFRESH);
             refreshItem.addActionListener(this);
             this.add(refreshItem);
+
+            if (!hideOptions) {
+                JMenuItem closeItem = new JMenuItem(MENU_CLOSE);
+                closeItem.addActionListener(this);
+                this.add(closeItem);
+            }
         }
     }
 
@@ -142,10 +150,12 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
      */
     @Override
     public void actionPerformed(ActionEvent e) {
-        if ("Refresh".equals(e.getActionCommand())) {
+        if (MENU_REFRESH.equals(e.getActionCommand())) {
             if (refreshAction != null) {
                 refreshAction.run();
             }
+        } else if (MENU_CLOSE.equals(e.getActionCommand())) {
+            closeThumbnailArea();
         } else if (e.getSource() == sameScaleMenuItem) {
             useSameScale = sameScaleMenuItem.isSelected();
             if (onSameScaleChange != null) {
@@ -168,33 +178,7 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
                     } else if (selected.equalsIgnoreCase("Breakout")) {
                         // Show breakout chart
                         new Breakout(charts.clone(), thumbnailWidth, gridWidth, useSameScale, splitPane, true);
-                        // After showing the breakout dialog, clear thumbnails from the query tab's right component
-                        try {
-                            if (splitPane != null) {
-                                // Remove the right component entirely so the left component can fill the area
-                                Component currentRight = splitPane.getRightComponent();
-                                if (currentRight != null) {
-                                    try {
-                                        splitPane.remove(currentRight);
-                                    } catch (Exception ignore) {
-                                    }
-                                }
-                                // Ensure no right component remains
-                                splitPane.setRightComponent(null);
-                                // Move divider fully to the right so left component occupies full width
-                                try {
-                                    splitPane.setDividerLocation(1.0);
-                                } catch (Exception ignore) {
-                                    // Fallback: set to max integer
-                                    splitPane.setDividerLocation(splitPane.getWidth());
-                                }
-                                splitPane.revalidate();
-                                splitPane.repaint();
-                            }
-                        } catch (Exception ex) {
-                            // Non-fatal: log or ignore to avoid breaking the popup action
-                            ex.printStackTrace();
-                        }
+                        closeThumbnailArea();
                     }
                 }
             } catch (ClassNotFoundException | NullPointerException ex) {
@@ -205,6 +189,34 @@ public class ThumbnailBoxPopup extends JPopupMenu implements ActionListener {
             }
         }
         this.setVisible(false); // Hide popup after action
+    }
+
+    /**
+     * Hides the thumbnail area in the source tab by removing the split pane's right component.
+     */
+    private void closeThumbnailArea() {
+        try {
+            if (splitPane != null) {
+                Component currentRight = splitPane.getRightComponent();
+                if (currentRight != null) {
+                    try {
+                        splitPane.remove(currentRight);
+                    } catch (Exception ignore) {
+                    }
+                }
+                splitPane.setRightComponent(null);
+                try {
+                    splitPane.setDividerLocation(1.0);
+                } catch (Exception ignore) {
+                    splitPane.setDividerLocation(splitPane.getWidth());
+                }
+                splitPane.revalidate();
+                splitPane.repaint();
+            }
+        } catch (Exception ex) {
+            // Non-fatal: keep popup action resilient even if the UI state is unexpected.
+            ex.printStackTrace();
+        }
     }
 
 }
