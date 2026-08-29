@@ -201,9 +201,9 @@ public class FilterTreePane {
             tree.setCellRenderer(new TreeSelCellRenderer());
             tree.setLargeModel(true);
             tree.setExpandsSelectedPaths(true);
-            // Set font and row height for better scaling
-            // Increased from +13 to +19 to match larger checkbox (26x26 instead of 20x20)
-            tree.setRowHeight(tree.getFont().getSize() + 19);
+            // Keep rows compact while still scaling cleanly with larger fonts/DPI.
+            int compactRowHeight = Math.max(tree.getFontMetrics(tree.getFont()).getHeight() + 4, 22);
+            tree.setRowHeight(compactRowHeight);
             TreeNode root = (TreeNode) tree.getModel().getRoot();
             TreePath tPath = new TreePath(root);
             tree.expandPath(tPath);
@@ -416,7 +416,7 @@ public class FilterTreePane {
                         setNodeBoolean(leaf, selected, n);
                     }
                 }
-                checkPartial(pn, ((TrNode) pn.getUserObject()).isSelected);
+                checkPartial(pn);
             } else if (tNode.isLeaf()) {
                 if (leaf != null) {
                     if (Arrays.asList(leaf).contains(keyStr.trim())) {
@@ -430,7 +430,7 @@ public class FilterTreePane {
                 else
                     selOptions.remove(keyStr, keyStr);
                 DefaultMutableTreeNode pn = (DefaultMutableTreeNode) node.getParent();
-                checkPartial(pn, ((TrNode) pn.getUserObject()).isSelected);
+                checkPartial(pn);
             }
             if (debug)
                 for (String key : selOptions.keySet())
@@ -463,27 +463,45 @@ public class FilterTreePane {
     /**
      * Checks if parent node is partially selected and updates its state.
      */
-    private void checkPartial(DefaultMutableTreeNode pNode, boolean selected) {
-        boolean isPartial = false;
+    private void checkPartial(DefaultMutableTreeNode pNode) {
+        if (pNode == null) {
+            return;
+        }
         TreePath tPath = new TreePath(pNode);
         tree.expandPath(tPath);
+
+        if (pNode.getChildCount() == 0) {
+            setPartialParentNode(false, pNode, false);
+        } else {
+            boolean allSelected = true;
+            boolean anySelected = false;
+            boolean anyPartial = false;
+
         for (Enumeration<?> e = pNode.children(); e.hasMoreElements();) {
             DefaultMutableTreeNode node = (DefaultMutableTreeNode) e.nextElement();
-            if (selected) {
-                if (!((TrNode) node.getUserObject()).isSelected) {
-                    isPartial = true;
-                    break;
+                TrNode child = (TrNode) node.getUserObject();
+                if (child.isPartialSelectedForParent()) {
+                    anyPartial = true;
+                    allSelected = false;
                 }
-            } else {
-                if (((TrNode) node.getUserObject()).isSelected) {
-                    isPartial = true;
-                    break;
+                if (child.isSelected()) {
+                    anySelected = true;
+                } else {
+                    allSelected = false;
                 }
             }
+
+            if (anyPartial || (anySelected && !allSelected)) {
+                setPartialParentNode(true, pNode, false);
+            } else if (allSelected) {
+                setPartialParentNode(false, pNode, true);
+            } else {
+                setPartialParentNode(false, pNode, false);
+            }
         }
-        setPartialParentNode(isPartial, pNode, selected);
+
         if (pNode.getParent() != null)
-            checkPartial((DefaultMutableTreeNode) pNode.getParent(), selected);
+            checkPartial((DefaultMutableTreeNode) pNode.getParent());
         tree.setSelectionPath(tPath);
         tree.updateUI();
     }
@@ -493,7 +511,9 @@ public class FilterTreePane {
      */
     private void setPartialParentNode(boolean isPartial, DefaultMutableTreeNode pNode, boolean selected) {
         ((TrNode) pNode.getUserObject()).setSelected(selected);
-        if (!pNode.isLeaf()) {
+        if (pNode.isLeaf()) {
+            ((TrNode) pNode.getUserObject()).setPartialSelectedForParent(false);
+        } else {
             if (isPartial) {
                 ((TrNode) pNode.getUserObject()).setPartialSelectedForParent(true);
                 ((TrNode) pNode.getUserObject()).setSelected(false);

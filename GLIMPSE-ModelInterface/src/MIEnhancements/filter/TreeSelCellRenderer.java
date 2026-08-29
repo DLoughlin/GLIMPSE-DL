@@ -60,6 +60,7 @@ class TreeSelCellRenderer extends DefaultTreeCellRenderer {
     private final TristateCheckBox checkBox; // Checkbox for selection state
     private final JTextField textField; // Displays node name
     private final JPanel panel; // Panel containing checkbox and text field
+    private int currentCellHeight = -1;
 
     /**
      * Constructs the cell renderer, initializing UI components.
@@ -70,33 +71,25 @@ class TreeSelCellRenderer extends DefaultTreeCellRenderer {
         checkBox = new TristateCheckBox();
         checkBox.setBackground(UIManager.getColor("Tree.background"));
         checkBox.setBorder(null);
-        // Set fixed size for checkbox to prevent resizing on click
-        // Increased from 20x20 to 26x26 to ensure 14px icon fits with padding
-        checkBox.setPreferredSize(new Dimension(26, 26));
-        checkBox.setMinimumSize(new Dimension(26, 26));
-        checkBox.setMaximumSize(new Dimension(26, 26));
+        checkBox.setPreferredSize(new Dimension(22, 22));
+        checkBox.setMinimumSize(new Dimension(22, 22));
+        checkBox.setMaximumSize(new Dimension(22, 22));
 
         textField = new JTextField();
         textField.setEditable(false);
         textField.setBackground(UIManager.getColor("Tree.background"));
         textField.setBorder(null);
-        // Set minimum height, allow width to expand significantly
-        // Increased height from 20 to 26 to match checkbox
-        textField.setPreferredSize(new Dimension(700, 26));
-        textField.setMinimumSize(new Dimension(200, 26));
-        textField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+        textField.setPreferredSize(new Dimension(700, 22));
+        textField.setMinimumSize(new Dimension(200, 22));
+        textField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
 
-        // Use BorderLayout for better component management in tree rendering
-        // Add right padding (10px) to prevent cutoff
         panel = new JPanel(new BorderLayout(5, 0));
         panel.setOpaque(false);
         panel.add(checkBox, BorderLayout.WEST);
         panel.add(textField, BorderLayout.CENTER);
-        // Add 10px right padding box
         panel.add(Box.createHorizontalStrut(10), BorderLayout.EAST);
-        // Increased height from 20 to 26 to match checkbox
-        panel.setPreferredSize(new Dimension(750, 26));
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+        panel.setPreferredSize(new Dimension(750, 22));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
     }
 
     /**
@@ -115,20 +108,36 @@ class TreeSelCellRenderer extends DefaultTreeCellRenderer {
     @Override
     public Component getTreeCellRendererComponent(JTree tree, Object value, boolean selected, boolean expanded,
             boolean leaf, int row, boolean hasFocus) {
+        // Scale cell height with font metrics, while keeping a compact minimum.
+        int compactHeight = Math.max(tree.getFontMetrics(tree.getFont()).getHeight() + 4, 22);
+        if (compactHeight != currentCellHeight) {
+            currentCellHeight = compactHeight;
+            Dimension boxSize = new Dimension(compactHeight, compactHeight);
+            checkBox.setPreferredSize(boxSize);
+            checkBox.setMinimumSize(boxSize);
+            checkBox.setMaximumSize(boxSize);
+            textField.setPreferredSize(new Dimension(700, compactHeight));
+            textField.setMinimumSize(new Dimension(200, compactHeight));
+            textField.setMaximumSize(new Dimension(Integer.MAX_VALUE, compactHeight));
+            panel.setPreferredSize(new Dimension(750, compactHeight));
+            panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, compactHeight));
+        }
+
         DefaultMutableTreeNode node = (DefaultMutableTreeNode) value;
         checkBox.setHalfSelected(false); // Reset half-selected state
 
         // If node contains a TrNode, render with checkbox and text field
         if (node.getUserObject() instanceof TrNode) {
             TrNode trNode = (TrNode) node.getUserObject();
-            // Set checkbox state based on TrNode selection logic
-            if (trNode.isPartialSelectedForParent() && !node.isLeaf()) {
-                checkBox.setSelected(false);
-                checkBox.setHalfSelected(true);
-            } else if (selected) {
+            // Leaves are always binary; branches may be half-selected.
+            if (node.isLeaf()) {
                 checkBox.setHalfSelected(false);
                 checkBox.setSelected(trNode.isSelected());
+            } else if (trNode.isPartialSelectedForParent()) {
+                checkBox.setSelected(false);
+                checkBox.setHalfSelected(true);
             } else {
+                checkBox.setHalfSelected(false);
                 checkBox.setSelected(trNode.isSelected());
             }
             textField.setText(trNode.nodeName);
