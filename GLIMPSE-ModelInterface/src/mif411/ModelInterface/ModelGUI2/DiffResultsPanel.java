@@ -189,9 +189,9 @@ public class DiffResultsPanel extends QueryResultsPanel {
 		}
 		
 		String[][] units = getUnits(qg, jTable);
-		new FilteredTable(null, qg.toString(), // @1 //Dan changed from FilteredTable and added getUnits
+		setFilteredTableView(new FilteredTable(null, qg.toString(), // @1 //Dan changed from FilteredTable and added getUnits
 				units[0], path, // @1
-				jTable, sp); // @1
+				jTable, sp)); // @1
 
 		main.fireProperty("Query", null, bt); // @1
 		return sp;

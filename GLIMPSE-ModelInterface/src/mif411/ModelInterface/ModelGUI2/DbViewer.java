@@ -2116,7 +2116,7 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 	 */
 	public Vector getRegions() {
 		// IMPORTANT: Do NOT use distinct-values(collection()/...) here.
-		// When distinct-values() wraps a large collection(), BaseX must exhaustively scan the
+		// When distinct-values() wraps a large collection, BaseX must exhaustively scan the
 		// entire remaining database before returning null from iter(), causing a hang on large
 		// GCAM-USA databases (hundreds of MB / many scenarios).
 		//
@@ -2892,9 +2892,19 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 				if (evt.getPropertyName().equals("Control")) {
 					if (evt.getOldValue().equals(controlStr) || evt.getOldValue().equals(controlStr + "Same")) {
 						manageDbButton.setEnabled(false);
+						JMenuItem batchMenu = InterfaceMain.getInstance().getBatchMenu();
+						if(batchMenu != null) {
+							batchMenu.removeActionListener(DbViewer.this);
+							batchMenu.addActionListener(InterfaceMain.getInstance());
+						}
 					}
 					if (evt.getNewValue().equals(controlStr)) {
 						manageDbButton.setEnabled(true);
+						JMenuItem batchMenu = InterfaceMain.getInstance().getBatchMenu();
+						if(batchMenu != null) {
+							batchMenu.removeActionListener(InterfaceMain.getInstance());
+							batchMenu.addActionListener(DbViewer.this);
+						}
 					}
 				}
 			}
@@ -4227,5 +4237,35 @@ public class DbViewer implements MenuAdder, BatchRunner, ActionListener {
 			}
 		}
 		return rowNumForLeaf;
+	}
+
+	/**
+	 * Reapplies significant-digit formatting to all open query result tabs without
+	 * rerunning queries.
+	 */
+	public void refreshOpenResultsSignificantDigits() {
+		Runnable refreshTask = () -> {
+			if (tablesTabs == null || tablesTabs.getTabCount() == 0) {
+				return;
+			}
+			for (int i = 0; i < tablesTabs.getTabCount(); ++i) {
+				Component tabComp = tablesTabs.getComponentAt(i);
+				if (tabComp instanceof QueryResultsPanel) {
+					((QueryResultsPanel) tabComp).refreshSignificantDigitsDisplay();
+				}
+				JTable table = getJTableFromComponent(tabComp);
+				if (table != null) {
+					table.revalidate();
+					table.repaint();
+				}
+			}
+			tablesTabs.revalidate();
+			tablesTabs.repaint();
+		};
+		if (SwingUtilities.isEventDispatchThread()) {
+			refreshTask.run();
+		} else {
+			SwingUtilities.invokeLater(refreshTask);
+		}
 	}
 }

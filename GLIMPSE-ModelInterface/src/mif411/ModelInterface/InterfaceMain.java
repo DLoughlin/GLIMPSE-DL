@@ -1743,7 +1743,7 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 		}
 		if (javax.swing.SwingUtilities.isEventDispatchThread()) {
 			activeDbStatusLabel.setText(text);
-		} else {
+				} else {
 			javax.swing.SwingUtilities.invokeLater(new Runnable() {
 				@Override
 				public void run() {
@@ -2576,6 +2576,8 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 	}
 
 	private void showPreferencesDialog() {
+		final String previousSigDigits = getProperties().getProperty("significantDigits", "3");
+		final boolean previousDisableSigDigits = DbViewer.disableSigDigits;
 		new PreferenceDialog(this).showDialog();
 		// Reload auto graphics setting from properties after dialog closes
 		synchronized (propertiesLock) {
@@ -2586,6 +2588,12 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 				String propLimitSigDigits = savedProperties.getProperty("limitSigDigits", "false");
 				boolean limitSigDigits = "true".equalsIgnoreCase(propLimitSigDigits);
 				DbViewer.disableSigDigits = !limitSigDigits;  // Inverse: if limiting is enabled, disabling is off
+			}
+		}
+		final String currentSigDigits = getProperties().getProperty("significantDigits", "3");
+		if (previousDisableSigDigits != DbViewer.disableSigDigits || !previousSigDigits.equals(currentSigDigits)) {
+			if (dbView instanceof DbViewer) {
+				((DbViewer) dbView).refreshOpenResultsSignificantDigits();
 			}
 		}
 	}
@@ -2985,4 +2993,5 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			}
 		}
 	}
-}
+}
+

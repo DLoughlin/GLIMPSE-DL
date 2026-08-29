@@ -107,6 +107,14 @@ public class FilteredTable {
 	private static final int MAX_AUTO_CHARTS = 125; // Max number of charts to auto-generate before skipping auto-graphics
     private static final int MAX_AUTO_ROWS = 2000; // Do not auto-generate thumbnails if table has more rows than this
     private JButton graphButton;
+    /** Backing query table (unformatted numeric values) used to rebuild display values. */
+    private JTable sourceTable;
+    /** Current filter selection (if any) used to rebuild the filtered rows. */
+    private Map<String, String> currentSelection;
+    /** View columns currently shown in this filtered table. */
+    private Integer[] visibleColumnIndices;
+    /** Column names corresponding to visibleColumnIndices. */
+    private String[] visibleColumnNames;
 
     /**
      * Constructs a FilteredTable and sets up the UI and filtering logic.
@@ -136,6 +144,8 @@ public class FilteredTable {
         this.sp = sp;
         this.selectedYears = selectedYears;
         this.chartName = chartName;
+        this.sourceTable = jTable;
+        this.currentSelection = sel;
         JPanel jp = new JPanel(new BorderLayout());
         Component c = sp.getRightComponent();
         if (c != null) sp.remove(c);
@@ -169,7 +179,9 @@ public class FilteredTable {
             System.out.println("FilteredTable: col: " + Arrays.toString(tableColumnData));
             System.out.println("FilteredTable: colidx: " + Arrays.toString(alI.toArray(new Integer[0])));
         }
-        String[][] tData = getTableData(jTable, alI.toArray(new Integer[0]));
+        visibleColumnIndices = alI.toArray(new Integer[0]);
+        visibleColumnNames = al.toArray(new String[0]);
+        String[][] tData = getTableData(jTable, visibleColumnIndices);
         Comparator<String> columnDoubleComparator = (String v1, String v2) -> {
             Double val1 = null;
             try { val1 = Double.parseDouble(v1); } catch (NumberFormatException e) {}
@@ -185,7 +197,7 @@ public class FilteredTable {
         else
             newData = getfilterTableData(tData, getFilterData(qualifier, sel));
         try {
-            DefaultTableModel dtm = new DefaultTableModel(newData, al.toArray(new String[0])) {
+            DefaultTableModel dtm = new DefaultTableModel(newData, visibleColumnNames) {
                 @Override
                 public boolean isCellEditable(int row, int column) {
                     return false;
@@ -197,16 +209,7 @@ public class FilteredTable {
             // Keep default drag behavior for the JTable and avoid per-table listeners that duplicate that logic.
             jtable.setRowHeight(jtable.getFont().getSize() + 5);
             tableModel = jtable.getModel();
-            sorter = new TableRowSorter<>(tableModel);
-            jtable.setRowSorter(sorter);
-            // Add custom sorters to columns that are numbers
-            for (int colC = 0; colC < jtable.getColumnCount(); colC++) {
-                String clsName = jtable.getColumnName(colC);
-                try {
-                    Double.parseDouble(clsName);
-                    sorter.setComparator(colC, columnDoubleComparator);
-                } catch (Exception e) {}
-            }
+            configureNumericSorters(columnDoubleComparator);
         } catch (Exception e) {
             System.out.println("FilteredTable Caught: ");
             e.printStackTrace();
@@ -660,6 +663,60 @@ public class FilteredTable {
             sp.setDividerLocation(0.678);
         }
         sp.updateUI();
+    }
+
+    /**
+     * Rebuilds this table's displayed values using the latest significant-digits settings.
+     * Uses the original query table so users do not need to rerun queries.
+     */
+    public void refreshSignificantDigitsDisplay() {
+        if (sourceTable == null || jtable == null || visibleColumnIndices == null || visibleColumnNames == null) {
+            return;
+        }
+
+        String[][] tData = getTableData(sourceTable, visibleColumnIndices);
+        if (currentSelection == null || currentSelection.isEmpty()) {
+            newData = tData.clone();
+        } else {
+            String[] qualifier = ModelInterfaceUtil.getColumnFromTable(sourceTable, 5);
+            newData = getfilterTableData(tData, getFilterData(qualifier, currentSelection));
+        }
+
+        DefaultTableModel refreshedModel = new DefaultTableModel(newData, visibleColumnNames) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        jtable.setModel(refreshedModel);
+        tableModel = refreshedModel;
+        configureNumericSorters(buildDoubleStringComparator());
+        jtable.revalidate();
+        jtable.repaint();
+
+        // If a graph is currently shown, regenerate it so displayed numeric labels stay in sync.
+        Component currentRight = sp == null ? null : sp.getRightComponent();
+        if (currentRight instanceof JComponent) {
+            Object isGraph = ((JComponent) currentRight).getClientProperty("isGraph");
+            if (Boolean.TRUE.equals(isGraph) && graphButton != null) {
+                graphButton.doClick();
+            }
+        }
+    }
+
+    private void configureNumericSorters(Comparator<String> numericComparator) {
+        tableModel = jtable.getModel();
+        sorter = new TableRowSorter<>(tableModel);
+        jtable.setRowSorter(sorter);
+        for (int colC = 0; colC < jtable.getColumnCount(); colC++) {
+            String clsName = jtable.getColumnName(colC);
+            try {
+                Double.parseDouble(clsName);
+                sorter.setComparator(colC, numericComparator);
+            } catch (Exception e) {
+                // Ignore non-numeric headers.
+            }
+        }
     }
 
     /**
