@@ -705,7 +705,6 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 						+ ". Keeping font size " + configuredFontSize + ".");
 			}
 		}
-
 		// if the -l option is set then we will redirect standard output to the
 		// specified log file
 		PrintStream stdout = System.out;
@@ -2336,8 +2335,8 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 		logStartupTiming("addMenuAdder:new DbViewer " + elapsedMillis(menuAdderStart) + " ms");
 		dbView.addMenuItems(menuMan);
 		logStartupTiming("addMenuAdder:DbViewer.addMenuItems " + elapsedMillis(menuAdderStart) + " ms");
-		// "XML file" (InputViewer) hidden — not working correctly
-		// addLazyMenuItem(menuMan, TOOLS_MENU_POS, TOOLS_SUBMENU2_POS, new JMenuItem("XML file"), LAZY_OPEN_INPUT_VIEWER, 0);
+		// Restore XML open entry under Tools -> Open Files (lazy-load InputViewer on demand).
+		addLazyMenuItem(menuMan, TOOLS_MENU_POS, TOOLS_SUBMENU2_POS, new JMenuItem("XML file"), LAZY_OPEN_INPUT_VIEWER, 0);
 		addLazyMenuItem(menuMan, TOOLS_MENU_POS, TOOLS_SUBMENU2_POS, new JMenuItem("Preprocessor file"), LAZY_OPEN_PP_VIEWER, 20);
 		logStartupTiming("addMenuAdder:add lazy open-file items " + elapsedMillis(menuAdderStart) + " ms");
 		final MenuAdder recentFilesList = RecentFilesList.getInstance();
@@ -2993,5 +2992,4 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			}
 		}
 	}
-}
-
+}

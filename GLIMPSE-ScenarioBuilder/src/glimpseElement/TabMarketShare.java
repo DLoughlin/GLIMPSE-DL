@@ -759,7 +759,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 		files.writeToBufferedFile(bw2, "Variable ID" + vars.getEol());
 		files.writeToBufferedFile(bw2, "GLIMPSEPFStdAdjCoef-Nest" + vars.getEol() + vars.getEol());
 		files.writeToBufferedFile(bw2,
-				"region,sector,nested-subsector,tech,year,policy,adjcoef-year,adjcoef" + vars.getEol());
+				"region,sector,nested-subsector,subsector,tech,year,policy,adjcoef-year,adjcoef" + vars.getEol());
 
 		for (int s = 0; s < listOfSelectedLeaves.length; s++) {
 			String state = listOfSelectedLeaves[s];
@@ -847,7 +847,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 		files.writeToBufferedFile(bw2, "Variable ID" + vars.getEol());
 		files.writeToBufferedFile(bw2, "GLIMPSEPFStd2ndOut-Nest" + vars.getEol() + vars.getEol());
 		files.writeToBufferedFile(bw2,
-				"region,sector,nested-subsector,tech,year,policy,output-ratio,pMultiplier" + vars.getEol());
+				"region,sector,nested-subsector,subsector,tech,year,policy,output-ratio,pMultiplier" + vars.getEol());
 		int skippedConversionRows = 0;
 
 		for (int s = 0; s < listOfSelectedLeaves.length; s++) {
