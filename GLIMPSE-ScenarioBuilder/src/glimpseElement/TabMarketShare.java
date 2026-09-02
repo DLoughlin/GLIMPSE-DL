@@ -714,8 +714,8 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 		fileContent = "use temp file";
 		files.writeToBufferedFile(bw0, getMetaDataContent(tree, market_name, policy_name));
 		
-		int no_nested = 0;
-		int no_non_nested = 0;
+		int num_nested = 0;
+		int num_non_nested = 0;
 
 		String treatment = comboBoxTreatment.getValue().toLowerCase().trim();
 		String[] listOfSelectedLeaves = vars.normalizeSelectedRegionsForSubregions(
@@ -802,12 +802,12 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 								list_of_policy_sector_combos = utils
 										.addToArrayListIfUnique(list_of_policy_sector_combos, ss);
 								BufferedWriter bw = bw1;
-								if (tech_name.indexOf("=>") > -1) {
+								if ((subsector_name.indexOf("=>")>-1)||(tech_name.indexOf("=>")> -1)) {
 									bw = bw2;
-									tech_name = tech_name.replace("=>", ",");
-									no_nested++;
+									//subsector_name = subsector_name.replace("=>", ",");
+									num_nested++;
 								} else {
-									no_non_nested++;
+									num_non_nested++;
 								}
 											if (is_subsector_in_region) {
 												Double val = valuef_list[i];
@@ -819,7 +819,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 													val *= 1000.;
 												}
 																String formattedVal = formatDisplayValue(val);
-												String line = state + "," + sector_name + "," + subsector_name + "," + tech_name
+												String line = state + "," + sector_name + "," + subsector_name.replace("=>", ",") + "," + tech_name.replace("=>", ",")
 																	+ "," + t + "," + use_this_policy_name + "," + year_list[i] + "," + formattedVal
 														+ "," + conv + vars.getEol();
 												files.writeToBufferedFile(bw, line);
@@ -876,12 +876,12 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 							String tech_name = utils.splitString(temp, ":")[2].trim();
 							BufferedWriter bw = bw1;
 							
-							if (tech_name.indexOf("=>") > -1) {
+							if ((subsector_name.indexOf("=>")>-1)||(tech_name.indexOf("=>")> -1)) {
 								bw = bw2;
-								tech_name = tech_name.replace("=>", ",");
-								no_nested++;
+								//subsector_name = subsector_name.replace("=>", ",");
+								num_nested++;
 							} else {
-								no_non_nested++;
+								num_non_nested++;
 							}
 							
 							//boolean useTrnUnitPriceConversion = utils.shouldApplyTrnUnitPriceConversion(sector_name);
@@ -891,7 +891,7 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 							if (conversions != null) {
 								if (conversions.startsWith(","))
 									conversions = conversions.substring(1);
-								String line = state + "," + sector_name + "," + subsector_name + "," + tech_name + ","
+								String line = state + "," + sector_name + "," + subsector_name.replace("=>", ",") + "," + tech_name.replace("=>", ",") + ","
 										+ t + "," + use_this_policy_name + "," + conversions + vars.getEol();
 								files.writeToBufferedFile(bw, line);
 							} else {
@@ -976,9 +976,9 @@ public class TabMarketShare extends PolicyTab implements Runnable {
 		ArrayList<String> tempfiles = new ArrayList<>();
 		tempfiles.add(temp_file0);
 		
-		if (no_non_nested > 0)
+		if (num_non_nested > 0)
 			tempfiles.add(temp_file1);
-		if (no_nested > 0)
+		if (num_nested > 0)
 			tempfiles.add(temp_file2);
 		
 		files.concatDestSources(temp_file, tempfiles);

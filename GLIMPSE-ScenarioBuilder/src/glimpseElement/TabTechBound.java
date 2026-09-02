@@ -542,8 +542,8 @@ public class TabTechBound extends PolicyTab implements Runnable {
 		String temp_file = tempDirName + File.separator + "temp_policy_file.txt";
 		files.deleteFile(temp_file);
 
-		int no_nested = 0;
-		int no_non_nested = 0;
+		int num_nested = 0;
+		int num_non_nested = 0;
 
 		files.writeToBufferedFile(bw0, getMetaDataContent(tree, market_name, policy_name));
 
@@ -629,11 +629,11 @@ public class TabTechBound extends PolicyTab implements Runnable {
 				is_nested = true;
 			}
 			if (is_nested) {
-				no_nested++;
+				num_nested++;
 				tech = tech.replaceAll("=>", ",");
 				subsector = subsector.replaceAll("=>", ",");
 			} else {
-				no_non_nested++;
+				num_non_nested++;
 			}
 
 			for (String state : listOfSelectedLeaves) {
@@ -781,10 +781,10 @@ public class TabTechBound extends PolicyTab implements Runnable {
 		ArrayList<String> tempfiles = new ArrayList<>();
 		tempfiles.add(temp_file0);
 
-		if (no_nested > 0) {
+		if (num_nested > 0) {
 			tempfiles.add(temp_file1);
 		}
-		if (no_non_nested > 0) {
+		if (num_non_nested > 0) {
 			tempfiles.add(temp_file2);
 		}
 		tempfiles.add(temp_file3);

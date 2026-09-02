@@ -637,8 +637,8 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 
 		int start_year = vars.getCalibrationYear();
 		List<Integer> years = vars.getAllYears();
-		int nonest_count = 0;
-		int nest_count = 0;
+		int num_nonnested = 0;
+		int num_nested = 0;
 
 		// If specific categories are selected (CO2 only), write subspecies tables
 		if (!categories.contains(ALL)) {
@@ -693,10 +693,10 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 													+ tech_r.replace("=>", ",") + "," + y + "," + pol + vars.getEol();
 											if ((subsector_r.contains("=>"))||(tech_r.contains("=>"))) {
 												files.writeToBufferedFile(bw1, line);
-												nest_count++;
+												num_nested++;
 											} else {
 												files.writeToBufferedFile(bw2, line);
-												nonest_count++;
+												num_nonnested++;
 											}
 										}
 									}
@@ -717,9 +717,9 @@ public class TabPollutantTaxCap extends PolicyTab implements Runnable {
 		files.closeBufferedFile(bw1);
 		files.closeBufferedFile(bw2);
 
-		if (nest_count > 0)
+		if (num_nested > 0)
 			tempfiles.add(temp_file1);
-		if (nonest_count > 0)
+		if (num_nonnested > 0)
 			tempfiles.add(temp_file2);
 
 		files.concatDestSources(temp_file, tempfiles);

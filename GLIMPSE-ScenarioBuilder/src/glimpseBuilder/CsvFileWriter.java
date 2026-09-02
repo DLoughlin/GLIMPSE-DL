@@ -147,6 +147,12 @@ public class CsvFileWriter {
                 subsector2Text = str[0].trim();
                 technologyText = str[1].trim();
             }
+            // Split subsector text if nested
+            if (subsector1Text.contains("=>")) {
+                String[] str = subsector1Text.split("=>");
+                subsector1Text = str[0].trim();
+                subsector2Text = str[1].trim();
+            }
         }
 
         // Split header into name and columns
