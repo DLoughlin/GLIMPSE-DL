@@ -43,6 +43,10 @@ import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEStyles;
 import glimpseUtil.GLIMPSEVariables;
 import glimpseUtil.WindowsRuntimePreflight;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.geom.AffineTransform;
 import java.io.File;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -150,6 +154,8 @@ public class Client extends Application {
     private static final String STARTUP_SHOW_WATCHDOG_FLAG = "glimpse.debugShowWatchdog";
     private static final String STARTUP_DEFER_MAIN_UI_UNTIL_READY_FLAG = "glimpse.startupDeferMainUiUntilReady";
     private static final String STARTUP_WATCHDOG_VERBOSE_STACK_FLAG = "glimpse.debugWatchdogVerboseStack";
+    private static final String STARTUP_DISABLE_HIDPI_FLAG = "glimpse.disableHiDpi";
+    private static final String STARTUP_HIDPI_COMPAT_SCALE_FLAG = "glimpse.hidpiCompatScalePercent";
     private static final int STARTUP_WATCHDOG_INTERVAL_MS = 2000;
     private static final long DATABASE_REBUILD_WATCH_INTERVAL_MS = 15000L;
     private static final String[] STARTUP_CRITICAL_ICON_PREWARM_KEYS = new String[] {
@@ -315,6 +321,7 @@ public class Client extends Application {
      */
     public static void main(String[] args) {
         logBootstrapCheckpoint("main(): entered");
+        applyWindowsMixedDpiCompatibilityWorkaround();
         if (!Boolean.getBoolean(EARLY_SPLASH_DISABLE_FLAG)) {
             showEarlyStartupSplash(EARLY_SPLASH_INITIAL_MESSAGE);
         } else {
@@ -356,6 +363,103 @@ public class Client extends Application {
             logBootstrapCheckpoint("main(): after launch(args)");
             closeEarlyStartupSplash();
         }
+    }
+
+    /**
+     * JavaFX on some Windows mixed-DPI setups can fail to reflow correctly when a
+     * window crosses monitors with different scale factors. In that case, prefer
+     * a stable system-scaled UI over dynamic per-monitor scaling.
+     */
+    private static void applyWindowsMixedDpiCompatibilityWorkaround() {
+        try {
+            if (!isWindowsPlatform()) {
+                return;
+            }
+            if (System.getProperty("prism.allowhidpi") != null || System.getProperty("glass.win.uiScale") != null) {
+                return;
+            }
+
+            boolean disableHiDpiRequested = Boolean.getBoolean(STARTUP_DISABLE_HIDPI_FLAG);
+            if (disableHiDpiRequested || hasMixedWindowsMonitorScaling()) {
+                String compatScalePercent = resolveHiDpiCompatScalePercent();
+                System.setProperty("prism.allowhidpi", "false");
+                System.setProperty("glass.win.uiScale", compatScalePercent);
+                logBootstrapCheckpoint("main(): applying mixed-DPI compatibility mode (-Dprism.allowhidpi=false, -Dglass.win.uiScale=" + compatScalePercent + ")");
+            }
+        } catch (Throwable ignored) {
+            // Never let DPI probing interfere with app startup.
+        }
+    }
+
+    private static String resolveHiDpiCompatScalePercent() {
+        String configured = System.getProperty(STARTUP_HIDPI_COMPAT_SCALE_FLAG, "").trim();
+        if (!configured.isEmpty()) {
+            if (!configured.endsWith("%")) {
+                configured += "%";
+            }
+            return configured;
+        }
+        int detected = detectPrimaryMonitorScalePercent();
+        return detected + "%";
+    }
+
+    private static int detectPrimaryMonitorScalePercent() {
+        try {
+            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+            GraphicsDevice primary = ge.getDefaultScreenDevice();
+            if (primary != null && primary.getDefaultConfiguration() != null) {
+                AffineTransform tx = primary.getDefaultConfiguration().getDefaultTransform();
+                double sx = tx == null ? 1.0d : tx.getScaleX();
+                int percent = (int) Math.round(sx * 100.0d);
+                if (percent < 100) {
+                    return 100;
+                }
+                if (percent > 300) {
+                    return 300;
+                }
+                return percent;
+            }
+        } catch (Throwable ignored) {
+        }
+        return 100;
+    }
+
+    private static boolean isWindowsPlatform() {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        return os.contains("win");
+    }
+
+    private static boolean hasMixedWindowsMonitorScaling() {
+        try {
+            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+            GraphicsDevice[] devices = ge.getScreenDevices();
+            if (devices == null || devices.length <= 1) {
+                return false;
+            }
+
+            Double baselineScale = null;
+            final double epsilon = 0.02d;
+            for (GraphicsDevice device : devices) {
+                if (device == null) {
+                    continue;
+                }
+                GraphicsConfiguration cfg = device.getDefaultConfiguration();
+                if (cfg == null) {
+                    continue;
+                }
+                AffineTransform tx = cfg.getDefaultTransform();
+                double sx = tx == null ? 1.0d : tx.getScaleX();
+
+                if (baselineScale == null) {
+                    baselineScale = sx;
+                } else if (Math.abs(sx - baselineScale.doubleValue()) > epsilon) {
+                    return true;
+                }
+            }
+        } catch (Throwable ignored) {
+            return false;
+        }
+        return false;
     }
 
     /**

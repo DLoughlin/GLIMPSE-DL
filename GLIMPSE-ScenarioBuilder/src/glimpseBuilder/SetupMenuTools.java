@@ -79,16 +79,10 @@ public final class SetupMenuTools {
                 Client.buttonRefreshScenarioStatus.fire();
             }),
             new SeparatorMenuItem(),
+            createMenuItem("Edit Log Configuration", () -> new LogConfigEditorWidget().createAndShow()),
+            new SeparatorMenuItem(),
             createMenuItem("Browse Trash", () -> files.openFileExplorer(vars.getTrashDir())),
             createMenuItem("Empty Trash", this::emptyTrashAction),
-            new SeparatorMenuItem()
-        );
-
-        // --- Advanced Submenu ---
-        menuAdvanced.getItems().addAll(
-            createMenuItem("CSV to XML", () -> new CsvToXmlWidget().createAndShow()),
-            createMenuItem("Edit Log Configuration", () -> new LogConfigEditorWidget().createAndShow()),
-            createMenuItem("Cleanup Saved Files", this::cleanupSavedFilesAction),
             new SeparatorMenuItem(),
             createMenuItem("Stop ModelInterface Jobs", () -> {
                 try {
@@ -99,7 +93,14 @@ public final class SetupMenuTools {
                 } catch (Throwable t) {
                     System.err.println("Error stopping ModelInterface jobs: " + t);
                 }
-            })
+            }),
+            new SeparatorMenuItem()
+        );
+
+        // --- Advanced Submenu ---
+        menuAdvanced.getItems().addAll(
+            createMenuItem("CSV to XML", () -> new CsvToXmlWidget().createAndShow()),
+            createMenuItem("Cleanup Saved Files", this::cleanupSavedFilesAction)
         );
         
         menuTools.getItems().add(menuAdvanced);
