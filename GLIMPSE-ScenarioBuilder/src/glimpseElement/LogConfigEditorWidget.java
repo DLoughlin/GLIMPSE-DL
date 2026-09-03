@@ -64,6 +64,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
@@ -147,6 +148,10 @@ public class LogConfigEditorWidget {
     private boolean dirty = false;
     private boolean updatingUi = false;
     private String lastSavedDisplay = "--";
+
+    private static final List<String> PRINT_LOG_WARNING_OPTIONS = Arrays.asList(
+            "0 (False) - Do not print warning-level labels",
+            "1 (True) - Print warning-level labels");
 
     private static final List<String> WARNING_LEVEL_OPTIONS = Arrays.asList(
             "1 (DEBUG) - Very detailed troubleshooting messages",
@@ -318,7 +323,7 @@ public class LogConfigEditorWidget {
 
     private VBox buildLoggerDetailsPane() {
         presetCombo.getItems().addAll(PRESET_MINIMAL, PRESET_NORMAL, PRESET_DEBUG);
-        printLogWarningCombo.getItems().setAll(WARNING_LEVEL_OPTIONS);
+        printLogWarningCombo.getItems().setAll(PRINT_LOG_WARNING_OPTIONS);
         minLogWarningCombo.getItems().setAll(WARNING_LEVEL_OPTIONS);
         minToScreenWarningCombo.getItems().setAll(WARNING_LEVEL_OPTIONS);
         printLogWarningCombo.setEditable(false);
@@ -330,7 +335,7 @@ public class LogConfigEditorWidget {
         headerMessageArea.setPrefRowCount(5);
 
         applyTooltip(presetCombo, "Preset is optional; custom level combinations may leave this blank.");
-        applyTooltip(printLogWarningCombo, "Controls what gets written to file.");
+        applyTooltip(printLogWarningCombo, "Whether warning-level labels are printed in log messages.");
         applyTooltip(minLogWarningCombo, "Minimum severity retained by this logger.");
         applyTooltip(minToScreenWarningCombo, "Messages from this logger that appear in the console.");
         applyTooltip(headerMessageArea, "Prefix text attached to log entries.");
@@ -345,11 +350,10 @@ public class LogConfigEditorWidget {
             }
             selected.enabled = newVal.booleanValue();
             if (!selected.enabled) {
-                selected.printLogWarningLevel = "6";
+                selected.printLogWarningLevel = "0";
                 selected.minLogWarningLevel = "6";
                 selected.minToScreenWarningLevel = "6";
-            } else if ("6".equals(safe(selected.printLogWarningLevel))
-                    && "6".equals(safe(selected.minLogWarningLevel))
+            } else if ("6".equals(safe(selected.minLogWarningLevel))
                     && "6".equals(safe(selected.minToScreenWarningLevel))) {
                 applyPresetToModel(selected, PRESET_NORMAL);
             }
@@ -607,7 +611,7 @@ public class LogConfigEditorWidget {
                 if (enabled) {
                     applyPresetToModel(model, preset);
                 } else {
-                    model.printLogWarningLevel = "6";
+                    model.printLogWarningLevel = "0";
                     model.minLogWarningLevel = "6";
                     model.minToScreenWarningLevel = "6";
                 }
@@ -666,11 +670,18 @@ public class LogConfigEditorWidget {
             outputFileField.setText(safe(model.fileName));
             advancedNameField.setText(safe(model.name));
             advancedTypeField.setText(safe(model.type));
-            selectLevelValueOrDefault(printLogWarningCombo, model.printLogWarningLevel);
+            selectPrintLogBooleanOrDefault(printLogWarningCombo, model.printLogWarningLevel);
             selectLevelValueOrDefault(minLogWarningCombo, model.minLogWarningLevel);
             selectLevelValueOrDefault(minToScreenWarningCombo, model.minToScreenWarningLevel);
             headerMessageArea.setText(safe(model.headerMessage));
-            presetCombo.getSelectionModel().select(detectPreset(model));
+
+            String detectedPreset = detectPreset(model);
+            if (detectedPreset == null) {
+                // select(null) can leave a stale value in some JavaFX selection models.
+                presetCombo.getSelectionModel().clearSelection();
+            } else {
+                presetCombo.getSelectionModel().select(detectedPreset);
+            }
         } finally {
             updatingUi = false;
         }
@@ -689,7 +700,7 @@ public class LogConfigEditorWidget {
         }
         model.enabled = enabledCheckBox.isSelected();
         model.fileName = safe(outputFileField.getText()).trim();
-        model.printLogWarningLevel = optionToLevelValue(printLogWarningCombo.getSelectionModel().getSelectedItem());
+        model.printLogWarningLevel = printLogOptionToValue(printLogWarningCombo.getSelectionModel().getSelectedItem());
         model.minLogWarningLevel = optionToLevelValue(minLogWarningCombo.getSelectionModel().getSelectedItem());
         model.minToScreenWarningLevel = optionToLevelValue(minToScreenWarningCombo.getSelectionModel().getSelectedItem());
         model.headerMessage = safe(headerMessageArea.getText());
@@ -763,19 +774,14 @@ public class LogConfigEditorWidget {
             Integer min = parseIntField(logger, "minLogWarningLevel", logger.minLogWarningLevel, issues);
             Integer screen = parseIntField(logger, "minToScreenWarningLevel", logger.minToScreenWarningLevel, issues);
 
-            if (print != null && !isInRange(print.intValue())) {
-                issues.add("Logger '" + safe(logger.name) + "' has printLogWarningLevel outside expected range (1 to 6).");
+            if (print != null && !isBooleanFlag(print.intValue())) {
+                issues.add("Logger '" + safe(logger.name) + "' has printLogWarningLevel outside expected range (0 or 1).");
             }
             if (min != null && !isInRange(min.intValue())) {
                 issues.add("Logger '" + safe(logger.name) + "' has minLogWarningLevel outside expected range (1 to 6).");
             }
             if (screen != null && !isInRange(screen.intValue())) {
                 issues.add("Logger '" + safe(logger.name) + "' has minToScreenWarningLevel outside expected range (1 to 6).");
-            }
-
-            if (screen != null && min != null && screen.intValue() < min.intValue()) {
-                issues.add("Logger '" + safe(logger.name)
-                        + "' has minToScreenWarningLevel lower than minLogWarningLevel.");
             }
 
             String key = safe(logger.fileName).trim().toLowerCase(Locale.ROOT);
@@ -817,6 +823,10 @@ public class LogConfigEditorWidget {
 
     private boolean isInRange(int value) {
         return value >= 1 && value <= 6;
+    }
+
+    private boolean isBooleanFlag(int value) {
+        return value == 0 || value == 1;
     }
 
     private static Map<String, LoggerDefaults> buildHardDefaults() {
@@ -862,10 +872,20 @@ public class LogConfigEditorWidget {
         comboBox.getSelectionModel().select(levelValueToOption(normalized));
     }
 
+    private void selectPrintLogBooleanOrDefault(ComboBox<String> comboBox, String value) {
+        String normalized = safe(value).trim();
+        comboBox.getSelectionModel().select("0".equals(normalized) ? PRINT_LOG_WARNING_OPTIONS.get(0)
+                : PRINT_LOG_WARNING_OPTIONS.get(1));
+    }
+
     private String levelValueToOption(String value) {
         String normalized = safe(value).trim();
         if (normalized.isEmpty()) {
             normalized = "6";
+        }
+        // Backward compatibility: some existing configs store DEBUG as 0.
+        if ("0".equals(normalized)) {
+            normalized = "1";
         }
         for (String option : WARNING_LEVEL_OPTIONS) {
             if (option.startsWith(normalized + " ") || option.equals(normalized)) {
@@ -873,6 +893,11 @@ public class LogConfigEditorWidget {
             }
         }
         return "6 (NONE)";
+    }
+
+    private String printLogOptionToValue(String option) {
+        String normalized = safe(option).trim();
+        return normalized.startsWith("0") ? "0" : "1";
     }
 
     private String optionToLevelValue(String option) {
@@ -964,11 +989,11 @@ public class LogConfigEditorWidget {
             return;
         }
         if (PRESET_MINIMAL.equals(preset)) {
-            model.printLogWarningLevel = "3";
+            model.printLogWarningLevel = "1";
             model.minLogWarningLevel = "3";
             model.minToScreenWarningLevel = "4";
         } else if (PRESET_NORMAL.equals(preset)) {
-            model.printLogWarningLevel = "2";
+            model.printLogWarningLevel = "1";
             model.minLogWarningLevel = "2";
             model.minToScreenWarningLevel = "3";
         } else if (PRESET_DEBUG.equals(preset)) {
@@ -982,10 +1007,10 @@ public class LogConfigEditorWidget {
         String p = safe(model.printLogWarningLevel).trim();
         String m = safe(model.minLogWarningLevel).trim();
         String s = safe(model.minToScreenWarningLevel).trim();
-        if ("3".equals(p) && "3".equals(m) && "4".equals(s)) {
+        if ("1".equals(p) && "3".equals(m) && "4".equals(s)) {
             return PRESET_MINIMAL;
         }
-        if ("2".equals(p) && "2".equals(m) && "3".equals(s)) {
+        if ("1".equals(p) && "2".equals(m) && "3".equals(s)) {
             return PRESET_NORMAL;
         }
         if ("1".equals(p) && "1".equals(m) && "2".equals(s)) {
@@ -998,12 +1023,13 @@ public class LogConfigEditorWidget {
         if (!dirty) {
             return true;
         }
-        Alert alert = new Alert(AlertType.CONFIRMATION, message, ButtonType.OK, ButtonType.CANCEL);
+        ButtonType discardButton = new ButtonType("Discard", ButtonBar.ButtonData.OK_DONE);
+        Alert alert = new Alert(AlertType.CONFIRMATION, message, discardButton, ButtonType.CANCEL);
         UtilsDialogs.initDialogOwner(alert);
         alert.setTitle("Unsaved Changes");
         alert.setHeaderText("You have unsaved changes");
         Optional<ButtonType> result = alert.showAndWait();
-        return result.isPresent() && result.get() == ButtonType.OK;
+        return result.isPresent() && result.get() == discardButton;
     }
 
     private void showError(String header, String message) {
@@ -1058,12 +1084,11 @@ public class LogConfigEditorWidget {
             m.name = readAttr(element, "name");
             m.type = readAttr(element, "type");
             m.fileName = readChildText(element, "FileName");
-            m.printLogWarningLevel = normalizeLevelValue(readChildText(element, "printLogWarningLevel"));
+            m.printLogWarningLevel = normalizePrintLogFlag(readChildText(element, "printLogWarningLevel"));
             m.minLogWarningLevel = normalizeLevelValue(readChildText(element, "minLogWarningLevel"));
             m.minToScreenWarningLevel = normalizeLevelValue(readChildText(element, "minToScreenWarningLevel"));
             m.headerMessage = readChildText(element, "headerMessage");
-            m.enabled = !"6".equals(safe(m.printLogWarningLevel).trim())
-                    || !"6".equals(safe(m.minLogWarningLevel).trim())
+            m.enabled = !"6".equals(safe(m.minLogWarningLevel).trim())
                     || !"6".equals(safe(m.minToScreenWarningLevel).trim());
             return m;
         }
@@ -1164,10 +1189,22 @@ public class LogConfigEditorWidget {
             if (trimmed.isEmpty()) {
                 return "6";
             }
+            // Backward compatibility with older logger encodings.
             if ("-1".equals(trimmed) || "0".equals(trimmed)) {
                 return "1";
             }
             return trimmed;
+        }
+
+        private static String normalizePrintLogFlag(String value) {
+            String trimmed = safe(value).trim();
+            if (trimmed.isEmpty()) {
+                return "1";
+            }
+            if ("-1".equals(trimmed)) {
+                return "1";
+            }
+            return "0".equals(trimmed) ? "0" : "1";
         }
     }
 
@@ -1199,8 +1236,7 @@ public class LogConfigEditorWidget {
             model.minLogWarningLevel = minLogWarningLevel;
             model.minToScreenWarningLevel = minToScreenWarningLevel;
             model.headerMessage = headerMessage;
-            model.enabled = !"6".equals(printLogWarningLevel)
-                    || !"6".equals(minLogWarningLevel)
+            model.enabled = !"6".equals(minLogWarningLevel)
                     || !"6".equals(minToScreenWarningLevel);
         }
     }
