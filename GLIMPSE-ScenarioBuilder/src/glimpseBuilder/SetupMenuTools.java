@@ -36,6 +36,7 @@
 package glimpseBuilder;
 
 import glimpseElement.CsvToXmlWidget;
+import glimpseElement.LogConfigEditorWidget;
 import glimpseUtil.GLIMPSEFiles;
 import glimpseUtil.GLIMPSEUtils;
 import glimpseUtil.GLIMPSEVariables;
@@ -86,6 +87,7 @@ public final class SetupMenuTools {
         // --- Advanced Submenu ---
         menuAdvanced.getItems().addAll(
             createMenuItem("CSV to XML", () -> new CsvToXmlWidget().createAndShow()),
+            createMenuItem("Edit Log Configuration", () -> new LogConfigEditorWidget().createAndShow()),
             createMenuItem("Cleanup Saved Files", this::cleanupSavedFilesAction),
             new SeparatorMenuItem(),
             createMenuItem("Stop ModelInterface Jobs", () -> {
