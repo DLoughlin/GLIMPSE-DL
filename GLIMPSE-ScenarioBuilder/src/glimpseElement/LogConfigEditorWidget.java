@@ -110,7 +110,6 @@ public class LogConfigEditorWidget {
     private static final String PRESET_MINIMAL = "Minimal";
     private static final String PRESET_NORMAL = "Normal";
     private static final String PRESET_DEBUG = "Debug";
-    private static final String PRESET_TRACE = "Full trace";
 
     private final GLIMPSEVariables vars = GLIMPSEVariables.getInstance();
     private final GLIMPSEFiles files = GLIMPSEFiles.getInstance();
@@ -318,7 +317,7 @@ public class LogConfigEditorWidget {
     }
 
     private VBox buildLoggerDetailsPane() {
-        presetCombo.getItems().addAll(PRESET_MINIMAL, PRESET_NORMAL, PRESET_DEBUG, PRESET_TRACE);
+        presetCombo.getItems().addAll(PRESET_MINIMAL, PRESET_NORMAL, PRESET_DEBUG);
         printLogWarningCombo.getItems().setAll(WARNING_LEVEL_OPTIONS);
         minLogWarningCombo.getItems().setAll(WARNING_LEVEL_OPTIONS);
         minToScreenWarningCombo.getItems().setAll(WARNING_LEVEL_OPTIONS);
@@ -330,6 +329,7 @@ public class LogConfigEditorWidget {
         advancedTypeField.setEditable(false);
         headerMessageArea.setPrefRowCount(5);
 
+        applyTooltip(presetCombo, "Preset is optional; custom level combinations may leave this blank.");
         applyTooltip(printLogWarningCombo, "Controls what gets written to file.");
         applyTooltip(minLogWarningCombo, "Minimum severity retained by this logger.");
         applyTooltip(minToScreenWarningCombo, "Messages from this logger that appear in the console.");
@@ -975,10 +975,6 @@ public class LogConfigEditorWidget {
             model.printLogWarningLevel = "1";
             model.minLogWarningLevel = "1";
             model.minToScreenWarningLevel = "2";
-        } else if (PRESET_TRACE.equals(preset)) {
-            model.printLogWarningLevel = "1";
-            model.minLogWarningLevel = "1";
-            model.minToScreenWarningLevel = "1";
         }
     }
 
@@ -994,9 +990,6 @@ public class LogConfigEditorWidget {
         }
         if ("1".equals(p) && "1".equals(m) && "2".equals(s)) {
             return PRESET_DEBUG;
-        }
-        if ("1".equals(p) && "1".equals(m) && "1".equals(s)) {
-            return PRESET_TRACE;
         }
         return null;
     }
