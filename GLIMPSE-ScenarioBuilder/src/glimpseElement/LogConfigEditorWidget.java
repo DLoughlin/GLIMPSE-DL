@@ -38,6 +38,7 @@ package glimpseElement;
 import glimpseBuilder.XMLModifier;
 import glimpseUtil.FileChooserPlus;
 import glimpseUtil.GLIMPSEFiles;
+import glimpseUtil.GLIMPSEStyles;
 import glimpseUtil.GLIMPSEVariables;
 import glimpseUtil.UtilsDialogs;
 import java.io.File;
@@ -114,6 +115,7 @@ public class LogConfigEditorWidget {
 
     private final GLIMPSEVariables vars = GLIMPSEVariables.getInstance();
     private final GLIMPSEFiles files = GLIMPSEFiles.getInstance();
+    private final GLIMPSEStyles styles = GLIMPSEStyles.getInstance();
 
     private final ObservableList<LoggerModel> allLoggers = FXCollections.observableArrayList();
     private final ObservableList<LoggerModel> filteredLoggers = FXCollections.observableArrayList();
@@ -175,7 +177,9 @@ public class LogConfigEditorWidget {
         } catch (Exception ignored) {
         }
 
-        Scene scene = new Scene(buildRoot(), 1120, 720);
+        BorderPane root = buildRoot();
+        applyAppFontStyle(root);
+        Scene scene = new Scene(root, 1120, 720);
         gui.ScenarioBuilder.applyModernTheme(scene);
         stage.setScene(scene);
 
@@ -208,6 +212,28 @@ public class LogConfigEditorWidget {
         root.setBottom(buildFooter());
 
         return root;
+    }
+
+    private void applyAppFontStyle(Region region) {
+        if (region == null) {
+            return;
+        }
+        region.setStyle(mergeStyle(region.getStyle(), styles.getFontStyle()));
+    }
+
+    private String mergeStyle(String existingStyle, String styleToAdd) {
+        String existing = safe(existingStyle).trim();
+        String addition = safe(styleToAdd).trim();
+        if (addition.isEmpty()) {
+            return existing;
+        }
+        if (existing.isEmpty()) {
+            return addition;
+        }
+        if (existing.endsWith(";")) {
+            return existing + " " + addition;
+        }
+        return existing + "; " + addition;
     }
 
     private VBox buildHeader() {
@@ -565,6 +591,7 @@ public class LogConfigEditorWidget {
 
         Alert alert = new Alert(AlertType.INFORMATION);
         UtilsDialogs.initDialogOwner(alert);
+        applyAppFontStyle(alert.getDialogPane());
         alert.setTitle("Compare to Default");
         alert.setHeaderText("Differences from hard-coded defaults");
         alert.getDialogPane().setExpandableContent(new TextArea(diff.length() == 0 ? "No differences." : diff.toString()));
@@ -809,6 +836,7 @@ public class LogConfigEditorWidget {
         AlertType type = issues.isEmpty() ? AlertType.INFORMATION : AlertType.WARNING;
         Alert alert = new Alert(type);
         UtilsDialogs.initDialogOwner(alert);
+        applyAppFontStyle(alert.getDialogPane());
         alert.setTitle("Validation Details");
         alert.setHeaderText(issues.isEmpty() ? "No validation issues were found." : "Current validation issues");
 
@@ -831,17 +859,17 @@ public class LogConfigEditorWidget {
 
     private static Map<String, LoggerDefaults> buildHardDefaults() {
         Map<String, LoggerDefaults> defaults = new HashMap<String, LoggerDefaults>();
-        putHardDefault(defaults, "main_log", "PlainTextLogger", "logs/main_log.txt", "1", "1", "2", "{date}:{time}");
-        putHardDefault(defaults, "worst_market_log", "PlainTextLogger", "logs/worst_market_log.txt", "1", "1", "6", "{date}:{time}");
-        putHardDefault(defaults, "single_market_log", "PlainTextLogger", "logs/single_market_log.txt", "1", "1", "4", "{date}:{time}");
-        putHardDefault(defaults, "solver_log", "PlainTextLogger", "logs/solver_log.csv", "1", "3", "4", "{date}:{time}");
-        putHardDefault(defaults, "calibration_log", "PlainTextLogger", "logs/calibration_log.txt", "1", "1", "4", "{date}:{time}");
-        putHardDefault(defaults, "dependency_finder_log", "PlainTextLogger", "logs/dependency_finder_log.txt", "1", "1", "4", "{date}:{time}");
-        putHardDefault(defaults, "parallel-grain-log", "PlainTextLogger", "logs/parallel-grain-log.txt", "1", "1", "4", "{date}:{time}");
-        putHardDefault(defaults, "solver-data-log", "PlainTextLogger", "logs/solver-data-log.txt", "1", "6", "6", "{date}:{time}");
-        putHardDefault(defaults, "solver-data-key", "PlainTextLogger", "logs/solver-data-key.txt", "1", "6", "6", "{date}:{time}");
-        putHardDefault(defaults, "climate-log", "PlainTextLogger", "logs/climate-log.txt", "1", "1", "4", "{date}:{time}");
-        putHardDefault(defaults, "target_finder_log", "PlainTextLogger", "logs/target_finder_log.txt", "1", "1", "4", "{date}:{time}");
+        putHardDefault(defaults, "main_log", "PlainTextLogger", "logs/main_log.txt", "0", "1", "2", "{date}:{time}");
+        putHardDefault(defaults, "worst_market_log", "PlainTextLogger", "logs/worst_market_log.txt", "0", "1", "6", "{date}:{time}");
+        putHardDefault(defaults, "single_market_log", "PlainTextLogger", "logs/single_market_log.txt", "0", "1", "4", "{date}:{time}");
+        putHardDefault(defaults, "solver_log", "PlainTextLogger", "logs/solver_log.csv", "0", "3", "4", "{date}:{time}");
+        putHardDefault(defaults, "calibration_log", "PlainTextLogger", "logs/calibration_log.txt", "0", "1", "4", "{date}:{time}");
+        putHardDefault(defaults, "dependency_finder_log", "PlainTextLogger", "logs/dependency_finder_log.txt", "0", "1", "4", "{date}:{time}");
+        putHardDefault(defaults, "parallel-grain-log", "PlainTextLogger", "logs/parallel-grain-log.txt", "0", "1", "4", "{date}:{time}");
+        putHardDefault(defaults, "solver-data-log", "PlainTextLogger", "logs/solver-data-log.txt", "0", "6", "6", "{date}:{time}");
+        putHardDefault(defaults, "solver-data-key", "PlainTextLogger", "logs/solver-data-key.txt", "0", "6", "6", "{date}:{time}");
+        putHardDefault(defaults, "climate-log", "PlainTextLogger", "logs/climate-log.txt", "0", "1", "4", "{date}:{time}");
+        putHardDefault(defaults, "target_finder_log", "PlainTextLogger", "logs/target_finder_log.txt", "0", "1", "4", "{date}:{time}");
         return Collections.unmodifiableMap(defaults);
     }
 
@@ -989,17 +1017,17 @@ public class LogConfigEditorWidget {
             return;
         }
         if (PRESET_MINIMAL.equals(preset)) {
-            model.printLogWarningLevel = "1";
+            model.printLogWarningLevel = "0";
             model.minLogWarningLevel = "3";
             model.minToScreenWarningLevel = "4";
         } else if (PRESET_NORMAL.equals(preset)) {
-            model.printLogWarningLevel = "1";
+            model.printLogWarningLevel = "0";
             model.minLogWarningLevel = "2";
             model.minToScreenWarningLevel = "3";
         } else if (PRESET_DEBUG.equals(preset)) {
-            model.printLogWarningLevel = "1";
+            model.printLogWarningLevel = "0";
             model.minLogWarningLevel = "1";
-            model.minToScreenWarningLevel = "2";
+            model.minToScreenWarningLevel = "1";
         }
     }
 
@@ -1007,13 +1035,13 @@ public class LogConfigEditorWidget {
         String p = safe(model.printLogWarningLevel).trim();
         String m = safe(model.minLogWarningLevel).trim();
         String s = safe(model.minToScreenWarningLevel).trim();
-        if ("1".equals(p) && "3".equals(m) && "4".equals(s)) {
+        if ("0".equals(p) && "3".equals(m) && "4".equals(s)) {
             return PRESET_MINIMAL;
         }
-        if ("1".equals(p) && "2".equals(m) && "3".equals(s)) {
+        if ("0".equals(p) && "2".equals(m) && "3".equals(s)) {
             return PRESET_NORMAL;
         }
-        if ("1".equals(p) && "1".equals(m) && "2".equals(s)) {
+        if ("0".equals(p) && "1".equals(m) && "1".equals(s)) {
             return PRESET_DEBUG;
         }
         return null;
@@ -1026,6 +1054,7 @@ public class LogConfigEditorWidget {
         ButtonType discardButton = new ButtonType("Discard", ButtonBar.ButtonData.OK_DONE);
         Alert alert = new Alert(AlertType.CONFIRMATION, message, discardButton, ButtonType.CANCEL);
         UtilsDialogs.initDialogOwner(alert);
+        applyAppFontStyle(alert.getDialogPane());
         alert.setTitle("Unsaved Changes");
         alert.setHeaderText("You have unsaved changes");
         Optional<ButtonType> result = alert.showAndWait();
@@ -1035,6 +1064,7 @@ public class LogConfigEditorWidget {
     private void showError(String header, String message) {
         Alert alert = new Alert(AlertType.ERROR, message, ButtonType.OK);
         UtilsDialogs.initDialogOwner(alert);
+        applyAppFontStyle(alert.getDialogPane());
         alert.setTitle("Log Configuration Editor");
         alert.setHeaderText(header);
         alert.showAndWait();
@@ -1199,10 +1229,10 @@ public class LogConfigEditorWidget {
         private static String normalizePrintLogFlag(String value) {
             String trimmed = safe(value).trim();
             if (trimmed.isEmpty()) {
-                return "1";
+                return "0";
             }
             if ("-1".equals(trimmed)) {
-                return "1";
+                return "0";
             }
             return "0".equals(trimmed) ? "0" : "1";
         }

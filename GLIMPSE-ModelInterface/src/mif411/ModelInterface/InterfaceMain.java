@@ -190,6 +190,10 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 	}
 
 	private static final String STARTUP_TIMING_PROPERTY = "do_output_timings";
+	private static final String NATIVE_FILE_DIALOG_PROPERTY = "nativeFileDialog";
+	private static final String NATIVE_FILE_DIALOG_LEGACY_PROPERTY = "modelinterface.nativeFileDialog";
+	private static final String NATIVE_FILE_DIALOG_DEBUG_PROPERTY = "nativeFileDialogDebug";
+	private static final String NATIVE_FILE_DIALOG_DEBUG_LEGACY_PROPERTY = "modelinterface.nativeFileDialog.debug";
 	public static final String FONT_SIZE_PROPERTY = "fontSize";
 	public static final String GRAPHICS_TITLE_FONT_SIZE_PROPERTY = "graphicsTitleFontSize";
 	public static final String GRAPHICS_SUBTITLE_FONT_SIZE_PROPERTY = "graphicsSubtitleFontSize";
@@ -400,6 +404,46 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			value = props.getProperty(STARTUP_TIMING_PROPERTY);
 		}
 		outputStartupTimings = value != null && Boolean.parseBoolean(value.trim());
+	}
+
+	private static String getTrimmedProperty(Properties props, String primaryKey, String legacyKey) {
+		if (props == null) {
+			return null;
+		}
+		String value = props.getProperty(primaryKey);
+		if ((value == null || value.trim().isEmpty()) && legacyKey != null) {
+			value = props.getProperty(legacyKey);
+		}
+		return value == null ? null : value.trim();
+	}
+
+	private static void configureNativeFileDialogProperties(Properties props) {
+		String nativeDialogValue = System.getProperty(NATIVE_FILE_DIALOG_LEGACY_PROPERTY);
+		if (nativeDialogValue == null || nativeDialogValue.trim().isEmpty()) {
+			nativeDialogValue = getTrimmedProperty(props, NATIVE_FILE_DIALOG_PROPERTY,
+					NATIVE_FILE_DIALOG_LEGACY_PROPERTY);
+		}
+		boolean useNativeFileDialog = nativeDialogValue == null
+				|| !"false".equalsIgnoreCase(nativeDialogValue.trim());
+
+		String nativeDialogDebugValue = System.getProperty(NATIVE_FILE_DIALOG_DEBUG_LEGACY_PROPERTY);
+		if (nativeDialogDebugValue == null || nativeDialogDebugValue.trim().isEmpty()) {
+			nativeDialogDebugValue = getTrimmedProperty(props, NATIVE_FILE_DIALOG_DEBUG_PROPERTY,
+					NATIVE_FILE_DIALOG_DEBUG_LEGACY_PROPERTY);
+		}
+		boolean debugNativeFileDialog = "true".equalsIgnoreCase(
+				nativeDialogDebugValue == null ? "" : nativeDialogDebugValue.trim());
+
+		System.setProperty(NATIVE_FILE_DIALOG_LEGACY_PROPERTY, Boolean.toString(useNativeFileDialog));
+		System.setProperty(NATIVE_FILE_DIALOG_DEBUG_LEGACY_PROPERTY, Boolean.toString(debugNativeFileDialog));
+
+		if (props != null) {
+			props.setProperty(NATIVE_FILE_DIALOG_PROPERTY, Boolean.toString(useNativeFileDialog));
+			props.setProperty(NATIVE_FILE_DIALOG_DEBUG_PROPERTY, Boolean.toString(debugNativeFileDialog));
+		}
+
+		System.out.println("InterfaceMain: nativeFileDialog = " + useNativeFileDialog
+				+ ", nativeFileDialogDebug = " + debugNativeFileDialog);
 	}
 
 	public static void logStartupTiming(String message) {
@@ -616,6 +660,7 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			}
 		}
 		configureStartupTimingOutput(bootProps);
+		configureNativeFileDialogProperties(bootProps);
 		configuredFontSize = resolveConfiguredFontSize(bootProps);
 		bootProps.setProperty(FONT_SIZE_PROPERTY, Integer.toString(configuredFontSize));
 
@@ -1893,6 +1938,14 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			if (!savedProperties.containsKey("zipExportedScenarios")) {
 				savedProperties.setProperty("zipExportedScenarios", "false");
 			}
+			if (!savedProperties.containsKey(NATIVE_FILE_DIALOG_PROPERTY)
+					&& !savedProperties.containsKey(NATIVE_FILE_DIALOG_LEGACY_PROPERTY)) {
+				savedProperties.setProperty(NATIVE_FILE_DIALOG_PROPERTY, "true");
+			}
+			if (!savedProperties.containsKey(NATIVE_FILE_DIALOG_DEBUG_PROPERTY)
+					&& !savedProperties.containsKey(NATIVE_FILE_DIALOG_DEBUG_LEGACY_PROPERTY)) {
+				savedProperties.setProperty(NATIVE_FILE_DIALOG_DEBUG_PROPERTY, "false");
+			}
 		if (!savedProperties.containsKey("copyIncludeQueryName")) {
 			savedProperties.setProperty("copyIncludeQueryName", "false");
 		}
@@ -2992,4 +3045,4 @@ public class InterfaceMain implements ActionListener, PreferenceDialogCallbacks 
 			}
 		}
 	}
-}
+}

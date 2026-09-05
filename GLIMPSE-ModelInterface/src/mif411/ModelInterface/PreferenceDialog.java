@@ -74,6 +74,7 @@ final class PreferenceDialog {
 	private javax.swing.JCheckBox autoGenerateGraphicsCheckbox;
 	private javax.swing.JCheckBox limitSigDigitsCheckbox;
 	private javax.swing.JCheckBox disableUnitConversionsCheckbox;
+	private javax.swing.JCheckBox nativeFileDialogCheckbox;
 	private javax.swing.JComboBox<String> selectYearsCombo;
 
 	// ---------------------------------------------------------------------------
@@ -150,6 +151,12 @@ final class PreferenceDialog {
 					p.setProperty("selectYearsToShow", selectYearsCombo.getSelectedItem().toString());
 				if (autoGenerateGraphicsCheckbox != null)
 					p.setProperty("autoGenerateGraphics", Boolean.toString(autoGenerateGraphicsCheckbox.isSelected()));
+				if (nativeFileDialogCheckbox != null) {
+					String useNativeChoosers = Boolean.toString(nativeFileDialogCheckbox.isSelected());
+					p.setProperty("nativeFileDialog", useNativeChoosers);
+					// Keep runtime chooser behavior in sync immediately without restart.
+					System.setProperty("modelinterface.nativeFileDialog", useNativeChoosers);
+				}
 				if (unitsFileField != null) p.setProperty("unitsFile", safeTrim(unitsFileField.getText()));
 				if (regionsFileField != null) p.setProperty("presetRegionList", safeTrim(regionsFileField.getText()));
 				if (mapResourceFolderField != null) p.setProperty("mapResourceFolder", safeTrim(mapResourceFolderField.getText()));
@@ -310,6 +317,13 @@ final class PreferenceDialog {
 		compressTreeCheckbox = new javax.swing.JCheckBox("Compress Query Tree at startup");
 		compressTreeCheckbox.setSelected(parseBooleanProp(props, "compress_tree", true));
 		panel.add(compressTreeCheckbox, gc);
+
+		gc.gridy++; gc.gridx = 0;
+		nativeFileDialogCheckbox = new javax.swing.JCheckBox("Use native file and folder choosers");
+		nativeFileDialogCheckbox.setSelected(parseBooleanPropWithLegacy(props,
+				"nativeFileDialog", "modelinterface.nativeFileDialog", true));
+		nativeFileDialogCheckbox.setToolTipText("Uncheck to force Java chooser dialogs.");
+		panel.add(nativeFileDialogCheckbox, gc);
 
 		// Equalize combo widths (for sigDigitsCombo)
 		{
@@ -687,6 +701,17 @@ final class PreferenceDialog {
 
 	private static boolean parseBooleanProp(Properties props, String key, boolean fallback) {
 		String v = props.getProperty(key);
+		if ("true".equalsIgnoreCase(v))  return true;
+		if ("false".equalsIgnoreCase(v)) return false;
+		return fallback;
+	}
+
+	private static boolean parseBooleanPropWithLegacy(Properties props, String key, String legacyKey,
+			boolean fallback) {
+		String v = props.getProperty(key);
+		if ((v == null || v.trim().isEmpty()) && legacyKey != null) {
+			v = props.getProperty(legacyKey);
+		}
 		if ("true".equalsIgnoreCase(v))  return true;
 		if ("false".equalsIgnoreCase(v)) return false;
 		return fallback;
