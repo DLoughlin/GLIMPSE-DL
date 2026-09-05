@@ -779,17 +779,8 @@ final class PreferenceDialog {
 	}
 
 	private static java.awt.Color resolvePreferencesTabSelectedForeground() {
-		java.awt.Color fg = javax.swing.UIManager.getColor("List.selectionForeground");
-		if (fg == null) {
-			fg = javax.swing.UIManager.getColor("Tree.selectionForeground");
-		}
-		if (fg == null) {
-			fg = javax.swing.UIManager.getColor("Table.selectionForeground");
-		}
-		if (fg == null) {
-			fg = java.awt.Color.WHITE;
-		}
-		return fg;
+		// Ensure high contrast against the selected (blue) tab background.
+		return java.awt.Color.WHITE;
 	}
 
 	private static final class PreferencesTabsBackgroundUI extends javax.swing.plaf.basic.BasicTabbedPaneUI {
@@ -833,8 +824,14 @@ final class PreferenceDialog {
 		}
 		for (int i = 0; i < tabCount; ++i) {
 			boolean isSelected = i == selectedIndex;
+			java.awt.Color foreground = isSelected ? selectedForeground : defaultForeground;
 			tabs.setBackgroundAt(i, isSelected ? selectedColor : unselectedColor);
-			tabs.setForegroundAt(i, isSelected ? selectedForeground : defaultForeground);
+			tabs.setForegroundAt(i, foreground);
+			// Tab titles use custom JLabel components, so update those directly too.
+			java.awt.Component tabComponent = tabs.getTabComponentAt(i);
+			if (tabComponent instanceof javax.swing.JLabel) {
+				((javax.swing.JLabel) tabComponent).setForeground(foreground);
+			}
 		}
 		tabs.repaint();
 	}
