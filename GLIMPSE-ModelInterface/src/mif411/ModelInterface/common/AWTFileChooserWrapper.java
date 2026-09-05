@@ -48,11 +48,12 @@ import ModelInterface.InterfaceMain;
  * @author Pralit Patel 
  */
 public class AWTFileChooserWrapper implements FileChooser {
-	private static final boolean DEBUG_NATIVE_FALLBACK =
-			"true".equalsIgnoreCase(System.getProperty("modelinterface.nativeFileDialog.debug", "false"));
+	private static boolean isDebugNativeFallbackEnabled() {
+		return "true".equalsIgnoreCase(System.getProperty("modelinterface.nativeFileDialog.debug", "false"));
+	}
 
 	private static void debugLog(String msg) {
-		if (DEBUG_NATIVE_FALLBACK) {
+		if (isDebugNativeFallbackEnabled()) {
 			System.out.println("[ModelInterface FileChooser DEBUG][AWT] " + msg);
 		}
 	}

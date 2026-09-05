@@ -76,6 +76,7 @@ public class GLIMPSEVariables {
     private final boolean DEFAULT_USE_ALL_AVAILABLE_PROCESSORS = true;
     private final boolean DEFAULT_GCAM_VERSION_PRE8_5 = true;
     private final boolean DEFAULT_DEBUG_TRN_CONVERSION_SKIPS = false;
+    private final boolean DEFAULT_USE_NATIVE_FILE_CHOOSER = true;
     private final int DEFAULT_VALUE_DISPLAY_SIG_FIGS = 4;
     private final int DEFAULT_PERIOD_INCREMENT = 5; // Default period increment for GCAM
     private final List<String> DEFAULT_REGION_LIST = new ArrayList<>(Arrays.asList("USA", "Canada", "EU-15", "Europe_Non_EU", "European Free Trade Association", "Japan", "Australia_NZ", "Central Asia", "Russia", "China", "Middle East", "Africa_Eastern", "Africa_Northern", "Africa_Southern", "Africa_Western", "South Africa", "Brazil", "Central America and Caribbean", "Mexico", "South America_Northern", "South America_Southern", "Argentina", "Colombia", "Indonesia", "Pakistan", "South Asia", "Southeast Asia", "Taiwan", "Europe_Eastern", "EU-12", "South Korea", "India", "Ukraine"));
@@ -120,6 +121,7 @@ public class GLIMPSEVariables {
     private boolean useAllAvailableProcessors = DEFAULT_USE_ALL_AVAILABLE_PROCESSORS;
     private boolean gcamVersionPre8_5 = DEFAULT_GCAM_VERSION_PRE8_5;
     private boolean debugTrnConversionSkips = DEFAULT_DEBUG_TRN_CONVERSION_SKIPS;
+    private boolean useNativeFileChooser = DEFAULT_USE_NATIVE_FILE_CHOOSER;
     private String executeCmdShort = "cmd /C ";
     private String executeCmd = "cmd /C start ";
     private String buildInfo = glimpseVersion;
@@ -573,6 +575,28 @@ public class GLIMPSEVariables {
         boolean b = false;
         if ((str.toLowerCase().equals("true")) || (str.toLowerCase().equals("yes"))) b = true;
         debugTrnConversionSkips = b;
+    }
+
+    /**
+     * Returns whether native OS file/folder chooser dialogs should be preferred.
+     */
+    public boolean getUseNativeFileChooser() {
+        return useNativeFileChooser;
+    }
+
+    /**
+     * Sets whether native OS file/folder chooser dialogs should be preferred.
+     */
+    public void setUseNativeFileChooser(boolean useNativeFileChooser) {
+        this.useNativeFileChooser = useNativeFileChooser;
+    }
+
+    /**
+     * Sets whether native OS file/folder chooser dialogs should be preferred.
+     * Accepts true/yes/1 to enable; all other values disable.
+     */
+    public void setUseNativeFileChooser(String value) {
+        setUseNativeFileChooser(isEnabledOption(value));
     }
 
     /**
@@ -1699,6 +1723,9 @@ public class GLIMPSEVariables {
         case "debugtransportconversionskips":
             returnVal = "" + debugTrnConversionSkips;
             break;
+        case "usenativefilechooser":
+            returnVal = String.valueOf(useNativeFileChooser);
+            break;
         case "buildinfo":
             returnVal = buildInfo;
             break;
@@ -1957,6 +1984,9 @@ public class GLIMPSEVariables {
         case "debugtrnconversionskips":
         case "debugtransportconversionskips":
             setDebugTrnConversionSkips(val);
+            break;
+        case "usenativefilechooser":
+            setUseNativeFileChooser(val);
             break;
         case "buildinfo":
             buildInfo = val;
@@ -2542,7 +2572,8 @@ public class GLIMPSEVariables {
                 "maxDatabaseSizeGB","optionsFilename","xmlLibrary","textEditor","xmlEditor",
                 "stopPeriod","runQueueStr",
                 "isGcamUSA","isGcamChina","isUseSubregions","preferredFontSize","useIcons","use_icons","debugRegion",
-                "debugCreate","debugStartupTiming","startYearForShare","debugRename","filesToSave"};
+                "debugCreate","debugStartupTiming","startYearForShare","debugRename","filesToSave",
+                "useNativeFileChooser"};
         
         ArrayList<String> report=new ArrayList<String>();
         

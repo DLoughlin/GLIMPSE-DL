@@ -74,15 +74,12 @@ import javafx.stage.Window;
  * <em>Cancel</em> returns {@code null} immediately without opening any
  * fallback dialog.
  * <p>
- * Kill-switch: set {@code -Dglimpse.nativeFileDialog=false} to force the
- * JavaFX dialog on every platform.<br>
+ * Preference source: {@code useNativeFileChooser} in the GLIMPSE options file.
+ * If not specified, native dialogs are used by default.<br>
  * Debug tracing: set {@code -Dglimpse.nativeFileDialog.debug=true}.
  */
 public final class FileChooserPlus {
 
-    // Set -Dglimpse.nativeFileDialog=false to force JavaFX dialogs only.
-    private static final boolean PREFER_NATIVE_FILE_DIALOG =
-            !"false".equalsIgnoreCase(System.getProperty("glimpse.nativeFileDialog", "true"));
     private static final boolean DEBUG_NATIVE_FALLBACK =
             "true".equalsIgnoreCase(System.getProperty("glimpse.nativeFileDialog.debug", "false"));
     private static final boolean DEBUG_NATIVE_FLOW = DEBUG_NATIVE_FALLBACK;
@@ -93,6 +90,17 @@ public final class FileChooserPlus {
      */
     private FileChooserPlus() {
         throw new IllegalStateException("Utility class");
+    }
+
+    /**
+     * Resolve chooser preference from options state. Defaults to native chooser.
+     */
+    private static boolean shouldPreferNativeFileDialog() {
+        try {
+            return GLIMPSEVariables.getInstance().getUseNativeFileChooser();
+        } catch (Throwable ignored) {
+            return true;
+        }
     }
 
     /**
@@ -107,7 +115,7 @@ public final class FileChooserPlus {
      */
     public static File showSaveDialog(Window ownerWindow, String title, File initialDirectory,
             String initialFileName, FileChooser.ExtensionFilter filter) {
-        if (PREFER_NATIVE_FILE_DIALOG) {
+        if (shouldPreferNativeFileDialog()) {
             try {
                 if (isWindows()) {
                     return showWindowsNativeSaveDialog(title, initialDirectory, initialFileName, filter);
@@ -137,7 +145,7 @@ public final class FileChooserPlus {
      */
     public static File showOpenDialog(Window ownerWindow, String title, File initialDirectory,
             FileChooser.ExtensionFilter filter) {
-        if (PREFER_NATIVE_FILE_DIALOG) {
+        if (shouldPreferNativeFileDialog()) {
             try {
                 if (isWindows()) {
                     return showWindowsNativeOpenDialog(title, initialDirectory, filter);
@@ -167,7 +175,7 @@ public final class FileChooserPlus {
      */
     public static List<File> showOpenMultipleDialog(Window ownerWindow, String title, File initialDirectory,
             FileChooser.ExtensionFilter filter) {
-        if (PREFER_NATIVE_FILE_DIALOG) {
+        if (shouldPreferNativeFileDialog()) {
             try {
                 if (isWindows()) {
                     return showWindowsNativeOpenMultipleDialog(title, initialDirectory, filter);
@@ -590,7 +598,7 @@ public final class FileChooserPlus {
     private static void logNativeDisabled(String op, String title) {
         String safeTitle = title == null ? "" : title;
         String message = "[FileChooserPlus] Native dialogs disabled for " + op
-                + " (title='" + safeTitle + "') via -Dglimpse.nativeFileDialog=false; using JavaFX chooser.";
+                + " (title='" + safeTitle + "') via useNativeFileChooser=false; using JavaFX chooser.";
         System.out.println(message);
         debugLog(message);
     }

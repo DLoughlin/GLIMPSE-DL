@@ -50,10 +50,12 @@ import javax.swing.filechooser.FileFilter;
 public class NativeFirstFileChooserWrapper implements FileChooser {
 	private final FileChooser nativeChooser;
 	private final FileChooser fallbackChooser;
-	private static final boolean DEBUG_NATIVE_FALLBACK =
-			"true".equalsIgnoreCase(System.getProperty("modelinterface.nativeFileDialog.debug", "false"));
 	private static final String DEBUG_LOG_FILE = System.getProperty("user.home", ".")
 			+ File.separator + "modelinterface-filechooser-debug.log";
+
+	private static boolean isDebugNativeFallbackEnabled() {
+		return "true".equalsIgnoreCase(System.getProperty("modelinterface.nativeFileDialog.debug", "false"));
+	}
 
 	public NativeFirstFileChooserWrapper(FileChooser nativeChooser, FileChooser fallbackChooser) {
 		this.nativeChooser = nativeChooser;
@@ -68,18 +70,18 @@ public class NativeFirstFileChooserWrapper implements FileChooser {
 	public File[] doFilePrompt(final Component parent, final String title,
 			final int loadOrSave, final File setFile, final FileFilter fileFilter,
 			final ActionListener actionListener, final String actionCommand) {
-		if (DEBUG_NATIVE_FALLBACK) {
+		if (isDebugNativeFallbackEnabled()) {
 			debugLog("Request: op=" + (loadOrSave == FileChooser.SAVE_DIALOG ? "save" : "open")
 					+ ", title='" + (title == null ? "" : title) + "', seed='"
 					+ (setFile == null ? "<null>" : setFile.getAbsolutePath()) + "'", null);
 		}
 		if (isWindows() && isDirectoryRequest(fileFilter) && loadOrSave == FileChooser.LOAD_DIALOG) {
 			try {
-				if (DEBUG_NATIVE_FALLBACK) {
+				if (isDebugNativeFallbackEnabled()) {
 					debugLog("Attempting Windows native directory chooser", null);
 				}
 				File[] windowsResult = showWindowsNativeDirectoryChooser(title, setFile);
-				if (DEBUG_NATIVE_FALLBACK) {
+				if (isDebugNativeFallbackEnabled()) {
 					debugLog("Windows native directory chooser returned "
 							+ (windowsResult == null ? "null (cancel/no selection)" : (windowsResult.length + " file(s)")),
 							null);
@@ -90,7 +92,7 @@ public class NativeFirstFileChooserWrapper implements FileChooser {
 				}
 				return windowsResult;
 			} catch (Throwable t) {
-				if (DEBUG_NATIVE_FALLBACK) {
+				if (isDebugNativeFallbackEnabled()) {
 					debugLog("Windows native directory chooser failed; falling back to chooser wrappers", t);
 				}
 			}
@@ -98,12 +100,12 @@ public class NativeFirstFileChooserWrapper implements FileChooser {
 
 		if (nativeChooser != null) {
 			try {
-				if (DEBUG_NATIVE_FALLBACK) {
+				if (isDebugNativeFallbackEnabled()) {
 					debugLog("Attempting native chooser", null);
 				}
 				File[] nativeResult = nativeChooser.doFilePrompt(parent, title, loadOrSave, setFile, fileFilter,
 						actionListener, actionCommand);
-				if (DEBUG_NATIVE_FALLBACK) {
+				if (isDebugNativeFallbackEnabled()) {
 					debugLog("Native chooser returned "
 							+ (nativeResult == null ? "null (cancel/no selection)" : (nativeResult.length + " file(s)")),
 							null);
@@ -114,19 +116,19 @@ public class NativeFirstFileChooserWrapper implements FileChooser {
 			}
 		}
 		if (fallbackChooser != null) {
-			if (DEBUG_NATIVE_FALLBACK) {
+			if (isDebugNativeFallbackEnabled()) {
 				debugLog("Using fallback Java chooser", null);
 			}
 			File[] fallbackResult = fallbackChooser.doFilePrompt(parent, title, loadOrSave, setFile, fileFilter,
 					actionListener, actionCommand);
-			if (DEBUG_NATIVE_FALLBACK) {
+			if (isDebugNativeFallbackEnabled()) {
 				debugLog("Fallback chooser returned "
 						+ (fallbackResult == null ? "null (cancel/no selection)" : (fallbackResult.length + " file(s)")),
 						null);
 			}
 			return fallbackResult;
 		}
-		if (DEBUG_NATIVE_FALLBACK) {
+		if (isDebugNativeFallbackEnabled()) {
 			debugLog("No chooser available; returning null", null);
 		}
 		return null;
@@ -138,16 +140,16 @@ public class NativeFirstFileChooserWrapper implements FileChooser {
 		String reason = t == null ? "unknown" : (t.getClass().getSimpleName() + ": " + t.getMessage());
 		System.out.println("[ModelInterface FileChooser] Native dialog failed for " + operation
 				+ " (title='" + safeTitle + "'); falling back to Java chooser. Reason: " + reason);
-		if (DEBUG_NATIVE_FALLBACK && t != null) {
+		if (isDebugNativeFallbackEnabled() && t != null) {
 			t.printStackTrace(System.out);
 		}
-		if (DEBUG_NATIVE_FALLBACK) {
+		if (isDebugNativeFallbackEnabled()) {
 			debugLog("Fallback activation: " + reason, t);
 		}
 	}
 
 	private static synchronized void debugLog(String message, Throwable t) {
-		if (!DEBUG_NATIVE_FALLBACK) {
+		if (!isDebugNativeFallbackEnabled()) {
 			return;
 		}
 		String line = "[" + new Date() + "] " + message;

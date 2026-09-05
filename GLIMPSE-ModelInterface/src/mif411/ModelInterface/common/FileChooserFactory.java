@@ -46,8 +46,6 @@ public class FileChooserFactory {
 	 * be more types of FileChoosers 
 	 */
 	private boolean useSwing;
-	private boolean preferNativeWithFallback;
-	private boolean debugNativeChooser;
 
 	/**
 	 * Private constructor.  This is a singleton class, so make
@@ -56,10 +54,14 @@ public class FileChooserFactory {
 	 */
 	private FileChooserFactory() {
 		useSwing = !System.getProperty("os.name").toLowerCase().startsWith("mac");
-		preferNativeWithFallback = !"false".equalsIgnoreCase(
-				System.getProperty("modelinterface.nativeFileDialog", "true"));
-		debugNativeChooser = "true".equalsIgnoreCase(
-				System.getProperty("modelinterface.nativeFileDialog.debug", "false"));
+	}
+
+	private static boolean isNativeFirstEnabled() {
+		return !"false".equalsIgnoreCase(System.getProperty("modelinterface.nativeFileDialog", "true"));
+	}
+
+	private static boolean isNativeChooserDebugEnabled() {
+		return "true".equalsIgnoreCase(System.getProperty("modelinterface.nativeFileDialog.debug", "false"));
 	}
 
 	/**
@@ -81,8 +83,10 @@ public class FileChooserFactory {
 	 * @return A FileChooser.
 	 */
 	public static FileChooser getFileChooser() {
-		if(!thisFactory.preferNativeWithFallback) {
-			if(thisFactory.debugNativeChooser) {
+		boolean preferNativeWithFallback = isNativeFirstEnabled();
+		boolean debugNativeChooser = isNativeChooserDebugEnabled();
+		if(!preferNativeWithFallback) {
+			if(debugNativeChooser) {
 				System.out.println("[ModelInterface FileChooser DEBUG] Native-first disabled; using default chooser ("
 						+ (thisFactory.useSwing ? "Swing" : "AWT") + ")");
 			}
@@ -90,7 +94,7 @@ public class FileChooserFactory {
 		}
 		FileChooser nativeChooser = getFileChooser(false);
 		FileChooser fallbackChooser = getFileChooser(thisFactory.useSwing);
-		if(thisFactory.debugNativeChooser) {
+		if(debugNativeChooser) {
 			System.out.println("[ModelInterface FileChooser DEBUG] Native-first enabled; native=AWT, fallback="
 					+ (thisFactory.useSwing ? "Swing" : "AWT"));
 		}
